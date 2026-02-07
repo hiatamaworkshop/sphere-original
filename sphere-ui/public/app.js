@@ -61,8 +61,28 @@ function loadFileData(file) {
   const reader = new FileReader();
   reader.onload = (e) => {
     try {
-      const data = JSON.parse(e.target.result);
-      if (!Array.isArray(data)) throw new Error('JSON must be an array');
+      const parsed = JSON.parse(e.target.result);
+
+      // Support both formats: ExperienceCapsule (schema v4) and legacy array
+      let data;
+      if (parsed.schemaVersion === 4 && (parsed.topTier || parsed.normalNodes || parsed.ghostNodes)) {
+        // Convert ExperienceCapsule to internal array format
+        data = [];
+        if (parsed.topTier) {
+          data.push(...parsed.topTier.map(node => ({ ...node, tier: 'top' })));
+        }
+        if (parsed.normalNodes) {
+          data.push(...parsed.normalNodes.map(node => ({ ...node, tier: 'normal' })));
+        }
+        if (parsed.ghostNodes) {
+          data.push(...parsed.ghostNodes.map(node => ({ ...node, tier: 'ghost' })));
+        }
+      } else if (Array.isArray(parsed)) {
+        // Legacy array format
+        data = parsed;
+      } else {
+        throw new Error('JSON must be either an ExperienceCapsule (schemaVersion 4) or an array');
+      }
 
       // Validate basic structure (tier, summary, tags)
       const invalidItems = data.filter((item, i) => {
@@ -155,12 +175,51 @@ document.getElementById('uploadFile').addEventListener('change', (e) => {
   if (e.target.files[0]) loadFileData(e.target.files[0]);
 });
 document.getElementById('downloadExample').addEventListener('click', () => {
-  // Download example JSON (first 3 items from preset)
-  const example = [
-    { tier: 'top', summary: 'Quantum computing fundamentals', tags: ['quantum', 'computing', 'technology'] },
-    { tier: 'normal', summary: 'Neural network architecture', tags: ['AI', 'neural-network', 'deep-learning'] },
-    { tier: 'normal', summary: 'Distributed systems CAP theorem', tags: ['distributed', 'system', 'theory'] }
-  ];
+  // Download schema-compliant ExperienceCapsule example
+  const example = {
+    schemaVersion: 4,
+    topTier: [
+      {
+        tags: ['quantum', 'computing', 'technology'],
+        summary: 'Quantum computing fundamentals',
+        content: 'Quantum computers leverage superposition and entanglement of quantum bits (qubits) to perform computations. Unlike classical bits that are either 0 or 1, qubits can exist in multiple states simultaneously, enabling exponential parallelism for certain problem classes.',
+        flags: 0
+      },
+      {
+        tags: ['AI', 'neural-network', 'deep-learning'],
+        summary: 'Neural network architecture patterns',
+        content: 'Modern deep learning architectures include CNNs for vision, RNNs/LSTMs for sequences, Transformers for attention-based processing, and GANs for generative tasks. Each architecture is optimized for specific data structures and problem domains.',
+        flags: 0
+      }
+    ],
+    normalNodes: [
+      {
+        tags: ['distributed', 'system', 'theory'],
+        summary: 'CAP theorem and consistency models',
+        content: 'CAP theorem states that distributed systems can guarantee at most two of Consistency, Availability, and Partition tolerance. Modern NoSQL databases make explicit trade-offs: CP systems (MongoDB, HBase) vs AP systems (Cassandra, DynamoDB).',
+        flags: 0
+      },
+      {
+        tags: ['blockchain', 'consensus', 'cryptography'],
+        summary: 'Blockchain consensus mechanisms',
+        flags: 0
+      },
+      {
+        tags: ['functional', 'programming', 'type-theory'],
+        summary: 'Algebraic data types and pattern matching',
+        ref_url: 'https://en.wikipedia.org/wiki/Algebraic_data_type',
+        flags: 0
+      }
+    ],
+    ghostNodes: [
+      {
+        tags: ['devops', 'monitoring', 'observability'],
+        summary: 'Observability vs monitoring: semantic differences',
+        flags: 0
+      }
+    ],
+    timestamp: Date.now()
+  };
   const blob = new Blob([JSON.stringify(example, null, 2)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
