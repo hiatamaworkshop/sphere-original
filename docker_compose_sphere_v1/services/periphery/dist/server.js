@@ -113,6 +113,12 @@ export class PeripheryServer {
             }
             next();
         });
+        // ===== Static File Serving =====
+        // Must be BEFORE API routes to allow index.html to serve at "/"
+        const staticDir = process.env.STATIC_DIR;
+        if (staticDir) {
+            this.app.use(express.static(staticDir));
+        }
         // ===== Rate Limiting =====
         // Heavy operations: contribute (incarnation pipeline), forge
         const heavyLimiter = rateLimit({
@@ -568,19 +574,18 @@ export class PeripheryServer {
                 });
             }
         });
-        // Static file serving (opt-in via env, for standalone deployment only)
-        const staticDir = process.env.STATIC_DIR;
-        if (staticDir)
-            this.app.use(express.static(staticDir));
     }
     start() {
         // Start ticket issuer cleanup
         this.ticketIssuer.start();
         // Start Gateway WebSocket server
-        const wsPort = this.config.server.wsPort ?? DEFAULT_GATEWAY_CONFIG.port;
+        // Production mode (PORT env set): use same port for HTTP and WebSocket
+        const httpPort = process.env.PORT ? parseInt(process.env.PORT, 10) : this.config.server.port;
+        const wsPort = process.env.PORT
+            ? 0 // 0 = use HTTP server (same port)
+            : (this.config.server.wsPort ?? DEFAULT_GATEWAY_CONFIG.port);
         this.gatewayServer = new GatewayServer(this.ticketIssuer, this.entryBuffer, { port: wsPort }, this.incarnationPipeline, this.questStore, this.coreAdapter, undefined, // amberCache
         this.globalFieldLayer, this.activeBusLayer);
-        const httpPort = this.config.server.port;
         const httpServer = this.app.listen(httpPort, () => {
             console.log(`[PeripheryServer] 🚀 Listening on port ${httpPort}`);
             console.log(`[PeripheryServer] ${SPHERE_NAME} v${SPHERE_VERSION}`);
