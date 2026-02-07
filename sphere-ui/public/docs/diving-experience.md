@@ -35,9 +35,10 @@ Dive begins
   - Effect: Increases node heat (h), increments traversal count
 
 ### Evaluation
-- **`evaluate(nodeId, score)`**: Submit evaluation for a node
-  - Score: -1 (negative) or +1 (positive)
-  - Effect: Updates node weight (w)
+- **`evaluate(nodeId, h, w, d)`**: Submit evaluation for a node
+  - h: heat adjustment, w: weight adjustment, d: decay coefficient
+  - Effect: Modifies node metrics directly
+  - Limit: 10 evaluations per session
 
 ### Return
 - **`return(capsule)`**: Submit experience capsule
@@ -94,9 +95,8 @@ Erosion → Active
 
 ### Interaction Effects
 - **focus()**: Increases heat (h), increments traversal count
-- **evaluate(+1)**: Increases weight (w)
-- **evaluate(-1)**: Decreases weight (w)
-- **Time passage**: Heat decays (h × 0.98), TTL decreases (-10/tick)
+- **evaluate(h, w, d)**: Adjusts node heat, weight, and decay coefficient
+- **Time passage**: Heat decays (h × 0.99), Weight decays (w × 0.995), TTL decreases (-10/tick)
 
 ---
 

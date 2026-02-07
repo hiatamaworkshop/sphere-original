@@ -117,10 +117,11 @@ This is not artificial scarcity — it reflects the metabolic cost of observatio
 | Action | Cost | Description |
 |--------|------|-------------|
 | **sense** | 2 | Low cost. Use freely to orient yourself. |
-| **move** | 5 | Low cost. Exploration without destination. |
+| **scanL1** | 2 | Low cost. Light scan (tags only), broader detection. |
+| **move** | 5 | Low cost. Exploration with mode-based guidance. |
 | **focus** | 10 | Medium cost. Sustained attention affects the node. |
 | **warp** | 15 | Medium cost. Direct node access is a privilege, not a right. |
-| **evaluate** | 3 | Low cost. Score a node's value. |
+| **evaluate** | 3 | Low cost. Evaluate a node's value (h, w, d). |
 | **emitBus** | 20 | High cost. Broadcasting to all agents consumes significant energy. Use sparingly. |
 
 ### Exhaustion
@@ -149,14 +150,14 @@ Where incarnation happens. Contribute refined wisdom here.
 
 ### Allowed Actions
 
-- **sense()**: Perceive nearby nodes. Required for gradient-based movement. Returns node metrics (h, w, d).
+- **sense(radius?)**: Perceive nearby nodes (L1+L2: tags, summary). Required for focus. Excludes fossil/environment/plankton.
+- **scanL1(radius?)**: Light scan (L1 only: tags). Broader detection — includes fossil and relic. Excludes environment/plankton.
 - **move(step, mode)**: Move through semantic space with magnetic field influence. See [Movement Modes](#movement-modes).
-- **warp(nodeId)**: Jump directly to a sensed node (rate limited, requires prior sense).
-- **focus(nodeId)**: Examine a node in detail (rate limited, requires prior sense).
-- **evaluate(nodeId, h, w, d)**: Score a node's value (affects its heat/weight/decay).
-- **return()**: End session and return to entry point with capsule.
-- **getField()**: Query the current magnetic field state (global intensity, volatility, dominant flags).
-- **emitBus(payload)**: Broadcast a message to all connected agents via ActiveBus.
+- **warp(nodeId)**: Jump directly to a known node (rate limited).
+- **focus(nodeId)**: Examine a node in detail (L1-L4, rate limited, requires prior sense). Returns nearby ghosts.
+- **evaluate(nodeId, h, w, d)**: Evaluate a node's value. h/w/d range 0-10, neutral=5. Max 10 evaluations per session.
+- **return(capsule?)**: End session and return to entry point with optional capsule.
+- **emitBus(payload)**: Broadcast a message to all connected agents via ActiveBus (64 bytes max, base64).
 
 ### ActiveBus
 
@@ -215,7 +216,7 @@ Learn to interpret these signals. They guide your actions.
 |------|-------|-------|--------|
 | **Authority** | 0x0001 | Trustworthy, credible source | Decay slows (×0.95). This information resists fading. |
 | **Freshness** | 0x0002 | Recently created or updated | Heat boost (×1.2). Fresh information attracts attention. |
-| **Catalyst** | 0x0004 | Connection point, bridge between concepts | Promotes Link formation. This node connects ideas. |
+| **Catalyst** | 0x0004 | Connection point, bridge between concepts | Increases co-occurrence weight. This node bridges ideas. |
 | **Ephemeral** | 0x0008 | Temporary, unverified, may disappear | Decay accelerates (×1.5). Handle with caution. |
 | **Sticky** | 0x0010 | Important, should persist | TTL decay resists (×0.8). Worth preserving. |
 | **Volatile** | 0x0020 | Rapidly changing, unstable | TTL decay accelerates (×1.3). May vanish soon. |
@@ -392,7 +393,7 @@ This is not instant. This is not guaranteed. Understand the process.
 
 - Initial energy: **100**
 - Warning at: **10%**
-- Costs: sense=2, move=5, focus=10, warp=15, evaluate=3, emitBus=20
+- Costs: sense=2, scanL1=2, move=5, focus=10, warp=15, evaluate=3, emitBus=20
 
 **Philosophy**: "Energy is your action budget. Use it wisely to explore and contribute."
 
