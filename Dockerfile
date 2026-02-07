@@ -36,9 +36,8 @@ COPY --from=build /build/services/renalCore/package.json ./node_modules/@sphere/
 # Copy config (production overrides via env vars)
 COPY docker_compose_sphere_v1/sphere.config.json ./config/sphere.config.json
 
-# Copy UI static files
+# Copy UI static files (includes public/docs/)
 COPY sphere-ui/public/ ./public/
-COPY docs/ ./public/docs/
 
 ENV NODE_ENV=production
 ENV SPHERE_CONFIG=./config/sphere.config.json
