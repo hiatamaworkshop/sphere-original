@@ -14,6 +14,10 @@ import { NodeFlag } from "@sphere/renal-core";
 
 /**
  * CleanerFishPersonality: 掃除魚の性格
+ *
+ * [Future] 個体差の拡張候補:
+ *   - preference: "ghost" | "fossil" — 処理順序の好み (候補 > capacity 時に効く)
+ *   - hungerSensitivity: 0.8-1.2 — 個体ごとの hunger 補正 (同じ環境でも反応が異なる)
  */
 export interface CleanerFishPersonality {
   processingSpeed: number;
@@ -26,6 +30,8 @@ export interface CleanerFishConfig {
   count: number;
   baseProcessingSpeed: number;
   baseFossilTTL: number;
+  /** Max capacity multiplier at hunger=1.0 (linear interpolation from 1.0) */
+  hungerCapacityMultiplier: number;
 }
 
 /**
@@ -278,8 +284,10 @@ export class CleanerFish {
  */
 export class CleanerFishPool {
   private readonly fish: CleanerFish[] = [];
+  private readonly config: CleanerFishConfig;
 
   constructor(config: CleanerFishConfig) {
+    this.config = config;
     // 固定数の掃除魚を生成
     for (let i = 0; i < config.count; i++) {
       const personality = this.generatePersonality();
@@ -463,13 +471,16 @@ export class CleanerFishPool {
       );
     }
 
+    // Hunger → capacity scaling: hunger 高 → 1匹あたりの処理量増加
+    const hungerMultiplier = 1.0 + behavior.hunger * (this.config.hungerCapacityMultiplier - 1.0);
+
     // 各掃除魚が処理を分担
     let ghostifyIdx = 0;
     let fossilizeIdx = 0;
     let decomposeIdx = 0;
 
     for (const fish of this.fish) {
-      const capacity = fish.getProcessingCapacity();
+      const capacity = Math.floor(fish.getProcessingCapacity() * hungerMultiplier);
       let processed = 0;
 
       // 1. Ghostification (Active → Ghost)
@@ -515,4 +526,5 @@ export const DEFAULT_CLEANER_FISH_CONFIG: CleanerFishConfig = {
   count: 10,
   baseProcessingSpeed: 5,
   baseFossilTTL: 500,
+  hungerCapacityMultiplier: 4,
 };

@@ -177,6 +177,7 @@ const cleanerFishConfig = {
   ...DEFAULT_CLEANER_FISH_CONFIG,
   count: sphereConfig.cleanerFish?.count ?? 10,
   baseFossilTTL: sphereConfig.cleanerFish?.baseFossilTTL ?? 500,
+  hungerCapacityMultiplier: sphereConfig.cleanerFish?.hungerCapacityMultiplier ?? 4,
 };
 const cleanerFishPool = new CleanerFishPool(cleanerFishConfig);
 

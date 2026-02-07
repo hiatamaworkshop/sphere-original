@@ -22,6 +22,8 @@ export interface CleanerFishConfig {
     count: number;
     baseProcessingSpeed: number;
     baseFossilTTL: number;
+    /** Max capacity multiplier at hunger=1.0 (linear interpolation from 1.0) */
+    hungerCapacityMultiplier: number;
 }
 /**
  * FossilizationResult: 化石化の結果
@@ -152,6 +154,7 @@ export declare class CleanerFish {
  */
 export declare class CleanerFishPool {
     private readonly fish;
+    private readonly config;
     constructor(config: CleanerFishConfig);
     /**
      * 性格を生成（基本は高圧縮、小さな揺らぎ）

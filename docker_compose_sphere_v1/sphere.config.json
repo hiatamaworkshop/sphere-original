@@ -212,6 +212,13 @@
     }
   },
 
+  "cleanerFish": {
+    "_comment": "Autonomous GC - hunger scales both target range AND throughput",
+    "count": 10,
+    "baseFossilTTL": 500,
+    "hungerCapacityMultiplier": 4
+  },
+
   "activeBus": {
     "enabled": true,
     "protocol": "AI_NATIVE",

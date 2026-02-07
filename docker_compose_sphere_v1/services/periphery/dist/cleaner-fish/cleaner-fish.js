@@ -140,7 +140,9 @@ export class CleanerFish {
  */
 export class CleanerFishPool {
     fish = [];
+    config;
     constructor(config) {
+        this.config = config;
         // 固定数の掃除魚を生成
         for (let i = 0; i < config.count; i++) {
             const personality = this.generatePersonality();
@@ -292,12 +294,14 @@ export class CleanerFishPool {
                 `fossil=${candidates.toFossilize.length} ` +
                 `decompose=${candidates.toDecompose.length}`);
         }
+        // Hunger → capacity scaling: hunger 高 → 1匹あたりの処理量増加
+        const hungerMultiplier = 1.0 + behavior.hunger * (this.config.hungerCapacityMultiplier - 1.0);
         // 各掃除魚が処理を分担
         let ghostifyIdx = 0;
         let fossilizeIdx = 0;
         let decomposeIdx = 0;
         for (const fish of this.fish) {
-            const capacity = fish.getProcessingCapacity();
+            const capacity = Math.floor(fish.getProcessingCapacity() * hungerMultiplier);
             let processed = 0;
             // 1. Ghostification (Active → Ghost)
             while (processed < capacity && ghostifyIdx < candidates.toGhostify.length) {
@@ -338,5 +342,6 @@ export const DEFAULT_CLEANER_FISH_CONFIG = {
     count: 10,
     baseProcessingSpeed: 5,
     baseFossilTTL: 500,
+    hungerCapacityMultiplier: 4,
 };
 //# sourceMappingURL=cleaner-fish.js.map
