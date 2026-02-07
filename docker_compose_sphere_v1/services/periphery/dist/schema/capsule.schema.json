@@ -1,0 +1,46 @@
+{
+  "$schema": "sphere-schema-v1",
+  "version": 4,
+  "name": "ExperienceCapsule",
+  "description": "Container for agent's contributions to Sphere",
+
+  "fields": {
+    "schemaVersion": {
+      "type": "number",
+      "required": true,
+      "description": "Schema version (must match CAPSULE_SCHEMA_VERSION)"
+    },
+    "topTier": {
+      "type": "array",
+      "items": "NodeSeed",
+      "max": 2,
+      "description": "Top N high-value nodes"
+    },
+    "normalNodes": {
+      "type": "array",
+      "items": "NodeSeed",
+      "max": 5,
+      "description": "Medium-value nodes"
+    },
+    "ghostNodes": {
+      "type": "array",
+      "items": "NodeSeed",
+      "max": 3,
+      "description": "Low-value, volatile nodes"
+    },
+    "evaluations": {
+      "type": "array",
+      "items": "NodeEvaluation",
+      "description": "Opinions on existing nodes"
+    },
+    "timestamp": {
+      "type": "number",
+      "required": true,
+      "description": "Submission time (epoch ms)"
+    }
+  },
+
+  "constraints": {
+    "maxTotalPayloadBytes": 8192
+  }
+}

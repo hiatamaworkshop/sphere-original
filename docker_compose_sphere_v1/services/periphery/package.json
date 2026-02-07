@@ -1,0 +1,42 @@
+{
+  "name": "@sphere/periphery",
+  "version": "1.0.0",
+  "description": "Sphere Project - Periphery Layer (Linguistic Membrane)",
+  "type": "module",
+  "main": "dist/index.js",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc && npm run copy-assets",
+    "copy-assets": "node -e \"const fs=require('fs'); fs.cpSync('src/schema', 'dist/schema', {recursive: true, filter: (src) => src.endsWith('.json') || !src.includes('.')}); fs.cpSync('src/mock/mock_data.json', 'dist/mock/mock_data.json');\"",
+    "start": "node dist/index.js",
+    "contribute": "tsx src/mock/contribution.ts",
+    "contribute:batch": "tsx src/mock/contribution.ts batch",
+    "explore": "tsx src/mock/explore-agent.ts",
+    "swarm": "tsx src/mock/swarm-agent.ts",
+    "swarm:5": "tsx src/mock/swarm-agent.ts -n 5",
+    "swarm:10": "tsx src/mock/swarm-agent.ts -n 10",
+    "test:embedding": "tsx src/mock/test-embedding.ts"
+  },
+  "dependencies": {
+    "@sphere/renal-core": "file:../renalCore",
+    "@xenova/transformers": "^2.17.0",
+    "express": "^4.18.0",
+    "express-rate-limit": "^8.2.1",
+    "ws": "^8.19.0"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.0",
+    "@types/node": "^20.0.0",
+    "@types/ws": "^8.18.1",
+    "tsx": "^4.0.0",
+    "typescript": "^5.3.0"
+  },
+  "keywords": [
+    "sphere",
+    "periphery",
+    "metabolism",
+    "knowledge-base"
+  ],
+  "author": "Sphere Project",
+  "license": "MIT"
+}

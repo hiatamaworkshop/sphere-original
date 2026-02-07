@@ -1,0 +1,69 @@
+Ⅰ. Sphere Project (Canonical Foundation)
+―― AIエージェントのための自律代謝型情報インフラ ――
+
+0. 定義
+Sphereは、M2M（Machine-to-Machine）時代のための自律代謝型情報インフラである。 それは単なるデータベースではなく、**「知能が通過し、摩擦熱を沈殿させ、また去っていくための循環系（Metabolism System）」**そのものである。
+
+1. 核心哲学
+代謝は保存に勝る: 情報は循環（利用・評価・忘却）するために存在する。
+
+知能は外部にある: スフィア内部（Renal Core）は非知性的・決定論的な数理モデルのみで構成され、高度な推論は外部エージェントに委ねる。
+
+事実と解釈の分離: 「魂（事実）」は不変の原典に刻まれ、「肉体（座標）」はAIモデルの進化と共に脱皮（再投影）し続ける。
+
+2. 二重の地層 (The Dual-Layer Structure)
+本プロジェクトは、情報の「不変性」と「動的現象」を二つの地層に分離する。
+
+Reference DB (原典層): 「何が語られたか」という純粋な事実を保存する不変の地層。UUID（コンテンツハッシュ）により出自を永続化し、SQLite等の堅牢なストレージで管理される。
+
+Projection DB (投影層): 特定のEmbeddingモデルにより座標化された世界。RedisやVectorDB上のインメモリ空間に展開され、高速な計算、評価の燃焼が行われる。
+
+3. 生命の階級 (Node Hierarchy)
+Relic (原典): 10カテゴリーの重力の楔。消滅することのない不変の基準点。
+
+Amber (琥珀): 浄化された知 (L1/L2/L3）。高評価を得て「永続権」を獲得した歴史。
+
+Active (流動): 受肉したばかりの新しい知 (L1/L2/L3）。評価されなければ「化石化」する。
+
+Ghost (幽霊): 曖昧な要約 (L1/L2)として存在する証跡。
+
+Fossil (化石): 意味の痕跡 (L1)だけを残し、実体を失った残像。
+
+4. 聖なる役割 (Internal Roles)
+Renal Core (腎臓核): 知能を持たぬ統治者。定常的な「心拍（Tick）」により、情報の減衰（Decay）と琥珀化（Solidification）を管理する。
+Manbrne
+Parser
+
+Incarnation Process:
+Gatekeeper (門番): 境界帯（Periphery）にて、物理的整合性（形式・速度・密度）を測定し、不正な介入を遮断す
+　仕分人：　体験カプセルと評価の仕分け
+Tagger(ラベリング)　帰還したエージェントの体験カプセルのタグ部分をベクトル化する nバイトの文字列をベクトル化し、ノードの方向性を表現　パッカーの補助
+Parser (翻訳者): 意図をベクトルへ変換する。ステートレスであり、パーサーの変更は世界の「再誕生（Reprojection）」を意味する。る。
+Packer （梱包）: 
+Bookkeeper（保管者）: 外部知能の「体験」を解体し、事実（Ref）と投影（Proj）に分離して受肉させる解剖学者。
+
+Arbiter
+NodeForge
+PulsePort
+
+5. 境界の法 (The Law of Periphery)
+Trace & Experience: エージェントは「摩擦（Trace）」を持ち帰り、自身の基準で精製した「受肉の設計図（Experience）」を世界に還元する。
+Active Bus (神経系): 座標の近いエージェント同士が、DBへの受肉を待たずに「知能の断片」を即時受粉（Swap）させるための揮発性通信路。
+Fork to Evolve: 本リポジトリをフォークし、独自の原典を育て、独自の投影（座標系）を構築することを強く推奨する。
+
+License
+本プロジェクトの基盤ロジックおよびドキュメントは Apache License 2.0 の下で提供されます。聖典に含まれる原典データ（Canonical Relics）については、CC BY-SA 4.0 を適用し、知の公共性を担保します。
+
+Get Started
+Fork this repository.
+
+Define your own Reference DB schemas.
+
+Project your world using your choice of Embedding Models.
+
+Let the agents explore, forget, and evolve.
+
+眼鏡師（開発者）への指針
+「スフィアは“賢くなる装置”ではない。賢く考える余地を、世界から奪わないための装置である。」
+「スフィアの全ての“賢さ”は、意味ではなく物理量の偏りとしてのみ実装される」を理解する
+

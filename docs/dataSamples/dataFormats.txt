@@ -1,0 +1,147 @@
+Minimal Definition of Node
+type NodeKind =
+  | "active"
+  | "amber"
+  | "link"
+  | "ghost";
+
+interface SphereNode {
+  id: string;
+  vector: number[];
+  kind: NodeKind;
+
+  metrics: {
+    w: number;
+    d: number;
+    h: number;
+    flg: number; 
+    ttl: number;
+  };
+
+  parent_id?: string;
+  timestamp: number;
+}
+, think without payload first
+//
+
+/**
+ * Sphere Node System - Phase 1 Optimized
+ */
+
+export type NodeKind = 
+  | "relic"    // 宇宙定数（不変）
+  | "amber"    // 結晶化（安定）
+  | "active"   // 受肉直後（高熱）
+  | "fossil"   // 風化（低熱・圧縮）
+  | "ghost"    // 摩擦痕跡（揮発）
+  | "plankton" // 最終養分（意味消失）
+  | "link";    // 構造の楔
+  | "environment";    // 調整用
+
+export interface SphereNode {
+  id: string;       
+  kind: NodeKind;
+  vector: number[]; // 1536d
+
+  // --- 投影層では原則 payload なし、参照層でのみ実体化 ---
+  payload?: {
+    summary?: string; 
+    tags?: string[];   // 文字列タグは参照用
+    links?: string[]; 
+    ref_url?: string; 
+  };
+
+  metrics: {
+    w: number;    // Weight: 存在や影響の強度
+    d: number;    // Decay: 減衰速度
+    h: number;    // Heat: 熱量（探索コスト／環境影響）
+    ttl: number;  // TTL: 生命維持秒数
+    flg: number;  // 【NEW】情報の味 / 評価プロファイル (16bit bitwise)
+                  // 0x0001: Direct (直撃)
+                  // 0x0002: Catalyst (触媒)
+                  // 0x0004: Shortcut (短縮)
+                  // 0x0008: Fresh (鮮度)
+                  // 0x0010: Context (文脈)
+                  // 0x0020: Authority (信頼)
+                  // 0x0040: Reserved1
+                  // 0x0080: Reserved2
+  };
+
+  timestamp: number; // 誕生時刻
+}
+
+//-----------------------------------------------------------
+// Ghost と Plankton の物理的再解釈
+//-----------------------------------------------------------
+
+// GhostNode: 「意味を生成できなかった歪み」
+export interface GhostNode extends SphereNode {
+  kind: "ghost";
+
+  payload: {
+    traces: number[][]; // [[in_vector], [out_vector], [failed_angle_1], ...]
+    tags: string[];     // "failed", "loop", "ambiguous"
+    parent_active_id?: string; // 元ActiveNode
+    call_shadow?: { id: string; ok: boolean }; // 疑似コールの影
+  };
+
+  metrics: {
+    w: number;    // Weight: 反応強度（意味解釈禁止）
+    d: number;    // 減衰速度
+    h: number;    // 探索コスト由来の熱
+    ttl: number;  // 数心拍で消滅
+  };
+}
+// Ghost は ProjectionDBで軽量化され、Pulseのみ影響を与える
+
+// PlanktonNode: 「座標空間の養分」
+export interface PlanktonNode extends Omit<SphereNode, 'payload'> {
+  kind: "plankton";
+
+  metrics: {
+    w: number;    // 微小な存在感
+    d: number;    // 減衰なし（または非常に遅い）
+    h: number;    // 微弱な熱（空間の気配）
+    ttl: number;  // 永続。新ActiveNode受肉時に上書き・吸収される
+  };
+}
+// payload は持たず、ProjectionDB上で最軽量
+
+
+
+//-----------------------------------------------------------
+// Pulse Packet: 外部観測用の環境放射信号
+//-----------------------------------------------------------
+export interface PulsePacket {
+  cid: string;       // Cell ID
+  ts: number;        // Timestamp
+  sig: {
+    a: number;       // Attractant: プランクトン密度 + Amber残存熱
+    r: number;       // Repellent: Ghost密集度 + 解釈エラー
+    d: number;       // Density: 実体密度（Active/Relicノード数）
+    f: number;       // Flow: 前回Tickからの流動性
+  };
+  flg: number;       // Flags
+                     // 0x01: Burst (急激な熱上昇)
+                     // 0x02: Thorn (Ghost過多)
+                     // 0x04: Bloom (Amber結晶化発生中)
+}
+
+//-----------------------------------------------------------
+// Projection Record (In-Memory / VectorDB)
+//-----------------------------------------------------------
+export interface ProjectionRecord extends Omit<SphereNode, 'payload'> {
+  tags?: string[];   // 検索・代謝用の最小限のタグ
+}
+
+//-----------------------------------------------------------
+// Reference Record (Persistent / RDB / File)
+//-----------------------------------------------------------
+export interface ReferenceRecord {
+  id: string;
+  payload: {
+    summary: string;
+    links: string[];
+    ref_url: string;
+  };
+}

@@ -1,0 +1,45 @@
+{
+  "$schema": "sphere-schema-v1",
+  "name": "NodeSeed",
+  "description": "Pre-incarnation node data (before vectorization)",
+
+  "fields": {
+    "tags": {
+      "type": "string[]",
+      "required": true,
+      "minItems": 1,
+      "maxItems": 10,
+      "description": "L1: Keywords (vectorized for spatial position)"
+    },
+    "summary": {
+      "type": "string",
+      "required": true,
+      "maxLength": 500,
+      "description": "L2: Brief summary (sensed from afar)"
+    },
+    "content": {
+      "type": "string",
+      "description": "L3: Main content (read when focused)"
+    },
+    "sourceNodeId": {
+      "type": "string",
+      "description": "L4: Derivation origin (knowledge lineage)"
+    },
+    "links": {
+      "type": "string[]",
+      "maxItems": 5,
+      "description": "L4: Related nodes (amber/relic/active only)"
+    },
+    "ref_url": {
+      "type": "string",
+      "maxLength": 256,
+      "pattern": "^https?://",
+      "description": "L4: External URL (http/https only)"
+    },
+    "flags": {
+      "type": "number",
+      "required": true,
+      "description": "16-bit NodeFlag (from renal-core)"
+    }
+  }
+}

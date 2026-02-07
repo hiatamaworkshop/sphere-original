@@ -1,0 +1,31 @@
+{
+  "name": "@sphere/renal-core",
+  "version": "1.0.0",
+  "description": "Sphere Project - RenalCore Metabolism Engine",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx watch src/index.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.3.0",
+    "tsx": "^4.0.0"
+  },
+  "keywords": [
+    "sphere",
+    "metabolism",
+    "renal-core",
+    "knowledge-base"
+  ],
+  "author": "Sphere Project",
+  "license": "MIT"
+}

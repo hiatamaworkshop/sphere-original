@@ -1,0 +1,38 @@
+{
+  "$schema": "sphere-schema-v1",
+  "name": "NodeEvaluation",
+  "description": "Score for existing node (no new content)",
+
+  "fields": {
+    "nodeId": {
+      "type": "string",
+      "required": true,
+      "description": "Reference to existing node (RefDB lookup)"
+    },
+    "h": {
+      "type": "number",
+      "required": true,
+      "min": 0,
+      "max": 10,
+      "description": "Heat evaluation (neutral=5)"
+    },
+    "w": {
+      "type": "number",
+      "required": true,
+      "min": 0,
+      "max": 10,
+      "description": "Weight evaluation (neutral=5)"
+    },
+    "d": {
+      "type": "number",
+      "required": true,
+      "min": 0,
+      "max": 10,
+      "description": "Decay evaluation (neutral=5, higher=faster decay)"
+    },
+    "context": {
+      "type": "string",
+      "description": "Optional: why this score (not vectorized, L3)"
+    }
+  }
+}

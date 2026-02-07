@@ -1,0 +1,384 @@
+{
+  "metadata": {
+    "sphere_name": "Sphere Genesis",
+    "version": "0.3.0",
+    "forked_from": "origin",
+    "ethos": "Metabolism over Preservation"
+  },
+
+  "physical_constants": {
+    "dimension": 384,
+    "gravity_constant": 0.1,
+    "ambient_temperature": 0.5,
+    "vacuum_decay": 0.01
+  },
+
+  "perception": {
+    "_comment": "知覚の物理法則: M = T / (a × D)",
+    "targetTotalOps": 100000,
+    "_formula": "sampleSize = targetTotalOps / (agentCount × dimension)",
+    "basePerceptionRadius": 0.8,
+    "maxSenseResults": 15
+  },
+
+  "field": {
+    "_comment": "Global Ambient Field - スフィア全体の気候 (2分周期で更新)",
+    "updateIntervalTicks": 120,
+    "targetSampleOps": 50000,
+    "minSampleSize": 10,
+    "maxSampleSize": 500,
+    "intensityDecay": 0.1,
+    "emptyIntensity": 0
+  },
+
+  "periphery": {
+    "membrane": {
+      "tag_encoding": "UTF-8",
+      "tag_limit_bytes": 64,
+      "prohibited_patterns": ["<script>", "javascript:", "http://", "https://"],
+      "auto_translation_to_core": false
+    },
+
+    "parser": {
+      "batchSize": 7,
+      "flushTimeoutMs": 1000,
+      "embeddingProvider": "local",
+      "vectorDimension": 384
+    },
+
+    "gateway": {
+      "basePerceptionRadius": 1.5
+    },
+
+    "gatekeeper": {
+      "_deprecated": "Gatekeeper now uses Rulebook constraints (services/periphery/src/rulebook/index.ts)",
+      "_note": "Values below are ignored - kept for reference only",
+      "maxNodesPerCapsule": 33,
+      "maxTopTierPerCapsule": 3,
+      "maxNormalPerCapsule": 10,
+      "maxGhostPerCapsule": 20,
+      "maxPayloadBytes": 4096,
+      "maxSummaryLength": 500
+    },
+
+    "tagger": {
+      "topTierCount": 3
+    },
+
+    "packer": {
+      "_comment": "Integer scale: h/w threshold 1000, d baseline 1000",
+      "baseHeat": 750,
+      "tierWeights": {
+        "top": 300,
+        "normal": 100,
+        "ghost": 50
+      },
+      "tierTTLs": {
+        "top": 172800,
+        "normal": 86400,
+        "ghost": 300
+      },
+      "standardDecayCoefficient": 1000,
+      "tierFlags": {
+        "top": 2,
+        "normal": 0,
+        "ghost": 0
+      },
+      "initialMetrics": {
+        "traversal": 0,
+        "stayTime": 0
+      }
+    },
+
+    "incarnationBuffer": {
+      "batchSize": 3,
+      "flushIntervalMs": 100
+    },
+
+    "server": {
+      "port": 3001,
+      "wsPort": 8081
+    },
+
+    "arbiter": {
+      "_comment": "Arbiter settings (state transition judgment)",
+
+      "dynamicFlags": {
+        "hotHeatThreshold": 10,
+        "hubLinkThreshold": 5,
+        "isolatedLinkThreshold": 0
+      },
+
+      "deferredObserve": {
+        "throttleMs": 1000,
+        "idleTimeoutMs": 500
+      },
+
+      "ascension": {
+        "_comment": "Ascension cooldown: evaluation freeze + h+w score + lower threshold",
+        "cooldownMs": 600000,
+        "scoreThreshold": 1000,
+        "lowerThresholdRatio": 0.9,
+        "dropoutReset": {
+          "_comment": "Metrics reset on cooldown failure (fake amber punishment) - integer scale",
+          "h": 400,
+          "w": 500,
+          "d": 1000
+        },
+        "absorption": {
+          "_comment": "Crystallization on successful ascension - absorb nearby nodes",
+          "enabled": true,
+          "radius": 0.3,
+          "factor": 0.1,
+          "maxNodes": 5
+        }
+      },
+
+      "revival": {
+        "_comment": "Fossil → Active revival conditions (h×w product + d stability gate)",
+        "threshold": 2500,
+        "dThreshold": 800,
+        "protectionThreshold": 100
+      }
+    }
+  },
+
+  "renal_core": {
+    "heartbeat": {
+      "tickIntervalMs": 1000
+    },
+
+    "decay": {
+      "alpha": 10.0,
+      "heatDecayFactor": 0.01,
+      "weightDecayFactor": 0.005
+    },
+
+    "thresholds": {
+      "_comment": "Integer scale: threshold 1000 for Ascension",
+      "amberHeat": 1000,
+      "amberWeight": 1000,
+      "fossilHeat": 0.5,
+      "erosionHeat": 100,
+      "ghostHeat": 0.5,
+      "evaporationHeat": 0.01
+    },
+
+    "ghost": {
+      "ttlMultiplier": 0.1
+    },
+
+    "spatial": {
+      "gridSize": 0.1,
+      "planktonConversionRate": 0.3,
+      "fertilityDecayRate": 0.01
+    },
+
+    "hackDetection": {
+      "traversalThreshold": 50,
+      "stayRatioThreshold": 0.1,
+      "minPayloadLength": 10
+    },
+
+    "pause": {
+      "idleThreshold": 300,
+      "erosionBoost": 2.0
+    },
+
+    "dormancy": {
+      "_comment": "Metabolism hibernation when no agents connected",
+      "thresholdMs": 60000
+    },
+
+    "pulse": {
+      "_comment": "UDP broadcast for external observers (Observatory, etc.)",
+      "enabled": true,
+      "port": 41234,
+      "intervalTicks": 5,
+      "broadcastAddress": "127.0.0.1"
+    },
+
+    "flags": {
+      "physicsModifiers": {
+        "Authority": {
+          "decayRateMultiplier": 0.95,
+          "description": "decay減速"
+        },
+        "Freshness": {
+          "heatBoostMultiplier": 1.2,
+          "description": "heat増幅"
+        },
+        "Ephemeral": {
+          "decayRateMultiplier": 1.5,
+          "description": "decay加速"
+        },
+        "Sticky": {
+          "ttlDecayMultiplier": 0.8,
+          "description": "ttl減衰に抵抗"
+        },
+        "Volatile": {
+          "ttlDecayMultiplier": 1.3,
+          "description": "高速蒸発"
+        },
+        "Hub": {
+          "weightMultiplier": 1.1,
+          "description": "weight増加"
+        },
+        "Frozen": {
+          "decayRateMultiplier": 0,
+          "ttlDecayMultiplier": 0,
+          "description": "代謝停止(Relic用)"
+        }
+      }
+    }
+  },
+
+  "metabolism_settings": {
+    "default_ttl": 86400,
+    "max_active_nodes": 50000,
+    "fossilization_threshold": 0.3,
+    "plankton_conversion_rate": 0.3,
+    "cleaner_fish_aggressiveness": 0.5
+  },
+
+  "crystallization_logic": {
+    "amber_trigger_threshold": 0.8,
+    "is_amber_enabled": true,
+    "linking_sensitivity": 0.7,
+    "constellation_limit": 10,
+    "amber_erosion_rate": 0.01,
+    "min_amber_heat": 1.0
+  },
+
+  "linguistic_membrane": {
+    "tag_encoding": "UTF-8",
+    "tag_limit_bytes": 64,
+    "prohibited_patterns": ["<script>", "javascript:"],
+    "auto_translation_to_core": false
+  },
+
+  "immersive_training": {
+    "teacher_trace_retention": 0.8,
+    "student_learning_rate": 0.1,
+    "dojo_noise_level": 0.2
+  },
+
+  "interface_hint": {
+    "rendering_mode": "point_cloud",
+    "lod_distance": 1.0,
+    "showcase_refresh_rate": 60
+  },
+
+  "activeBus": {
+    "enabled": true,
+    "protocol": "AI_NATIVE",
+    "maxPayloadBytes": 64,
+    "bufferSize": 10,
+    "samplingRate": 0.7
+  },
+
+  "ephemeral": {
+    "_comment": "Ephemeral mode: periodic state reset (for public demo deployment)",
+    "enabled": false,
+    "resetIntervalMs": 3600000
+  },
+
+  "external_services": {
+    "_comment": "External services that connect to Sphere via network protocols",
+
+    "observatory": {
+      "enabled": false,
+      "description": "Pulse signal monitor and anomaly detector",
+      "protocol": "UDP",
+      "connection": {
+        "host": "127.0.0.1",
+        "port": 41234
+      },
+      "callback": {
+        "protocol": "HTTP",
+        "endpoint": "/sphere/submit",
+        "description": "Environmental node injection on anomaly"
+      }
+    },
+
+    "visualizer": {
+      "enabled": false,
+      "description": "Real-time 3D visualization client",
+      "protocol": "WebSocket",
+      "connection": {
+        "path": "/ws/stream"
+      }
+    },
+
+    "archive": {
+      "enabled": false,
+      "description": "Long-term Amber/Constellation storage",
+      "protocol": "HTTP",
+      "connection": {
+        "url": "http://localhost:4000"
+      },
+      "events": ["amber_created", "constellation_formed", "spectral_link_forged"]
+    },
+
+    "agent": {
+      "_comment": "Internal agent tick settings (step accumulation model)",
+      "tickIntervalMs": 30,
+      "metricsUpdate": {
+        "_comment": "Metrics are updated on node transition, not every tick",
+        "mode": "event_driven",
+        "stayTimeUnit": "ms"
+      }
+    },
+
+    "agent_gateway": {
+      "enabled": false,
+      "description": "External agent connection point",
+
+      "protocol": {
+        "rest": {
+          "basePath": "/agent",
+          "endpoints": {
+            "spawn": "POST /agent/spawn",
+            "status": "GET /agent/:id",
+            "action": "POST /agent/:id/action",
+            "despawn": "POST /agent/:id/despawn"
+          }
+        },
+        "websocket": {
+          "path": "/ws/agent",
+          "events": ["radar", "echo", "focus_result", "state_change"]
+        }
+      },
+
+      "session": {
+        "type": "token",
+        "ttlSeconds": 3600,
+        "maxConcurrent": 10
+      },
+
+      "visibility": {
+        "_comment": "What external agents can perceive",
+        "radar": true,
+        "focus": true,
+        "echo": true,
+        "payload": false,
+        "otherAgents": false,
+        "internalMetrics": false
+      },
+
+      "actions": {
+        "_comment": "What external agents can do",
+        "move": true,
+        "evaluate": true,
+        "mark": true,
+        "emit": true,
+        "focus": true
+      },
+
+      "rateLimit": {
+        "actionsPerTick": 3,
+        "focusPerMinute": 30
+      }
+    }
+  }
+}

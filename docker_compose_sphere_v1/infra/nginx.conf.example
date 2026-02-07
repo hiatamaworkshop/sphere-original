@@ -1,0 +1,65 @@
+# Sphere Project - nginx configuration example
+# Usage: Copy to nginx.conf when ready for production
+# Status: 保留（テスト完了後に適用検討）
+
+# === Upstream 定義 ===
+upstream periphery_http {
+    server 127.0.0.1:3001;
+    # server 127.0.0.1:3002 backup;  # スケール時に追加
+    keepalive 32;
+}
+
+upstream periphery_ws {
+    ip_hash;  # WebSocketセッション維持
+    server 127.0.0.1:8081;
+    # server 127.0.0.1:8082 backup;
+}
+
+# === Rate Limiting ===
+limit_req_zone $binary_remote_addr zone=api_limit:10m rate=30r/s;
+limit_req_zone $binary_remote_addr zone=dive_limit:10m rate=10r/m;
+limit_conn_zone $binary_remote_addr zone=ws_conn:10m;
+
+server {
+    listen 80;
+    server_name sphere.local;
+
+    client_max_body_size 16k;
+
+    # --- HTTP API ---
+    location / {
+        limit_req zone=api_limit burst=50 nodelay;
+        proxy_pass http://periphery_http;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header Connection "";
+    }
+
+    # --- Dive Ticket ---
+    location /dive/request {
+        limit_req zone=dive_limit burst=5 nodelay;
+        proxy_pass http://periphery_http;
+        proxy_http_version 1.1;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
+
+    # --- WebSocket Gateway ---
+    location /ws {
+        limit_conn ws_conn 3;
+        proxy_pass http://periphery_ws;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_read_timeout 3600s;
+        proxy_send_timeout 60s;
+    }
+
+    # --- Cacheable ---
+    location /rulebook {
+        proxy_pass http://periphery_http;
+        proxy_cache_valid 200 5m;
+    }
+}

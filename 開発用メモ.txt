@@ -1,0 +1,49 @@
+フェーズ１
+　消した
+活用例
+/memo/bak
+services/sphereHub
+sphereHubNotes
+議論集
+
+実装手順書　外に出した
+
+
+/model sonnet
+/model opus
+
+
+ 新セッション開始時の読み込み推奨順序
+必須ドキュメント（この順番で読ませてください）:
+SESSION_STATE.md ← 最優先
+
+現在のフェーズ、実装状況、已知の問題、Critical Constraints が全て記載
+../CLAUDE.md
+
+プロジェクトの哲学と不変の鉄則
+../docs/components/renalcore.md
+
+RenalCore の詳細仕様
+🎯 推奨コマンド（新セッション開始時）
+
+Project Root: c:\Users\kazuh\Desktop\Various\programming\DockerFiles\sphere\docker_compose_sphere_v1
+
+Read SESSION_STATE.md and continue from where we left off.
+Today's focus: [具体的なタスク]
+この1コマンドで十分です。理由：
+
+SESSION_STATE.md に Essential Documents への参照が全て記載済み
+必要に応じて CLAUDE.md や renalcore.md を追加で読むよう指示可能
+Critical Constraints に RenalCore Design Taboos が含まれている
+✅ 保存内容の確認
+SESSION_STATE.md の「Critical Constraints」セクションに追加した内容：
+
+無口な神: ログは数値のみ、理由を語らない
+パラメータ地獄の警戒: 1プロセス最大3パラメータ
+壊すためのテスト: 異常系優先、クラッシュ禁止
+擬人化の禁止: RenalCore = 腎臓（人格ではない）
+Core Principle:
+
+RenalCore is not meant to be "completed" — it's meant to be "isolated from degradation"
+
+これで新セッションでも混乱なく継続できます。

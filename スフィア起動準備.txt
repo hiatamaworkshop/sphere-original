@@ -1,0 +1,71 @@
+cd C:\Users\kazuh\Desktop\Various\programming\DockerFiles\sphere
+
+# サーバ起動
+.\sphere.bat start
+
+# テスト実行 (別ターミナル)
+.\sphere.bat batch         # データ投入 (60件)
+
+.\sphere.bat swarm 10      # 10エージェント
+
+.\sphere.bat explore       # 3層探索
+
+.\sphere.bat full          # batch + explore
+
+
+
+[1] Periphery only (RenalCore + API)
+[2] Periphery + Observatory (recommended)  ← デフォルト
+[3] Full stack (Periphery + Observatory + Mock Bot)
+[4] Observatory only
+
+使い方:
+cd "c:\Users\kazuh\Desktop\Various\programming\DockerFiles\sphere\docker_compose_sphere_v1"
+.\start-sphere.bat   # 起動（オプション選択）
+.\stop-sphere.bat      # 停止
+
+.\sphere-test.bat swarm 10
+
+npm run contribute:batch
+
+
+ノード観測用エンドポイント追加
+
+GET /nodes - 全ノード一覧（Heat順ソート）
+GET /nodes/stats - ノード統計（種別カウント、平均値）
+GET /nodes/:id - 特定ノード詳細
+テストツール作成
+
+npm run seed - 初期テストノード投入（3種類の熱量）
+npm run observe - リアルタイム観測（5秒間隔）
+npm run mock-bot - 継続的ランダム投入
+起動スクリプト
+
+
+README_TESTING.md - 完全なテスト手順書
+🚀 起動方法
+最も簡単な方法：
+
+cd c:\Users\kazuh\Desktop\Various\programming\DockerFiles\sphere\docker_compose_sphere_v1\services\periphery
+npm run dev
+
+別のターミナルで：# 初期ノード投入
+cd c:\Users\kazuh\Desktop\Various\programming\DockerFiles\sphere\docker_compose_sphere_v1\services\periphery
+npm run seed
+
+琥珀の結合
+cd c:\Users\kazuh\Desktop\Various\programming\DockerFiles\sphere\docker_compose_sphere_v1\services\periphery
+npm run resonance
+
+外部提供 /contribute
+npm run contribute
+# バッチモード（3件ずつのカプセルに分割）
+npm run contribute:batch
+
+# 観測開始
+npm run observe
+📁 主要ファイル
+サーバーエントリー: src/index.ts
+ノード観測: src/mock/observer.ts
+初期シード: src/mock/seed.ts
+設定: sphere.config.json

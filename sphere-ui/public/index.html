@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sphere — Autonomous Metabolic Information Infrastructure</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+</head>
+<body>
+  <header>
+    <h1>&#9673; Sphere</h1>
+    <nav>
+      <button class="tab active" data-tab="dashboard">Dashboard</button>
+      <button class="tab" data-tab="inject">Inject Data</button>
+      <button class="tab" data-tab="dive">Dive</button>
+      <button class="tab" data-tab="docs">Docs</button>
+    </nav>
+    <div class="connection-indicator" id="connIndicator">
+      <span class="dot"></span>
+      <span id="connText">Connecting...</span>
+    </div>
+  </header>
+
+  <main>
+    <!-- Dashboard Tab -->
+    <section id="tab-dashboard" class="tab-content active">
+      <div class="tab-notice">Live metrics from the Sphere. This is an experimental deployment &mdash; all node data may be reset periodically.</div>
+      <div class="grid">
+        <div class="card">
+          <h3>Node Distribution</h3>
+          <div id="nodeDistribution"></div>
+        </div>
+        <div class="card">
+          <h3>Averages</h3>
+          <div id="nodeAverages"></div>
+        </div>
+        <div class="card">
+          <h3>System</h3>
+          <div id="systemMetrics"></div>
+        </div>
+        <div class="card">
+          <h3>Ambient Field</h3>
+          <div id="fieldInfo"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Explore Tab -->
+    <section id="tab-inject" class="tab-content">
+      <div class="tab-notice">Inject data into Sphere and search existing nodes. Try an instant vector search &mdash; enter a word like <em>philosophy</em> or <em>neural network</em> and see what the Sphere already knows.</div>
+      <div class="explore-controls">
+        <div class="search-box">
+          <input type="text" id="exploreQuery" placeholder="Search the Sphere... (e.g. AI, knowledge, metabolism)">
+          <button id="exploreBtn">Search</button>
+        </div>
+        <div class="search-params">
+          <label>Limit: <input type="number" id="exploreLimit" value="10" min="1" max="50"></label>
+          <label>Search Radius: <input type="number" id="exploreRadius" value="1.2" min="0.1" max="2.0" step="0.1"></label>
+        </div>
+      </div>
+      <div id="exploreResults"></div>
+
+      <hr>
+      <h3>Inject Data</h3>
+      <div class="contribute-header">
+        <button id="loadPreset">Load Preset (80 items)</button>
+        <label class="file-upload-label">Upload JSON<input type="file" id="uploadFile" accept=".json"></label>
+        <button id="selectAll">All</button>
+        <button id="selectNone">None</button>
+        <span id="selectedCount">0 loaded</span>
+        <button id="contributeBtn" disabled>Contribute Selected</button>
+      </div>
+      <div class="mock-list" id="mockList"></div>
+      <div id="contributeResult"></div>
+    </section>
+
+    <!-- Dive Tab -->
+    <section id="tab-dive" class="tab-content">
+      <div class="tab-notice">Experience how an AI agent traverses nodes inside the Sphere. Scan, sense, focus, evaluate &mdash; every action affects the node metabolism in real time. See <a href="#" class="notice-link" data-goto-doc="diving-experience.md">Diving Experience</a> in Docs for the full design.</div>
+      <div class="dive-header">
+        <div class="dive-status">
+          <span class="phase-indicator phase-disconnected" id="divePhase">disconnected</span>
+          <span id="diveAgentId"></span>
+          <span class="energy-display" id="energyDisplay" style="display:none">
+            <span class="energy-icon">&#9889;</span><span id="energyValue">100</span>
+          </span>
+        </div>
+        <div class="dive-controls">
+          <input type="text" id="diveEntry" placeholder="Enter topic (e.g. AI, philosophy, metabolism)" maxlength="200">
+          <button id="startDive">Start Dive</button>
+          <button id="endDive" disabled>Return</button>
+        </div>
+      </div>
+
+      <div class="dive-actions" id="diveActions" style="display:none">
+        <label class="dive-param">R:<input type="number" id="diveRadius" value="3" min="0.5" max="10" step="0.5"></label>
+        <button data-action="scan" title="L1 broad sweep: tags only, wide range, detects Fossils">Scan</button>
+        <button data-action="sense" title="L1+L2 perception: tags + summary, heat-filtered visibility">Sense</button>
+        <span class="action-separator"></span>
+        <label class="dive-param">ID:<input type="text" id="warpNodeId" placeholder="node-id..." style="width:120px"></label>
+        <button id="warpBtn" title="Warp to a known node (from scan/sense results). Energy: 15">Warp</button>
+        <span class="action-separator"></span>
+        <select id="moveMode" title="Movement mode (affects direction and magnetic field influence)">
+          <option value="random">Random</option>
+          <option value="hot">Hot</option>
+          <option value="fresh">Fresh</option>
+          <option value="deep">Deep</option>
+          <option value="explore">Explore</option>
+        </select>
+        <button data-action="move" title="Shift position in vector space (step=0.3)">Move</button>
+        <span class="action-separator"></span>
+        <button id="actionHelpBtn" title="What do these actions do?">?</button>
+      </div>
+
+      <!-- Action Help Modal -->
+      <div class="modal-overlay" id="actionHelpModal" style="display:none">
+        <div class="modal">
+          <div class="modal-header">
+            <h3>Dive Actions</h3>
+            <button class="modal-close" id="closeActionHelp">&times;</button>
+          </div>
+          <div class="modal-body">
+            <div class="help-item">
+              <h4>Scan (L1)</h4>
+              <p>Broad, lightweight sweep. Returns <strong>tags only</strong> from a wide area. Can detect even Fossil nodes. Use this first to get a general picture.</p>
+            </div>
+            <div class="help-item">
+              <h4>Sense (L1+L2)</h4>
+              <p>Deeper perception. Returns <strong>tags + summary</strong> from nearby nodes. Cannot see Fossils. Click <strong>Focus</strong> button on Active/Amber nodes to inspect them fully (L1-L4).</p>
+            </div>
+            <div class="help-item">
+              <h4>Warp</h4>
+              <p>Jump directly to a known node by ID. You must have discovered the node first (via Scan/Sense). Updates your position to the target node's coordinates. <strong>Energy cost: 15</strong>. Enter node ID and press Warp.</p>
+            </div>
+            <div class="help-item">
+              <h4>Move</h4>
+              <p>Shift your position in the Sphere. Mode affects direction:</p>
+              <ul>
+                <li><strong>Random</strong> — drift freely (ignores magnetic field)</li>
+                <li><strong>Hot</strong> — toward high-heat nodes</li>
+                <li><strong>Fresh</strong> — toward recently created nodes</li>
+                <li><strong>Deep</strong> — toward high-weight (established) nodes</li>
+                <li><strong>Explore</strong> — toward sparse, unvisited areas</li>
+              </ul>
+            </div>
+            <div class="help-item">
+              <h4>Evaluate</h4>
+              <p>After Focus, rate a node's heat (0-10). This directly affects the node's metabolism — high ratings increase heat, accelerating its life; low ratings let it cool toward Ghost/Fossil state.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="dive-panels">
+        <div class="panel">
+          <h4>Results</h4>
+          <div id="diveResults"></div>
+        </div>
+        <div class="panel">
+          <h4>Event Log</h4>
+          <div id="diveLog"></div>
+        </div>
+      </div>
+
+      <hr>
+      <h3>Swarm</h3>
+      <div class="swarm-controls">
+        <label>Agents: <input type="number" id="swarmCount" value="3" min="1" max="10"></label>
+        <button id="launchSwarm">Launch Swarm</button>
+        <button id="stopSwarm" disabled>Stop All</button>
+      </div>
+      <div id="swarmStatus"></div>
+    </section>
+
+    <!-- Docs Tab -->
+    <section id="tab-docs" class="tab-content">
+      <div class="tab-notice">Design philosophy and architecture documents. Read how and why Sphere was built.</div>
+      <div class="docs-layout">
+        <aside class="docs-sidebar">
+          <h4>Documents</h4>
+          <ul id="docsList"></ul>
+        </aside>
+        <article class="docs-content" id="docsContent">
+          <p>Select a document from the sidebar.</p>
+        </article>
+      </div>
+    </section>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
