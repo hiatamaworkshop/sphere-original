@@ -62,6 +62,11 @@ export declare class GatewayServer {
     setOnAgentCountChange(callback: (count: number) => void): void;
     getConnectionCount(): number;
     /**
+     * Expel all connected agents (for Ephemeral reset).
+     * Sends "expelled" before closing, unlike stop() which is for shutdown.
+     */
+    expelAll(reason: string): void;
+    /**
      * Notify agent count change
      */
     private notifyAgentCountChange;

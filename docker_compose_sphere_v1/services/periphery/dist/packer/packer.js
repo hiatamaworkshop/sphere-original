@@ -118,7 +118,6 @@ export class Packer {
                 h: this.config.packer.baseHeat, // All nodes start with same baseline (agent cannot set)
                 ttl: this.getTierTTL(tier),
                 flg: this.getTierFlags(tier, seed.flags, seed.classificationFlags),
-                traversal: this.config.packer.initialMetrics.traversal,
                 stayTime: this.config.packer.initialMetrics.stayTime,
             },
             timestamp: Date.now(),

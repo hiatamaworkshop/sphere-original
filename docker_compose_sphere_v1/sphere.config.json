@@ -74,7 +74,6 @@
         "ghost": 0
       },
       "initialMetrics": {
-        "traversal": 0,
         "stayTime": 0
       }
     },
@@ -163,12 +162,6 @@
       "gridSize": 0.1,
       "planktonConversionRate": 0.3,
       "fertilityDecayRate": 0.01
-    },
-
-    "hackDetection": {
-      "traversalThreshold": 50,
-      "stayRatioThreshold": 0.1,
-      "minPayloadLength": 10
     },
 
     "pause": {

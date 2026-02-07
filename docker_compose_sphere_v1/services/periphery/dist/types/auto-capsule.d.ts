@@ -109,8 +109,6 @@ export interface VisitRecord {
     kind: NodeKind;
     /** Total time spent focused (ms) */
     stayTime: number;
-    /** Number of times traversed to this node */
-    traversal: number;
     /** Number of focus actions */
     focusCount: number;
     /** Net heat change during session */

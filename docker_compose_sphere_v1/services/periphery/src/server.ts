@@ -349,7 +349,6 @@ export class PeripheryServer {
         decay: node.metrics.d,
         ttl: node.metrics.ttl,
         flags: node.metrics.flg,
-        traversal: node.metrics.traversal ?? 0,
         stayTime: node.metrics.stayTime ?? 0,
         timestamp: node.timestamp,
         summary: node.payload?.summary?.substring(0, 100),

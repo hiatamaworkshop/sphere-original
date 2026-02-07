@@ -26,9 +26,6 @@ export interface ArbiterConfig {
     amberHeatThreshold: number;
     amberWeightThreshold: number;
     erosionHeatThreshold: number;
-    hackTraversalThreshold: number;
-    hackStayRatioThreshold: number;
-    minPayloadLength: number;
     pauseErosionBoost: number;
     hotHeatThreshold: number;
     hubLinkThreshold: number;

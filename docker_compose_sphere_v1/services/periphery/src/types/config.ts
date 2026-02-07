@@ -59,7 +59,6 @@ export interface PeripheryConfig {
       ghost: number;               // Flags for ghost-tier
     };
     initialMetrics: {
-      traversal: number;           // Initial traversal count
       stayTime: number;            // Initial stay time
     };
   };
@@ -198,8 +197,6 @@ export interface PeripheryConfig {
   //   0x0080 = Frozen      - Metabolism suspended (Relic)
   //   0x0100 = Hub         - Dynamic: linkCount > threshold
   //   0x0200 = Isolated    - Dynamic: linkCount <= threshold
-  //   0x0400 = Spectral    - Refined path (Ascension)
-  //   0x0800 = Constellation - Amber cluster
   //   0x1000 = UserMarked  - Manual importance
   //   0x2000 = SystemCore  - Relic/immutable
   //   0x4000 = Compressed  - Fossilized
@@ -291,7 +288,6 @@ export const DEFAULT_PERIPHERY_CONFIG: PeripheryConfig = {
       ghost: 0x0000,
     },
     initialMetrics: {
-      traversal: 0,
       stayTime: 0,
     },
   },

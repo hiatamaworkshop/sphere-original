@@ -134,6 +134,19 @@ export class GatewayServer {
         return this.connections.size;
     }
     /**
+     * Expel all connected agents (for Ephemeral reset).
+     * Sends "expelled" before closing, unlike stop() which is for shutdown.
+     */
+    expelAll(reason) {
+        for (const [, conn] of this.connections) {
+            this.send(conn.socket, { type: "expelled", reason });
+            conn.socket.close(4003, reason);
+        }
+        this.connections.clear();
+        this.wsRateLimiters.clear();
+        this.notifyAgentCountChange();
+    }
+    /**
      * Notify agent count change
      */
     notifyAgentCountChange() {

@@ -53,11 +53,6 @@ export interface RenalCoreConfig {
   planktonConversionRate: number;     // 蒸発時に Fertility へ還元する熱量の割合
   fertilityDecayRate: number;         // Fertility の自然減衰率
 
-  // ハック検知 (Arbiter用、RenalCoreでは未使用)
-  hackTraversalThreshold: number;
-  hackStayRatioThreshold: number;
-  minPayloadLength: number;
-
   // Pause判定
   pauseIdleThreshold: number;         // Pause判定の Tick 数閾値
   pauseErosionBoost: number;          // Pause時の Erosion 促進倍率
@@ -117,8 +112,10 @@ export class RenalCore {
     // Decay: 全ノードの Heat/TTL + Fertility を減衰させる
     this.processDecay(loadFactor);
 
-    // [Telemetry] Tick終了
-    this.logTelemetry();
+    // [Telemetry] observation interval と同期 (10 ticks)
+    if (this.tickCount % 10 === 0) {
+      this.logTelemetry();
+    }
   }
 
   /**
@@ -184,35 +181,25 @@ export class RenalCore {
   // =========================================================================
 
   /**
-   * Telemetry: Tick終了時の統計ログ
+   * Telemetry: 統計ログ (observation interval と同期して呼ばれる)
    */
-  private logTelemetry() {
-    const stats = {
-      relic: 0,
-      amber: 0,
-      active: 0,
-      fossil: 0,
-      ghost: 0,
-      link: 0,
-      environment: 0,
-    };
-
+  logTelemetry() {
+    const stats: Record<string, number> = {};
     for (const node of this.projectionDB.values()) {
-      stats[node.kind]++;
+      stats[node.kind] = (stats[node.kind] ?? 0) + 1;
     }
 
-    const totalFertility = [...this.spatialFields.values()].reduce(
-      (sum, f) => sum + f.fertility,
-      0
-    );
+    let totalFertility = 0;
+    for (const f of this.spatialFields.values()) {
+      totalFertility += f.fertility;
+    }
 
-    // [Telemetry] Tick統計ログ - kind別ノード数、総肥沃度
-    // console.log(
-    //   `[RenalCore] stats tick=${this.tickCount} ` +
-    //   `relic=${stats.relic} amber=${stats.amber} active=${stats.active} ` +
-    //   `fossil=${stats.fossil} ghost=${stats.ghost} link=${stats.link} ` +
-    //   `environment=${stats.environment} fertility=${totalFertility.toFixed(3)}`
-    // );
+    console.log(
+      `[RenalCore] tick=${this.tickCount} nodes=${this.projectionDB.size} ` +
+      `active=${stats["active"] ?? 0} amber=${stats["amber"] ?? 0} ` +
+      `fossil=${stats["fossil"] ?? 0} ghost=${stats["ghost"] ?? 0} ` +
+      `relic=${stats["relic"] ?? 0} fertility=${totalFertility.toFixed(1)}`
+    );
   }
 
   /**

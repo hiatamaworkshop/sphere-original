@@ -88,9 +88,6 @@ const renalConfig = {
   ghostTTLMultiplier: sphereConfig.renal_core.ghost.ttlMultiplier,
   planktonConversionRate: sphereConfig.renal_core.spatial.planktonConversionRate,
   fertilityDecayRate: decayValues.fertilityDecayRate,
-  hackTraversalThreshold: sphereConfig.renal_core.hackDetection.traversalThreshold,
-  hackStayRatioThreshold: sphereConfig.renal_core.hackDetection.stayRatioThreshold,
-  minPayloadLength: sphereConfig.renal_core.hackDetection.minPayloadLength,
   pauseIdleThreshold: sphereConfig.renal_core.pause.idleThreshold,
   pauseErosionBoost: sphereConfig.renal_core.pause.erosionBoost,
   // Dormancy settings (metabolism hibernation when no agents)
@@ -149,9 +146,6 @@ const arbiterConfig = {
   amberHeatThreshold: renalConfig.amberHeatThreshold,
   amberWeightThreshold: renalConfig.amberWeightThreshold,
   erosionHeatThreshold: renalConfig.erosionHeatThreshold,
-  hackTraversalThreshold: renalConfig.hackTraversalThreshold,
-  hackStayRatioThreshold: renalConfig.hackStayRatioThreshold,
-  minPayloadLength: renalConfig.minPayloadLength,
   pauseErosionBoost: renalConfig.pauseErosionBoost,
   // Dynamic Flags thresholds (from unified nodeFlags config)
   hotHeatThreshold: dynamicThresholds?.hotHeatThreshold
@@ -292,11 +286,11 @@ setInterval(async () => {
 
     // Helper to get cellId from nodeId (for fertility distribution)
     const getCellId = (nodeId: string): string => {
-      const hash = nodeId.split("").reduce((a, c) => a + c.charCodeAt(0), 0);
-      const x = hash % 10;
-      const y = Math.floor(hash / 10) % 10;
-      const z = Math.floor(hash / 100) % 10;
-      return `${x}:${y}:${z}`;
+      let hash = 0;
+      for (let i = 0; i < nodeId.length; i++) {
+        hash += nodeId.charCodeAt(i);
+      }
+      return `${hash % 10}:${Math.floor(hash / 10) % 10}:${Math.floor(hash / 100) % 10}`;
     };
 
     // === Environment State for CleanerFish ===

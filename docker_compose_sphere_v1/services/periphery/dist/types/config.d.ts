@@ -47,7 +47,6 @@ export interface PeripheryConfig {
             ghost: number;
         };
         initialMetrics: {
-            traversal: number;
             stayTime: number;
         };
     };

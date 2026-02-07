@@ -148,8 +148,6 @@ export interface VisitRecord {
   kind: NodeKind;
   /** Total time spent focused (ms) */
   stayTime: number;
-  /** Number of times traversed to this node */
-  traversal: number;
   /** Number of focus actions */
   focusCount: number;
   /** Net heat change during session */
@@ -208,7 +206,6 @@ export function buildAutoCapsule(log: ActionLog): AutoCapsule {
     {
       kind: NodeKind;
       stayTime: number;
-      traversal: number;
       focusCount: number;
       heatDelta: number;
       maxHeat: number;
@@ -222,7 +219,6 @@ export function buildAutoCapsule(log: ActionLog): AutoCapsule {
         const data = nodeData.get(event.nodeId) || {
           kind: event.kind,
           stayTime: 0,
-          traversal: 0,
           focusCount: 0,
           heatDelta: 0,
           maxHeat: 0,
@@ -243,12 +239,7 @@ export function buildAutoCapsule(log: ActionLog): AutoCapsule {
       }
 
       case "move": {
-        if (event.success && event.fromNodeId) {
-          const data = nodeData.get(event.fromNodeId);
-          if (data) {
-            data.traversal++;
-          }
-        }
+        // Move events tracked for session stats only
         break;
       }
 
@@ -271,7 +262,6 @@ export function buildAutoCapsule(log: ActionLog): AutoCapsule {
       nodeId,
       kind: data.kind,
       stayTime: data.stayTime,
-      traversal: data.traversal,
       focusCount: data.focusCount,
       heatDelta: data.heatDelta,
     });

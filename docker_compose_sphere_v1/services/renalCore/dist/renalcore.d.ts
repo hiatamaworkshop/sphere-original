@@ -36,9 +36,6 @@ export interface RenalCoreConfig {
     ghostTTLMultiplier: number;
     planktonConversionRate: number;
     fertilityDecayRate: number;
-    hackTraversalThreshold: number;
-    hackStayRatioThreshold: number;
-    minPayloadLength: number;
     pauseIdleThreshold: number;
     pauseErosionBoost: number;
 }
@@ -71,9 +68,9 @@ export declare class RenalCore {
      */
     private processDecay;
     /**
-     * Telemetry: Tick終了時の統計ログ
+     * Telemetry: 統計ログ (observation interval と同期して呼ばれる)
      */
-    private logTelemetry;
+    logTelemetry(): void;
     /**
      * Update agent count for Dormancy feature
      * [Design] When agentCount drops to 0, RenalCore can enter dormancy mode

@@ -54,7 +54,6 @@ export interface SphereNode {
     h: number;       // heat
     ttl: number;     // time-to-live
     flg: number;     // 16-bit flags
-    traversal?: number;
     stayTime?: number;
   };
   timestamp: number;

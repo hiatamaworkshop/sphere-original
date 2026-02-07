@@ -34,11 +34,6 @@ export interface ArbiterConfig {
   // 風化閾値
   erosionHeatThreshold: number;
 
-  // ハック検知
-  hackTraversalThreshold: number;
-  hackStayRatioThreshold: number;
-  minPayloadLength: number;
-
   // Pause判定
   pauseErosionBoost: number;
 

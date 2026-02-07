@@ -24,8 +24,6 @@ export var NodeFlag;
     NodeFlag[NodeFlag["Frozen"] = 128] = "Frozen";
     NodeFlag[NodeFlag["Hub"] = 256] = "Hub";
     NodeFlag[NodeFlag["Isolated"] = 512] = "Isolated";
-    NodeFlag[NodeFlag["Spectral"] = 1024] = "Spectral";
-    NodeFlag[NodeFlag["Constellation"] = 2048] = "Constellation";
     NodeFlag[NodeFlag["UserMarked"] = 4096] = "UserMarked";
     NodeFlag[NodeFlag["SystemCore"] = 8192] = "SystemCore";
     NodeFlag[NodeFlag["Compressed"] = 16384] = "Compressed";
