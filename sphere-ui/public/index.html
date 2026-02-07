@@ -9,7 +9,7 @@
 </head>
 <body>
   <header>
-    <h1>&#9673; Sphere</h1>
+    <h1>Sphere</h1>
     <nav>
       <button class="tab active" data-tab="dashboard">Dashboard</button>
       <button class="tab" data-tab="inject">Inject Data</button>
@@ -48,7 +48,7 @@
 
     <!-- Explore Tab -->
     <section id="tab-inject" class="tab-content">
-      <div class="tab-notice">Inject data into Sphere and search existing nodes. Try an instant vector search &mdash; enter a word like <em>philosophy</em> or <em>neural network</em> and see what the Sphere already knows.</div>
+      <div class="tab-notice">Quick instant search for exploration only. Enter a query to see approximate matches via vector similarity. For full interaction with nodes (sense, focus, evaluate), use the <strong>Dive</strong> tab.</div>
       <div class="explore-controls">
         <div class="search-box">
           <input type="text" id="exploreQuery" placeholder="Search the Sphere... (e.g. AI, knowledge, metabolism)">
@@ -62,14 +62,22 @@
       <div id="exploreResults"></div>
 
       <hr>
+      <h3>Existing Nodes</h3>
+      <div style="margin-bottom: 0.75rem; display: flex; gap: 0.5rem; align-items: center;">
+        <button id="loadExistingNodes">Show All Nodes</button>
+        <span id="existingNodesCount" style="font-size: 0.8rem; color: var(--text-dim);"></span>
+      </div>
+      <div id="existingNodesList"></div>
+
+      <hr>
       <h3>Inject Data</h3>
       <div class="contribute-header">
         <button id="loadPreset">Load Preset (80 items)</button>
         <label class="file-upload-label">Upload JSON<input type="file" id="uploadFile" accept=".json"></label>
         <a href="/schema" target="_blank" style="font-size: 0.85em; margin-left: 4px;">ⓘ Schema</a>
         <button id="downloadExample" style="font-size: 0.85em; margin-left: 4px;">Download Example Format</button>
-        <button id="selectAll">All</button>
-        <button id="selectNone">None</button>
+        <button id="selectAll">Select All</button>
+        <button id="selectNone">Unselect</button>
         <span id="selectedCount">0 loaded</span>
         <button id="contributeBtn" disabled>Contribute Selected</button>
       </div>

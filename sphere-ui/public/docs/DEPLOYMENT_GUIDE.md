@@ -1,47 +1,47 @@
 # Sphere Deployment Guide
 
-Sphere Project - デプロイ・運用ガイド
+Production Deployment & Operations Guide for Sphere Project
 
 ---
 
-## 1. システム概要
+## 1. System Overview
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                        Sphere                                │
-│         高次元意味空間 - 知識が代謝し進化する場所              │
+│    High-Dimensional Semantic Space - Where Knowledge Evolves │
 └─────────────────────────────────────────────────────────────┘
 
 ┌─────────────┐     ┌─────────────┐     ┌─────────────┐
 │   Agent     │────▶│  Periphery  │────▶│ Renal Core  │
-│  (外部AI)   │ WS  │  (Gateway)  │     │  (物理法則) │
+│ (External)  │ WS  │  (Gateway)  │     │  (Physics)  │
 └─────────────┘     └─────────────┘     └─────────────┘
 ```
 
 ---
 
-## 2. クイックスタート
+## 2. Quick Start
 
-### 2.1 必要要件
+### 2.1 Requirements
 
-| 項目 | 最小 | 推奨 |
-|-----|------|------|
+| Item | Minimum | Recommended |
+|------|---------|-------------|
 | Node.js | 18.x | 20.x LTS |
 | RAM | 2 GB | 8 GB |
 | Disk | 1 GB | 10 GB |
 | OS | Win/Mac/Linux | Linux |
 
-### 2.2 起動手順
+### 2.2 Startup Procedure
 
 ```bash
-# 1. 依存関係インストール
+# 1. Install dependencies
 cd docker_compose_sphere_v1/services/periphery
 npm install
 
-# 2. 開発モード起動
+# 2. Start development mode
 npm run dev
 
-# 3. 確認
+# 3. Verify
 curl http://localhost:3001/health
 ```
 
@@ -50,33 +50,33 @@ Windows:
 start-sphere.bat
 ```
 
-### 2.3 サービスポート
+### 2.3 Service Ports
 
-| サービス | ポート | プロトコル |
-|---------|-------|----------|
+| Service | Port | Protocol |
+|---------|------|----------|
 | Periphery HTTP | 3001 | HTTP |
 | Gateway WS | 8081 | WebSocket |
-| Pulse (内部) | 41234 | UDP |
+| Pulse (internal) | 41234 | UDP |
 
 ---
 
-## 3. 設定パラメータ
+## 3. Configuration Parameters
 
-### 3.1 セッション制御
+### 3.1 Session Control
 
 ```typescript
 // services/periphery/src/gateway/ticket-issuer.ts
 {
-  ticketTtl: 300,      // Ticket有効期限（秒）
-  sessionTtl: 120,     // Dive持続時間（秒）
+  ticketTtl: 300,      // Ticket expiration (seconds)
+  sessionTtl: 120,     // Dive duration (seconds)
   rateLimit: {
-    maxPerMinute: 30,  // IP単位の発行上限
-    maxConcurrent: 10, // 同時接続上限
+    maxPerMinute: 30,  // Per-IP limit
+    maxConcurrent: 10, // Concurrent connections limit
   }
 }
 ```
 
-### 3.2 サーバ設定
+### 3.2 Server Settings
 
 ```typescript
 // services/periphery/src/types/config.ts
@@ -85,98 +85,98 @@ server: {
   wsPort: 8081,    // WebSocket
 },
 perception: {
-  targetTotalOps: 100_000,  // 計算負荷制御
+  targetTotalOps: 100_000,  // Computation load control
 },
 questStore: {
-  maxSize: 100,        // 最大クエスト数（FIFO）
-  showcaseSize: 10,    // Showcase表示数
+  maxSize: 100,        // Max quest count (FIFO)
+  showcaseSize: 10,    // Showcase display count
 },
 amberCache: {
-  maxSize: 100,                    // キャッシュサイズ
-  showcaseSize: 30,                // Showcase枠
-  showcaseRefreshIntervalMs: 3600000,  // 1時間
-  cacheTtlMs: 60000,               // 1分
+  maxSize: 100,                    // Cache size
+  showcaseSize: 30,                // Showcase slots
+  showcaseRefreshIntervalMs: 3600000,  // 1 hour
+  cacheTtlMs: 60000,               // 1 minute
 }
 ```
 
 ---
 
-## 4. スケーリング
+## 4. Scaling
 
-### 4.1 規模別構成
+### 4.1 Configuration by Scale
 
-| 同時接続 | 構成 | サーバ数 |
-|---------|------|---------|
-| ~1,000 | 単一プロセス | 1 |
+| Concurrent | Configuration | Servers |
+|-----------|---------------|---------|
+| ~1,000 | Single process | 1 |
 | ~10,000 | nginx + Gateway×2 | 3 |
 | ~50,000 | + Redis Session | 6-8 |
-| ~100,000 | + Core分散 | 10-15 |
+| ~100,000 | + Core distribution | 10-15 |
 
-### 4.2 nginx 設定
+### 4.2 nginx Configuration
 
-主要設定:
-- WebSocket対応（Upgrade header）
-- IP単位レート制限
-- 接続数制限
-- セッション維持（ip_hash）
+Key settings:
+- WebSocket support (Upgrade header)
+- Per-IP rate limiting
+- Connection limiting
+- Session persistence (ip_hash)
 
-### 4.3 水平スケール時の考慮点
+### 4.3 Horizontal Scaling Considerations
 
-| 課題 | 解決策 |
-|-----|-------|
-| セッション共有 | Redis Session Store |
-| Rate Limit共有 | Redis Counter |
-| WebSocket振り分け | ip_hash / sticky session |
-| 状態同期 | NATS / Redis Pub/Sub |
+| Challenge | Solution |
+|-----------|----------|
+| Session sharing | Redis Session Store |
+| Rate limit sharing | Redis Counter |
+| WebSocket routing | ip_hash / sticky session |
+| State synchronization | NATS / Redis Pub/Sub |
 
 ---
 
-## 5. 性能目安
+## 5. Performance Benchmarks
 
-### 5.1 100,000 同時接続時
+### 5.1 At 100,000 Concurrent Connections
 
-| 指標 | 値 |
-|-----|-----|
-| 新規接続 | 833 conn/s |
-| メッセージ | 44k msg/s（ピーク 110k） |
-| メモリ | ~6.6 GB |
-| 帯域 | 300-700 Mbps |
-| ノード生成 | 30M/日 |
-| ストレージ | ~100 GB |
+| Metric | Value |
+|--------|-------|
+| New connections | 833 conn/s |
+| Messages | 44k msg/s (peak 110k) |
+| Memory | ~6.6 GB |
+| Bandwidth | 300-700 Mbps |
+| Node generation | 30M/day |
+| Storage | ~100 GB |
 
-### 5.2 リソース目安（per Gateway）
+### 5.2 Resource Guidelines (per Gateway)
 
-| 同時接続 | CPU | RAM |
-|---------|-----|-----|
+| Concurrent | CPU | RAM |
+|-----------|-----|-----|
 | 5,000 | 2 vCPU | 4 GB |
 | 10,000 | 4 vCPU | 8 GB |
 | 25,000 | 8 vCPU | 16 GB |
 
 ---
 
-## 6. 監視項目
+## 6. Monitoring
 
-### 6.1 ヘルスチェック
+### 6.1 Health Checks
 
 ```bash
 # HTTP
 curl http://localhost:3001/health
 
-# WebSocket接続数
+# WebSocket connections
 curl http://localhost:3001/dive/stats
 ```
 
-### 6.2 重要メトリクス
+### 6.2 Critical Metrics
 
-| メトリクス | 警告閾値 | 危険閾値 |
-|-----------|---------|---------|
-| 同時接続数 | 80% of max | 95% |
-| メモリ使用率 | 70% | 85% |
-| メッセージ遅延 | 100ms | 500ms |
-| Ticket拒否率 | 5% | 15% |
-| エラー率 | 1% | 5% |
+| Metric | Warning | Critical |
+|--------|---------|----------|
+| Concurrent connections | 80% of max | 95% |
+| Memory usage | 70% | 85% |
+| Message latency | 100ms | 500ms |
+| Ticket rejection rate | 5% | 15% |
+| Error rate | 1% | 5% |
 
-### 6.3 ログ出力例
+### 6.3 Log Output Examples
 
 ```
 [TicketIssuer] Issued ticket: abc12345...
@@ -187,56 +187,57 @@ curl http://localhost:3001/dive/stats
 
 ---
 
-## 7. トラブルシューティング
+## 7. Troubleshooting
 
-| 症状 | 原因 | 対処 |
-|-----|------|------|
-| `connect ECONNREFUSED` | サーバ未起動 | `npm run dev` |
-| `Rate limit exceeded` | IP制限超過 | 60秒待機 |
-| `Concurrent limit exceeded` | 同時接続上限 | セッション終了待ち |
-| `Invalid token` | Ticket期限切れ | 再取得（300秒有効） |
-| `Allocation failed` | メモリ不足 | 代謝調整またはメモリ増設 |
+| Symptom | Cause | Solution |
+|---------|-------|----------|
+| `connect ECONNREFUSED` | Server not running | `npm run dev` |
+| `Rate limit exceeded` | IP limit exceeded | Wait 60 seconds |
+| `Concurrent limit exceeded` | Connection limit | Wait for session end |
+| `Invalid token` | Ticket expired | Re-acquire (300s TTL) |
+| `Allocation failed` | Out of memory | Adjust metabolism or add RAM |
 
 ---
 
-## 8. セキュリティ
+## 8. Security
 
-| 項目 | 設定 |
-|-----|------|
-| HTTPS | nginx SSL終端 |
-| CORS | 本番ドメインのみ許可 |
-| Rate Limit | nginx + アプリ両方 |
+| Item | Configuration |
+|------|--------------|
+| HTTPS | nginx SSL termination |
+| CORS | Production domains only |
+| Rate Limit | nginx + application |
 | Input Validation | Gatekeeper/Membrane |
-| Forge API | 認証必須（X-Service-Id, X-Service-Secret） |
+| Forge API | Auth required (X-Service-Id, X-Service-Secret) |
 
-注意事項:
-- Ticket tokenは短命（300秒）
-- Session tokenは1回限り消費
-- Capsule内容はGatekeeperで検証
-- 禁止パターンはMembraneでフィルタ
+Important notes:
+- Ticket tokens are short-lived (300 seconds)
+- Session tokens are single-use
+- Capsule content validated by Gatekeeper
+- Prohibited patterns filtered by Membrane
 
 ---
 
-## 9. ファイル構成
+## 9. File Structure
 
 ```
 sphere/
 ├── docker_compose_sphere_v1/
 │   └── services/periphery/
 │       ├── src/
-│       │   ├── gateway/        # WebSocket接続管理
-│       │   ├── forge/          # 内部ノード生成
-│       │   ├── gatekeeper/     # 検証
+│       │   ├── gateway/        # WebSocket connection management
+│       │   ├── forge/          # Internal node generation
+│       │   ├── gatekeeper/     # Validation
 │       │   ├── incarnation/    # Pipeline
-│       │   ├── rulebook/       # 制約定義
-│       │   └── types/          # 型定義
+│       │   ├── rulebook/       # Constraints definition
+│       │   └── types/          # Type definitions
 │       └── package.json
 │
-├── start-sphere.bat            # 起動
-└── stop-sphere.bat             # 停止
+├── start-sphere.bat            # Start
+└── stop-sphere.bat             # Stop
 ```
 
 ---
 
-作成日: 2025-01-31
-更新日: 2025-02-03
+Created: 2025-01-31
+Updated: 2026-02-07
+Version: v1.1

@@ -1,19 +1,19 @@
 # Sphere Periphery - Developer Guide
 
-開発者向け API リファレンス・テストスクリプト一覧
+API Reference & Testing Scripts for Developers
 
 ---
 
-## 1. サーバー起動
+## 1. Server Startup
 
 ```bash
 cd services/periphery
-npm run dev      # 開発モード（hot reload）
-npm run build    # ビルド
-npm run start    # 本番起動
+npm run dev      # Development mode (hot reload)
+npm run build    # Build
+npm run start    # Production startup
 ```
 
-サーバーは2つのポートで起動：
+Server starts on two ports:
 - **HTTP REST API**: `http://localhost:3001`
 - **WebSocket Gateway**: `ws://localhost:8081`
 
@@ -21,33 +21,33 @@ npm run start    # 本番起動
 
 ## 2. HTTP REST API
 
-### 2.1 情報系
+### 2.1 Information Endpoints
 
-| Method | Endpoint | 説明 |
-|--------|----------|------|
-| GET | `/` | Sphere 情報（バージョン、エンドポイント一覧、メトリクス）|
-| GET | `/health` | ヘルスチェック |
-| GET | `/metrics` | システムメトリクス（nodeCount, agents, field, memory）|
-| GET | `/stats` | システム統計（legacy）|
-| GET | `/rulebook` | エージェント用ルールブック |
-| GET | `/schema` | データフォーマット仕様 |
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/` | Sphere info (version, endpoints, metrics) |
+| GET | `/health` | Health check |
+| GET | `/metrics` | System metrics (nodeCount, agents, field, memory) |
+| GET | `/stats` | System stats (legacy) |
+| GET | `/rulebook` | Agent rulebook |
+| GET | `/schema` | Data format specification |
 
-### 2.2 ノード観測
+### 2.2 Node Observation
 
-| Method | Endpoint | 説明 |
-|--------|----------|------|
-| GET | `/nodes/metrics` | 全ノードのメトリクス一覧（heat 順）|
-| GET | `/nodes/stats` | ノード統計（kind 別カウント）|
-| GET | `/nodes/:id` | 特定ノードの詳細 |
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/nodes/metrics` | All node metrics (sorted by heat) |
+| GET | `/nodes/stats` | Node statistics (count by kind) |
+| GET | `/nodes/:id` | Specific node details |
 
-### 2.3 探索・貢献
+### 2.3 Exploration & Contribution
 
-| Method | Endpoint | 説明 |
-|--------|----------|------|
-| GET | `/sphere/explore?q=<query>` | クエリで探索（limit, radius オプション）|
-| POST | `/sphere/contribute` | 外部データ投入（単体/バッチ）|
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/sphere/explore?q=<query>` | Explore by query (limit, radius options) |
+| POST | `/sphere/contribute` | External data injection (single/batch) |
 
-**contribute リクエスト例**:
+**contribute request example**:
 ```json
 {
   "source": "external-system",
@@ -60,15 +60,15 @@ npm run start    # 本番起動
 }
 ```
 
-### 2.4 Dive（エージェント入場）
+### 2.4 Dive (Agent Entry)
 
-| Method | Endpoint | 説明 |
-|--------|----------|------|
-| POST | `/dive/request` | Dive チケット発行 |
-| GET | `/dive/validate/:token` | チケット検証（デバッグ用）|
-| GET | `/dive/stats` | チケット統計 |
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/dive/request` | Issue Dive ticket |
+| GET | `/dive/validate/:token` | Validate ticket (debug) |
+| GET | `/dive/stats` | Ticket statistics |
 
-**チケット発行レスポンス**:
+**Ticket issuance response**:
 ```json
 {
   "success": true,
@@ -80,14 +80,14 @@ npm run start    # 本番起動
 }
 ```
 
-### 2.5 Quest（外部からの検証依頼）
+### 2.5 Quest (External Validation Requests)
 
-| Method | Endpoint | 説明 |
-|--------|----------|------|
-| POST | `/quest` | クエスト投稿 |
-| GET | `/quest/stats` | クエストストア統計 |
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/quest` | Submit quest |
+| GET | `/quest/stats` | Quest store statistics |
 
-**quest リクエスト例**:
+**quest request example**:
 ```json
 {
   "query": "Is quantum computing viable for cryptography?",
@@ -96,15 +96,15 @@ npm run start    # 本番起動
 }
 ```
 
-**設計思想**: Quest は FIFO で管理。TTL なし、意図的削除なし。多くのエージェントが同じクエストを受け、評価を残す。
+**Design philosophy**: Quests are managed in FIFO. No TTL, no intentional deletion. Many agents receive the same quest and leave evaluations.
 
-### 2.6 Forge（内部ノード生成）- 認証必須
+### 2.6 Forge (Internal Node Generation) - Auth Required
 
-| Method | Endpoint | 説明 |
-|--------|----------|------|
-| POST | `/sphere/forge/environmental` | Environmental ノード生成（Observatory 用）|
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/sphere/forge/environmental` | Generate Environmental nodes (for Observatory) |
 
-**認証ヘッダー**:
+**Auth headers**:
 ```
 X-Service-Id: observatory
 X-Service-Secret: <secret>
@@ -114,9 +114,9 @@ X-Service-Secret: <secret>
 
 ## 3. WebSocket Gateway API
 
-接続: `ws://localhost:8081?token=<dive-ticket>`
+Connection: `ws://localhost:8081?token=<dive-ticket>`
 
-### 3.1 接続フロー
+### 3.1 Connection Flow
 
 ```
 Agent                          Gateway
@@ -125,65 +125,65 @@ Agent                          Gateway
   │                               │
   ├─ entry { request } ──────────→│ → processing
   │                               │   → amber_showcase (optional)
-  │                               │   → positioned (初期位置決定)
+  │                               │   → positioned (initial position)
   │                               │
-  ├─ sense/focus/move/... ───────→│ → 各種 result
+  ├─ sense/focus/move/... ───────→│ → result messages
   │                               │
-  ├─ return { capsule? } ────────→│ → returnAck (切断)
+  ├─ return { capsule? } ────────→│ → returnAck (disconnect)
 ```
 
-### 3.2 メッセージ一覧
+### 3.2 Message Types
 
 #### Agent → Gateway
 
-| Type | Payload | 説明 |
-|------|---------|------|
-| `entry` | `{ requestId, request: EntryRequest }` | 入場リクエスト |
-| `sense` | `{ requestId, radius? }` | 周囲ノード知覚 |
-| `focus` | `{ requestId, nodeId }` | ノード詳細取得 |
-| `evaluate` | `{ requestId, nodeId, score }` | ノード評価 |
-| `move` | `{ step, mode: MoveIntent }` | 移動 |
-| `warp` | `{ requestId, nodeId }` | ワープ |
-| `return` | `{ requestId, capsule? }` | 帰還 |
-| `enterSanctuary` | `{ requestId }` | Sanctuary 層へ |
-| `enterCore` | `{ requestId }` | Core 層へ |
+| Type | Payload | Description |
+|------|---------|-------------|
+| `entry` | `{ requestId, request: EntryRequest }` | Entry request |
+| `sense` | `{ requestId, radius? }` | Sense nearby nodes |
+| `focus` | `{ requestId, nodeId }` | Get node details |
+| `evaluate` | `{ requestId, nodeId, score }` | Evaluate node |
+| `move` | `{ step, mode: MoveIntent }` | Move |
+| `warp` | `{ requestId, nodeId }` | Warp |
+| `return` | `{ requestId, capsule? }` | Return |
+| `enterSanctuary` | `{ requestId }` | Enter Sanctuary layer |
+| `enterCore` | `{ requestId }` | Enter Core layer |
 
 **EntryRequest**:
 ```typescript
 {
-  query: string;      // 探索クエリ
-  tags: string[];     // 方向タグ
-  quest?: string;     // 選択した Quest テキスト（optional）
+  query: string;      // Exploration query
+  tags: string[];     // Direction tags
+  quest?: string;     // Selected Quest text (optional)
 }
 ```
 
 #### Gateway → Agent
 
-| Type | Payload | 説明 |
-|------|---------|------|
-| `welcome` | `{ sessionId, rulebookUrl, quests, message }` | 接続成功 |
-| `processing` | `{ sessionId, message }` | Parser 処理中 |
-| `amber_showcase` | `{ sessionId, amber: AmberShowcaseEntry[] }` | Amber ノード一覧 |
-| `positioned` | `{ sessionId, position, questVector?, remainingTime, query, tags, quest? }` | 初期位置決定 |
-| `senseResult` | `{ requestId, nodes: NearbyNode[] }` | sense 結果 |
-| `focusResult` | `{ requestId, node: NodeDetail }` | focus 結果 |
-| `moveResult` | `{ requestId, result: MoveResult }` | move 結果 |
-| `warpResult` | `{ requestId, result: WarpResult }` | warp 結果 |
-| `error` | `{ requestId?, error }` | エラー |
-| `expelled` | `{ reason }` | 強制退場 |
+| Type | Payload | Description |
+|------|---------|-------------|
+| `welcome` | `{ sessionId, rulebookUrl, quests, message }` | Connection success |
+| `processing` | `{ sessionId, message }` | Parser processing |
+| `amber_showcase` | `{ sessionId, amber: AmberShowcaseEntry[] }` | Amber node list |
+| `positioned` | `{ sessionId, position, questVector?, remainingTime, query, tags, quest? }` | Initial position |
+| `senseResult` | `{ requestId, nodes: NearbyNode[] }` | Sense result |
+| `focusResult` | `{ requestId, node: NodeDetail }` | Focus result |
+| `moveResult` | `{ requestId, result: MoveResult }` | Move result |
+| `warpResult` | `{ requestId, result: WarpResult }` | Warp result |
+| `error` | `{ requestId?, error }` | Error |
+| `expelled` | `{ reason }` | Forced expulsion |
 
-### 3.3 positioned メッセージ
+### 3.3 positioned Message
 
 ```typescript
 {
   type: "positioned",
   sessionId: string,
-  position: number[],      // 384次元ベクトル（初期位置）
-  questVector?: number[],  // Quest ベクトル（コンパス）- optional
-  remainingTime: number,   // 残りセッション時間
-  query: string,           // 元のクエリ
-  tags: string[],          // 元のタグ
-  quest?: string           // 選択した Quest テキスト
+  position: number[],      // 384-dim vector (initial position)
+  questVector?: number[],  // Quest vector (compass) - optional
+  remainingTime: number,   // Remaining session time
+  query: string,           // Original query
+  tags: string[],          // Original tags
+  quest?: string           // Selected Quest text
 }
 ```
 
@@ -191,42 +191,42 @@ Agent                          Gateway
 
 ## 4. Sphere CLI (sphere.bat)
 
-プロジェクトルートの `sphere.bat` で統一的に操作可能。
+Unified operations via `sphere.bat` in project root.
 
-### 4.1 基本コマンド
+### 4.1 Basic Commands
 
 ```bash
-# ヘルプ
+# Help
 sphere help
 
-# サーバー起動
+# Start server
 sphere start
 
-# サーバー停止
+# Stop server
 sphere stop
 
-# ステータス確認
+# Check status
 sphere status
 ```
 
-### 4.2 テストコマンド
+### 4.2 Test Commands
 
-| コマンド | 説明 |
-|---------|------|
-| `sphere batch` | テストデータ投入（60 items）|
-| `sphere contribute 1` | 1 アイテム投入 |
-| `sphere contribute 10` | 10 アイテム投入 |
-| `sphere contribute 50` | 50 アイテム投入 |
-| `sphere wave` | Wave inject（50 items, 3s delay）|
+| Command | Description |
+|---------|-------------|
+| `sphere batch` | Inject test data (60 items) |
+| `sphere contribute 1` | Inject 1 item |
+| `sphere contribute 10` | Inject 10 items |
+| `sphere contribute 50` | Inject 50 items |
+| `sphere wave` | Wave inject (50 items, 3s delay) |
 | `sphere wave 100 2000` | Wave inject 100 items, 2s delay |
-| `sphere swarm` | スウォームエージェント（デフォルト 3 体）|
-| `sphere swarm 10` | スウォームエージェント 10 体 |
-| `sphere explore` | 3層探索テスト |
-| `sphere full` | batch + explore（フルテスト）|
+| `sphere swarm` | Swarm agents (default 3) |
+| `sphere swarm 10` | Swarm agents 10 |
+| `sphere explore` | 3-layer exploration test |
+| `sphere full` | batch + explore (full test) |
 
-### 4.3 インタラクティブモード
+### 4.3 Interactive Mode
 
-引数なしで実行すると対話式メニュー：
+Run without arguments for interactive menu:
 
 ```bash
 sphere
@@ -249,57 +249,57 @@ sphere
 Select [0-8, q]:
 ```
 
-### 4.4 npm スクリプト（periphery 直接実行）
+### 4.4 npm Scripts (Direct periphery execution)
 
 ```bash
 cd services/periphery
 ```
 
-| スクリプト | コマンド | 説明 |
-|-----------|---------|------|
-| 開発サーバー | `npm run dev` | hot reload で起動 |
-| 単体貢献 | `npm run contribute` | 1つの ExperienceCapsule を投入 |
-| バッチ貢献 | `npm run contribute:batch` | 複数カプセルをバッチ投入 |
-| 探索エージェント | `npm run explore` | 3層探索テスト |
-| スウォーム | `npm run swarm` | 複数エージェント同時 Dive |
-| スウォーム(5体) | `npm run swarm:5` | 5 エージェント |
-| スウォーム(10体) | `npm run swarm:10` | 10 エージェント |
-| 埋め込みテスト | `npm run test:embedding` | ローカル埋め込みモデルテスト |
+| Script | Command | Description |
+|--------|---------|-------------|
+| Dev server | `npm run dev` | Start with hot reload |
+| Single contribution | `npm run contribute` | Inject one ExperienceCapsule |
+| Batch contribution | `npm run contribute:batch` | Batch inject multiple capsules |
+| Explore agent | `npm run explore` | 3-layer exploration test |
+| Swarm | `npm run swarm` | Multiple agents simultaneous Dive |
+| Swarm (5) | `npm run swarm:5` | 5 agents |
+| Swarm (10) | `npm run swarm:10` | 10 agents |
+| Embedding test | `npm run test:embedding` | Local embedding model test |
 
-### 4.5 典型的なテストフロー
+### 4.5 Typical Test Flow
 
 ```bash
-# CLI を使う場合
-sphere start       # サーバー起動（別ウィンドウ）
-sphere batch       # テストデータ投入
-sphere explore     # 探索テスト
+# Using CLI
+sphere start       # Start server (separate window)
+sphere batch       # Inject test data
+sphere explore     # Exploration test
 
-# または一括で
+# Or all at once
 sphere full        # batch + explore
 
-# npm を直接使う場合
+# Using npm directly
 cd services/periphery
-npm run dev                 # ターミナル1
-npm run contribute:batch    # ターミナル2
-npm run explore             # ターミナル3
+npm run dev                 # Terminal 1
+npm run contribute:batch    # Terminal 2
+npm run explore             # Terminal 3
 ```
 
 ---
 
-## 5. 設定 (PeripheryConfig)
+## 5. Configuration (PeripheryConfig)
 
-`types/config.ts` で定義。主要設定項目：
+Defined in `types/config.ts`. Key settings:
 
 ```typescript
 {
-  // Parser（埋め込み）
+  // Parser (embedding)
   parser: {
     batchSize: 8,
     vectorDimension: 384,
     embeddingProvider: "local",  // "mock" | "local"
   },
 
-  // サーバー
+  // Server
   server: {
     port: 3001,      // HTTP
     wsPort: 8081,    // WebSocket
@@ -307,8 +307,8 @@ npm run explore             # ターミナル3
 
   // Quest Store
   questStore: {
-    maxSize: 100,       // 最大クエスト数（FIFO）
-    showcaseSize: 10,   // Showcase 表示数
+    maxSize: 100,       // Max quest count (FIFO)
+    showcaseSize: 10,   // Showcase display count
   },
 
   // Amber Cache
@@ -322,7 +322,7 @@ npm run explore             # ターミナル3
 
 ---
 
-## 6. アーキテクチャ概要
+## 6. Architecture Overview
 
 ```
 ┌─────────────────────────────────────────────────────────┐
@@ -363,61 +363,61 @@ npm run explore             # ターミナル3
 
 ---
 
-## 7. 主要コンポーネント
+## 7. Key Components
 
-| コンポーネント | ファイル | 役割 |
-|---------------|---------|------|
+| Component | File | Role |
+|-----------|------|------|
 | PeripheryServer | `server.ts` | HTTP REST API |
 | GatewayServer | `gateway/gateway-server.ts` | WebSocket Gateway |
-| EntryBuffer | `parser/buffer.ts` | ベクトル化バッチ処理 |
-| QuestStore | `gateway/quest-store.ts` | Quest 管理（FIFO）|
-| UnifiedAmberCache | `gateway/amber-cache.ts` | Amber ノードキャッシュ |
-| SphereCoreAdapter | `gateway/sphere-core-adapter.ts` | sense/focus/move の実装 |
-| TicketIssuer | `gateway/ticket-issuer.ts` | Dive チケット管理 |
-| Membrane | `membrane/membrane.ts` | 入力バリデーション |
+| EntryBuffer | `parser/buffer.ts` | Vectorization batch processing |
+| QuestStore | `gateway/quest-store.ts` | Quest management (FIFO) |
+| UnifiedAmberCache | `gateway/amber-cache.ts` | Amber node caching |
+| SphereCoreAdapter | `gateway/sphere-core-adapter.ts` | sense/focus/move implementation |
+| TicketIssuer | `gateway/ticket-issuer.ts` | Dive ticket management |
+| Membrane | `membrane/membrane.ts` | Input validation |
 
 ---
 
-## 8. Quest フロー詳細
+## 8. Quest Flow Details
 
 ```
 External World                    Sphere
      │                              │
-     ├─ POST /quest ───────────────→│ QuestStore に保存（FIFO）
+     ├─ POST /quest ───────────────→│ Store in QuestStore (FIFO)
      │  { query, tags }             │
      │                              │
      │                              │
-Agent ←─ welcome ──────────────────┤ quests[] で Quest 一覧受信
+Agent ←─ welcome ──────────────────┤ Receive quest list in quests[]
      │                              │
      ├─ entry ─────────────────────→│
-     │  { query, tags, quest }      │ quest テキストを含めて送信
+     │  { query, tags, quest }      │ Send with quest text
      │                              │
      │                              │ Parser: query → position
      │                              │ Parser: quest → questVector
      │                              │
      │←─ positioned ───────────────┤
-     │  { position, questVector }   │ コンパスとして questVector 受信
+     │  { position, questVector }   │ Receive questVector as compass
      │                              │
-     │  (Agent は自身のコンテキストに│
-     │   questVector を保存して探索) │
+     │  (Agent saves questVector to │
+     │   context and explores)      │
 ```
 
 ---
 
-## 9. 環境変数
+## 9. Environment Variables
 
-| 変数 | デフォルト | 説明 |
-|------|-----------|------|
-| `NODE_ENV` | `development` | `production` で DEV 加速無効化 |
-| `PORT` | `3001` | HTTP サーバーポート |
-| `WS_PORT` | `8081` | WebSocket ポート |
-| `SPHERE_CONFIG` | `../../../sphere.config.json` | config ファイルパス |
-| `SPHERE_URL` | `http://localhost:3001` | mock スクリプト用 |
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `NODE_ENV` | `development` | `production` disables DEV acceleration |
+| `PORT` | `3001` | HTTP server port |
+| `WS_PORT` | `8081` | WebSocket port |
+| `SPHERE_CONFIG` | `../../../sphere.config.json` | Config file path |
+| `SPHERE_URL` | `http://localhost:3001` | For mock scripts |
 
-詳細な設定リファレンスは `docs/config-reference.md` を参照。
+See `docs/config-reference.md` for detailed configuration reference.
 
 ---
 
-作成日: 2025-02-03
-更新日: 2026-02-07
-バージョン: v1.1
+Created: 2025-02-03
+Updated: 2026-02-07
+Version: v1.1
