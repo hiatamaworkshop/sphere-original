@@ -143,8 +143,6 @@ const arbiterSettings = sphereConfig.periphery?.arbiter ?? {};
 // [Config Priority] nodeFlags.dynamicThresholds > arbiter.dynamicFlags
 const dynamicThresholds = config.nodeFlags?.dynamicThresholds;
 const arbiterConfig = {
-  amberHeatThreshold: renalConfig.amberHeatThreshold,
-  amberWeightThreshold: renalConfig.amberWeightThreshold,
   erosionHeatThreshold: renalConfig.erosionHeatThreshold,
   pauseErosionBoost: renalConfig.pauseErosionBoost,
   // Dynamic Flags thresholds (from unified nodeFlags config)
@@ -154,9 +152,6 @@ const arbiterConfig = {
     ?? arbiterSettings.dynamicFlags?.hubLinkThreshold ?? 5,
   isolatedLinkThreshold: dynamicThresholds?.isolatedLinkThreshold
     ?? arbiterSettings.dynamicFlags?.isolatedLinkThreshold ?? 0,
-  // Deferred observation settings
-  observeThrottleMs: arbiterSettings.deferredObserve?.throttleMs ?? 1000,
-  observeIdleTimeoutMs: arbiterSettings.deferredObserve?.idleTimeoutMs ?? 500,
   // Ascension cooldown settings (evaluation freeze + composite score)
   ascensionCooldownMs: arbiterSettings.ascension?.cooldownMs ?? 600000,
   ascensionScoreThreshold: arbiterSettings.ascension?.scoreThreshold ?? 500,

@@ -23,15 +23,11 @@ import type { SphereNode, NodeKind, CrystallizationData } from "@sphere/renal-co
  * Arbiter 設定（Ascension/Erosion 閾値）
  */
 export interface ArbiterConfig {
-    amberHeatThreshold: number;
-    amberWeightThreshold: number;
     erosionHeatThreshold: number;
     pauseErosionBoost: number;
     hotHeatThreshold: number;
     hubLinkThreshold: number;
     isolatedLinkThreshold: number;
-    observeThrottleMs: number;
-    observeIdleTimeoutMs: number;
     ascensionCooldownMs: number;
     ascensionScoreThreshold: number;
     lowerThresholdRatio: number;
@@ -45,13 +41,6 @@ export interface ArbiterConfig {
     revivalThreshold?: number;
     revivalDThreshold?: number;
     protectionThreshold?: number;
-}
-/**
- * Deferred observation options
- */
-export interface DeferredObserveOptions {
-    isPaused?: boolean;
-    linkCounts?: Map<string, number>;
 }
 /**
  * Snapshot of node states (id → kind, ttl, heat)
@@ -129,10 +118,6 @@ export interface StateChanges {
     expired: SphereNode[];
 }
 /**
- * Callback type for deferred observation results
- */
-export type ObserveCallback = (queue: TransitionQueue) => void | Promise<void>;
-/**
  * CandidateEntry: Ascension 候補のトラッキング
  *
  * [Design] 冷却期間中の候補を監視
@@ -159,64 +144,15 @@ export interface CandidateEntry {
 /**
  * Arbiter: ProjDB を監視し、状態遷移を判定・検出する
  *
- * Usage (Immediate):
+ * Usage:
  *   const arbiter = new Arbiter(config);
  *   const queue = arbiter.observe(projDB, { isPaused });  // 即時判定
  *   await bookkeeper.applyTransitions(queue);              // 実行
- *
- * Usage (Deferred):
- *   const arbiter = new Arbiter(config);
- *   arbiter.onObserve(async (queue) => {
- *     await bookkeeper.applyTransitions(queue);
- *   });
- *   arbiter.scheduleObserve(projDB, { isPaused });  // 遅延キューイング
- *   // ... 後でまとめて実行される
  */
 export declare class Arbiter {
     private config;
-    private pendingObserve;
-    private observeTimer;
-    private lastObserveTime;
-    private observeCallbacks;
     private candidateStore;
     constructor(config: ArbiterConfig);
-    /**
-     * Register callback for deferred observation results
-     *
-     * [Design] Multiple callbacks can be registered
-     * [Usage] Bookkeeper registers to apply transitions
-     */
-    onObserve(callback: ObserveCallback): void;
-    /**
-     * Schedule deferred observation (throttle + debounce)
-     *
-     * [Design] Combines throttle and idle timeout:
-     *   - If called within throttleMs of last execution, delays
-     *   - Waits for idleTimeoutMs of inactivity before executing
-     *   - Latest projDB/options are used (overwrites pending)
-     *
-     * @param projDB - Current projection database
-     * @param options - Observation options
-     */
-    scheduleObserve(projDB: Map<string, SphereNode>, options?: DeferredObserveOptions): void;
-    /**
-     * Execute pending deferred observation immediately
-     *
-     * [Usage] Force execution without waiting for timeout
-     */
-    flushObserve(): Promise<TransitionQueue | null>;
-    /**
-     * Cancel pending deferred observation
-     */
-    cancelObserve(): void;
-    /**
-     * Check if there's a pending observation
-     */
-    hasPendingObserve(): boolean;
-    /**
-     * Execute deferred observation and notify callbacks
-     */
-    private executeDeferred;
     /**
      * Take a snapshot of current node states
      */
@@ -283,10 +219,6 @@ export declare class Arbiter {
      */
     private shouldRevive;
     /**
-     * Ascension 判定: Active → Amber
-     */
-    private shouldAscend;
-    /**
      * Compute dynamic flag updates for a node
      *
      * [Dynamic Flags]
@@ -304,7 +236,6 @@ export declare class Arbiter {
      * @returns New flags value
      */
     static applyFlagUpdate(currentFlags: number, update: FlagUpdate): number;
-    private computeEffectiveWeight;
     private logQueue;
     /**
      * Log summary of detected changes

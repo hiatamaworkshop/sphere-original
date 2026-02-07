@@ -97,11 +97,6 @@
         "isolatedLinkThreshold": 0
       },
 
-      "deferredObserve": {
-        "throttleMs": 1000,
-        "idleTimeoutMs": 500
-      },
-
       "ascension": {
         "_comment": "Ascension cooldown: evaluation freeze + h+w score + lower threshold",
         "cooldownMs": 600000,

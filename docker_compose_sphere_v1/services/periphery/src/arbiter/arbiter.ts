@@ -27,10 +27,6 @@ import { cosineDistance } from "../lib/vector.js";
  * Arbiter 設定（Ascension/Erosion 閾値）
  */
 export interface ArbiterConfig {
-  // 昇天閾値
-  amberHeatThreshold: number;
-  amberWeightThreshold: number;
-
   // 風化閾値
   erosionHeatThreshold: number;
 
@@ -44,12 +40,6 @@ export interface ArbiterConfig {
   hubLinkThreshold: number;
   // Isolated: リンク数がこの閾値以下で Isolated フラグを付与
   isolatedLinkThreshold: number;
-
-  // === 遅延観測設定 ===
-  // 観測間隔（ミリ秒）- この間隔内のリクエストは統合される
-  observeThrottleMs: number;
-  // アイドルタイムアウト（ミリ秒）- 最後のリクエストからこの時間後に実行
-  observeIdleTimeoutMs: number;
 
   // === Ascension 冷却期間設定 ===
   // 冷却期間（ミリ秒）- 閾値超過後、この期間生存で Amber 昇格
@@ -84,13 +74,6 @@ export interface ArbiterConfig {
   protectionThreshold?: number; // default: 100
 }
 
-/**
- * Deferred observation options
- */
-export interface DeferredObserveOptions {
-  isPaused?: boolean;
-  linkCounts?: Map<string, number>;
-}
 
 /**
  * Snapshot of node states (id → kind, ttl, heat)
@@ -167,10 +150,6 @@ export interface StateChanges {
   expired: SphereNode[];
 }
 
-/**
- * Callback type for deferred observation results
- */
-export type ObserveCallback = (queue: TransitionQueue) => void | Promise<void>;
 
 /**
  * CandidateEntry: Ascension 候補のトラッキング
@@ -196,30 +175,13 @@ export interface CandidateEntry {
 /**
  * Arbiter: ProjDB を監視し、状態遷移を判定・検出する
  *
- * Usage (Immediate):
+ * Usage:
  *   const arbiter = new Arbiter(config);
  *   const queue = arbiter.observe(projDB, { isPaused });  // 即時判定
  *   await bookkeeper.applyTransitions(queue);              // 実行
- *
- * Usage (Deferred):
- *   const arbiter = new Arbiter(config);
- *   arbiter.onObserve(async (queue) => {
- *     await bookkeeper.applyTransitions(queue);
- *   });
- *   arbiter.scheduleObserve(projDB, { isPaused });  // 遅延キューイング
- *   // ... 後でまとめて実行される
  */
 export class Arbiter {
   private config: ArbiterConfig;
-
-  // === Deferred Observation State ===
-  private pendingObserve: {
-    projDB: Map<string, SphereNode>;
-    options: DeferredObserveOptions;
-  } | null = null;
-  private observeTimer: ReturnType<typeof setTimeout> | null = null;
-  private lastObserveTime: number = 0;
-  private observeCallbacks: ObserveCallback[] = [];
 
   // === Candidate Store (Ascension 冷却期間管理) ===
   // Key: nodeId
@@ -227,118 +189,6 @@ export class Arbiter {
 
   constructor(config: ArbiterConfig) {
     this.config = config;
-  }
-
-  // =========================================================================
-  // Deferred Observation API
-  // =========================================================================
-
-  /**
-   * Register callback for deferred observation results
-   *
-   * [Design] Multiple callbacks can be registered
-   * [Usage] Bookkeeper registers to apply transitions
-   */
-  onObserve(callback: ObserveCallback): void {
-    this.observeCallbacks.push(callback);
-  }
-
-  /**
-   * Schedule deferred observation (throttle + debounce)
-   *
-   * [Design] Combines throttle and idle timeout:
-   *   - If called within throttleMs of last execution, delays
-   *   - Waits for idleTimeoutMs of inactivity before executing
-   *   - Latest projDB/options are used (overwrites pending)
-   *
-   * @param projDB - Current projection database
-   * @param options - Observation options
-   */
-  scheduleObserve(
-    projDB: Map<string, SphereNode>,
-    options: DeferredObserveOptions = {}
-  ): void {
-    // Update pending observation (latest wins)
-    this.pendingObserve = { projDB, options };
-
-    // Clear existing timer
-    if (this.observeTimer) {
-      clearTimeout(this.observeTimer);
-      this.observeTimer = null;
-    }
-
-    // Calculate delay
-    const now = Date.now();
-    const timeSinceLastObserve = now - this.lastObserveTime;
-    const throttleRemaining = Math.max(
-      0,
-      this.config.observeThrottleMs - timeSinceLastObserve
-    );
-    const delay = Math.max(throttleRemaining, this.config.observeIdleTimeoutMs);
-
-    // Schedule execution
-    this.observeTimer = setTimeout(() => {
-      this.executeDeferred();
-    }, delay);
-  }
-
-  /**
-   * Execute pending deferred observation immediately
-   *
-   * [Usage] Force execution without waiting for timeout
-   */
-  async flushObserve(): Promise<TransitionQueue | null> {
-    if (this.observeTimer) {
-      clearTimeout(this.observeTimer);
-      this.observeTimer = null;
-    }
-    return this.executeDeferred();
-  }
-
-  /**
-   * Cancel pending deferred observation
-   */
-  cancelObserve(): void {
-    if (this.observeTimer) {
-      clearTimeout(this.observeTimer);
-      this.observeTimer = null;
-    }
-    this.pendingObserve = null;
-  }
-
-  /**
-   * Check if there's a pending observation
-   */
-  hasPendingObserve(): boolean {
-    return this.pendingObserve !== null;
-  }
-
-  /**
-   * Execute deferred observation and notify callbacks
-   */
-  private async executeDeferred(): Promise<TransitionQueue | null> {
-    if (!this.pendingObserve) {
-      return null;
-    }
-
-    const { projDB, options } = this.pendingObserve;
-    this.pendingObserve = null;
-    this.observeTimer = null;
-    this.lastObserveTime = Date.now();
-
-    // Execute observation
-    const queue = this.observe(projDB, options);
-
-    // Notify all callbacks
-    for (const callback of this.observeCallbacks) {
-      try {
-        await callback(queue);
-      } catch (error) {
-        console.error("[Arbiter] Callback error:", error);
-      }
-    }
-
-    return queue;
   }
 
   /**
@@ -646,19 +496,6 @@ export class Arbiter {
     return false;
   }
 
-  /**
-   * Ascension 判定: Active → Amber
-   */
-  private shouldAscend(node: SphereNode): boolean {
-    if (node.kind !== "active") return false;
-
-    const effectiveWeight = this.computeEffectiveWeight(node);
-
-    return (
-      node.metrics.h > this.config.amberHeatThreshold &&
-      effectiveWeight > this.config.amberWeightThreshold
-    );
-  }
 
   // =========================================================================
   // Dynamic Flags 判定
@@ -741,13 +578,6 @@ export class Arbiter {
     return (currentFlags | update.add) & ~update.remove;
   }
 
-  private computeEffectiveWeight(node: SphereNode): number {
-    let weight = node.metrics.w;
-    if (this.hasFlag(node, NodeFlag.Hub)) {
-      weight *= 1.1;
-    }
-    return weight;
-  }
 
   private logQueue(queue: TransitionQueue): void {
     const total =
