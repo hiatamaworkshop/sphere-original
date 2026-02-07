@@ -25,54 +25,10 @@ export class CleanerFish {
     id;
     personality;
     config;
-    // 統計
-    ghostificationCount = 0;
-    fossilizationCount = 0;
-    decompositionCount = 0;
-    totalFertilityGained = 0;
-    lastProcessedAt = 0;
     constructor(id, personality, config) {
         this.id = id;
         this.personality = personality;
         this.config = config;
-    }
-    /**
-     * 餌を探す: TTL <= 0 のノードを検出
-     * 掃除魚は自分のテリトリー内で餌を探す
-     *
-     * [Design] ghost も対象（空の分解 = 痕跡なし消滅）
-     */
-    findPrey(nodes) {
-        // TTL <= 0 のノードを抽出
-        const prey = nodes.filter((node) => {
-            // relic, amber は不滅
-            if (node.kind === "relic" || node.kind === "amber")
-                return false;
-            // environment は対象外
-            if (node.kind === "environment")
-                return false;
-            return node.metrics.ttl <= 0;
-        });
-        // 性格に基づいてソート
-        return this.sortByPriority(prey);
-    }
-    /**
-     * 性格に基づいて優先度ソート
-     */
-    sortByPriority(nodes) {
-        const bias = this.personality.priorityBias;
-        return [...nodes].sort((a, b) => {
-            if (bias > 0) {
-                // 正のバイアス: 高heat優先
-                return b.metrics.h - a.metrics.h;
-            }
-            else if (bias < 0) {
-                // 負のバイアス: 低weight優先
-                return a.metrics.w - b.metrics.w;
-            }
-            // バイアスなし: 順序維持
-            return 0;
-        });
     }
     /**
      * Ghostification: Active → Ghost
@@ -92,8 +48,6 @@ export class CleanerFish {
             kind: "ghost",
             timestamp: Date.now(),
         };
-        this.ghostificationCount++;
-        this.lastProcessedAt = Date.now();
         console.log(`[CleanerFish:${this.id}] ghostified node=${node.id.slice(0, 8)} ` +
             `ttl=${node.metrics.ttl.toFixed(0)}`);
         return {
@@ -127,8 +81,6 @@ export class CleanerFish {
             },
             timestamp: Date.now(),
         };
-        this.fossilizationCount++;
-        this.lastProcessedAt = Date.now();
         console.log(`[CleanerFish:${this.id}] fossilized node=${node.id.slice(0, 8)} ` +
             `ghost→fossil ttl=${node.metrics.ttl.toFixed(0)}`);
         return {
@@ -147,9 +99,6 @@ export class CleanerFish {
         }
         // fertility = heat × weight
         const fertilityGain = fossilNode.metrics.h * fossilNode.metrics.w;
-        this.decompositionCount++;
-        this.totalFertilityGained += fertilityGain;
-        this.lastProcessedAt = Date.now();
         console.log(`[CleanerFish:${this.id}] decomposed node=${fossilNode.id.slice(0, 8)} ` +
             `cell=${cellId} fertility=+${fertilityGain.toFixed(4)}`);
         return {
@@ -167,8 +116,6 @@ export class CleanerFish {
         if (ghostNode.kind !== "ghost") {
             throw new Error(`Cannot evaporate non-ghost node: ${ghostNode.kind}`);
         }
-        this.decompositionCount++;
-        this.lastProcessedAt = Date.now();
         console.log(`[CleanerFish:${this.id}] evaporated ghost=${ghostNode.id.slice(0, 8)}`);
         return {
             nodeId: ghostNode.id,
@@ -181,20 +128,6 @@ export class CleanerFish {
      */
     getProcessingCapacity() {
         return Math.floor(this.config.baseProcessingSpeed * this.personality.processingSpeed);
-    }
-    /**
-     * 統計情報を取得
-     */
-    getStats() {
-        return {
-            id: this.id,
-            personality: this.personality,
-            ghostificationCount: this.ghostificationCount,
-            fossilizationCount: this.fossilizationCount,
-            decompositionCount: this.decompositionCount,
-            totalFertilityGained: this.totalFertilityGained,
-            lastProcessedAt: this.lastProcessedAt,
-        };
     }
 }
 /**
@@ -222,9 +155,6 @@ export class CleanerFishPool {
     generatePersonality() {
         return {
             processingSpeed: 0.8 + Math.random() * 0.4, // 0.8 - 1.2
-            territorySize: Math.floor(2 + Math.random() * 4), // 2 - 5
-            priorityBias: (Math.random() - 0.5) * 0.4, // -0.2 to 0.2
-            compressionRatio: 0.08 + Math.random() * 0.04, // 0.08 - 0.12 (高圧縮)
         };
     }
     /**
@@ -400,35 +330,6 @@ export class CleanerFishPool {
         }
         return { ghostified, fossilized, decomposed };
     }
-    /**
-     * 全統計を取得
-     */
-    getStats() {
-        return this.fish.map((f) => f.getStats());
-    }
-    /**
-     * 集計統計
-     */
-    getAggregateStats() {
-        let totalGhostification = 0;
-        let totalFossilization = 0;
-        let totalDecomposition = 0;
-        let totalFertility = 0;
-        for (const fish of this.fish) {
-            const stats = fish.getStats();
-            totalGhostification += stats.ghostificationCount;
-            totalFossilization += stats.fossilizationCount;
-            totalDecomposition += stats.decompositionCount;
-            totalFertility += stats.totalFertilityGained;
-        }
-        return {
-            fishCount: this.fish.length,
-            totalGhostification,
-            totalFossilization,
-            totalDecomposition,
-            totalFertility,
-        };
-    }
 }
 /**
  * デフォルト設定
@@ -437,9 +338,5 @@ export const DEFAULT_CLEANER_FISH_CONFIG = {
     count: 10,
     baseProcessingSpeed: 5,
     baseFossilTTL: 500,
-    fossilTTLVariance: 0.3,
-    maxHintLength: 64,
-    preserveShadow: false,
-    shadowDimensions: 32,
 };
 //# sourceMappingURL=cleaner-fish.js.map

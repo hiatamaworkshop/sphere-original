@@ -14,9 +14,6 @@ import type { SphereNode } from "@sphere/renal-core";
  */
 export interface CleanerFishPersonality {
     processingSpeed: number;
-    territorySize: number;
-    priorityBias: number;
-    compressionRatio: number;
 }
 /**
  * CleanerFishConfig: システム設定
@@ -25,10 +22,6 @@ export interface CleanerFishConfig {
     count: number;
     baseProcessingSpeed: number;
     baseFossilTTL: number;
-    fossilTTLVariance: number;
-    maxHintLength: number;
-    preserveShadow: boolean;
-    shadowDimensions: number;
 }
 /**
  * FossilizationResult: 化石化の結果
@@ -114,23 +107,7 @@ export declare class CleanerFish {
     private readonly id;
     private readonly personality;
     private readonly config;
-    private ghostificationCount;
-    private fossilizationCount;
-    private decompositionCount;
-    private totalFertilityGained;
-    private lastProcessedAt;
     constructor(id: string, personality: CleanerFishPersonality, config: CleanerFishConfig);
-    /**
-     * 餌を探す: TTL <= 0 のノードを検出
-     * 掃除魚は自分のテリトリー内で餌を探す
-     *
-     * [Design] ghost も対象（空の分解 = 痕跡なし消滅）
-     */
-    findPrey(nodes: SphereNode[]): SphereNode[];
-    /**
-     * 性格に基づいて優先度ソート
-     */
-    private sortByPriority;
     /**
      * Ghostification: Active → Ghost
      * kind 変更のみ、データは全て維持
@@ -164,18 +141,6 @@ export declare class CleanerFish {
      * 1tickで処理できるノード数
      */
     getProcessingCapacity(): number;
-    /**
-     * 統計情報を取得
-     */
-    getStats(): {
-        id: string;
-        personality: CleanerFishPersonality;
-        ghostificationCount: number;
-        fossilizationCount: number;
-        decompositionCount: number;
-        totalFertilityGained: number;
-        lastProcessedAt: number;
-    };
 }
 /**
  * CleanerFishPool: 掃除魚のメモリプール
@@ -228,28 +193,6 @@ export declare class CleanerFishPool {
      * [Design] 環境状態から行動パラメータを算出し、遷移を実行
      */
     process(nodes: SphereNode[], getCellId: (nodeId: string) => string, env: EnvironmentState, thresholds?: TransitionThresholds): ProcessResult;
-    /**
-     * 全統計を取得
-     */
-    getStats(): {
-        id: string;
-        personality: CleanerFishPersonality;
-        ghostificationCount: number;
-        fossilizationCount: number;
-        decompositionCount: number;
-        totalFertilityGained: number;
-        lastProcessedAt: number;
-    }[];
-    /**
-     * 集計統計
-     */
-    getAggregateStats(): {
-        fishCount: number;
-        totalGhostification: number;
-        totalFossilization: number;
-        totalDecomposition: number;
-        totalFertility: number;
-    };
 }
 /**
  * デフォルト設定
