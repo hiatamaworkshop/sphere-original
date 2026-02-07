@@ -62,6 +62,12 @@ if (process.env.PORT) {
 if (process.env.WS_PORT) {
   sphereConfig.periphery.server.wsPort = parseInt(process.env.WS_PORT, 10);
 }
+if (process.env.EPHEMERAL === "true") {
+  sphereConfig.ephemeral = {
+    ...sphereConfig.ephemeral,
+    enabled: true,
+  };
+}
 
 // Resolve decay preset (archive | balanced | flow | dev | custom)
 const { resolved: decayValues, presetName } = resolveDecayPreset({
@@ -542,12 +548,14 @@ seedSphere().catch((err) => {
   console.error("[Seed] Failed:", err);
 });
 
-// ===== Ephemeral Mode (periodic reset) =====
+// ===== Ephemeral Mode (periodic reset for public demo) =====
 const ephemeralConfig = sphereConfig.ephemeral;
 if (ephemeralConfig?.enabled && ephemeralConfig.resetIntervalMs > 0) {
-  console.log(`[Ephemeral] Reset every ${ephemeralConfig.resetIntervalMs / 1000}s`);
+  const intervalSec = ephemeralConfig.resetIntervalMs / 1000;
+  console.log(`[Ephemeral] Enabled — reset every ${intervalSec}s`);
   setInterval(async () => {
     console.log("[Ephemeral] Resetting sphere state...");
+    server.expelAll("Ephemeral reset: sphere is restarting");
     projectionDB.clear();
     referenceDB.clear();
     spatialFields.clear();

@@ -749,4 +749,9 @@ export class PeripheryServer {
   public setOnAgentCountChange(callback: (count: number) => void): void {
     this.gatewayServer?.setOnAgentCountChange(callback);
   }
+
+  /** Expel all connected agents (for Ephemeral reset) */
+  public expelAll(reason: string): void {
+    this.gatewayServer?.expelAll(reason);
+  }
 }

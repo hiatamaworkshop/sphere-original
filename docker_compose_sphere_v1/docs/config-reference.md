@@ -264,6 +264,21 @@ AI-to-AI 揮発性通信。
 
 ---
 
+## ephemeral
+
+公開デモ用の定期リセット。有効にすると一定間隔で全ノード・全 agent セッションを破棄し、seed から再構築する。
+
+| key | default | 効果 |
+|-----|---------|------|
+| enabled | false | Ephemeral Mode の有効/無効 |
+| resetIntervalMs | 3600000 | リセット間隔 (ms)。3600000 = 1時間 |
+
+**環境変数オーバーライド**: `EPHEMERAL=true` で config の値に関わらず有効化。`resetIntervalMs` は config から取得。
+
+**リセット時の動作**: 接続中 agent を expelled → ProjDB/RefDB/SpatialFields クリア → seed 再実行。
+
+---
+
 ## DEV_CONFIG (`periphery/src/config/env.ts`)
 
 sphere.config.json ではなくコード内定数。開発/本番で自動切替。
