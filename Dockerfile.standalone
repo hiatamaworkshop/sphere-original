@@ -29,6 +29,10 @@ COPY --from=build /build/services/periphery/dist ./dist
 COPY --from=build /build/services/periphery/node_modules ./node_modules
 COPY --from=build /build/services/periphery/package.json ./
 
+# Copy renalCore dist (resolve file: dependency)
+COPY --from=build /build/services/renalCore/dist ./node_modules/@sphere/renal-core/dist
+COPY --from=build /build/services/renalCore/package.json ./node_modules/@sphere/renal-core/package.json
+
 # Copy config (production overrides via env vars)
 COPY docker_compose_sphere_v1/sphere.config.json ./config/sphere.config.json
 
