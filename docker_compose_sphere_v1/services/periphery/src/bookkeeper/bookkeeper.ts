@@ -349,7 +349,8 @@ export class Bookkeeper {
 
   /**
    * Apply decomposition results from cleaner fish
-   * [Principle] Delete from ProjDB, add fertility to SpatialField
+   * [Principle] Delete from both ProjDB and RefDB, add fertility to SpatialField
+   * [Design] decompose = 完全消去 — ProjDB (body) + RefDB (soul) 両方から削除
    *
    * @param decompositions Decomposition results from cleaner fish
    */
@@ -362,6 +363,11 @@ export class Bookkeeper {
 
     // Delete nodes from ProjDB
     await this.projectionRepo.batchDelete(nodeIds);
+
+    // Delete nodes from RefDB (decompose = complete erasure)
+    for (const id of nodeIds) {
+      await this.referenceRepo.delete(id);
+    }
 
     // Update fertility in SpatialFields
     const fertilityByCell = new Map<string, number>();
@@ -389,7 +395,7 @@ export class Bookkeeper {
     }
 
     console.log(
-      `[Bookkeeper] decomposed nodes=${nodeIds.length} cells=${fertilityByCell.size}`
+      `[Bookkeeper] decomposed nodes=${nodeIds.length} refdb=${nodeIds.length} cells=${fertilityByCell.size}`
     );
   }
 
