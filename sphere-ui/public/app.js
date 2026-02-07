@@ -63,11 +63,26 @@ function loadFileData(file) {
     try {
       const data = JSON.parse(e.target.result);
       if (!Array.isArray(data)) throw new Error('JSON must be an array');
+
+      // Validate basic structure (tier, summary, tags)
+      const invalidItems = data.filter((item, i) => {
+        if (!item.tier || !['top', 'normal', 'ghost'].includes(item.tier)) return true;
+        if (!item.summary || typeof item.summary !== 'string') return true;
+        if (!Array.isArray(item.tags)) return true;
+        return false;
+      });
+
+      if (invalidItems.length > 0) {
+        throw new Error(`${invalidItems.length} items have invalid structure. Required: {tier, summary, tags[]}`);
+      }
+
       mockData = data;
       onMockDataLoaded();
     } catch (err) {
       document.getElementById('contributeResult').innerHTML =
-        `<div class="error">Invalid JSON: ${escapeHtml(err.message)}</div>`;
+        `<div class="error">Invalid JSON: ${escapeHtml(err.message)}<br>` +
+        `<a href="/schema" target="_blank" style="color: #4ecdc4;">View Schema</a> | ` +
+        `<span onclick="document.getElementById('downloadExample').click()" style="cursor: pointer; color: #4ecdc4;">Download Example</span></div>`;
     }
   };
   reader.readAsText(file);
@@ -138,6 +153,21 @@ document.getElementById('mockList').addEventListener('change', updateSelectedCou
 document.getElementById('loadPreset').addEventListener('click', loadPresetData);
 document.getElementById('uploadFile').addEventListener('change', (e) => {
   if (e.target.files[0]) loadFileData(e.target.files[0]);
+});
+document.getElementById('downloadExample').addEventListener('click', () => {
+  // Download example JSON (first 3 items from preset)
+  const example = [
+    { tier: 'top', summary: 'Quantum computing fundamentals', tags: ['quantum', 'computing', 'technology'] },
+    { tier: 'normal', summary: 'Neural network architecture', tags: ['AI', 'neural-network', 'deep-learning'] },
+    { tier: 'normal', summary: 'Distributed systems CAP theorem', tags: ['distributed', 'system', 'theory'] }
+  ];
+  const blob = new Blob([JSON.stringify(example, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'sphere-example.json';
+  a.click();
+  URL.revokeObjectURL(url);
 });
 document.getElementById('selectAll').addEventListener('click', () => {
   document.querySelectorAll('#mockList input[type="checkbox"]').forEach(c => c.checked = true);
@@ -398,7 +428,17 @@ document.getElementById('contributeBtn').addEventListener('click', async () => {
   }
 
   const failMsg = failures > 0 ? ` (${failures} failed)` : '';
-  resultEl.innerHTML = `<div class="success">Wave complete: ${totalIncarnated} nodes incarnated from ${waves.length} waves${failMsg}</div>`;
+  resultEl.innerHTML = `<div class="success">✓ ${totalIncarnated} nodes contributed! Check Dashboard for updates.${failMsg}</div>`;
+
+  // Clear selection after successful contribution
+  document.querySelectorAll('#mockList input[type="checkbox"]').forEach(cb => cb.checked = false);
+  updateSelectedCount();
+
+  // Update Dashboard node count
+  if (totalIncarnated > 0) {
+    fetchDashboard();
+  }
+
   btn.disabled = false;
 });
 
