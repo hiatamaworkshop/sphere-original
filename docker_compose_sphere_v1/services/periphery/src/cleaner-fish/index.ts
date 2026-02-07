@@ -5,11 +5,11 @@
  */
 
 export {
-  CleanerFish,
   CleanerFishPool,
   DEFAULT_CLEANER_FISH_CONFIG,
+  DEFAULT_TRANSITION_THRESHOLDS,
   type CleanerFishConfig,
-  type CleanerFishPersonality,
-  type FossilizationResult,
-  type DecompositionResult,
+  type EnvironmentState,
+  type TransitionThresholds,
+  type ProcessResult,
 } from "./cleaner-fish.js";

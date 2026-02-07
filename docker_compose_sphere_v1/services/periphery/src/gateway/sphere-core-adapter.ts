@@ -478,7 +478,6 @@ export class SphereCoreAdapter {
     // Update metrics only for non-frozen nodes
     // Amber nodes are frozen - no metabolism updates
     if (!this.isAmber(node)) {
-      node.metrics.traversal = (node.metrics.traversal ?? 0) + 1;
       node.metrics.h += this.config.focusHeatBoost;
       await this.projectionRepo.set(nodeId, node);
     }

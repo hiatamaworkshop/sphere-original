@@ -48,7 +48,6 @@ export const DEFAULT_PERIPHERY_CONFIG = {
             ghost: 0x0000,
         },
         initialMetrics: {
-            traversal: 0,
             stayTime: 0,
         },
     },

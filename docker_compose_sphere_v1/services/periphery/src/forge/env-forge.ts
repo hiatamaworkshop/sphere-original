@@ -159,18 +159,16 @@ export class StatisticalEnvForge implements IEnvForge {
           }
           break;
         case "stagnant":
-          value = node.metrics.traversal ?? 0;
+          // Low heat = stagnant (unvisited)
+          value = node.metrics.h;
           if (value < bestValue) {
             bestValue = value;
             target = node;
           }
           break;
         case "avoided":
-          // 忌避 = traversal 高 + heat 低
-          // スコア = traversal / (heat + 0.01) → 高いほど避けられている
-          const traversal = node.metrics.traversal ?? 0;
-          const heat = node.metrics.h + 0.01; // ゼロ除算回避
-          value = traversal / heat;
+          // 忌避 = weight 低 + heat 低
+          value = 1 / (node.metrics.h + node.metrics.w + 0.01);
           if (value > bestValue) {
             bestValue = value;
             target = node;

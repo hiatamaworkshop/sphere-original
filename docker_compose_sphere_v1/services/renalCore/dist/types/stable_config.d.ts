@@ -17,52 +17,6 @@ export interface PhysicalConstants {
     vacuum_decay: number;
 }
 /**
- * 代謝設定: RenalCore の動作パラメータ
- */
-export interface MetabolismSettings {
-    default_ttl: number;
-    max_active_nodes: number;
-    fossilization_threshold: number;
-    plankton_conversion_rate: number;
-    cleaner_fish_aggressiveness: number;
-}
-/**
- * 結晶化ロジック: Amber化のパラメータ
- */
-export interface CrystallizationLogic {
-    amber_trigger_threshold: number;
-    is_amber_enabled: boolean;
-    linking_sensitivity: number;
-    constellation_limit: number;
-    amber_erosion_rate: number;
-    min_amber_heat: number;
-}
-/**
- * 言語膜: 外部エージェントとRenalCoreの境界
- */
-export interface LinguisticMembrane {
-    tag_encoding: "UTF-8" | "ASCII";
-    tag_limit_bytes: number;
-    prohibited_patterns: string[];
-    auto_translation_to_core: boolean;
-}
-/**
- * 没入型訓練: AIエージェントの学習設定
- */
-export interface ImmersiveTraining {
-    teacher_trace_retention: number;
-    student_learning_rate: number;
-    dojo_noise_level: number;
-}
-/**
- * インターフェースヒント: Periphery への推奨設定
- */
-export interface InterfaceHint {
-    rendering_mode: "volumetric" | "point_cloud" | "solid";
-    lod_distance: number;
-    showcase_refresh_rate: number;
-}
-/**
  * Active Bus: AI Native Language での限定的コミュニケーション
  */
 export interface ActiveBus {
@@ -122,11 +76,6 @@ export interface RenalCoreConfig {
         planktonConversionRate: number;
         fertilityDecayRate: number;
     };
-    hackDetection: {
-        traversalThreshold: number;
-        stayRatioThreshold: number;
-        minPayloadLength: number;
-    };
     pause: {
         idleThreshold: number;
         erosionBoost: number;
@@ -141,18 +90,16 @@ export interface RenalCoreConfig {
  * Periphery 設定（簡略版）
  */
 export interface PeripheryConfig {
-    membrane: LinguisticMembrane;
+    membrane: {
+        tag_encoding: string;
+        tag_limit_bytes: number;
+        prohibited_patterns: string[];
+    };
     parser: {
         batchSize: number;
         flushTimeoutMs: number;
         embeddingProvider: string;
         vectorDimension: number;
-    };
-    gatekeeper: {
-        maxNodesPerCapsule: number;
-        maxTopTierPerCapsule: number;
-        maxGhostRatio: number;
-        maxSummaryLength: number;
     };
     tagger: {
         topTierCount: number;
@@ -175,7 +122,6 @@ export interface PeripheryConfig {
             ghost: number;
         };
         initialMetrics: {
-            traversal: number;
             stayTime: number;
         };
     };
@@ -201,11 +147,6 @@ export interface StableConfig {
     physical_constants: PhysicalConstants;
     periphery: PeripheryConfig;
     renal_core: RenalCoreConfig;
-    metabolism_settings: MetabolismSettings;
-    crystallization_logic: CrystallizationLogic;
-    linguistic_membrane: LinguisticMembrane;
-    immersive_training: ImmersiveTraining;
-    interface_hint: InterfaceHint;
     activeBus: ActiveBus;
 }
 //# sourceMappingURL=stable_config.d.ts.map

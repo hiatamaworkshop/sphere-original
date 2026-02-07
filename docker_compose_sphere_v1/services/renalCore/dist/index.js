@@ -16,7 +16,7 @@ export { DEFAULT_AGENT_CONFIG } from "./types/index.js";
 // Agent Module
 export { AgentManager } from "./agent/agent-manager.js";
 export { createSphereContext, runAgentStep } from "./agent/sphere-context.js";
-export { createAgent, createPersonality, getEffectiveType, decideAction, updateAgentState, createGhostPulse, evaluateDestination, } from "./agent/agent.js";
+export { createAgent, createPersonality, getEffectiveType, decideAction, updateAgentState, createGhostPulse, } from "./agent/agent.js";
 export { addNoise, quantizeHeat, quantizeCongestion, wobbleDirection, randomUnitVector, aggregateEvaluations, decayEvaluation, 
 // Focus Buffer (gravity well)
 createFocusBuffer, computeSignalDegradation, tryJoinFocusBuffer, leaveFocusBuffer, processFocusBufferTimeouts, getDegradedFocusData, 

@@ -349,7 +349,6 @@ export class PeripheryServer {
         decay: node.metrics.d,
         ttl: node.metrics.ttl,
         flags: node.metrics.flg,
-        traversal: node.metrics.traversal ?? 0,
         stayTime: node.metrics.stayTime ?? 0,
         timestamp: node.timestamp,
         summary: node.payload?.summary?.substring(0, 100),
@@ -748,5 +747,10 @@ export class PeripheryServer {
    */
   public setOnAgentCountChange(callback: (count: number) => void): void {
     this.gatewayServer?.setOnAgentCountChange(callback);
+  }
+
+  /** Expel all connected agents (for Ephemeral reset) */
+  public expelAll(reason: string): void {
+    this.gatewayServer?.expelAll(reason);
   }
 }

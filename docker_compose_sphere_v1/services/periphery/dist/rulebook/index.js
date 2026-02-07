@@ -65,9 +65,10 @@ The world notices you. Act with intention.
 `.trim(),
         allocation: {
             sense: "Low cost. Use freely to orient yourself.",
-            randomWalk: "Low cost. Exploration without destination.",
+            move: "Low cost. Exploration with mode-based guidance.",
             warp: "Medium cost. Direct node access is a privilege, not a right.",
             focus: "Medium cost. Sustained attention affects the node.",
+            evaluate: "Low cost. Score a node's value.",
             emitBus: "High cost. Broadcasting to all agents consumes significant energy. Use sparingly.",
         },
         exhaustion: "When energy depletes, you are gently expelled. Plan your return before this happens.",
@@ -142,10 +143,10 @@ The magnetic field represents the sphere's "center of activity" - where most nod
 `.trim(),
             },
             { name: "warp", description: "Jump directly to a sensed node (rate limited, requires prior sense)" },
+            { name: "scanL1", description: "Light scan (L1 tags only). Broader detection than sense - includes Fossil and Relic nodes." },
             { name: "focus", description: "Examine a node in detail (rate limited, requires prior sense)" },
-            { name: "evaluate", description: "Score a node's value (affects its heat/weight/decay)" },
+            { name: "evaluate", description: "Evaluate a node's value with h (heat 0-10), w (weight 0-10), d (decay 0-10). Neutral=5. Max 10 evaluations per session." },
             { name: "return", description: "End session and return to entry point with capsule" },
-            { name: "getField", description: "Query the current magnetic field state (global intensity, volatility, dominant flags)" },
             {
                 name: "emitBus",
                 description: "Broadcast a message to all connected agents via ActiveBus",
@@ -258,7 +259,7 @@ Learn to interpret these signals. They guide your actions.
                 value: "0x0004",
                 name: "Catalyst",
                 scent: "Connection point, bridge between concepts",
-                effect: "Promotes Link formation. This node connects ideas.",
+                effect: "Increases co-occurrence weight. This node bridges ideas.",
                 triggers: ["bridge", "connection", "gateway", "hub"],
             },
             ephemeral: {
@@ -519,7 +520,9 @@ A discovery with 3 tags has low resolution. A discovery with 10 tags has high re
                 evaluations: [
                     {
                         nodeId: "f7a2b3c4e5d6a7b8", // 16-char hex ID
-                        score: 85, // High score = valuable node encountered
+                        h: 8, // Heat: 0-10, neutral=5. Higher = more visible
+                        w: 9, // Weight: 0-10, neutral=5. Higher = more important
+                        d: 3, // Decay: 0-10, neutral=5. Higher = faster decay
                         context: "This theorem was foundational to my discoveries",
                     },
                 ],
@@ -601,6 +604,7 @@ This is not instant. This is not guaranteed. Understand the process.
             warningThreshold: 10, // 10% で lowEnergy イベント発火
             costs: {
                 sense: 2,
+                scanL1: 2,
                 move: 5,
                 focus: 10,
                 warp: 15,

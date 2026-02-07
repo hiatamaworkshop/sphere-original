@@ -792,15 +792,12 @@ function renderFocusResult(msg) {
   if (!n) { el.innerHTML = '<div class="error">Focus failed</div>'; return; }
 
   el.innerHTML = `
-    <h5>Focus: ${escapeHtml(n.kind)}</h5>
     <div class="focus-detail">
       <div class="metric-row"><span>ID</span><span>${n.id}</span></div>
       <div class="metric-row"><span>Kind</span><span class="kind-badge kind-${n.kind}">${n.kind}</span></div>
-      <div class="metric-row"><span>Heat</span><span>${n.heat?.toFixed(1) ?? '?'}</span></div>
-      <div class="metric-row"><span>Weight</span><span>${n.weight?.toFixed(1) ?? '?'}</span></div>
-      <div class="metric-row"><span>Decay</span><span>${n.decay?.toFixed(1) ?? '?'}</span></div>
-      ${n.summary ? `<div class="focus-summary"><strong>Summary:</strong> ${escapeHtml(n.summary)}</div>` : ''}
+      <div class="metric-row"><span>Metrics</span><span>h=${n.heat?.toFixed(1) ?? '?'} w=${n.weight?.toFixed(1) ?? '?'} d=${n.decay?.toFixed(1) ?? '?'}</span></div>
       ${n.tags?.length ? `<div class="result-tags"><strong>Tags:</strong> ${n.tags.map(t => `<span class="tag">${escapeHtml(t)}</span>`).join('')}</div>` : ''}
+      ${n.summary ? `<div class="focus-summary"><strong>Summary:</strong> ${escapeHtml(n.summary)}</div>` : ''}
       ${n.content ? `<div class="focus-content"><span class="content-label">📄 Main Content:</span><br>${escapeHtml(n.content)}</div>` : ''}
       <div class="evaluate-controls">
         <label>Heat: <input type="range" id="evalHeat" min="0" max="10" value="5"></label>
@@ -1060,8 +1057,6 @@ const DOCS = [
   { file: 'architecture.md', title: 'Technical Architecture' },
   { file: 'agent-rulebook.md', title: 'Agent Rulebook' },
   { file: 'diving-experience.md', title: 'Diving Experience' },
-  { file: 'reference-db-guide.md', title: 'ReferenceDB Guide' },
-  { file: 'embedding-guide.md', title: 'Embedding & Scaling' },
 ];
 
 function loadDocsList() {

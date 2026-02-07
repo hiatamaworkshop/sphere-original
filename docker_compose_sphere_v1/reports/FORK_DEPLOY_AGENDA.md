@@ -328,7 +328,7 @@ Wizard CLI は未実装だが設計は堅い。フォーク時の最初の作業
 
 | 機能 | 完成度 | 重要度 | 概要 |
 |------|--------|--------|------|
-| **Focus Echo** | 90% (RenalCore のみ) | 中 | Periphery 統合・WS API 未実装。RenalCore に純粋関数あり |
+| **Focus Echo** | 90% (RenalCore のみ) | 低 (deprecated 寄り) | focus 時に近傍エージェントへ匿名波紋を送る。内容・観測者ID は伝わらない。Periphery 統合未着手。棚上げ |
 | **Capsule 差分評価** | 40% | 高 | Agent 信頼性システムの核。AutoCapsule vs ProposedCapsule の比較未実装 |
 | **Bundle 署名検証** | 50% | 中 | SHA256 ハッシュ計算済みだが比較ロジックなし |
 | **Cluster-based Forge** | 0% | 低 | statistical fallback で運用可能 |
@@ -341,7 +341,7 @@ Wizard CLI は未実装だが設計は堅い。フォーク時の最初の作業
 ### フォーク・デプロイ観点の最重要項目
 
 1. **Persistence** — データが揮発するのはデモでは許容できるが実運用では致命的
-2. **Wizard CLI** — フォーク者が最初にやる作業がデータ投入
+2. **Loader (Wizard CLI)** — DB 統合・再ベクトル化を担う外部サービス。別プロジェクト（ウィザード式ローカルアプリ）として開発
 
 ---
 
@@ -377,9 +377,9 @@ Fisher-Yates の Set 衝突回避方式は sampleSize が length に近い場合
 | **A (即)** | API リスト + 使い道ドキュメント | フォーク者が最初に見る | `docs/api-reference.md` 作成 |
 | **A (即)** | RefDB 差し替え手順 | フォーク者が最初にやる作業 | `docs/reference-db-replacement.md` 作成 |
 | **A (即)** | 減衰パラメータのモード表 | config-reference に追記で済む | config-reference.md 追記 |
-| **B (近)** | Loader 最小実装 | contribute API は既にある | バッチ投入スクリプト |
+| **B (近)** | Loader (別プロジェクト) | DB統合・再ベクトル化を担う外部サービス | ウィザード式ローカルアプリとして設計。Sphere 本体とは別リポジトリ |
 | **B (近)** | エンベディングモデル推奨表 | ドキュメントのみ | docs に追記 |
-| **C (中)** | Observatory 詳細ドキュメント | 実装済みだが説明不足 | docs 作成 |
+| **C (中)** | Observatory 詳細ドキュメント | 外部サービス。実装済みだが説明不足 | 別議論が必要 |
 | **C (中)** | 未実装箇所一覧の整理 | 開発ロードマップとして | このドキュメントで完了 |
 | **D (後)** | サンプリング手法ドキュメント | 内部実装の話、急がない | 必要時に参照 |
 

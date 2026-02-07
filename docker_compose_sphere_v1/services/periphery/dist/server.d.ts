@@ -40,5 +40,7 @@ export declare class PeripheryServer {
      * [Design] Pass-through to GatewayServer
      */
     setOnAgentCountChange(callback: (count: number) => void): void;
+    /** Expel all connected agents (for Ephemeral reset) */
+    expelAll(reason: string): void;
 }
 //# sourceMappingURL=server.d.ts.map

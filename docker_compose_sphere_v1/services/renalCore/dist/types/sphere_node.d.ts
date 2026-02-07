@@ -39,7 +39,6 @@ export interface SphereNode {
         h: number;
         ttl: number;
         flg: number;
-        traversal?: number;
         stayTime?: number;
     };
     timestamp: number;

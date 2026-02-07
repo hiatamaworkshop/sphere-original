@@ -26,7 +26,7 @@ import { DEFAULT_PERIPHERY_CONFIG } from "./types/config.js";
 import { readFileSync, existsSync } from "fs";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
-import { DEV_CONFIG, isDevelopment } from "./config/env.js";
+import { resolveDecayPreset } from "./config/decay-presets.js";
 import { loadSchemas } from "./schema/index.js";
 import { CAPSULE_SCHEMA_VERSION } from "./types/capsule.js";
 // Repository Pattern - DB abstraction layer
@@ -47,11 +47,22 @@ if (process.env.PORT) {
 if (process.env.WS_PORT) {
     sphereConfig.periphery.server.wsPort = parseInt(process.env.WS_PORT, 10);
 }
-// RenalCore configuration (from sphere.config.json with dev/prod adjustments)
+if (process.env.EPHEMERAL === "true") {
+    sphereConfig.ephemeral = {
+        ...sphereConfig.ephemeral,
+        enabled: true,
+    };
+}
+// Resolve decay preset (archive | balanced | flow | dev | custom)
+const { resolved: decayValues, presetName } = resolveDecayPreset({
+    ...sphereConfig.renal_core.decay,
+    fertilityDecayRate: sphereConfig.renal_core.spatial.fertilityDecayRate,
+});
+// RenalCore configuration (decay values from preset, rest from sphere.config.json)
 const renalConfig = {
-    alpha: sphereConfig.renal_core.decay.alpha * DEV_CONFIG.timeAcceleration,
-    heatDecayFactor: sphereConfig.renal_core.decay.heatDecayFactor * DEV_CONFIG.timeAcceleration,
-    weightDecayFactor: sphereConfig.renal_core.decay.weightDecayFactor * DEV_CONFIG.timeAcceleration,
+    alpha: decayValues.alpha,
+    heatDecayFactor: decayValues.heatDecayFactor,
+    weightDecayFactor: decayValues.weightDecayFactor,
     amberHeatThreshold: sphereConfig.renal_core.thresholds.amberHeat,
     amberWeightThreshold: sphereConfig.renal_core.thresholds.amberWeight,
     fossilHeatThreshold: sphereConfig.renal_core.thresholds.fossilHeat,
@@ -59,10 +70,7 @@ const renalConfig = {
     ghostHeatThreshold: sphereConfig.renal_core.thresholds.ghostHeat,
     ghostTTLMultiplier: sphereConfig.renal_core.ghost.ttlMultiplier,
     planktonConversionRate: sphereConfig.renal_core.spatial.planktonConversionRate,
-    fertilityDecayRate: sphereConfig.renal_core.spatial.fertilityDecayRate,
-    hackTraversalThreshold: sphereConfig.renal_core.hackDetection.traversalThreshold,
-    hackStayRatioThreshold: sphereConfig.renal_core.hackDetection.stayRatioThreshold,
-    minPayloadLength: sphereConfig.renal_core.hackDetection.minPayloadLength,
+    fertilityDecayRate: decayValues.fertilityDecayRate,
     pauseIdleThreshold: sphereConfig.renal_core.pause.idleThreshold,
     pauseErosionBoost: sphereConfig.renal_core.pause.erosionBoost,
     // Dormancy settings (metabolism hibernation when no agents)
@@ -71,9 +79,8 @@ const renalConfig = {
 // Pulse configuration (now handled by PulseBroadcaster in Periphery)
 const pulseConfig = sphereConfig.renal_core.pulse;
 console.log(`[Config] Loaded: ${sphereConfigPath}`);
-console.log(`[Config] Mode: ${isDevelopment ? "DEVELOPMENT" : "PRODUCTION"} ` +
-    `(timeAcceleration=${DEV_CONFIG.timeAcceleration}x, minLoadFactor=${DEV_CONFIG.minLoadFactor})`);
-console.log(`[Config] alpha=${renalConfig.alpha} heatDecay=${renalConfig.heatDecayFactor} weightDecay=${renalConfig.weightDecayFactor}`);
+console.log(`[Config] Decay preset: "${presetName}" ` +
+    `(alpha=${renalConfig.alpha} heatDecay=${renalConfig.heatDecayFactor} weightDecay=${renalConfig.weightDecayFactor} minLoadFactor=${decayValues.minLoadFactor})`);
 console.log("=".repeat(60));
 console.log("🌐 Sphere Project - Phase 3: Periphery");
 console.log("=".repeat(60));
@@ -102,12 +109,7 @@ const arbiterSettings = sphereConfig.periphery?.arbiter ?? {};
 // [Config Priority] nodeFlags.dynamicThresholds > arbiter.dynamicFlags
 const dynamicThresholds = config.nodeFlags?.dynamicThresholds;
 const arbiterConfig = {
-    amberHeatThreshold: renalConfig.amberHeatThreshold,
-    amberWeightThreshold: renalConfig.amberWeightThreshold,
     erosionHeatThreshold: renalConfig.erosionHeatThreshold,
-    hackTraversalThreshold: renalConfig.hackTraversalThreshold,
-    hackStayRatioThreshold: renalConfig.hackStayRatioThreshold,
-    minPayloadLength: renalConfig.minPayloadLength,
     pauseErosionBoost: renalConfig.pauseErosionBoost,
     // Dynamic Flags thresholds (from unified nodeFlags config)
     hotHeatThreshold: dynamicThresholds?.hotHeatThreshold
@@ -116,9 +118,6 @@ const arbiterConfig = {
         ?? arbiterSettings.dynamicFlags?.hubLinkThreshold ?? 5,
     isolatedLinkThreshold: dynamicThresholds?.isolatedLinkThreshold
         ?? arbiterSettings.dynamicFlags?.isolatedLinkThreshold ?? 0,
-    // Deferred observation settings
-    observeThrottleMs: arbiterSettings.deferredObserve?.throttleMs ?? 1000,
-    observeIdleTimeoutMs: arbiterSettings.deferredObserve?.idleTimeoutMs ?? 500,
     // Ascension cooldown settings (evaluation freeze + composite score)
     ascensionCooldownMs: arbiterSettings.ascension?.cooldownMs ?? 600000,
     ascensionScoreThreshold: arbiterSettings.ascension?.scoreThreshold ?? 500,
@@ -143,6 +142,7 @@ const cleanerFishConfig = {
     ...DEFAULT_CLEANER_FISH_CONFIG,
     count: sphereConfig.cleanerFish?.count ?? 10,
     baseFossilTTL: sphereConfig.cleanerFish?.baseFossilTTL ?? 500,
+    hungerCapacityMultiplier: sphereConfig.cleanerFish?.hungerCapacityMultiplier ?? 4,
 };
 const cleanerFishPool = new CleanerFishPool(cleanerFishConfig);
 // Transition thresholds for CleanerFish (TTL-based state transitions)
@@ -195,9 +195,9 @@ setInterval(async () => {
     }
     if (isDormant)
         return;
-    // loadFactor: 負荷係数（dev/prod で下限を調整）
+    // loadFactor: 負荷係数（preset の minLoadFactor で下限を調整）
     const rawLoadFactor = projectionDB.size / 50000;
-    const loadFactor = Math.max(DEV_CONFIG.minLoadFactor, Math.min(2.0, rawLoadFactor * 100));
+    const loadFactor = Math.max(decayValues.minLoadFactor, Math.min(2.0, rawLoadFactor * 100));
     // Take snapshot before tick (at observation interval)
     const shouldObserve = tickCounter % observationInterval === 0;
     const snapshot = shouldObserve ? arbiter.snapshot(projectionDB) : null;
@@ -224,11 +224,11 @@ setInterval(async () => {
         //   2. Patrol (30 observations ごと): バックアップ、全スイープ
         // Helper to get cellId from nodeId (for fertility distribution)
         const getCellId = (nodeId) => {
-            const hash = nodeId.split("").reduce((a, c) => a + c.charCodeAt(0), 0);
-            const x = hash % 10;
-            const y = Math.floor(hash / 10) % 10;
-            const z = Math.floor(hash / 100) % 10;
-            return `${x}:${y}:${z}`;
+            let hash = 0;
+            for (let i = 0; i < nodeId.length; i++) {
+                hash += nodeId.charCodeAt(i);
+            }
+            return `${hash % 10}:${Math.floor(hash / 10) % 10}:${Math.floor(hash / 100) % 10}`;
         };
         // === Environment State for CleanerFish ===
         // [Design] DB容量と磁場 intensity から環境状態を算出
@@ -414,12 +414,14 @@ async function seedSphere() {
 seedSphere().catch((err) => {
     console.error("[Seed] Failed:", err);
 });
-// ===== Ephemeral Mode (periodic reset) =====
+// ===== Ephemeral Mode (periodic reset for public demo) =====
 const ephemeralConfig = sphereConfig.ephemeral;
 if (ephemeralConfig?.enabled && ephemeralConfig.resetIntervalMs > 0) {
-    console.log(`[Ephemeral] Reset every ${ephemeralConfig.resetIntervalMs / 1000}s`);
+    const intervalSec = ephemeralConfig.resetIntervalMs / 1000;
+    console.log(`[Ephemeral] Enabled — reset every ${intervalSec}s`);
     setInterval(async () => {
         console.log("[Ephemeral] Resetting sphere state...");
+        server.expelAll("Ephemeral reset: sphere is restarting");
         projectionDB.clear();
         referenceDB.clear();
         spatialFields.clear();

@@ -62,8 +62,10 @@ export class RenalCore {
         // console.log(`[RenalCore] tick=${this.tickCount} loadFactor=${loadFactor.toFixed(3)} idle=${this.idleTickCount}`);
         // Decay: 全ノードの Heat/TTL + Fertility を減衰させる
         this.processDecay(loadFactor);
-        // [Telemetry] Tick終了
-        this.logTelemetry();
+        // [Telemetry] observation interval と同期 (10 ticks)
+        if (this.tickCount % 10 === 0) {
+            this.logTelemetry();
+        }
     }
     /**
      * Decay: 全ノードの Heat/TTL と Fertility を減衰させる
@@ -110,29 +112,21 @@ export class RenalCore {
     // 詳細: reports/RENALCORE_REFACTOR_MEMO.md
     // =========================================================================
     /**
-     * Telemetry: Tick終了時の統計ログ
+     * Telemetry: 統計ログ (observation interval と同期して呼ばれる)
      */
     logTelemetry() {
-        const stats = {
-            relic: 0,
-            amber: 0,
-            active: 0,
-            fossil: 0,
-            ghost: 0,
-            link: 0,
-            environment: 0,
-        };
+        const stats = {};
         for (const node of this.projectionDB.values()) {
-            stats[node.kind]++;
+            stats[node.kind] = (stats[node.kind] ?? 0) + 1;
         }
-        const totalFertility = [...this.spatialFields.values()].reduce((sum, f) => sum + f.fertility, 0);
-        // [Telemetry] Tick統計ログ - kind別ノード数、総肥沃度
-        // console.log(
-        //   `[RenalCore] stats tick=${this.tickCount} ` +
-        //   `relic=${stats.relic} amber=${stats.amber} active=${stats.active} ` +
-        //   `fossil=${stats.fossil} ghost=${stats.ghost} link=${stats.link} ` +
-        //   `environment=${stats.environment} fertility=${totalFertility.toFixed(3)}`
-        // );
+        let totalFertility = 0;
+        for (const f of this.spatialFields.values()) {
+            totalFertility += f.fertility;
+        }
+        console.log(`[RenalCore] tick=${this.tickCount} nodes=${this.projectionDB.size} ` +
+            `active=${stats["active"] ?? 0} amber=${stats["amber"] ?? 0} ` +
+            `fossil=${stats["fossil"] ?? 0} ghost=${stats["ghost"] ?? 0} ` +
+            `relic=${stats["relic"] ?? 0} fertility=${totalFertility.toFixed(1)}`);
     }
     /**
      * Update agent count for Dormancy feature

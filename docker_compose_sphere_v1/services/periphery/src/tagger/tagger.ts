@@ -37,7 +37,7 @@ import { NodeFlag } from "@sphere/renal-core";
  *
  * [Design] Map tag keywords to NodeFlag combinations
  * [Coverage] Authority, Freshness, Catalyst, Ephemeral, Sticky, Volatile,
- *            Hot, Hub, Spectral, Constellation, UserMarked, SystemCore
+ *            Hot, Hub, UserMarked, SystemCore
  *
  * [Note] Dynamic flags (Frozen, Isolated, Candidate, Compressed) are set by Arbiter
  */
@@ -88,18 +88,6 @@ const TAG_FLAG_PATTERNS: { pattern: RegExp; flags: number }[] = [
   {
     pattern: /\b(overview|summary|index|catalog|collection|guide|tutorial|introduction|101|map|portal|archive|list|directory|atlas|handbook)\b/i,
     flags: NodeFlag.Hub,
-  },
-
-  // Spectral (0x0400): Refined, curated, or high-tier qualitative content
-  {
-    pattern: /\b(curated|selected|best|top|recommended|master|elite|prime|pure|refined|gold|pearl|special|exclusive|ultimate|premium|insight|analysis|deep-dive)\b/i,
-    flags: NodeFlag.Spectral,
-  },
-
-  // Constellation (0x0800): Grouped, clustered, or bundled content
-  {
-    pattern: /\b(cluster|group|bundle|package|suite|family|series|set|batch|ensemble|constellation|network|web|mesh|graph)\b/i,
-    flags: NodeFlag.Constellation,
   },
 
   // UserMarked (0x1000): User-indicated importance or bookmarks

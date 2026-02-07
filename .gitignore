@@ -20,4 +20,4 @@ Thumbs.db
 *.sqlite
 
 # Development MEMOS
-docs/
+/docs/

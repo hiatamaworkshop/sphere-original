@@ -24,8 +24,6 @@ export enum NodeFlag {
   Frozen        = 0x0080,  // 凍結: 代謝を一時停止（Relic用）
   Hub           = 0x0100,  // ハブ性: 多数のリンクを持つ（weight × 1.1）
   Isolated      = 0x0200,  // 孤立: 他ノードとの接続が弱い（fossilization促進）
-  Spectral      = 0x0400,  // スペクトル: 洗練された経路の一部
-  Constellation = 0x0800,  // 星座: Amber間の強固なリンク
   UserMarked    = 0x1000,  // ユーザーマーク: 手動で重要指定
   SystemCore    = 0x2000,  // システムコア: Relic/不変
   Compressed    = 0x4000,  // 圧縮済み: Fossil化された
