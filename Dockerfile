@@ -5,7 +5,7 @@
 #   docker build -f Dockerfile.standalone -t sphere-standalone .
 
 # === Stage 1: Build ===
-FROM node:20-alpine AS build
+FROM node:20-slim AS build
 WORKDIR /build
 
 # Build renalCore first (periphery depends on it via file: reference)
@@ -21,7 +21,7 @@ COPY docker_compose_sphere_v1/services/periphery/ ./
 RUN npm run build
 
 # === Stage 2: Production ===
-FROM node:20-alpine
+FROM node:20-slim
 WORKDIR /app
 
 # Copy built artifacts
