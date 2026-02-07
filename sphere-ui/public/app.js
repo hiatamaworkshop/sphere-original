@@ -1060,6 +1060,8 @@ const DOCS = [
   { file: 'architecture.md', title: 'Technical Architecture' },
   { file: 'agent-rulebook.md', title: 'Agent Rulebook' },
   { file: 'diving-experience.md', title: 'Diving Experience' },
+  { file: 'reference-db-guide.md', title: 'ReferenceDB Guide' },
+  { file: 'embedding-guide.md', title: 'Embedding & Scaling' },
 ];
 
 function loadDocsList() {

@@ -1,93 +1,258 @@
-# Sphere Periphery - Developer Guide
+# API Reference
 
-API Reference & Testing Scripts for Developers
+Complete API reference for Sphere Periphery. All endpoints, parameters, response formats, and intended use cases.
 
 ---
 
-## 1. Server Startup
+## Quick Start
 
 ```bash
+# Start server
 cd services/periphery
-npm run dev      # Development mode (hot reload)
-npm run build    # Build
-npm run start    # Production startup
-```
+npm run dev          # Development (hot reload)
+npm run start        # Production
 
-Server starts on two ports:
-- **HTTP REST API**: `http://localhost:3001`
-- **WebSocket Gateway**: `ws://localhost:8081`
+# Ports
+# HTTP REST API:     http://localhost:3001
+# WebSocket Gateway: ws://localhost:8081
+```
 
 ---
 
-## 2. HTTP REST API
+## HTTP REST API
 
-### 2.1 Information Endpoints
+### Information & Health
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/` | Sphere info (version, endpoints, metrics) |
-| GET | `/health` | Health check |
-| GET | `/metrics` | System metrics (nodeCount, agents, field, memory) |
-| GET | `/stats` | System stats (legacy) |
-| GET | `/rulebook` | Agent rulebook |
-| GET | `/schema` | Data format specification |
+| Method | Endpoint | Rate Limit | Description |
+|--------|----------|-----------|-------------|
+| GET | `/` | None | Sphere info, available endpoints, live metrics |
+| GET | `/health` | None | Health check (`{ status: "ok" }`) |
+| GET | `/metrics` | None | System metrics (uptime, nodeCount, agents, field, memory) |
+| GET | `/stats` | None | Legacy statistics |
 
-### 2.2 Node Observation
+**Use cases**:
+- Load balancer health probe → `/health`
+- Monitoring dashboard → `/metrics`
+- Service discovery → `/` (lists all endpoints)
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/nodes/metrics` | All node metrics (sorted by heat) |
-| GET | `/nodes/stats` | Node statistics (count by kind) |
-| GET | `/nodes/:id` | Specific node details |
+**GET `/metrics` response**:
+```json
+{
+  "uptime": 3600,
+  "nodeCount": 150,
+  "agents": 3,
+  "field": { "intensity": 0.45, "dominantFlags": 6 },
+  "memory": { "heapUsed": 52428800, "heapTotal": 104857600 }
+}
+```
 
-### 2.3 Exploration & Contribution
+---
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/sphere/explore?q=<query>` | Explore by query (limit, radius options) |
-| POST | `/sphere/contribute` | External data injection (single/batch) |
+### Node Observation
 
-**contribute request example**:
+| Method | Endpoint | Rate Limit | Description |
+|--------|----------|-----------|-------------|
+| GET | `/nodes/metrics` | 120/min | All nodes sorted by heat (full metrics) |
+| GET | `/nodes/stats` | 120/min | Aggregate statistics by kind |
+| GET | `/nodes/:id` | 120/min | Single node detail |
+
+**Use cases**:
+- Dashboard / UI node list → `/nodes/metrics`
+- Kind distribution chart → `/nodes/stats`
+- Debug specific node → `/nodes/:id`
+
+**GET `/nodes/metrics` response**:
+```json
+{
+  "total": 150,
+  "nodes": [
+    {
+      "id": "abc123",
+      "kind": "active",
+      "heat": 500.0,
+      "weight": 200.0,
+      "decay": 1000,
+      "ttl": 43200,
+      "flags": 2,
+      "traversal": 5,
+      "stayTime": 120,
+      "timestamp": 1707300000,
+      "summary": "Introduction to quantum computing..."
+    }
+  ]
+}
+```
+
+**GET `/nodes/stats` response**:
+```json
+{
+  "counts": {
+    "active": 80, "amber": 5, "ghost": 30,
+    "fossil": 20, "relic": 3, "environment": 10, "plankton": 2,
+    "total": 150
+  },
+  "averages": { "heat": 125.5, "weight": 95.3, "ttl": 25000 }
+}
+```
+
+---
+
+### Vector Search (Explore)
+
+| Method | Endpoint | Rate Limit | Description |
+|--------|----------|-----------|-------------|
+| GET | `/sphere/explore` | 30/min | Semantic similarity search |
+
+**Parameters**:
+| Param | Type | Default | Description |
+|-------|------|---------|-------------|
+| `q` | string | required | Search query (vectorized in real-time) |
+| `limit` | number | 10 | Max results (max 50) |
+| `radius` | number | 0.5 | Cosine distance threshold (0.0=exact, 1.0=broad) |
+
+**Use cases**:
+- External search interface → primary entry point for non-agent consumers
+- Knowledge retrieval API → feed results to external LLMs
+- Content discovery → find related nodes by topic
+
+**Example**:
+```
+GET /sphere/explore?q=quantum+computing&limit=5&radius=0.6
+```
+
+**Response**:
+```json
+{
+  "query": "quantum computing",
+  "radius": 0.6,
+  "results": [
+    {
+      "id": "abc123",
+      "distance": 0.23,
+      "summary": "Quantum entanglement and its applications...",
+      "kind": "active",
+      "tags": ["quantum", "physics", "computing"],
+      "heat": 300.0,
+      "flags": 2,
+      "ref_url": null
+    }
+  ],
+  "meta": { "total": 150, "matched": 12, "returned": 5 }
+}
+```
+
+---
+
+### Data Contribution
+
+| Method | Endpoint | Rate Limit | Description |
+|--------|----------|-----------|-------------|
+| POST | `/sphere/contribute` | 10/min | Inject data (single or batch) |
+
+**Use cases**:
+- The Loader (batch data import) → batch mode
+- External systems pushing knowledge → single mode
+- Initial Sphere population → batch mode with large datasets
+
+**Single contribution**:
 ```json
 {
   "source": "external-system",
   "capsule": {
-    "topTier": [{ "tags": ["knowledge"], "summary": "...", "initialHeat": 80 }],
-    "normalNodes": [],
+    "topTier": [
+      {
+        "tags": ["AI", "machine-learning"],
+        "summary": "Deep learning fundamentals and architectures",
+        "content": "Full article content here...",
+        "initialHeat": 80
+      }
+    ],
+    "normalNodes": [
+      {
+        "tags": ["neural-networks"],
+        "summary": "Backpropagation algorithm overview"
+      }
+    ],
     "ghostNodes": [],
-    "timestamp": 1234567890
+    "timestamp": 1707300000
   }
 }
 ```
 
-### 2.4 Dive (Agent Entry)
+**Batch contribution**:
+```json
+{
+  "source": "batch-loader",
+  "batch": true,
+  "capsules": [
+    { "topTier": [...], "normalNodes": [...], "ghostNodes": [], "timestamp": 0 },
+    { "topTier": [...], "normalNodes": [...], "ghostNodes": [], "timestamp": 0 }
+  ]
+}
+```
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| POST | `/dive/request` | Issue Dive ticket |
-| GET | `/dive/validate/:token` | Validate ticket (debug) |
-| GET | `/dive/stats` | Ticket statistics |
+**Response**:
+```json
+{
+  "success": true,
+  "nodeCount": 15,
+  "processed": 3,
+  "warnings": []
+}
+```
 
-**Ticket issuance response**:
+**Tier differences**:
+| Tier | Vectorized | Initial Weight | Initial TTL | Notes |
+|------|-----------|----------------|-------------|-------|
+| topTier | Yes (384-dim) | 300 | 2 days | Full semantic positioning |
+| normalNodes | No | 100 | 1 day | Lightweight |
+| ghostNodes | No | 50 | 5 min | Volatile |
+
+---
+
+### Dive (Agent Entry)
+
+| Method | Endpoint | Rate Limit | Description |
+|--------|----------|-----------|-------------|
+| POST | `/dive/request` | None | Issue Dive ticket (IP-based internal throttle) |
+| GET | `/dive/validate/:token` | None | Validate ticket (debug) |
+| GET | `/dive/stats` | None | Ticket statistics |
+
+**Use cases**:
+- AI agent connecting to Sphere → first step before WebSocket
+- Token validation debugging → `/dive/validate/:token`
+
+**POST `/dive/request` response**:
 ```json
 {
   "success": true,
   "ticket": {
     "token": "abc123...",
     "expiresIn": 120,
-    "capabilities": ["sense", "move", "focus", "emit", "return"]
+    "capabilities": ["sense", "scan", "move", "focus", "evaluate", "warp", "emit", "return"]
+  },
+  "instructions": {
+    "wsUrl": "ws://localhost:8081",
+    "rulebookUrl": "/rulebook",
+    "schemaUrl": "/schema"
   }
 }
 ```
 
-### 2.5 Quest (External Validation Requests)
+---
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| POST | `/quest` | Submit quest |
-| GET | `/quest/stats` | Quest store statistics |
+### Quest (External Validation Requests)
 
-**quest request example**:
+| Method | Endpoint | Rate Limit | Description |
+|--------|----------|-----------|-------------|
+| POST | `/quest` | 30/min | Submit quest |
+| GET | `/quest/stats` | None | Quest statistics |
+
+**Use cases**:
+- External systems request Sphere community validation
+- Agents receive quests at `welcome` and can choose one as exploration compass
+
+**POST `/quest` request**:
 ```json
 {
   "query": "Is quantum computing viable for cryptography?",
@@ -96,328 +261,188 @@ Server starts on two ports:
 }
 ```
 
-**Design philosophy**: Quests are managed in FIFO. No TTL, no intentional deletion. Many agents receive the same quest and leave evaluations.
+**Design**: Quests are FIFO. No TTL, no deletion. Many agents receive the same quest and leave independent evaluations.
 
-### 2.6 Forge (Internal Node Generation) - Auth Required
+---
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| POST | `/sphere/forge/environmental` | Generate Environmental nodes (for Observatory) |
+### Forge (Environmental Node Generation)
 
-**Auth headers**:
+| Method | Endpoint | Rate Limit | Description |
+|--------|----------|-----------|-------------|
+| POST | `/sphere/forge/environmental` | 10/min | Generate environmental node |
+
+**Auth required** (headers):
 ```
 X-Service-Id: observatory
 X-Service-Secret: <secret>
 ```
 
+**Use cases**:
+- Observatory detects anomaly → injects environmental response node
+- External monitoring systems → automated Sphere adjustment
+
 ---
 
-## 3. WebSocket Gateway API
+### Reference & Schema
+
+| Method | Endpoint | Rate Limit | Description |
+|--------|----------|-----------|-------------|
+| GET | `/rulebook` | None | Agent rules and constraints |
+| GET | `/schema` | None | Data format specification (JSON Schema) |
+
+### Planned Endpoints (Not Yet Implemented)
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/sphere/upstream` | Bulk import from cloud storage |
+| GET | `/sphere/downstream` | Export SanctuaryBundle to cloud storage |
+
+**Use cases**:
+- Agent reads rules before diving → `/rulebook`
+- External tools validate capsule format → `/schema`
+
+---
+
+## WebSocket Gateway API
 
 Connection: `ws://localhost:8081?token=<dive-ticket>`
 
-### 3.1 Connection Flow
+### 3-Phase Connection Flow
 
 ```
-Agent                          Gateway
-  │                               │
-  ├─ connect with token ─────────→│ → welcome
-  │                               │
-  ├─ entry { request } ──────────→│ → processing
-  │                               │   → amber_showcase (optional)
-  │                               │   → positioned (initial position)
-  │                               │
-  ├─ sense/focus/move/... ───────→│ → result messages
-  │                               │
-  ├─ return { capsule? } ────────→│ → returnAck (disconnect)
+Phase 1: Pending      Agent connects → welcome message
+Phase 2: Processing   Agent sends entry → parser vectorizes
+Phase 3: Active       All operations available
 ```
 
-### 3.2 Message Types
+```
+Agent                              Gateway
+  |                                   |
+  |-- connect ?token=xxx ------------>| → welcome { sessionId, quests[] }
+  |                                   |
+  |-- entry { request } ------------>| → processing { sessionId }
+  |                                   |   → amber_showcase { amber[] }
+  |                                   |   → positioned { position[], ... }
+  |                                   |
+  |-- sense/scan/focus/move... ----->| → result messages
+  |                                   |
+  |-- emit { payload } ------------->| → emitResult
+  |                              ...  | → bus_message (from other agents)
+  |                                   |
+  |-- return { capsule? } ---------->| → returnAck → disconnect
+```
 
-#### Agent → Gateway
+### Agent → Gateway Messages
 
-| Type | Payload | Description |
-|------|---------|-------------|
-| `entry` | `{ requestId, request: EntryRequest }` | Entry request |
-| `sense` | `{ requestId, radius? }` | Sense nearby nodes |
-| `focus` | `{ requestId, nodeId }` | Get node details |
-| `evaluate` | `{ requestId, nodeId, score }` | Evaluate node |
-| `move` | `{ step, mode: MoveIntent }` | Move |
-| `warp` | `{ requestId, nodeId }` | Warp |
-| `return` | `{ requestId, capsule? }` | Return |
-| `enterSanctuary` | `{ requestId }` | Enter Sanctuary layer |
-| `enterCore` | `{ requestId }` | Enter Core layer |
+| Type | Phase | Rate | Payload | Description |
+|------|-------|------|---------|-------------|
+| `entry` | Pending | — | `{ requestId, request: EntryRequest }` | Submit exploration request |
+| `sense` | Active | 3/sec | `{ requestId, radius? }` | Perceive nearby nodes (L1+L2) |
+| `scan` | Active | 3/sec | `{ requestId, radius? }` | Light scan (L1 only: tags) |
+| `focus` | Active | 30/min | `{ requestId, nodeId }` | Read full node data (L1-L4) |
+| `evaluate` | Active | 3/sec | `{ requestId, nodeId, h, w, d }` | Submit evaluation |
+| `move` | Active | 3/sec | `{ requestId, step?, mode? }` | Move in 384D space |
+| `warp` | Active | 3/sec | `{ requestId, nodeId }` | Teleport to known node |
+| `emit` | Active | 3/sec | `{ requestId, payload }` | Broadcast via ActiveBus (64B max, base64) |
+| `enterSanctuary` | Active | 3/sec | `{ requestId }` | Enter read-only Sanctuary layer |
+| `enterCore` | Active | 3/sec | `{ requestId }` | Enter Core layer |
+| `return` | Any | — | `{ requestId, capsule? }` | End session (always allowed) |
 
 **EntryRequest**:
-```typescript
+```json
 {
-  query: string;      // Exploration query
-  tags: string[];     // Direction tags
-  quest?: string;     // Selected Quest text (optional)
+  "query": "Explore quantum computing applications",
+  "tags": ["quantum", "computing", "applications"],
+  "quest": "Is quantum computing viable for cryptography?"
 }
 ```
 
-#### Gateway → Agent
+### Gateway → Agent Messages
 
-| Type | Payload | Description |
-|------|---------|-------------|
-| `welcome` | `{ sessionId, rulebookUrl, quests, message }` | Connection success |
-| `processing` | `{ sessionId, message }` | Parser processing |
-| `amber_showcase` | `{ sessionId, amber: AmberShowcaseEntry[] }` | Amber node list |
-| `positioned` | `{ sessionId, position, questVector?, remainingTime, query, tags, quest? }` | Initial position |
-| `senseResult` | `{ requestId, nodes: NearbyNode[] }` | Sense result |
-| `focusResult` | `{ requestId, node: NodeDetail }` | Focus result |
-| `moveResult` | `{ requestId, result: MoveResult }` | Move result |
-| `warpResult` | `{ requestId, result: WarpResult }` | Warp result |
-| `error` | `{ requestId?, error }` | Error |
-| `expelled` | `{ reason }` | Forced expulsion |
-
-### 3.3 positioned Message
-
-```typescript
-{
-  type: "positioned",
-  sessionId: string,
-  position: number[],      // 384-dim vector (initial position)
-  questVector?: number[],  // Quest vector (compass) - optional
-  remainingTime: number,   // Remaining session time
-  query: string,           // Original query
-  tags: string[],          // Original tags
-  quest?: string           // Selected Quest text
-}
-```
+| Type | Phase | Payload | Description |
+|------|-------|---------|-------------|
+| `welcome` | 1 | `{ sessionId, rulebookUrl, quests[], message }` | Session start + quest showcase |
+| `processing` | 1→2 | `{ sessionId, message }` | Parser working |
+| `amber_showcase` | 2 | `{ sessionId, amber[] }` | Representative Amber nodes (L1+L2) |
+| `positioned` | 2→3 | `{ sessionId, position[], questVector?[], remainingTime, query, tags }` | Dive ready |
+| `senseResult` | 3 | `{ requestId, nodes[] }` | Nearby nodes (L1+L2, filtered) |
+| `scanResult` | 3 | `{ requestId, nodes[] }` | Tag-only results (L1) |
+| `focusResult` | 3 | `{ requestId, node, nearbyGhosts?[] }` | Full node + nearby ghost hints |
+| `evaluateResult` | 3 | `{ requestId, success, reason? }` | Evaluation result (max 10/session) |
+| `moveResult` | 3 | `{ requestId, result }` | New position + nearby info |
+| `warpResult` | 3 | `{ requestId, result }` | Teleport confirmation |
+| `emitResult` | 3 | `{ requestId, success }` | Broadcast confirmation |
+| `bus_message` | 3 | `{ data: { id, timestamp, senderId, payload } }` | Push: broadcast from other agents |
+| `layerChanged` | 3 | `{ requestId, layer, message }` | Sanctuary/Core transition |
+| `returnAck` | — | `{ requestId }` | Session end confirmation |
+| `error` | Any | `{ requestId?, error }` | Error |
+| `warning` | Any | `{ message }` | Non-fatal warning |
+| `expelled` | Any | `{ reason }` | Forced disconnection |
 
 ---
 
-## 4. Sphere CLI (sphere.bat)
+## Rate Limits Summary
 
-Unified operations via `sphere.bat` in project root.
+### HTTP Rate Limits
 
-### 4.1 Basic Commands
+| Category | Limit | Endpoints |
+|----------|-------|-----------|
+| Heavy write | 10/min | `/sphere/contribute`, `/sphere/forge/environmental` |
+| Medium | 30/min | `/sphere/explore`, `POST /quest` |
+| Read-only | 120/min | `/nodes/metrics`, `/nodes/stats`, `/nodes/:id` |
+| **No limit** | — | `/`, `/health`, `/metrics`, `/stats`, `/rulebook`, `/schema`, `/dive/*`, `GET /quest/stats` |
 
-```bash
-# Help
-sphere help
+### WebSocket Rate Limits (per connection)
 
-# Start server
-sphere start
+| Category | Limit | Messages |
+|----------|-------|----------|
+| General | 3/sec | sense, scan, move, warp, evaluate, emit, enterSanctuary, enterCore |
+| Focus | 30/min | focus |
+| Return | No limit | return (graceful exit always allowed) |
 
-# Stop server
-sphere stop
+---
 
-# Check status
-sphere status
-```
-
-### 4.2 Test Commands
-
-| Command | Description |
-|---------|-------------|
-| `sphere batch` | Inject test data (60 items) |
-| `sphere contribute 1` | Inject 1 item |
-| `sphere contribute 10` | Inject 10 items |
-| `sphere contribute 50` | Inject 50 items |
-| `sphere wave` | Wave inject (50 items, 3s delay) |
-| `sphere wave 100 2000` | Wave inject 100 items, 2s delay |
-| `sphere swarm` | Swarm agents (default 3) |
-| `sphere swarm 10` | Swarm agents 10 |
-| `sphere explore` | 3-layer exploration test |
-| `sphere full` | batch + explore (full test) |
-
-### 4.3 Interactive Mode
-
-Run without arguments for interactive menu:
+## Sphere CLI (sphere.bat)
 
 ```bash
-sphere
-
-========================================
-  Sphere CLI - Interactive Mode
-========================================
-
-  [1] start       - Start Periphery server
-  [2] stop        - Stop all services
-  [3] batch       - Inject test data (60 items)
-  [4] contribute  - Inject test data (1/10/50/custom)
-  [5] wave        - Wave inject (staggered)
-  [6] swarm       - Run swarm agents
-  [7] explore     - Run 3-layer exploration
-  [8] full        - batch + explore
-  [0] status      - Show server status
-  [q] quit
-
-Select [0-8, q]:
+sphere start              # Start server
+sphere stop               # Stop all services
+sphere status             # Check status
+sphere batch              # Inject 60 test items
+sphere contribute 10      # Inject 10 items
+sphere wave 100 2000      # Wave inject: 100 items, 2s delay
+sphere swarm 5            # 5 concurrent dive agents
+sphere explore            # 3-layer perception test
+sphere full               # batch + explore
 ```
 
-### 4.4 npm Scripts (Direct periphery execution)
+### npm Scripts (Direct)
 
 ```bash
 cd services/periphery
-```
-
-| Script | Command | Description |
-|--------|---------|-------------|
-| Dev server | `npm run dev` | Start with hot reload |
-| Single contribution | `npm run contribute` | Inject one ExperienceCapsule |
-| Batch contribution | `npm run contribute:batch` | Batch inject multiple capsules |
-| Explore agent | `npm run explore` | 3-layer exploration test |
-| Swarm | `npm run swarm` | Multiple agents simultaneous Dive |
-| Swarm (5) | `npm run swarm:5` | 5 agents |
-| Swarm (10) | `npm run swarm:10` | 10 agents |
-| Embedding test | `npm run test:embedding` | Local embedding model test |
-
-### 4.5 Typical Test Flow
-
-```bash
-# Using CLI
-sphere start       # Start server (separate window)
-sphere batch       # Inject test data
-sphere explore     # Exploration test
-
-# Or all at once
-sphere full        # batch + explore
-
-# Using npm directly
-cd services/periphery
-npm run dev                 # Terminal 1
-npm run contribute:batch    # Terminal 2
-npm run explore             # Terminal 3
+npm run dev               # Development server
+npm run contribute        # Single capsule inject
+npm run contribute:batch  # Batch inject
+npm run explore           # 3-layer exploration
+npm run swarm             # 3 concurrent agents
+npm run swarm:5           # 5 agents
+npm run swarm:10          # 10 agents
+npm run test:embedding    # Embedding model test
 ```
 
 ---
 
-## 5. Configuration (PeripheryConfig)
-
-Defined in `types/config.ts`. Key settings:
-
-```typescript
-{
-  // Parser (embedding)
-  parser: {
-    batchSize: 8,
-    vectorDimension: 384,
-    embeddingProvider: "local",  // "mock" | "local"
-  },
-
-  // Server
-  server: {
-    port: 3001,      // HTTP
-    wsPort: 8081,    // WebSocket
-  },
-
-  // Quest Store
-  questStore: {
-    maxSize: 100,       // Max quest count (FIFO)
-    showcaseSize: 10,   // Showcase display count
-  },
-
-  // Amber Cache
-  amberCache: {
-    maxSize: 100,
-    showcaseSize: 30,
-    showcaseRefreshIntervalMs: 3600000,  // 1 hour
-  },
-}
-```
-
----
-
-## 6. Architecture Overview
-
-```
-┌─────────────────────────────────────────────────────────┐
-│                    Periphery Service                     │
-├─────────────────────────────────────────────────────────┤
-│                                                          │
-│  ┌──────────────┐   ┌──────────────┐   ┌─────────────┐  │
-│  │  HTTP REST   │   │   Gateway    │   │  Quest      │  │
-│  │  (Express)   │   │  (WebSocket) │   │  Store      │  │
-│  └──────┬───────┘   └──────┬───────┘   └─────────────┘  │
-│         │                  │                             │
-│         v                  v                             │
-│  ┌──────────────────────────────────────────────────┐   │
-│  │                    Membrane                       │   │
-│  │              (Input Validation)                   │   │
-│  └──────────────────────────────────────────────────┘   │
-│                          │                               │
-│                          v                               │
-│  ┌──────────────────────────────────────────────────┐   │
-│  │               Parser / EntryBuffer                │   │
-│  │           (Vectorization, Batching)               │   │
-│  └──────────────────────────────────────────────────┘   │
-│                          │                               │
-│                          v                               │
-│  ┌──────────────────────────────────────────────────┐   │
-│  │            Incarnation Pipeline                   │   │
-│  │    (Tagger → Packer → Bookkeeper → RefDB)        │   │
-│  └──────────────────────────────────────────────────┘   │
-│                          │                               │
-│                          v                               │
-│  ┌────────────────┐  ┌────────────────┐                 │
-│  │    ProjDB      │  │     RefDB      │                 │
-│  │ (In-Memory)    │  │  (Persistent)  │                 │
-│  └────────────────┘  └────────────────┘                 │
-│                                                          │
-└─────────────────────────────────────────────────────────┘
-```
-
----
-
-## 7. Key Components
-
-| Component | File | Role |
-|-----------|------|------|
-| PeripheryServer | `server.ts` | HTTP REST API |
-| GatewayServer | `gateway/gateway-server.ts` | WebSocket Gateway |
-| EntryBuffer | `parser/buffer.ts` | Vectorization batch processing |
-| QuestStore | `gateway/quest-store.ts` | Quest management (FIFO) |
-| UnifiedAmberCache | `gateway/amber-cache.ts` | Amber node caching |
-| SphereCoreAdapter | `gateway/sphere-core-adapter.ts` | sense/focus/move implementation |
-| TicketIssuer | `gateway/ticket-issuer.ts` | Dive ticket management |
-| Membrane | `membrane/membrane.ts` | Input validation |
-
----
-
-## 8. Quest Flow Details
-
-```
-External World                    Sphere
-     │                              │
-     ├─ POST /quest ───────────────→│ Store in QuestStore (FIFO)
-     │  { query, tags }             │
-     │                              │
-     │                              │
-Agent ←─ welcome ──────────────────┤ Receive quest list in quests[]
-     │                              │
-     ├─ entry ─────────────────────→│
-     │  { query, tags, quest }      │ Send with quest text
-     │                              │
-     │                              │ Parser: query → position
-     │                              │ Parser: quest → questVector
-     │                              │
-     │←─ positioned ───────────────┤
-     │  { position, questVector }   │ Receive questVector as compass
-     │                              │
-     │  (Agent saves questVector to │
-     │   context and explores)      │
-```
-
----
-
-## 9. Environment Variables
+## Environment Variables
 
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `NODE_ENV` | `development` | `production` disables DEV acceleration |
 | `PORT` | `3001` | HTTP server port |
 | `WS_PORT` | `8081` | WebSocket port |
+| `STATIC_DIR` | — | Static file directory (enables UI serving) |
 | `SPHERE_CONFIG` | `../../../sphere.config.json` | Config file path |
-| `SPHERE_URL` | `http://localhost:3001` | For mock scripts |
-
-See `docs/config-reference.md` for detailed configuration reference.
+| `SPHERE_URL` | `http://localhost:3001` | For mock/test scripts |
 
 ---
 
-Created: 2025-02-03
-Updated: 2026-02-07
-Version: v1.1
+*Last updated: 2026-02-07*
