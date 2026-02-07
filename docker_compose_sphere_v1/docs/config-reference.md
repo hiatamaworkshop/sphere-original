@@ -143,37 +143,49 @@ DB 書き込みのバッチ設定。
 
 ### renal_core.decay
 
-毎 tick の減衰率。DEV モードでは `×timeAcceleration(3)` が掛かる。
+毎 tick の減衰率。**`preset` で一括設定**するのが推奨。
 
-| key | default | DEV実効値 | 効果 |
-|-----|---------|-----------|------|
-| alpha | 10.0 | 30.0 | TTL 減少量/tick |
-| heatDecayFactor | 0.01 | 0.03 | heat 乗算減衰 `h *= (1 - factor)` |
-| weightDecayFactor | 0.005 | 0.015 | weight 乗算減衰 `w *= (1 - factor)` |
+```json
+"decay": {
+  "preset": "balanced",
+  "alpha": 10.0,
+  "heatDecayFactor": 0.01,
+  "weightDecayFactor": 0.005
+}
+```
 
-**調整指針**: heatDecayFactor が最も体感に影響する。DEV 3x で実効値が決まる。750 の heat が DEV で ~50 tick、PROD で ~300 tick で実用域を下回る。
+| key | 効果 |
+|-----|------|
+| preset | `"archive"` / `"balanced"` / `"flow"` / `"dev"` / `"custom"` |
+| alpha | TTL 減少量/tick (`preset` 指定時は無視) |
+| heatDecayFactor | heat 乗算減衰 `h *= (1 - factor)` (`preset` 指定時は無視) |
+| weightDecayFactor | weight 乗算減衰 `w *= (1 - factor)` (`preset` 指定時は無視) |
 
-### Decay Presets (推奨モード)
+**preset 未指定時**: `NODE_ENV=development` → `"dev"` / `NODE_ENV=production` → `"balanced"` に自動判定。
 
-フォーク時のユースケースに応じた減衰パラメータの推奨値。`sphere.config.json` の `renal_core.decay` セクションを書き換える。
+**`"custom"` 指定時**: alpha / heatDecayFactor / weightDecayFactor の個別値がそのまま使われる。
 
-| モード | heatDecayFactor | weightDecayFactor | alpha (TTL) | 想定用途 |
-|--------|----------------|-------------------|-------------|---------|
-| **Archive** | 0.005 | 0.002 | 5.0 | 図書館型。ノードが長く残る。Amber 昇華が容易 |
-| **Balanced** (現行) | 0.01 | 0.005 | 10.0 | 汎用。デフォルト値 |
-| **Flow** | 0.02 | 0.01 | 15.0 | SNS/リアルタイム型。古いものはすぐ消える |
+### Decay Presets
 
-**1000 tick 後の残存率 (PROD, フラグ修飾なし)**:
+| Preset | alpha | heatDecay | weightDecay | fertilityDecay | minLoadFactor | 想定用途 |
+|--------|-------|-----------|-------------|----------------|---------------|---------|
+| **archive** | 5.0 | 0.005 | 0.002 | 0.005 | 0.1 | 図書館型。ノードが長く残る。Amber 昇華が容易 |
+| **balanced** | 10.0 | 0.01 | 0.005 | 0.01 | 0.1 | 汎用。デフォルト |
+| **flow** | 15.0 | 0.02 | 0.01 | 0.02 | 0.1 | SNS/リアルタイム型。古いものはすぐ消える |
+| **dev** | 30.0 | 0.03 | 0.015 | 0.03 | 1.0 | 開発用。balanced ×3 + 常時フル代謝 |
 
-| モード | Heat 残存 | Weight 残存 | TTL 消費 (loadFactor=1) |
+**1000 tick 後の残存率 (フラグ修飾なし)**:
+
+| Preset | Heat 残存 | Weight 残存 | TTL 消費 (loadFactor=1) |
 |--------|----------|------------|----------------------|
-| Archive | 0.995^1000 ≈ 0.67% | 0.998^1000 ≈ 13.5% | -5000 |
-| Balanced | 0.99^1000 ≈ 0.004% | 0.995^1000 ≈ 0.67% | -10000 |
-| Flow | 0.98^1000 ≈ ≈0% | 0.99^1000 ≈ 0.004% | -15000 |
+| archive | 0.995^1000 ≈ 0.67% | 0.998^1000 ≈ 13.5% | -5,000 |
+| balanced | 0.99^1000 ≈ 0.004% | 0.995^1000 ≈ 0.67% | -10,000 |
+| flow | 0.98^1000 ≈ ≈0% | 0.99^1000 ≈ 0.004% | -15,000 |
+| dev | 0.97^1000 ≈ ≈0% | 0.985^1000 ≈ ≈0% | -30,000 |
 
-**注意**: DEV モードでは `timeAcceleration (3x)` が掛かるため、上記の約3倍速で減衰する。
+**変更方法**: `sphere.config.json` → `renal_core.decay.preset` を書き換えて再起動。
 
-**変更方法**: `sphere.config.json` → `renal_core.decay` セクションの3値を書き換えて再起動。
+**定義場所**: `periphery/src/config/decay-presets.ts`
 
 ---
 
@@ -262,12 +274,10 @@ sphere.config.json ではなくコード内定数。開発/本番で自動切替
 
 | key | DEV | PROD | 効果 |
 |-----|-----|------|------|
-| timeAcceleration | 3 | 1 | decay 係数に乗算。DEV は 3 倍速で減衰 |
 | logInterval | 10 | 100 | テレメトリログ間隔 (tick) |
-| minLoadFactor | 1.0 | 0.1 | loadFactor 下限。1.0 = DB が空でもフル代謝 |
-| ttlMultiplier | 0.1 | 1.0 | TTL 倍率。DEV は寿命 1/10 |
+| ttlMultiplier | 0.1 | 1.0 | Packer 初期 TTL 倍率。DEV は寿命 1/10 |
 
-**注意**: DEV モードでは全体的に「加速された世界」になる。本番の感覚を見たい場合は `NODE_ENV=production` で起動。
+**注意**: 減衰パラメータは `renal_core.decay.preset` で管理（`timeAcceleration` は廃止）。本番の感覚を見たい場合は `preset: "balanced"` で起動。
 
 ---
 

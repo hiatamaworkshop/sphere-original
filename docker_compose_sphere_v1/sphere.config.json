@@ -149,6 +149,8 @@
     },
 
     "decay": {
+      "_comment": "preset: archive | balanced | flow | dev | custom (未指定時は NODE_ENV から自動判定)",
+      "preset": "balanced",
       "alpha": 10.0,
       "heatDecayFactor": 0.01,
       "weightDecayFactor": 0.005
