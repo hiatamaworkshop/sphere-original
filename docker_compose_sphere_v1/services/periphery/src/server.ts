@@ -139,6 +139,13 @@ export class PeripheryServer {
       next();
     });
 
+    // ===== Static File Serving =====
+    // Must be BEFORE API routes to allow index.html to serve at "/"
+    const staticDir = process.env.STATIC_DIR;
+    if (staticDir) {
+      this.app.use(express.static(staticDir));
+    }
+
     // ===== Rate Limiting =====
     // Heavy operations: contribute (incarnation pipeline), forge
     const heavyLimiter = rateLimit({
@@ -673,10 +680,6 @@ export class PeripheryServer {
         });
       }
     });
-
-    // Static file serving (opt-in via env, for standalone deployment only)
-    const staticDir = process.env.STATIC_DIR;
-    if (staticDir) this.app.use(express.static(staticDir));
   }
 
   public start() {
