@@ -399,6 +399,38 @@ document.getElementById('exploreQuery').addEventListener('keydown', (e) => {
   if (e.key === 'Enter') document.getElementById('exploreBtn').click();
 });
 
+// === Existing Nodes ===
+document.getElementById('loadExistingNodes').addEventListener('click', async () => {
+  const el = document.getElementById('existingNodesList');
+  const countEl = document.getElementById('existingNodesCount');
+  el.innerHTML = '<div class="loading">Loading all nodes...</div>';
+  countEl.textContent = '';
+
+  try {
+    const data = await api('/nodes/metrics');
+    if (!data.nodes || data.nodes.length === 0) {
+      el.innerHTML = '<div class="no-results">No nodes found in Sphere</div>';
+      return;
+    }
+
+    countEl.textContent = `Total: ${data.nodes.length} nodes`;
+    el.innerHTML = data.nodes.map(n => `
+      <div class="result-card">
+        <div class="result-header">
+          <span class="kind-badge kind-${n.kind}">${n.kind}</span>
+          <span class="heat">h=${n.heat.toFixed(1)}</span>
+          <span class="heat">w=${n.weight.toFixed(1)}</span>
+        </div>
+        <div class="result-summary"><strong>Summary:</strong> ${escapeHtml(n.summary || '(no summary)')}</div>
+        ${(n.tags && n.tags.length > 0) ? `<div class="result-tags"><strong>Tags:</strong> ${n.tags.map(t => `<span class="tag">${escapeHtml(t)}</span>`).join('')}</div>` : ''}
+        <div class="result-id">${n.id}</div>
+      </div>
+    `).join('');
+  } catch (e) {
+    el.innerHTML = `<div class="error">Error: ${e.message}</div>`;
+  }
+});
+
 // === Contribute (Wave mode: staggered capsules) ===
 function buildCapsuleFromChunk(chunk) {
   const topTier = [];

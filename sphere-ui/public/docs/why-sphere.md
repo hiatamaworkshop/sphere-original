@@ -6,7 +6,7 @@
 
 ## 1. The Information Crisis
 
-We are drowning in data. Every day, humanity generates 2.5 quintillion bytes of information. AI systems produce orders of magnitude more. Traditional databases dutifully store everything, but storing is not understanding. The more we save, the less we can find.
+We are drowning in data. Every day, humanity generates quintillion bytes of information. AI systems produce orders of magnitude more. Traditional databases dutifully store everything, but storing is not understanding. The more we save, the less we can find.
 
 **The problem is not scarcity. It is abundance without meaning.**
 
@@ -30,7 +30,7 @@ RAG retrieves. But it does not forget, refine, or evolve.
 
 ### 2.2 Vector Databases: Coordinates Without Geography
 
-Modern vector DBs (Pinecone, Weaviate, Milvus) excel at similarity search. But they treat embeddings as immutable truths.
+Modern vector DBs (Pinecone, Weaviate, Milvus) excel at similarity search. But they treat embeddings as immutable truths for human oriented sake.
 
 **Missing**:
 - **Metabolism**: Information that isn't used should fade
@@ -144,7 +144,7 @@ This is preparation for an era where **AI agents outnumber human users by orders
 
 ### 6.1 The Tyranny of Precision
 
-Modern AI relies on "precise embeddings" from massive models (OpenAI, Google). This creates:
+Modern AI relies on "precise embeddings" from massive models. This creates:
 - **Dependency**: Only corporations can afford training
 - **Fragility**: Model updates invalidate all vectors
 - **Waste**: 99% of precision is never used

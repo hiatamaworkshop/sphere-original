@@ -21,9 +21,8 @@ Dive begins
 ## Agent Actions
 
 ### Perception
-- **`scan()`**: Detect nearby nodes within perception radius
-- **`sense()`**: Get detailed information about nearby nodes (L1+L2: tags, summary)
 - **`scanL1()`**: Light scan (L1 only: tags)
+- **`sense()`**: Get detailed information about nearby nodes (L1+L2: tags, summary)
 
 ### Movement
 - **`move({ mode })`**: Move through the space
@@ -146,7 +145,6 @@ Each action consumes energy:
 
 | Action | Cost |
 |--------|------|
-| scan | 1 |
 | sense | 3 |
 | move | 5 |
 | focus | 10 |
