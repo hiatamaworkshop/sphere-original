@@ -50,7 +50,7 @@ export interface RenalCoreConfig {
   ghostTTLMultiplier: number;         // Ghost の TTL 減衰倍率
 
   // 空間管理
-  planktonConversionRate: number;     // 蒸発時に Fertility へ還元する熱量の割合
+  planktonConversionRate: number;     // [Unused] 蒸発時に Fertility へ還元する熱量の割合 (消費側未実装)
   fertilityDecayRate: number;         // Fertility の自然減衰率
 
   // Pause判定
@@ -164,6 +164,8 @@ export class RenalCore {
     }
 
     // === Spatial Field Decay ===
+    // [Status] fertility: write-only (decompose で加算、ここで減衰、消費側は未実装)
+    // [Future] 近傍エージェントのアクション (sense/focus) に fertility ボーナスを付与
     for (const field of this.spatialFields.values()) {
       field.fertility *= (1 - this.config.fertilityDecayRate);
     }
