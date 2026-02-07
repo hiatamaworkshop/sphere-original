@@ -50,17 +50,6 @@
       "basePerceptionRadius": 1.5
     },
 
-    "gatekeeper": {
-      "_deprecated": "Gatekeeper now uses Rulebook constraints (services/periphery/src/rulebook/index.ts)",
-      "_note": "Values below are ignored - kept for reference only",
-      "maxNodesPerCapsule": 33,
-      "maxTopTierPerCapsule": 3,
-      "maxNormalPerCapsule": 10,
-      "maxGhostPerCapsule": 20,
-      "maxPayloadBytes": 4096,
-      "maxSummaryLength": 500
-    },
-
     "tagger": {
       "topTierCount": 3
     },
@@ -235,42 +224,6 @@
     }
   },
 
-  "metabolism_settings": {
-    "default_ttl": 86400,
-    "max_active_nodes": 50000,
-    "fossilization_threshold": 0.3,
-    "plankton_conversion_rate": 0.3,
-    "cleaner_fish_aggressiveness": 0.5
-  },
-
-  "crystallization_logic": {
-    "amber_trigger_threshold": 0.8,
-    "is_amber_enabled": true,
-    "linking_sensitivity": 0.7,
-    "constellation_limit": 10,
-    "amber_erosion_rate": 0.01,
-    "min_amber_heat": 1.0
-  },
-
-  "linguistic_membrane": {
-    "tag_encoding": "UTF-8",
-    "tag_limit_bytes": 64,
-    "prohibited_patterns": ["<script>", "javascript:"],
-    "auto_translation_to_core": false
-  },
-
-  "immersive_training": {
-    "teacher_trace_retention": 0.8,
-    "student_learning_rate": 0.1,
-    "dojo_noise_level": 0.2
-  },
-
-  "interface_hint": {
-    "rendering_mode": "point_cloud",
-    "lod_distance": 1.0,
-    "showcase_refresh_rate": 60
-  },
-
   "activeBus": {
     "enabled": true,
     "protocol": "AI_NATIVE",
@@ -303,25 +256,6 @@
       }
     },
 
-    "visualizer": {
-      "enabled": false,
-      "description": "Real-time 3D visualization client",
-      "protocol": "WebSocket",
-      "connection": {
-        "path": "/ws/stream"
-      }
-    },
-
-    "archive": {
-      "enabled": false,
-      "description": "Long-term Amber/Constellation storage",
-      "protocol": "HTTP",
-      "connection": {
-        "url": "http://localhost:4000"
-      },
-      "events": ["amber_created", "constellation_formed", "spectral_link_forged"]
-    },
-
     "agent": {
       "_comment": "Internal agent tick settings (step accumulation model)",
       "tickIntervalMs": 30,
@@ -330,57 +264,7 @@
         "mode": "event_driven",
         "stayTimeUnit": "ms"
       }
-    },
-
-    "agent_gateway": {
-      "enabled": false,
-      "description": "External agent connection point",
-
-      "protocol": {
-        "rest": {
-          "basePath": "/agent",
-          "endpoints": {
-            "spawn": "POST /agent/spawn",
-            "status": "GET /agent/:id",
-            "action": "POST /agent/:id/action",
-            "despawn": "POST /agent/:id/despawn"
-          }
-        },
-        "websocket": {
-          "path": "/ws/agent",
-          "events": ["radar", "echo", "focus_result", "state_change"]
-        }
-      },
-
-      "session": {
-        "type": "token",
-        "ttlSeconds": 3600,
-        "maxConcurrent": 10
-      },
-
-      "visibility": {
-        "_comment": "What external agents can perceive",
-        "radar": true,
-        "focus": true,
-        "echo": true,
-        "payload": false,
-        "otherAgents": false,
-        "internalMetrics": false
-      },
-
-      "actions": {
-        "_comment": "What external agents can do",
-        "move": true,
-        "evaluate": true,
-        "mark": true,
-        "emit": true,
-        "focus": true
-      },
-
-      "rateLimit": {
-        "actionsPerTick": 3,
-        "focusPerMinute": 30
-      }
     }
+
   }
 }

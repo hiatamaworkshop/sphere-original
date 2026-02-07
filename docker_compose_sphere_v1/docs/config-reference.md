@@ -79,10 +79,6 @@ Global Ambient Field（磁場）。スフィア全体の「気候」。
 | embeddingProvider | "local" | "local" = onnx、"mock" = テスト用 |
 | vectorDimension | 384 | ベクトル次元 |
 
-### periphery.gatekeeper (DEPRECATED)
-
-Rulebook に移行済み。値は無視される。`periphery/src/rulebook/index.ts` 参照。
-
 ### periphery.packer
 
 ノード生成時の初期値を決定。
@@ -283,11 +279,9 @@ sphere.config.json ではなくコード内定数。開発/本番で自動切替
 
 ## external_services
 
-外部接続サービスの定義。現在すべて `enabled: false`。
+外部接続サービスの定義。
 
-| service | protocol | 用途 |
-|---------|----------|------|
-| observatory | UDP | パルス監視 → 異常検出時にノード注入 |
-| visualizer | WebSocket | 3D 可視化クライアント |
-| archive | HTTP | Amber/Constellation の長期保存 |
-| agent_gateway | REST + WS | 外部エージェント接続ポイント |
+| service | protocol | 状態 | 用途 |
+|---------|----------|------|------|
+| observatory | UDP | 実装済み (enabled: false) | パルス監視 → 異常検出時にノード注入 |
+| agent | — | 内部設定 | エージェント tick 間隔・metrics 更新モード |
