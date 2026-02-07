@@ -14,7 +14,7 @@
       <button class="tab active" data-tab="dashboard">Dashboard</button>
       <button class="tab" data-tab="inject">Inject Data</button>
       <button class="tab" data-tab="dive">Dive</button>
-      <button class="tab" data-tab="docs">Docs</button>
+      <button class="tab" data-tab="docs">Documents</button>
     </nav>
     <div class="connection-indicator" id="connIndicator">
       <span class="dot"></span>
@@ -79,7 +79,7 @@
         <button id="selectAll">Select All</button>
         <button id="selectNone">Unselect</button>
         <span id="selectedCount">0 loaded</span>
-        <button id="contributeBtn" disabled>Contribute Selected</button>
+        <button id="contributeBtn" disabled>Inject Data</button>
       </div>
       <div class="mock-list" id="mockList"></div>
       <div id="contributeResult"></div>
@@ -87,7 +87,7 @@
 
     <!-- Dive Tab -->
     <section id="tab-dive" class="tab-content">
-      <div class="tab-notice">Experience how an AI agent traverses nodes inside the Sphere. Scan, sense, focus, evaluate &mdash; every action affects the node metabolism in real time. See <a href="#" class="notice-link" data-goto-doc="diving-experience.md">Diving Experience</a> in Docs for the full design.</div>
+      <div class="tab-notice">Experience how an AI agent traverses nodes inside the Sphere. Scan, sense, focus, evaluate &mdash; explore and interact with the semantic space. See <a href="#" class="notice-link" data-goto-doc="diving-experience.md">Diving Experience</a> in Documents for the full design.</div>
       <div class="dive-header">
         <div class="dive-status">
           <span class="phase-indicator phase-disconnected" id="divePhase">disconnected</span>
@@ -175,6 +175,7 @@
 
       <hr>
       <h3>Swarm</h3>
+      <p class="meta">Load testing tool: Launch multiple bot agents simultaneously to validate Sphere's concurrent processing capabilities. Each agent acts independently, executing automated sense/move/focus operations to verify the system is properly designed.</p>
       <div class="swarm-controls">
         <label>Agents: <input type="number" id="swarmCount" value="3" min="1" max="10"></label>
         <button id="launchSwarm">Launch Swarm</button>
@@ -183,7 +184,7 @@
       <div id="swarmStatus"></div>
     </section>
 
-    <!-- Docs Tab -->
+    <!-- Documents Tab -->
     <section id="tab-docs" class="tab-content">
       <div class="tab-notice">Design philosophy and architecture documents. Read how and why Sphere was built.</div>
       <div class="docs-layout">
