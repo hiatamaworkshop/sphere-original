@@ -23,24 +23,41 @@ import { getSpeciesSummary } from "./eval-log.js";
 
 const VALID_LOADOUTS = Object.keys(LOADOUTS) as LoadoutName[];
 
-function parseArgs(): { query: string; cycles: number; loadout: LoadoutName; debug: boolean } {
+interface ParsedArgs {
+  query: string;
+  cycles: number;
+  loadout: LoadoutName;
+  debug: boolean;
+  daemon: boolean;
+  daemonSleepMs: number;
+}
+
+// --- CLI args + env vars (CLI > env > defaults) ---
+function parseArgs(): ParsedArgs {
   const args = process.argv.slice(2);
   let query = "knowledge exploration";
   let cycles = 10;
-  let loadout: LoadoutName = "balanced";
+  let loadout: LoadoutName | "random" = "balanced";
   let debug = true;
+  let daemon = false;
+  let daemonSleepMs = 30_000;
 
   for (let i = 0; i < args.length; i++) {
     if (args[i] === "--cycles" && args[i + 1]) {
       cycles = parseInt(args[i + 1], 10);
       i++;
     } else if ((args[i] === "--loadout" || args[i] === "--preset") && args[i + 1]) {
-      const p = args[i + 1] as LoadoutName;
-      if (VALID_LOADOUTS.includes(p)) {
-        loadout = p;
+      const p = args[i + 1];
+      if (p === "random" || VALID_LOADOUTS.includes(p as LoadoutName)) {
+        loadout = p as LoadoutName | "random";
       } else {
-        console.log(`Unknown loadout "${args[i + 1]}", using "balanced". Available: ${VALID_LOADOUTS.join(", ")}`);
+        console.log(`Unknown loadout "${p}", using "balanced". Available: ${VALID_LOADOUTS.join(", ")}, random`);
       }
+      i++;
+    } else if (args[i] === "--daemon") {
+      daemon = true;
+    } else if (args[i] === "--sleep" && args[i + 1]) {
+      daemonSleepMs = parseInt(args[i + 1], 10);
       i++;
     } else if (args[i] === "--quiet") {
       debug = false;
@@ -49,11 +66,29 @@ function parseArgs(): { query: string; cycles: number; loadout: LoadoutName; deb
     }
   }
 
-  return { query, cycles, loadout, debug };
+  // Env var fallbacks (CLI > env > defaults)
+  if (process.env.QUERY && query === "knowledge exploration") query = process.env.QUERY;
+  if (process.env.CYCLES) cycles = parseInt(process.env.CYCLES, 10) || cycles;
+  if (process.env.LOADOUT) {
+    const envL = process.env.LOADOUT;
+    if (envL === "random" || VALID_LOADOUTS.includes(envL as LoadoutName)) {
+      loadout = envL as LoadoutName | "random";
+    }
+  }
+  if (process.env.DAEMON === "true") daemon = true;
+  if (process.env.DAEMON_SLEEP_MS) daemonSleepMs = parseInt(process.env.DAEMON_SLEEP_MS, 10) || daemonSleepMs;
+  if (process.env.DEBUG === "false") debug = false;
+
+  // Resolve "random" → pick a random loadout
+  const resolvedLoadout: LoadoutName = loadout === "random"
+    ? VALID_LOADOUTS[Math.floor(Math.random() * VALID_LOADOUTS.length)]
+    : loadout;
+
+  return { query, cycles, loadout: resolvedLoadout, debug, daemon, daemonSleepMs };
 }
 
-async function main(): Promise<void> {
-  const { query, cycles, loadout, debug } = parseArgs();
+async function runOnce(config: ParsedArgs): Promise<number> {
+  const { query, cycles, loadout, debug } = config;
   const l = LOADOUTS[loadout];
 
   console.log("========================================");
@@ -64,6 +99,7 @@ async function main(): Promise<void> {
   console.log(`Quality: [${l.qualityVector.map(v => v.toFixed(1)).join(", ")}]`);
   console.log(`Return:  [${l.returnWeights.map(v => v.toFixed(1)).join(", ")}] (sat,frust,stam,stale)`);
   console.log(`Cycles:  ${cycles}`);
+  if (config.daemon) console.log(`Mode:    daemon (sleep ${config.daemonSleepMs}ms between runs)`);
   console.log();
 
   const ollama = new OllamaClient();
@@ -122,7 +158,32 @@ async function main(): Promise<void> {
     }
   }
 
-  process.exit(stats.status === "completed" ? 0 : 1);
+  return stats.status === "completed" ? 0 : 1;
+}
+
+async function main(): Promise<void> {
+  const config = parseArgs();
+
+  if (!config.daemon) {
+    // Single run mode (original behavior)
+    const code = await runOnce(config);
+    process.exit(code);
+  }
+
+  // Daemon mode: run → sleep → repeat
+  console.log(`[phi-agent] Daemon mode — will run indefinitely (sleep ${config.daemonSleepMs}ms between runs)`);
+  let session = 0;
+  while (true) {
+    session++;
+    console.log(`\n[phi-agent] === Session ${session} ===`);
+    try {
+      await runOnce(config);
+    } catch (err) {
+      console.error(`[phi-agent] Session ${session} error:`, err);
+    }
+    console.log(`[phi-agent] Sleeping ${config.daemonSleepMs}ms...`);
+    await new Promise(r => setTimeout(r, config.daemonSleepMs));
+  }
 }
 
 main();

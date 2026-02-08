@@ -84,11 +84,13 @@ services:
   # Periphery - Entry Point Layer
   periphery:
     build:
-      context: ./services/periphery
-      dockerfile: Dockerfile
+      context: ./services
+      dockerfile: periphery/Dockerfile
     container_name: sphere-periphery
     environment:
       NODE_ENV: production
+      PORT: "3001"
+      SPHERE_CONFIG: /app/sphere.config.json
       REDIS_HOST: redis
       REDIS_PORT: 6379
       POSTGRES_HOST: postgres
@@ -116,10 +118,11 @@ services:
       - sphere-network
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3001/health"]
+      test: ["CMD-SHELL", "node -e \"fetch('http://localhost:3001/health').then(r=>{process.exit(r.ok?0:1)}).catch(()=>process.exit(1))\""]
       interval: 30s
       timeout: 10s
-      retries: 3
+      retries: 5
+      start_period: 60s
 
   # RenalCore - Metabolism Engine (Optional standalone service)
   # Currently integrated into Periphery, but can be run independently
@@ -165,6 +168,9 @@ services:
       OLLAMA_MODEL: ${OLLAMA_MODEL:-phi3:mini}
       SPHERE_URL: http://periphery:3001
       SPHERE_WS: ws://periphery:3001
+      LOADOUT: random
+      DAEMON: "true"
+      DAEMON_SLEEP_MS: "30000"
     volumes:
       - phi-agent-data:/app/data
     depends_on:
@@ -208,8 +214,8 @@ services:
   # Test Runner - For integration and E2E tests
   test-runner:
     build:
-      context: ./services/periphery
-      dockerfile: Dockerfile
+      context: ./services
+      dockerfile: periphery/Dockerfile
     container_name: sphere-test-runner
     environment:
       NODE_ENV: test
