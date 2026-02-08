@@ -21,7 +21,11 @@ export interface NearbyNode {
   summary: string;
   heat: number;
   weight: number;
+  decay: number;
   timestamp: number;
+  kind: string;
+  flags: number;
+  tags?: string[];
 }
 
 export interface NodeDetail {

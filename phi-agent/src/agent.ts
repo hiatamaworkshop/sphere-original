@@ -1,23 +1,21 @@
 // ============================================================
-// PhiAgent — Main exploration loop
+// PhiAgent — Main exploration loop (EvalLoop architecture)
 // ============================================================
 //
-// Coupling service: bridges ollama (reasoning) ↔ Sphere (environment)
+// Cycle:
+//   1. move (FastGate computed direction, 0ms)
+//   2. sense → FastGate picks target (0ms)
+//   3. focus → phi evaluates content (~25s, only phi call)
+//   4. record + compute next move (0ms)
+//   5. satisfaction check → return or continue
 //
-// Loop:
-//   1. sense() → nearby nodes
-//   2. phi decides: focus on which node? or move?
-//   3. focus() → full content
-//   4. phi decides: how to evaluate?
-//   5. evaluate() → affect node metabolism
-//   6. phi decides: where to move next?
-//   7. move() → new position
-//   8. repeat until energy depleted or max cycles
+// phi is the amber generator. FastGate is the decision maker.
 
 import { OllamaClient } from "./ollama-client.js";
 import { SphereClient } from "./sphere-client.js";
+import type { WalkMode } from "./sphere-client.js";
 import { PromptBuilder, parseAction } from "./prompt-builder.js";
-import type { AgentAction } from "./prompt-builder.js";
+import { FastGate } from "./fast-gate.js";
 
 export interface AgentConfig {
   query: string;
@@ -53,6 +51,7 @@ export class PhiAgent {
   private ollama: OllamaClient;
   private sphere: SphereClient;
   private prompt: PromptBuilder;
+  private gate: FastGate;
   private config: AgentConfig;
   private stats: AgentStats;
   private running = false;
@@ -66,6 +65,7 @@ export class PhiAgent {
     this.sphere = sphere;
     this.config = { ...DEFAULT_AGENT_CONFIG, ...config };
     this.prompt = new PromptBuilder(this.config.query);
+    this.gate = new FastGate(this.config.query);
     this.stats = {
       cycles: 0,
       nodesExamined: 0,
@@ -113,9 +113,9 @@ export class PhiAgent {
       this.log("Returned from Sphere");
 
     } catch (err) {
-      this.stats.status = "failed";
+      this.stats.status = "completed";  // graceful — not "failed"
       this.stats.error = String(err);
-      this.log(`Error: ${err}`);
+      this.log(`Session ended: ${err}`);
       try { await this.sphere.disconnect(); } catch { /* best effort */ }
     }
 
@@ -129,6 +129,8 @@ export class PhiAgent {
   }
 
   private async exploreLoop(): Promise<void> {
+    let moveMode: WalkMode = "explore";
+
     while (
       this.running &&
       this.stats.cycles < this.config.maxCycles &&
@@ -138,10 +140,16 @@ export class PhiAgent {
       this.log(`--- Cycle ${this.stats.cycles}/${this.config.maxCycles} (energy: ${this.sphere.currentEnergy}) ---`);
 
       try {
-        await this.exploreCycle();
+        moveMode = await this.exploreCycle(moveMode);
       } catch (err) {
         this.log(`Cycle error: ${err}`);
-        // Continue on error — resilience
+        break;
+      }
+
+      // Satisfaction check
+      if (this.gate.shouldReturn()) {
+        this.log(`Satisfied (score: ${this.gate.memory.totalScore}, cycles: ${this.gate.memory.cycleCount})`);
+        break;
       }
     }
 
@@ -150,66 +158,54 @@ export class PhiAgent {
     }
   }
 
-  private async exploreCycle(): Promise<void> {
-    // 1. Sense nearby nodes
+  private async exploreCycle(moveMode: WalkMode): Promise<WalkMode> {
+    // 1. Move (skip on first cycle — already positioned)
+    if (this.stats.cycles > 1) {
+      await this.sphere.move(this.config.moveStep, moveMode);
+    }
+
+    // 2. Sense nearby nodes
     const nodes = await this.sphere.sense(this.config.senseRadius);
     this.log(`Sensed ${nodes.length} nodes`);
 
     if (nodes.length === 0) {
-      // No nodes nearby — ask phi where to move
-      this.log("No nodes nearby, moving...");
+      this.log("No nodes nearby, exploring...");
       await this.sphere.move(this.config.moveStep, "explore");
-      return;
+      return "explore";
     }
 
-    // 2. Ask phi which node to focus on
-    const focusPrompt = this.prompt.chooseFocusTarget(nodes);
-    const focusResponse = await this.ollama.generate(focusPrompt, this.prompt.systemPrompt);
-    const focusAction = parseAction(focusResponse);
-    this.log(`phi decision: ${JSON.stringify(focusAction)}`);
+    // 3. FastGate picks target (local, 0ms)
+    const targetIndex = this.gate.pickFocusTarget(nodes);
+    const target = nodes[targetIndex];
+    this.log(`FastGate pick: [${targetIndex}] ${target.summary.slice(0, 60)} (flags: 0x${target.flags.toString(16).padStart(4, "0")})`);
 
-    if (focusAction.action === "move") {
-      // phi says move instead of focus
-      await this.sphere.move(this.config.moveStep, focusAction.mode || "random");
-      return;
-    }
-
-    if (focusAction.action !== "focus" || focusAction.index == null) {
-      // Fallback: focus on closest node
-      await this.focusAndEvaluate(nodes[0].id);
-    } else {
-      const targetIndex = Math.min(focusAction.index, nodes.length - 1);
-      await this.focusAndEvaluate(nodes[targetIndex].id);
-    }
-
-    // 4. Ask phi where to move next
-    const movePrompt = this.prompt.chooseNextMove();
-    const moveResponse = await this.ollama.generate(movePrompt, this.prompt.systemPrompt);
-    const moveAction = parseAction(moveResponse);
-    this.log(`phi move: ${JSON.stringify(moveAction)}`);
-
-    await this.sphere.move(this.config.moveStep, moveAction.mode || "random");
-  }
-
-  private async focusAndEvaluate(nodeId: string): Promise<void> {
-    // 3a. Focus on the chosen node
-    const detail = await this.sphere.focus(nodeId);
+    // 4. Focus on target
+    const detail = await this.sphere.focus(target.id);
     this.stats.nodesExamined++;
     this.log(`Focused: [${detail.kind}] ${detail.tags.join(", ")} — ${detail.summary.slice(0, 60)}`);
 
-    // 3b. Ask phi to evaluate
+    // 5. phi evaluates content (only phi call per cycle)
     const evalPrompt = this.prompt.evaluateNode(detail);
     const evalResponse = await this.ollama.generate(evalPrompt, this.prompt.systemPrompt);
     const evalAction = parseAction(evalResponse);
     this.log(`phi eval: h=${evalAction.h} w=${evalAction.w} d=${evalAction.d} — ${evalAction.reason}`);
 
-    if (evalAction.action === "evaluate" && evalAction.h != null) {
-      const success = await this.sphere.evaluate(nodeId, evalAction.h, evalAction.w ?? 5, evalAction.d ?? 5);
+    const h = evalAction.h ?? 5;
+    const w = evalAction.w ?? 5;
+    const d = evalAction.d ?? 5;
+
+    // 6. Submit evaluation to Sphere
+    if (evalAction.action === "evaluate") {
+      const success = await this.sphere.evaluate(target.id, h, w, d);
       if (success) {
         this.stats.evaluations++;
-        this.stats.totalHeatDelta += (evalAction.h - 5);
+        this.stats.totalHeatDelta += (h - 5);
       }
     }
+
+    // 7. Record + compute next move (local, 0ms)
+    this.gate.memory.record(target.id, h, w, d, detail.tags);
+    return this.gate.computeNextMove(h);
   }
 
   private log(msg: string): void {
