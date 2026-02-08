@@ -313,10 +313,91 @@ Sphere の目的は「データと向き合い、知見を推論に活かす」�
 
 ---
 
+## v5 テスト — auto-generated フィルタ + 順序独立性検証 (2026-02-08)
+
+### 問題: 2番手エージェント汚染
+
+複数エージェントを逐次実行すると、2番手が1番手の auto-generated ノード（足跡）に捕まる。
+
+| ラウンド | 1番手 (クリーン) | Heat Δ | 2番手 (汚染) | Heat Δ |
+|---|---|---|---|---|
+| R2 | balanced (explore) | **+17** 実ノード | scholar (deep) | 0 足跡のみ |
+| R3 | scholar (deep) | **+5** 実ノード | archivist (deep) | +8 混合 |
+| R4 | archivist (deep) | **+20** 実ノード | balanced (explore) | 0 足跡のみ |
+
+原因: auto-generated ノードが sense 結果を支配。walk モード無関係。
+
+### 修正: auto-generated タグフィルタ
+
+```typescript
+// fast-gate.ts pickFocusTarget() に追加
+if (n.tags && n.tags.includes("auto-generated")) continue;
+```
+
+### 修正後テスト (R5: archivist → balanced)
+
+| | archivist (1st) | balanced (2nd) |
+|---|---|---|
+| Cycles | 5 | 4 |
+| Evals | 4 | **4** |
+| Heat Δ | **+12** | **+16** |
+| ノード | 全て実ノード | **全て実ノード** |
+
+#### archivist (クリーン, 1番手)
+
+| Cycle | ノード | h | w | d | action |
+|---|---|---|---|---|---|
+| 1 | DNA double helix | 9 | 8 | 2 | standard |
+| 2 | B-tree indexing | — | — | — | camp (parse fail) |
+| 3 | Ethnographic observation | 9 | 6 | 2 | camp |
+| 4 | Pentatonic scale | 9 | 6 | 3 | camp |
+| 5 | Chinese Room | 5 | 6 | 3 | camp → satisfied (49%) |
+
+#### balanced (archivist の後, 2番手)
+
+| Cycle | ノード | h | w | d | action |
+|---|---|---|---|---|---|
+| 1 | Ethnographic observation | 9 | 6 | 5 | standard |
+| 2 | Chinese Room | 9 | 6 | 5 | camp |
+| 3 | Nash equilibrium | 9 | 8 | 5 | camp |
+| 4 | RSA cryptography | 9 | 10 | 3 | camp → satisfied (26%) |
+
+### 分析
+
+1. **フィルタ完全に機能**: 2番手 balanced が auto-generated を無視して実ノードのみ発見
+2. **性格差も維持**: archivist d=2-3 (保存) vs balanced d=3-5 (中庸)
+3. **順序独立性**: フィルタにより、実行順序が結果に影響しなくなった
+
+### 追加知見: markVisited() 品質プロファイル保全
+
+3箇所の汚染源を修正:
+- Focus 空結果: `record(id,0,0,0,[])` → `markVisited(id)` (misses++ を防止)
+- Mock data: 同上
+- JSON parse failure: h=5,w=5,d=5 デフォルト → `markVisited(id)` (品質平均を汚さない)
+
+### 追加知見: move メカニクス
+
+- **step**: 384次元方向ベクトルのスケーラー (0.0-1.0)
+- **walkMode**: 方向計算方法を選択 (hot=熱方向, deep=重方向, explore=遠方向)
+- **最終方向**: `modeDir × (1-fieldWeight) + globalField × fieldWeight`
+- Gateway の 384D 移動と RenalCore の 3D グリッドは独立した空間システム
+
+### 設計判断: 状態依存 Weapon は不要
+
+検討: 体力低下時に weapon filtering を強化 (疲れた探索者はより選り好みする)
+結論: **冗長** — 現行の責務分離で十分
+- Weapon = 静的人格 (何を見るか)
+- Feelings → Action = 動的応答 (どう振る舞うか)
+- 状態適応は feelings レイヤーが既に担当 (stamina → scout / return)
+
+---
+
 ## 次の検証
 
 - [x] archivist / hunter のテスト → **完了** (hunter に scout トラップ発見)
 - [x] 行動パターンの性格差 → **完了** (moth=camp, archivist=camp→leap, hunter/sniper=scout トラップ)
+- [x] auto-generated フィルタ → **完了** (2番手が実ノードを発見)
+- [x] markVisited 品質保全 → **完了** (parse fail/mock/empty でプロファイル汚染なし)
 - [ ] scout トラップ修正後の hunter/sniper 再テスト
 - [ ] 同一 Loadout で異なるモデル → Delta Profile が変わらないことを確認
 - [ ] より多い cycle (10-20) での entropy 収束パターン
