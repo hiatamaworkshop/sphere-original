@@ -46,55 +46,65 @@ export class ReturnHandler {
     /**
      * Process agent return
      *
-     * [Design Decision]
-     *   - AutoCapsule is always generated (server truth)
-     *   - proposedCapsule is optional (agent claim)
-     *   - First phase: Use proposedCapsule if valid, else generate from AutoCapsule
-     *   - Second phase: Capsule差分評価 (not implemented yet)
+     * [Design Decision — Stigmergic Model]
+     *   - AutoCapsule is always generated (server truth, audit log)
+     *   - Evaluations (pheromone) are the primary output of agent sessions
+     *   - NodeSeed incarnation is ONLY for agents that explicitly propose a capsule
+     *     (powerful external agents, not standard phi-agent)
+     *   - Default return = evaluations-only (no auto-generated NodeSeeds)
+     *
+     * [Rationale]
+     *   Agents are sensory organs — they evaluate existing nodes (deposit pheromone).
+     *   Node creation (incarnation) is the responsibility of:
+     *     - pool-service (external data intake)
+     *     - humans (Capsule tab / Dive)
+     *     - external agents that explicitly submit proposedCapsule
      */
     async processReturn(autoCapsule, proposedCapsule) {
         console.log(`[ReturnHandler] Processing return for session ${autoCapsule.sessionId}`);
         console.log(`[ReturnHandler] AutoCapsule: ${autoCapsule.visits.length} visits, ${autoCapsule.summaryMetrics.uniqueNodes} unique nodes`);
         let finalCapsule = null;
         const errors = [];
-        // Case 1: Agent provided a capsule
-        if (proposedCapsule) {
-            console.log(`[ReturnHandler] Agent provided proposedCapsule`);
+        const hasEvaluations = proposedCapsule?.evaluations && proposedCapsule.evaluations.length > 0;
+        const hasNodeSeeds = proposedCapsule &&
+            (proposedCapsule.topTier.length > 0 || proposedCapsule.normalNodes.length > 0 || proposedCapsule.ghostNodes.length > 0);
+        // Case 1: Agent provided a capsule WITH NodeSeeds (incarnation request)
+        if (proposedCapsule && hasNodeSeeds) {
+            console.log(`[ReturnHandler] Agent proposed capsule with NodeSeeds (incarnation request)`);
             // Validate through Gatekeeper
             const validation = this.gatekeeper.validate(proposedCapsule);
             if (validation.valid) {
-                // First phase: Accept proposed capsule as-is
-                // Second phase: Would compare with AutoCapsule here
                 finalCapsule = proposedCapsule;
-                console.log(`[ReturnHandler] Proposed capsule accepted`);
+                console.log(`[ReturnHandler] Proposed capsule accepted (${proposedCapsule.topTier.length}t/${proposedCapsule.normalNodes.length}n/${proposedCapsule.ghostNodes.length}g nodes)`);
             }
             else {
-                // Proposed capsule invalid, log errors (convert ValidationError to string)
+                // Proposed capsule invalid — reject NodeSeeds but keep evaluations
                 for (const err of validation.errors) {
                     errors.push(`${err.code}: ${err.message}`);
                 }
                 console.log(`[ReturnHandler] Proposed capsule rejected:`, validation.errors);
-                // Fall back to auto-generated capsule, carrying over evaluations
-                finalCapsule = this.generateCapsuleFromAuto(autoCapsule);
-                if (proposedCapsule.evaluations && proposedCapsule.evaluations.length > 0) {
-                    finalCapsule.evaluations = proposedCapsule.evaluations;
-                    console.log(`[ReturnHandler] Carrying ${proposedCapsule.evaluations.length} evaluations from rejected capsule`);
+                // Evaluations-only fallback (no auto-generated NodeSeeds)
+                if (hasEvaluations) {
+                    finalCapsule = {
+                        schemaVersion: CAPSULE_SCHEMA_VERSION,
+                        topTier: [],
+                        normalNodes: [],
+                        ghostNodes: [],
+                        evaluations: proposedCapsule.evaluations,
+                        timestamp: Date.now(),
+                    };
+                    console.log(`[ReturnHandler] Keeping ${proposedCapsule.evaluations.length} evaluations, discarding NodeSeeds`);
                 }
-                console.log(`[ReturnHandler] Using auto-generated capsule instead`);
             }
         }
-        // Case 2: Agent returned empty-handed
+        // Case 2: Evaluations-only return (standard path for phi-agent)
+        else if (proposedCapsule && hasEvaluations) {
+            finalCapsule = proposedCapsule; // Already evaluations-only from sphere-context
+            console.log(`[ReturnHandler] Evaluations-only return (${proposedCapsule.evaluations.length} evaluations, pheromone deposit)`);
+        }
+        // Case 3: Empty return (no evaluations, no NodeSeeds)
         else {
-            console.log(`[ReturnHandler] Agent returned empty-handed`);
-            // Generate capsule from AutoCapsule
-            // Even empty-handed return contributes exploration data
-            if (autoCapsule.visits.length > 0) {
-                finalCapsule = this.generateCapsuleFromAuto(autoCapsule);
-                console.log(`[ReturnHandler] Generated capsule from exploration data`);
-            }
-            else {
-                console.log(`[ReturnHandler] No exploration data, nothing to submit`);
-            }
+            console.log(`[ReturnHandler] Empty return (${autoCapsule.visits.length} visits recorded, no evaluations to deposit)`);
         }
         // Submit to Incarnation Pipeline
         let ingestionResult;
@@ -120,62 +130,6 @@ export class ReturnHandler {
             hadProposal: !!proposedCapsule,
             errors: errors.length > 0 ? errors : undefined,
             ingestionResult,
-        };
-    }
-    /**
-     * Generate ExperienceCapsule from AutoCapsule
-     *
-     * [Design] Minimal capsule - only what was actually explored
-     * [Principle] まず記録、意味は後
-     */
-    generateCapsuleFromAuto(autoCapsule) {
-        const topTier = [];
-        const normalNodes = [];
-        const ghostNodes = [];
-        // Convert visits to node seeds (sorted by focus count)
-        for (const visit of autoCapsule.visits) {
-            // Skip visits with minimal engagement
-            if (visit.focusCount === 0)
-                continue;
-            const seed = {
-                tags: ["auto-generated", "exploration"],
-                summary: `[Explored] Node ${visit.nodeId.substring(0, 8)}... (${visit.focusCount} focus, ${Math.round(visit.stayTime / 1000)}s stay)`,
-                // Heat is determined by config.baseHeat, tier classification handles differentiation
-                flags: 0,
-            };
-            // Categorize based on engagement level
-            if (visit.stayTime > 10000 && visit.focusCount >= 2) {
-                // High engagement: long stay + multiple focus
-                if (topTier.length < 2) {
-                    topTier.push(seed);
-                }
-                else {
-                    normalNodes.push(seed);
-                }
-            }
-            else if (visit.stayTime > 3000 || visit.focusCount >= 1) {
-                // Medium engagement
-                normalNodes.push(seed);
-            }
-            else {
-                // Low engagement
-                ghostNodes.push(seed);
-            }
-        }
-        // Add session summary as ghost node
-        ghostNodes.push({
-            tags: ["auto-capsule", "session-summary"],
-            summary: `[AutoCapsule] Session ${autoCapsule.sessionId.substring(0, 8)}...: ${autoCapsule.summaryMetrics.uniqueNodes} nodes, ${Math.round(autoCapsule.duration / 1000)}s duration`,
-            // Heat is determined by config.baseHeat
-            flags: 0,
-        });
-        return {
-            schemaVersion: CAPSULE_SCHEMA_VERSION,
-            topTier: topTier.slice(0, 2),
-            normalNodes: normalNodes.slice(0, 5),
-            ghostNodes: ghostNodes.slice(0, 3),
-            evaluations: [], // AutoCapsule doesn't generate evaluations
-            timestamp: Date.now(),
         };
     }
 }
