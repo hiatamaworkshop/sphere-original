@@ -15,7 +15,7 @@ import { createServer, type IncomingMessage, type ServerResponse } from "node:ht
 import { Pool } from "./pool.js";
 import { DEFAULT_CONFIG, type PoolConfig } from "./types.js";
 
-// --- CLI args ---
+// --- CLI args + env vars (CLI > env > defaults) ---
 function parseArgs(): Partial<PoolConfig> & { port?: number } {
   const args = process.argv.slice(2);
   const result: Record<string, string> = {};
@@ -25,11 +25,11 @@ function parseArgs(): Partial<PoolConfig> & { port?: number } {
     }
   }
   return {
-    port: result.port ? Number(result.port) : undefined,
-    sphereUrl: result["sphere-url"],
-    ollamaUrl: result["ollama-url"],
-    ollamaModel: result["model"],
-    debug: result.debug === "false" ? false : undefined,
+    port: result.port ? Number(result.port) : (process.env.POOL_PORT ? Number(process.env.POOL_PORT) : undefined),
+    sphereUrl: result["sphere-url"] ?? process.env.SPHERE_URL,
+    ollamaUrl: result["ollama-url"] ?? process.env.OLLAMA_URL,
+    ollamaModel: result["model"] ?? process.env.OLLAMA_MODEL,
+    debug: result.debug === "false" ? false : (process.env.POOL_DEBUG === "false" ? false : undefined),
   };
 }
 

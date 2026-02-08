@@ -155,16 +155,18 @@ services:
       - agent
 
   # Phi Agent - Autonomous Sphere explorer (phi via ollama)
+  # Scalable: docker compose --profile agent up --scale phi-agent=3
   phi-agent:
     build:
       context: ../phi-agent
       dockerfile: Dockerfile
-    container_name: sphere-phi-agent
     environment:
       OLLAMA_HOST: http://ollama:11434
       OLLAMA_MODEL: ${OLLAMA_MODEL:-phi3:mini}
       SPHERE_URL: http://periphery:3001
       SPHERE_WS: ws://periphery:3001
+    volumes:
+      - phi-agent-data:/app/data
     depends_on:
       periphery:
         condition: service_healthy
@@ -172,6 +174,30 @@ services:
         condition: service_started
     networks:
       - sphere-network
+    profiles:
+      - agent
+
+  # Pool Service - External data intake gateway (LLM scoring + Weapon pipeline)
+  pool-service:
+    build:
+      context: ../pool-service
+      dockerfile: Dockerfile
+    container_name: sphere-pool-service
+    environment:
+      SPHERE_URL: http://periphery:3001/sphere/contribute
+      OLLAMA_URL: http://ollama:11434
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-phi3:mini}
+      POOL_PORT: "4000"
+    ports:
+      - "4000:4000"
+    depends_on:
+      periphery:
+        condition: service_healthy
+      ollama:
+        condition: service_started
+    networks:
+      - sphere-network
+    restart: unless-stopped
     profiles:
       - agent
 
@@ -221,3 +247,5 @@ volumes:
     name: sphere-periphery-logs
   ollama-models:
     name: sphere-ollama-models
+  phi-agent-data:
+    name: sphere-phi-agent-data
