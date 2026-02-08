@@ -15,13 +15,13 @@ import { OllamaClient } from "./ollama-client.js";
 import { SphereClient } from "./sphere-client.js";
 import type { WalkMode } from "./sphere-client.js";
 import { PromptBuilder, parseAction } from "./prompt-builder.js";
-import { FastGate, RETURN_PRESETS } from "./fast-gate.js";
-import type { ReturnPreset } from "./fast-gate.js";
+import { FastGate, LOADOUTS } from "./fast-gate.js";
+import type { Loadout, LoadoutName } from "./fast-gate.js";
 
 export interface AgentConfig {
   query: string;
   tags?: string[];
-  preset: ReturnPreset;
+  loadout: LoadoutName | Loadout;
   maxCycles: number;
   minEnergy: number;
   senseRadius: number;
@@ -42,7 +42,7 @@ export interface AgentStats {
 
 const DEFAULT_AGENT_CONFIG: AgentConfig = {
   query: "knowledge exploration",
-  preset: "balanced",
+  loadout: "balanced",
   maxCycles: 10,
   minEnergy: 10,
   senseRadius: 5,
@@ -58,6 +58,7 @@ export class PhiAgent {
   private config: AgentConfig;
   private stats: AgentStats;
   private running = false;
+  private initialEnergy = 100;
 
   constructor(
     ollama: OllamaClient,
@@ -68,7 +69,10 @@ export class PhiAgent {
     this.sphere = sphere;
     this.config = { ...DEFAULT_AGENT_CONFIG, ...config };
     this.prompt = new PromptBuilder(this.config.query);
-    this.gate = new FastGate(this.config.query, RETURN_PRESETS[this.config.preset]);
+    const loadout = typeof this.config.loadout === "string"
+      ? LOADOUTS[this.config.loadout]
+      : this.config.loadout;
+    this.gate = new FastGate(this.config.query, loadout);
     this.stats = {
       cycles: 0,
       nodesExamined: 0,
@@ -99,7 +103,8 @@ export class PhiAgent {
       this.log("Connecting to Sphere...");
       const tags = this.config.tags || this.config.query.split(/[\s,]+/).slice(0, 5);
       await this.sphere.connect(this.config.query, tags);
-      this.log("Positioned in Sphere");
+      this.initialEnergy = this.sphere.currentEnergy;
+      this.log(`Positioned in Sphere (energy: ${this.initialEnergy}, loadout: ${this.gate.loadoutName})`);
 
       // Step 3: Transition to Core layer
       this.log("Transitioning to Core...");
@@ -132,7 +137,7 @@ export class PhiAgent {
   }
 
   private async exploreLoop(): Promise<void> {
-    let moveMode: WalkMode = "explore";
+    let moveMode: WalkMode = this.gate.walkPreference;
 
     while (
       this.running &&
@@ -149,9 +154,12 @@ export class PhiAgent {
         break;
       }
 
-      // Satisfaction check (vector dot product)
-      this.log(`Satisfaction: ${this.gate.satisfactionDebug()}`);
-      if (this.gate.shouldReturn()) {
+      // Satisfaction check (vector dot product + energy pressure)
+      const energyRatio = this.initialEnergy > 0
+        ? this.sphere.currentEnergy / this.initialEnergy
+        : 1.0;
+      this.log(`Satisfaction: ${this.gate.satisfactionDebug(energyRatio)}`);
+      if (this.gate.shouldReturn(energyRatio)) {
         this.log(`Satisfied — returning`);
         break;
       }

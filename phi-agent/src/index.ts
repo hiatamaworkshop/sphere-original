@@ -3,9 +3,10 @@
 // ============================================================
 //
 // Usage:
-//   npx tsx src/index.ts                          # default query
-//   npx tsx src/index.ts "AI safety"              # custom query
-//   npx tsx src/index.ts "metabolism" --cycles 20  # more cycles
+//   npx tsx src/index.ts                               # default query
+//   npx tsx src/index.ts "AI safety"                    # custom query
+//   npx tsx src/index.ts "metabolism" --cycles 20       # more cycles
+//   npx tsx src/index.ts "physics" --loadout scholar    # personality
 //
 // Environment:
 //   OLLAMA_HOST    ollama API URL (default: http://localhost:11434)
@@ -16,28 +17,28 @@
 import { OllamaClient } from "./ollama-client.js";
 import { SphereClient } from "./sphere-client.js";
 import { PhiAgent } from "./agent.js";
-import { RETURN_PRESETS } from "./fast-gate.js";
-import type { ReturnPreset } from "./fast-gate.js";
+import { LOADOUTS } from "./fast-gate.js";
+import type { LoadoutName } from "./fast-gate.js";
 
-const VALID_PRESETS = Object.keys(RETURN_PRESETS) as ReturnPreset[];
+const VALID_LOADOUTS = Object.keys(LOADOUTS) as LoadoutName[];
 
-function parseArgs(): { query: string; cycles: number; preset: ReturnPreset; debug: boolean } {
+function parseArgs(): { query: string; cycles: number; loadout: LoadoutName; debug: boolean } {
   const args = process.argv.slice(2);
   let query = "knowledge exploration";
   let cycles = 10;
-  let preset: ReturnPreset = "balanced";
+  let loadout: LoadoutName = "balanced";
   let debug = true;
 
   for (let i = 0; i < args.length; i++) {
     if (args[i] === "--cycles" && args[i + 1]) {
       cycles = parseInt(args[i + 1], 10);
       i++;
-    } else if (args[i] === "--preset" && args[i + 1]) {
-      const p = args[i + 1] as ReturnPreset;
-      if (VALID_PRESETS.includes(p)) {
-        preset = p;
+    } else if ((args[i] === "--loadout" || args[i] === "--preset") && args[i + 1]) {
+      const p = args[i + 1] as LoadoutName;
+      if (VALID_LOADOUTS.includes(p)) {
+        loadout = p;
       } else {
-        console.log(`Unknown preset "${args[i + 1]}", using "balanced". Available: ${VALID_PRESETS.join(", ")}`);
+        console.log(`Unknown loadout "${args[i + 1]}", using "balanced". Available: ${VALID_LOADOUTS.join(", ")}`);
       }
       i++;
     } else if (args[i] === "--quiet") {
@@ -47,18 +48,20 @@ function parseArgs(): { query: string; cycles: number; preset: ReturnPreset; deb
     }
   }
 
-  return { query, cycles, preset, debug };
+  return { query, cycles, loadout, debug };
 }
 
 async function main(): Promise<void> {
-  const { query, cycles, preset, debug } = parseArgs();
+  const { query, cycles, loadout, debug } = parseArgs();
+  const l = LOADOUTS[loadout];
 
   console.log("========================================");
   console.log("  phi-agent — Sphere Coupling Service");
   console.log("========================================");
-  console.log(`Query:  "${query}"`);
-  console.log(`Preset: ${preset} ${JSON.stringify(RETURN_PRESETS[preset])}`);
-  console.log(`Cycles: ${cycles}`);
+  console.log(`Query:   "${query}"`);
+  console.log(`Loadout: ${l.name} (walk: ${l.walkPreference}, energy: ${l.energySensitivity}, minCycles: ${l.minCycles})`);
+  console.log(`Return:  [${l.returnVector.map(v => v.toFixed(1)).join(", ")}]`);
+  console.log(`Cycles:  ${cycles}`);
   console.log();
 
   const ollama = new OllamaClient();
@@ -73,7 +76,7 @@ async function main(): Promise<void> {
 
   const agent = new PhiAgent(ollama, sphere, {
     query,
-    preset,
+    loadout,
     maxCycles: cycles,
     debug,
   });

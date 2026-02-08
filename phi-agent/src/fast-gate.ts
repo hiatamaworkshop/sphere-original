@@ -121,6 +121,87 @@ export const RETURN_PRESETS = {
 export type ReturnPreset = keyof typeof RETURN_PRESETS;
 
 // ============================================================
+// Loadout — Agent personality bundle
+// ============================================================
+//
+// Intelligence is not in the Sphere (physics only).
+// Intelligence is not in the LLM (sensory organ only).
+// Intelligence is in the Coupling — the way you measure.
+//
+// Loadout bundles: what to look at, when to return, how to move,
+// and how to feel about energy. Same Sphere, same phi, same nodes —
+// different Loadout = different personality. Zero retraining.
+
+export interface Loadout {
+  name: string;
+  weights: Partial<FastGateWeights>;
+  returnVector: SatisfactionVector;
+  walkPreference: WalkMode;
+  minCycles: number;
+  /** Energy sensitivity: how soon the agent feels return pressure from low energy.
+   *  High (2.5) = feels pressure early (Scout). Low (0.5) = stays until the end (Scholar).
+   *  Internally: energyPressure = (1 - energyRatio) ^ (1 / sensitivity) */
+  energySensitivity: number;
+}
+
+export const LOADOUTS: Record<string, Loadout> = {
+  balanced: {
+    name: "balanced",
+    weights: {},  // use DEFAULT_WEIGHTS as-is
+    returnVector: RETURN_PRESETS.balanced,
+    walkPreference: "explore",
+    minCycles: 3,
+    energySensitivity: 1.0,
+  },
+  scholar: {
+    name: "scholar",
+    weights: {
+      flags: { ...DEFAULT_WEIGHTS.flags, authority: 8, freshness: 1 },
+      metrics: { ...DEFAULT_WEIGHTS.metrics, weight: 0.5, distance: -1 },
+    },
+    returnVector: RETURN_PRESETS.scholar,
+    walkPreference: "deep",
+    minCycles: 5,
+    energySensitivity: 0.5,
+  },
+  scout: {
+    name: "scout",
+    weights: {
+      flags: { ...DEFAULT_WEIGHTS.flags, hot: 10, freshness: 6 },
+      metrics: { ...DEFAULT_WEIGHTS.metrics, heat: 0.8, distance: -3 },
+    },
+    returnVector: RETURN_PRESETS.scout,
+    walkPreference: "explore",
+    minCycles: 2,
+    energySensitivity: 2.5,
+  },
+  archivist: {
+    name: "archivist",
+    weights: {
+      flags: { ...DEFAULT_WEIGHTS.flags, sticky: 6, authority: 6 },
+      metrics: { ...DEFAULT_WEIGHTS.metrics, weight: 0.5, decay: -0.3 },
+    },
+    returnVector: RETURN_PRESETS.archivist,
+    walkPreference: "deep",
+    minCycles: 4,
+    energySensitivity: 0.8,
+  },
+  hunter: {
+    name: "hunter",
+    weights: {
+      flags: { ...DEFAULT_WEIGHTS.flags, hot: 10 },
+      metrics: { ...DEFAULT_WEIGHTS.metrics, heat: 0.8 },
+    },
+    returnVector: RETURN_PRESETS.hunter,
+    walkPreference: "hot",
+    minCycles: 3,
+    energySensitivity: 1.5,
+  },
+};
+
+export type LoadoutName = keyof typeof LOADOUTS;
+
+// ============================================================
 // SessionMemory — tracks evaluations within a session
 // ============================================================
 
@@ -174,24 +255,31 @@ export class FastGate {
   private queryTokens: string[];
   private returnVector: SatisfactionVector;
   private weights: FastGateWeights;
+  private energySensitivity: number;
+  private _minCycles: number;
+  private _walkPreference: WalkMode;
   readonly memory = new SessionMemory();
+  readonly loadoutName: string;
 
-  constructor(
-    query: string,
-    returnVector?: SatisfactionVector,
-    weights?: Partial<FastGateWeights>,
-  ) {
+  constructor(query: string, loadout?: Loadout) {
+    const l = loadout ?? LOADOUTS.balanced;
+    this.loadoutName = l.name;
     this.queryTokens = query
       .toLowerCase()
       .split(/[\s,]+/)
       .filter(t => t.length >= 2);
-    this.returnVector = returnVector ?? RETURN_PRESETS.balanced;
+    this.returnVector = l.returnVector;
+    this.energySensitivity = l.energySensitivity;
+    this._minCycles = l.minCycles;
+    this._walkPreference = l.walkPreference;
     this.weights = {
-      flags: { ...DEFAULT_WEIGHTS.flags, ...weights?.flags },
-      metrics: { ...DEFAULT_WEIGHTS.metrics, ...weights?.metrics },
-      keywordMatch: weights?.keywordMatch ?? DEFAULT_WEIGHTS.keywordMatch,
+      flags: { ...DEFAULT_WEIGHTS.flags, ...l.weights.flags },
+      metrics: { ...DEFAULT_WEIGHTS.metrics, ...l.weights.metrics },
+      keywordMatch: l.weights.keywordMatch ?? DEFAULT_WEIGHTS.keywordMatch,
     };
   }
+
+  get walkPreference(): WalkMode { return this._walkPreference; }
 
   // --- Pick: choose focus target from sense results ---
 
@@ -264,23 +352,38 @@ export class FastGate {
   //   Good (h=7,w=6,d=4, 60% hits): S=[0.7,0.6,0.6,0.6] → dot=0.64 → prob=28%
   //   Excellent (h=9,w=8,d=3, 80%): S=[0.9,0.8,0.7,0.8] → dot=0.82 → prob=64%
 
-  shouldReturn(minCycles: number = 3): boolean {
+  /**
+   * Return decision: satisfaction × return vector + energy pressure.
+   * @param energyRatio currentEnergy / initialEnergy (0.0 ~ 1.0), 1.0 if unknown
+   */
+  shouldReturn(energyRatio: number = 1.0): boolean {
     const count = this.memory.cycleCount;
-    if (count < minCycles) return false;
+    if (count < this._minCycles) return false;
 
     const s = this.memory.satisfaction;
     const r = this.returnVector;
     const dot = s[0] * r[0] + s[1] * r[1] + s[2] * r[2] + s[3] * r[3];
-    const returnProb = Math.max(0, Math.min(1, (dot - 0.5) * 2));
-    return Math.random() < returnProb;
+    const baseProb = Math.max(0, Math.min(1, (dot - 0.5) * 2));
+
+    // Energy pressure: (1 - ratio) ^ (1 / sensitivity)
+    // High sensitivity (2.5) → low exponent (0.4) → pressure rises early
+    // Low sensitivity (0.5) → high exponent (2.0) → pressure rises late
+    const exponent = 1 / this.energySensitivity;
+    const energyPressure = Math.pow(Math.max(0, 1 - energyRatio), exponent);
+
+    const finalProb = Math.min(1, baseProb + energyPressure);
+    return Math.random() < finalProb;
   }
 
   /** For debug logging */
-  satisfactionDebug(): string {
+  satisfactionDebug(energyRatio: number = 1.0): string {
     const s = this.memory.satisfaction;
     const r = this.returnVector;
     const dot = s[0] * r[0] + s[1] * r[1] + s[2] * r[2] + s[3] * r[3];
-    const prob = Math.max(0, Math.min(1, (dot - 0.5) * 2));
-    return `S=[${s.map(v => v.toFixed(2)).join(",")}] dot=${dot.toFixed(3)} prob=${(prob * 100).toFixed(0)}%`;
+    const baseProb = Math.max(0, Math.min(1, (dot - 0.5) * 2));
+    const exponent = 1 / this.energySensitivity;
+    const energyPressure = Math.pow(Math.max(0, 1 - energyRatio), exponent);
+    const finalProb = Math.min(1, baseProb + energyPressure);
+    return `S=[${s.map(v => v.toFixed(2)).join(",")}] dot=${dot.toFixed(3)} base=${(baseProb * 100).toFixed(0)}% +E=${(energyPressure * 100).toFixed(0)}% → ${(finalProb * 100).toFixed(0)}%`;
   }
 }
