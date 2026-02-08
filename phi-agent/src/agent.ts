@@ -154,11 +154,11 @@ export class PhiAgent {
         break;
       }
 
-      // Satisfaction check (vector dot product + energy pressure)
+      // Feelings check (4D feelings × personality vector)
       const energyRatio = this.initialEnergy > 0
         ? this.sphere.currentEnergy / this.initialEnergy
         : 1.0;
-      this.log(`Satisfaction: ${this.gate.satisfactionDebug(energyRatio)}`);
+      this.log(`Feelings: ${this.gate.feelingsDebug(energyRatio)}`);
       this.log(`DeltaProfile: ${this.gate.memory.deltaDebug()}`);
       if (this.gate.shouldReturn(energyRatio)) {
         this.log(`Satisfied — returning`);

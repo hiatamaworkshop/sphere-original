@@ -59,8 +59,9 @@ async function main(): Promise<void> {
   console.log("  phi-agent — Sphere Coupling Service");
   console.log("========================================");
   console.log(`Query:   "${query}"`);
-  console.log(`Loadout: ${l.name} (walk: ${l.walkPreference}, energy: ${l.energySensitivity}, minCycles: ${l.minCycles})`);
-  console.log(`Return:  [${l.returnVector.map(v => v.toFixed(1)).join(", ")}]`);
+  console.log(`Loadout: ${l.name} (walk: ${l.walkPreference}, minCycles: ${l.minCycles})`);
+  console.log(`Quality: [${l.qualityVector.map(v => v.toFixed(1)).join(", ")}]`);
+  console.log(`Return:  [${l.returnWeights.map(v => v.toFixed(1)).join(", ")}] (sat,frust,stam,stale)`);
   console.log(`Cycles:  ${cycles}`);
   console.log();
 

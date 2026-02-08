@@ -5,7 +5,7 @@
 // Replaces phi for:
 //   - focus target selection (16bit flag + metrics scoring)
 //   - move direction (heuristic from eval result)
-//   - return decision (satisfaction vector × return vector)
+//   - return decision (4D feelings × personality vector)
 //
 // phi is ONLY used for evaluate (content understanding).
 //
@@ -84,41 +84,38 @@ export const DEFAULT_WEIGHTS: FastGateWeights = {
 };
 
 // ============================================================
-// Satisfaction Vector — 4D evaluation profile
+// Quality Vector — what counts as "good" (4D)
 // ============================================================
 //
+// Q = quality assessment weights for satisfaction
 // S = [avg_h/10, avg_w/10, 1 - avg_d/10, hitRate]
-//   dim 0: relevance  (high h = found useful content)
-//   dim 1: authority   (high w = found authoritative content)
-//   dim 2: preservation (low d = content worth keeping)
-//   dim 3: hit rate    (h >= 7 ratio = consistency of good finds)
-//
-// R = return vector (dot product target)
-//   Default: [0.4, 0.3, 0.2, 0.1] — balanced, relevance-weighted
+// satisfaction = S · Q → scalar (0-1)
 
-export type SatisfactionVector = [number, number, number, number];
+export type QualityVector = [number, number, number, number];
 
-// ============================================================
-// Return Vector Presets — agent personality / exploration mode
-// ============================================================
-//
-// Each preset weights the 4 satisfaction dimensions differently:
-//   [relevance, authority, preservation, hitRate]
-
-export const RETURN_PRESETS = {
-  /** Balanced — general exploration (default) */
-  balanced:   [0.4, 0.3, 0.2, 0.1] as SatisfactionVector,
-  /** Scholar — prioritizes authoritative, well-established content */
-  scholar:    [0.2, 0.5, 0.2, 0.1] as SatisfactionVector,
-  /** Scout — quick reconnaissance, returns fast on good finds */
-  scout:      [0.5, 0.1, 0.1, 0.3] as SatisfactionVector,
-  /** Archivist — seeks content worth preserving (low decay) */
-  archivist:  [0.2, 0.3, 0.4, 0.1] as SatisfactionVector,
-  /** Hunter — wants consistent high-quality hits */
-  hunter:     [0.3, 0.2, 0.1, 0.4] as SatisfactionVector,
+export const QUALITY_PRESETS = {
+  balanced:   [0.4, 0.3, 0.2, 0.1] as QualityVector,
+  scholar:    [0.2, 0.5, 0.2, 0.1] as QualityVector,
+  scout:      [0.5, 0.1, 0.1, 0.3] as QualityVector,
+  archivist:  [0.2, 0.3, 0.4, 0.1] as QualityVector,
+  hunter:     [0.3, 0.2, 0.1, 0.4] as QualityVector,
 } as const;
 
-export type ReturnPreset = keyof typeof RETURN_PRESETS;
+// ============================================================
+// Return Weights — 4D feelings personality
+// ============================================================
+//
+// feelings = [satisfaction, frustration, stamina, staleness]
+//   dim 0: satisfaction (満足)  — S·Q, good finds → want to go home happy
+//   dim 1: frustration (焦り)  — miss rate (h<5), bad finds → want to leave
+//   dim 2: stamina (体力)      — 1 - energyRatio, tired → want to rest
+//   dim 3: staleness (飽き)    — 1 - entropy, no surprises → want to leave
+//
+// All dims: 0 = no pressure, 1 = max pressure to return
+// returnDesire = feelings · returnWeights
+// returnProb = clamp((returnDesire - 0.5) * 2)
+
+export type ReturnWeights = [number, number, number, number];
 
 // ============================================================
 // Loadout — Agent personality bundle
@@ -128,30 +125,30 @@ export type ReturnPreset = keyof typeof RETURN_PRESETS;
 // Intelligence is not in the LLM (sensory organ only).
 // Intelligence is in the Coupling — the way you measure.
 //
-// Loadout bundles: what to look at, when to return, how to move,
-// and how to feel about energy. Same Sphere, same phi, same nodes —
+// Loadout bundles: what to look at, what counts as good,
+// how feelings affect return, and how to move.
+// Same Sphere, same phi, same nodes —
 // different Loadout = different personality. Zero retraining.
 
 export interface Loadout {
   name: string;
   weights: Partial<FastGateWeights>;
-  returnVector: SatisfactionVector;
+  /** What counts as "good" — personality-specific quality assessment */
+  qualityVector: QualityVector;
+  /** How feelings affect return — [satisfaction, frustration, stamina, staleness] */
+  returnWeights: ReturnWeights;
   walkPreference: WalkMode;
   minCycles: number;
-  /** Energy sensitivity: how soon the agent feels return pressure from low energy.
-   *  High (2.5) = feels pressure early (Scout). Low (0.5) = stays until the end (Scholar).
-   *  Internally: energyPressure = (1 - energyRatio) ^ (1 / sensitivity) */
-  energySensitivity: number;
 }
 
 export const LOADOUTS: Record<string, Loadout> = {
   balanced: {
     name: "balanced",
-    weights: {},  // use DEFAULT_WEIGHTS as-is
-    returnVector: RETURN_PRESETS.balanced,
+    weights: {},
+    qualityVector: QUALITY_PRESETS.balanced,
+    returnWeights: [0.3, 0.2, 0.3, 0.2],
     walkPreference: "explore",
     minCycles: 3,
-    energySensitivity: 1.0,
   },
   scholar: {
     name: "scholar",
@@ -159,10 +156,10 @@ export const LOADOUTS: Record<string, Loadout> = {
       flags: { ...DEFAULT_WEIGHTS.flags, authority: 8, freshness: 1 },
       metrics: { ...DEFAULT_WEIGHTS.metrics, weight: 0.5, distance: -1 },
     },
-    returnVector: RETURN_PRESETS.scholar,
+    qualityVector: QUALITY_PRESETS.scholar,
+    returnWeights: [0.2, 0.1, 0.1, 0.6],
     walkPreference: "deep",
     minCycles: 5,
-    energySensitivity: 0.5,
   },
   scout: {
     name: "scout",
@@ -170,10 +167,10 @@ export const LOADOUTS: Record<string, Loadout> = {
       flags: { ...DEFAULT_WEIGHTS.flags, hot: 10, freshness: 6 },
       metrics: { ...DEFAULT_WEIGHTS.metrics, heat: 0.8, distance: -3 },
     },
-    returnVector: RETURN_PRESETS.scout,
+    qualityVector: QUALITY_PRESETS.scout,
+    returnWeights: [0.4, 0.3, 0.2, 0.1],
     walkPreference: "explore",
     minCycles: 2,
-    energySensitivity: 2.5,
   },
   archivist: {
     name: "archivist",
@@ -181,10 +178,10 @@ export const LOADOUTS: Record<string, Loadout> = {
       flags: { ...DEFAULT_WEIGHTS.flags, sticky: 6, authority: 6 },
       metrics: { ...DEFAULT_WEIGHTS.metrics, weight: 0.5, decay: -0.3 },
     },
-    returnVector: RETURN_PRESETS.archivist,
+    qualityVector: QUALITY_PRESETS.archivist,
+    returnWeights: [0.2, 0.1, 0.3, 0.4],
     walkPreference: "deep",
     minCycles: 4,
-    energySensitivity: 0.8,
   },
   hunter: {
     name: "hunter",
@@ -192,10 +189,55 @@ export const LOADOUTS: Record<string, Loadout> = {
       flags: { ...DEFAULT_WEIGHTS.flags, hot: 10 },
       metrics: { ...DEFAULT_WEIGHTS.metrics, heat: 0.8 },
     },
-    returnVector: RETURN_PRESETS.hunter,
+    qualityVector: QUALITY_PRESETS.hunter,
+    returnWeights: [0.5, 0.2, 0.2, 0.1],
     walkPreference: "hot",
     minCycles: 3,
-    energySensitivity: 1.5,
+  },
+  // --- Extreme patterns (experimental) ---
+  moth: {
+    name: "moth",
+    weights: {
+      flags: { ...DEFAULT_WEIGHTS.flags, hot: 20, authority: 0, freshness: 0, sticky: 0, catalyst: 0 },
+      metrics: { ...DEFAULT_WEIGHTS.metrics, heat: 2.0, weight: 0, decay: 0, distance: -1 },
+      keywordMatch: 0,
+    },
+    qualityVector: [0.8, 0.0, 0.0, 0.2],
+    returnWeights: [0.5, 0.1, 0.2, 0.2],
+    walkPreference: "hot",
+    minCycles: 3,
+  },
+  hermit: {
+    name: "hermit",
+    weights: {
+      flags: { ...DEFAULT_WEIGHTS.flags, hot: -5, authority: 15, sticky: 10, freshness: -2, ephemeral: -10 },
+      metrics: { ...DEFAULT_WEIGHTS.metrics, heat: -0.3, weight: 1.0, decay: -0.5, distance: -1 },
+      keywordMatch: 3,
+    },
+    qualityVector: [0.0, 0.6, 0.4, 0.0],
+    returnWeights: [0.2, 0.1, 0.1, 0.6],
+    walkPreference: "deep",
+    minCycles: 4,
+  },
+  kamikaze: {
+    name: "kamikaze",
+    weights: {},
+    qualityVector: [0.25, 0.25, 0.25, 0.25],
+    returnWeights: [0.0, 0.0, 1.0, 0.0],
+    walkPreference: "explore",
+    minCycles: 1,
+  },
+  sniper: {
+    name: "sniper",
+    weights: {
+      flags: { ...DEFAULT_WEIGHTS.flags, hot: 10, authority: 10 },
+      metrics: { ...DEFAULT_WEIGHTS.metrics, heat: 1.0 },
+      keywordMatch: 20,
+    },
+    qualityVector: [0.1, 0.1, 0.0, 0.8],
+    returnWeights: [0.5, 0.3, 0.1, 0.1],
+    walkPreference: "hot",
+    minCycles: 2,
   },
 };
 
@@ -219,6 +261,7 @@ export class SessionMemory {
   private _totalW = 0;
   private _totalD = 0;
   private _hits = 0;  // h >= 7
+  private _misses = 0;  // h < 5
   private _visitedNodeIds = new Set<string>();
   private _allTags = new Set<string>();
 
@@ -233,6 +276,7 @@ export class SessionMemory {
     this._totalW += w;
     this._totalD += d;
     if (h >= 7) this._hits++;
+    if (h < 5) this._misses++;
     this._visitedNodeIds.add(nodeId);
 
     // Track tag diversity
@@ -261,8 +305,8 @@ export class SessionMemory {
   get cycleCount(): number { return this.evals.length; }
   wasVisited(nodeId: string): boolean { return this._visitedNodeIds.has(nodeId); }
 
-  /** 4D satisfaction vector: [relevance, authority, preservation, hitRate] */
-  get satisfaction(): SatisfactionVector {
+  /** 4D quality profile: [relevance, authority, preservation, hitRate] */
+  get qualityProfile(): QualityVector {
     const n = this.evals.length;
     if (n === 0) return [0, 0, 0, 0];
     return [
@@ -271,6 +315,18 @@ export class SessionMemory {
       1 - (this._totalD / n) / 10,   // inverted avg_d (low d = high value)
       this._hits / n,                 // hit rate (h >= 7)
     ];
+  }
+
+  /** Frustration: proportion of misses (h < 5). 0 = no misses, 1 = all misses */
+  get frustration(): number {
+    const n = this.evals.length;
+    if (n === 0) return 0;
+    return this._misses / n;
+  }
+
+  /** Staleness: 1 - entropy. 0 = still surprising, 1 = predictable */
+  get staleness(): number {
+    return 1 - this.deltaEntropy;
   }
 
   // --- Delta Profile accessors (observation only) ---
@@ -331,9 +387,9 @@ export class SessionMemory {
 
 export class FastGate {
   private queryTokens: string[];
-  private returnVector: SatisfactionVector;
+  private qualityVector: QualityVector;
+  private returnWeights: ReturnWeights;
   private weights: FastGateWeights;
-  private energySensitivity: number;
   private _minCycles: number;
   private _walkPreference: WalkMode;
   readonly memory = new SessionMemory();
@@ -346,8 +402,8 @@ export class FastGate {
       .toLowerCase()
       .split(/[\s,]+/)
       .filter(t => t.length >= 2);
-    this.returnVector = l.returnVector;
-    this.energySensitivity = l.energySensitivity;
+    this.qualityVector = l.qualityVector;
+    this.returnWeights = l.returnWeights;
     this._minCycles = l.minCycles;
     this._walkPreference = l.walkPreference;
     this.weights = {
@@ -390,7 +446,6 @@ export class FastGate {
       if (n.flags & Flag.Ephemeral)  score += fw.ephemeral;
       if (n.flags & Flag.Isolated)   score += fw.isolated;
       if (n.flags & Flag.Volatile)   score += fw.volatile;
-      // Hub: deprecated (dynamic linkCounts not supplied), Tagger-only keyword match remains via tags
 
       // --- Keyword relevance (summary + tags vs query) ---
       const text = (n.summary + " " + (n.tags ?? []).join(" ")).toLowerCase();
@@ -421,47 +476,66 @@ export class FastGate {
     return "explore";
   }
 
-  // --- Return: satisfaction vector × return vector ---
+  // --- Return: 4D feelings × personality vector ---
   //
-  // S · R → returnProb = clamp((dot - 0.5) * 2, 0, 1)
+  // feelings = [satisfaction, frustration, stamina, staleness]
+  //   satisfaction: S·Q (quality profile × quality vector)
+  //   frustration:  miss rate (h < 5 proportion)
+  //   stamina:      1 - energyRatio (energy pressure)
+  //   staleness:    1 - entropy (pattern convergence)
   //
-  // Examples (with default R = [0.4, 0.3, 0.2, 0.1]):
-  //   Neutral (h=5,w=5,d=5, 0 hits): S=[0.5,0.5,0.5,0.0] → dot=0.45 → prob=0%
-  //   Good (h=7,w=6,d=4, 60% hits): S=[0.7,0.6,0.6,0.6] → dot=0.64 → prob=28%
-  //   Excellent (h=9,w=8,d=3, 80%): S=[0.9,0.8,0.7,0.8] → dot=0.82 → prob=64%
+  // returnDesire = feelings · returnWeights
+  // returnProb = clamp((returnDesire - 0.5) * 2)
+  //
+  // Examples (balanced: Q=[0.4,0.3,0.2,0.1], RW=[0.3,0.2,0.3,0.2]):
+  //   All neutral:  feelings=[0.5,0.5,0.5,0.0] → desire=0.35 → prob=0%
+  //   Good + tired: feelings=[0.7,0.2,0.6,0.3] → desire=0.51 → prob=2%
+  //   Excellent:    feelings=[0.8,0.0,0.7,0.5] → desire=0.55 → prob=10%
 
   /**
-   * Return decision: satisfaction × return vector + energy pressure.
+   * Return decision: 4D feelings × personality vector.
    * @param energyRatio currentEnergy / initialEnergy (0.0 ~ 1.0), 1.0 if unknown
    */
   shouldReturn(energyRatio: number = 1.0): boolean {
     const count = this.memory.cycleCount;
     if (count < this._minCycles) return false;
 
-    const s = this.memory.satisfaction;
-    const r = this.returnVector;
-    const dot = s[0] * r[0] + s[1] * r[1] + s[2] * r[2] + s[3] * r[3];
-    const baseProb = Math.max(0, Math.min(1, (dot - 0.5) * 2));
+    const desire = this.computeReturnDesire(energyRatio);
+    const returnProb = Math.max(0, Math.min(1, (desire - 0.5) * 2));
+    return Math.random() < returnProb;
+  }
 
-    // Energy pressure: (1 - ratio) ^ (1 / sensitivity)
-    // High sensitivity (2.5) → low exponent (0.4) → pressure rises early
-    // Low sensitivity (0.5) → high exponent (2.0) → pressure rises late
-    const exponent = 1 / this.energySensitivity;
-    const energyPressure = Math.pow(Math.max(0, 1 - energyRatio), exponent);
+  /** Compute return desire (feelings · returnWeights). Exposed for debug. */
+  private computeReturnDesire(energyRatio: number): number {
+    // Satisfaction: quality profile × quality vector
+    const qp = this.memory.qualityProfile;
+    const qv = this.qualityVector;
+    const satisfaction = qp[0] * qv[0] + qp[1] * qv[1] + qp[2] * qv[2] + qp[3] * qv[3];
 
-    const finalProb = Math.min(1, baseProb + energyPressure);
-    return Math.random() < finalProb;
+    // Frustration: miss rate
+    const frustration = this.memory.frustration;
+
+    // Stamina: energy pressure (linear)
+    const stamina = Math.max(0, 1 - energyRatio);
+
+    // Staleness: pattern convergence (1 - entropy)
+    const staleness = this.memory.staleness;
+
+    // Feelings × personality
+    const rw = this.returnWeights;
+    return satisfaction * rw[0] + frustration * rw[1] + stamina * rw[2] + staleness * rw[3];
   }
 
   /** For debug logging */
-  satisfactionDebug(energyRatio: number = 1.0): string {
-    const s = this.memory.satisfaction;
-    const r = this.returnVector;
-    const dot = s[0] * r[0] + s[1] * r[1] + s[2] * r[2] + s[3] * r[3];
-    const baseProb = Math.max(0, Math.min(1, (dot - 0.5) * 2));
-    const exponent = 1 / this.energySensitivity;
-    const energyPressure = Math.pow(Math.max(0, 1 - energyRatio), exponent);
-    const finalProb = Math.min(1, baseProb + energyPressure);
-    return `S=[${s.map(v => v.toFixed(2)).join(",")}] dot=${dot.toFixed(3)} base=${(baseProb * 100).toFixed(0)}% +E=${(energyPressure * 100).toFixed(0)}% → ${(finalProb * 100).toFixed(0)}%`;
+  feelingsDebug(energyRatio: number = 1.0): string {
+    const qp = this.memory.qualityProfile;
+    const qv = this.qualityVector;
+    const sat = qp[0] * qv[0] + qp[1] * qv[1] + qp[2] * qv[2] + qp[3] * qv[3];
+    const frust = this.memory.frustration;
+    const stam = Math.max(0, 1 - energyRatio);
+    const stale = this.memory.staleness;
+    const desire = this.computeReturnDesire(energyRatio);
+    const prob = Math.max(0, Math.min(1, (desire - 0.5) * 2));
+    return `F=[sat:${sat.toFixed(2)},frust:${frust.toFixed(2)},stam:${stam.toFixed(2)},stale:${stale.toFixed(2)}] desire=${desire.toFixed(3)} → ${(prob * 100).toFixed(0)}%`;
   }
 }
