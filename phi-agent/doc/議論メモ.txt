@@ -1,3 +1,17 @@
+起動コマンド
+
+# インフラのみ
+docker compose up
+
+# インフラ + エージェント層 (phi-agent + pool-service + ollama)
+docker compose --profile agent up
+
+# phi-agent を3体同時に
+docker compose --profile agent up --scale phi-agent=3
+
+
+
+
 カップリングレイヤー孝
 
 スフィアは純粋性を維持するべきで何ら性格を保持すべきではない
@@ -20,32 +34,3 @@ focus させて知識を拾わせる　学ぶ　季節性を入れてバイア�
 
 従来のアプローチだと「性格のある AI」は大型モデルのファインチューニングか、巨大なシステムプロンプトで実現する。我々がやっているのは全く違う: 性格 = 測定器具 (Loadout) × 物理法則 (Sphere) × 感覚器官 (任意の LLM) LLM は交換可能な感覚器官に過ぎない。phi3:mini を GPT-4 に変えても性格の骨格は同じだ — 知覚の解像度が上がるだけ。 これは stigmergy の本質そのものだ。蟻の個体の脳は単純だが、フェロモンと環境の物理法則が組み合わさると複雑な行動が創発する。我々は同じことをデジタルで再現している。
 
-
-直近の議題
-A. 最小文化ループを閉じる (影響: 大)
-種族記憶は 書き込み だけ完了した。読み込み がない。
-
-現在:  scholar → evaluate → eval-log.jsonl に蓄積 → 終わり (開ループ)
-必要:  eval-log.jsonl → 次の scholar の FastGate に注入 → 行動が変わる (閉ループ)
-具体的には: 起動時に getSpeciesSummary() → hotNodes を Weapon バイアスに、commonTags を keyword ボーナスに反映。実装コストは小さい。これだけで文化が循環し始める。
-
-B. Docker compose 統合 (影響: インフラ)
-periphery + renalCore + phi-agent + pool-service が全てバラバラ。手動起動が面倒になってきている。一つの docker-compose.yml で全サービスが立つ状態にしたい。ollama の扱いが論点 (ホスト側 GPU vs コンテナ)。
-
-C. 種族記憶の decay / 容量管理 (影響: 中)
-eval-log.jsonl は 永遠に肥大する。種族記憶にも decay が必要。
-
-古いセッションを薄める (重み減衰)
-最大行数 or 最大セッション数で truncate
-これがないとドグマ化の自然ブレーキがない
-
-D. ghost/fossil フィルタ (影響: 品質)
-sense() が返すノードに ghost/fossil が混ざっている可能性。flags でフィルタすべきだが未実装。phi-agent が死んだノードに時間を使う無駄が発生する。
-
-E. Focus Echo 統合 (影響: 生態系)
-RenalCore に純粋関数がある。Periphery に繋ぐと「誰かが focus した波紋」が近傍に伝わる。sense() の結果が他エージェントの行動に影響される。stigmergic loop の強化。
-
-F. 複数エージェント同時実行テスト (影響: 検証)
-現在は1体ずつ手動実行。scholar + hunter + moth を同時に走らせたとき、環境がどう変わるか未検証。種族間の相互影響を観察する最初の実験。Docker compose (B) があると楽になる。
-
-私の感覚: A → B → F の順が最も発見が多い。A で文化ループを閉じ、B でインフラを整え、F で複数種族を放って観察する。C-E は品質改善で、動くものを見てから調整しても遅くない。
