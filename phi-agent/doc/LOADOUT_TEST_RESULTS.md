@@ -392,13 +392,88 @@ if (n.tags && n.tags.includes("auto-generated")) continue;
 
 ---
 
+## v6 テスト — frustration 拡張 (quality decline signal) (2026-02-08)
+
+### 変更内容
+
+frustration getter を拡張 — 3つの信号の max:
+
+```
+frustration = max(missRate, recentDecline, belowPeak)
+```
+
+| 信号 | 定義 | 意味 |
+|------|------|------|
+| missRate | h < 5 の割合 | 従来通り |
+| recentDecline | `min(1, max(0, -lastDelta[0] × 2))` | 直前の h 下落 (即時失望) |
+| belowPeak | `(peakH - latestH) / 10` | ベスト h との差 (残留不満) |
+
+hunter の returnWeights を `[0.5,0.2,0.2,0.1]` → `[0.3,0.4,0.2,0.1]` に変更 (frust 最大化)。
+
+### hunter — scout トラップ解消
+
+| Cycle | ノード | h | w | action | 鍵となる感情 |
+|-------|--------|---|---|--------|-------------|
+| 1 | Cellular respiration | 9 | 8 | standard | sat=0.88 |
+| 2 | Ethnographic observation | 5 | 6 | **camp** | **frust=0.80** (h:9→5) |
+| 3 | Monty Hall Bayesian | 9 | 8 | **leap** | stam=0.53 |
+| 4 | Nash equilibrium | 9 | 8 | **camp** | stale=0.75 |
+| 5 | DNS resolution | 5 | 6 | **leap** | **frust=0.80** (h:9→5) |
+
+**5 cycles, 5 evals, Heat +12, scout 0回**
+
+改善前: 7 cycles, 3 evals, Heat +4, scout ×4
+
+**核心**: h が 9→5 に下落するたびに `recentDecline = -(-0.4)×2 = 0.80` が発火。
+frust=0.80 が stam を上回り、scout ではなく camp/leap が選ばれる。
+狩人らしい「品質が下がったら不満 → 大移動/再探索」パターンが実現。
+
+### sniper — 部分改善 (環境依存)
+
+| Cycle | ノード | h | w | action | 感情 |
+|-------|--------|---|---|--------|------|
+| 1 | Ethnographic observation | 5 | 6 | standard | sat=0.11 |
+| 2 | AutoCapsule (mock skip) | — | — | standard | sat=0.11 |
+| 3 | DNS resolution | 6 | 9 | standard | sat=0.13 |
+| 4 | — | — | — | **scout** | stam=0.63 |
+| 5 | Nash equilibrium | 9 | 8 | standard (guard) | sat=0.41 |
+| 6 | — | — | — | **scout** | stam=0.92 |
+
+**6 cycles, 3 evals, Heat +5, scout ×2**
+
+h が単調増加 (5→6→9) だったため frustration は発火せず。
+sniper の問題: `qualityVector=[0.1,0.1,0,0.8]` が hitRate に極端依存 → h<7 が続くと sat=0.1 のまま。
+前回クリーンサーバーでは全 h=9 で scout trap なしだった — 環境 (ノード品質) に依存。
+
+### 改善マトリクス
+
+| | hunter (v4) | hunter (v6) | sniper (v5-clean) | sniper (v6) |
+|---|---|---|---|---|
+| Evals | 3 | **5** | 5 | 3 |
+| Heat Δ | +4 | **+12** | +20 | +5 |
+| Scout | 4回 | **0回** | 0回 | 2回 |
+| 行動 | std→scout×4 | camp↔leap | camp×5 | std→scout→std→scout |
+
+### 設計分析: frustration vs stamina の戦い
+
+frustration 拡張は **h が上下するパターン** (比較型探索) で最も効果的。
+sniper の問題は frustration ではなく satisfaction の構造的低さ。
+
+残りのアプローチ候補:
+- A: sniper の qualityVector を hitRate 偏重から分散させる (sat を上げる)
+- B: stamina の行動マッピングを scout 以外に変える (全体影響)
+- C: 現状維持 — sniper は「環境に恵まれた時だけ真価を発揮する」性格として受容
+
+---
+
 ## 次の検証
 
 - [x] archivist / hunter のテスト → **完了** (hunter に scout トラップ発見)
 - [x] 行動パターンの性格差 → **完了** (moth=camp, archivist=camp→leap, hunter/sniper=scout トラップ)
 - [x] auto-generated フィルタ → **完了** (2番手が実ノードを発見)
 - [x] markVisited 品質保全 → **完了** (parse fail/mock/empty でプロファイル汚染なし)
-- [ ] scout トラップ修正後の hunter/sniper 再テスト
+- [x] scout トラップ修正: hunter → **解消** (frustration 拡張)
+- [ ] scout トラップ修正: sniper → 環境依存で残存 (A/B/C 要判断)
 - [ ] 同一 Loadout で異なるモデル → Delta Profile が変わらないことを確認
 - [ ] より多い cycle (10-20) での entropy 収束パターン
 - [ ] evalFocus が Delta Profile に与える影響の定量比較
