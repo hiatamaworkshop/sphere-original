@@ -53,10 +53,13 @@ Respond: { "action": "focus", "index": <number>, "reason": "<brief>" }
 If none are relevant: { "action": "move", "mode": "<walkmode>", "reason": "<brief>" }`;
   }
 
-  evaluateNode(node: NodeDetail): string {
+  evaluateNode(node: NodeDetail, evalFocus?: string): string {
     const tags = node.tags?.join(", ") ?? "(none)";
     const summary = node.summary ?? "(no summary)";
     const content = node.content?.slice(0, 500) ?? "(no content)";
+    const perspective = evalFocus
+      ? `\nPerspective: ${evalFocus}`
+      : "";
 
     return `My query: "${this.query}"
 
@@ -66,7 +69,7 @@ I focused on this node:
 - Content: ${content}
 - Current heat: ${node.heat}, weight: ${node.weight}
 - Kind: ${node.kind}
-
+${perspective}
 TASK: Rate this node's value with numerical scores:
 - h (heat 0-10): How actively useful is this? 5=neutral, 8+=very relevant, 2-=irrelevant
 - w (weight 0-10): How authoritative/established? 5=neutral

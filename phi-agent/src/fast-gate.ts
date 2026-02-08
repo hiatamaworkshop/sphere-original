@@ -139,6 +139,8 @@ export interface Loadout {
   returnWeights: ReturnWeights;
   walkPreference: WalkMode;
   minCycles: number;
+  /** Evaluation perspective — shapes what phi asks about a node */
+  evalFocus: string;
 }
 
 export const LOADOUTS: Record<string, Loadout> = {
@@ -149,6 +151,7 @@ export const LOADOUTS: Record<string, Loadout> = {
     returnWeights: [0.3, 0.2, 0.3, 0.2],
     walkPreference: "explore",
     minCycles: 3,
+    evalFocus: "Rate this node's overall value — balance relevance, authority, and longevity.",
   },
   scholar: {
     name: "scholar",
@@ -160,6 +163,7 @@ export const LOADOUTS: Record<string, Loadout> = {
     returnWeights: [0.2, 0.1, 0.1, 0.6],
     walkPreference: "deep",
     minCycles: 5,
+    evalFocus: "Judge this node's depth and authority. Is this established, trustworthy knowledge? Prioritize weight over heat.",
   },
   scout: {
     name: "scout",
@@ -171,6 +175,7 @@ export const LOADOUTS: Record<string, Loadout> = {
     returnWeights: [0.4, 0.3, 0.2, 0.1],
     walkPreference: "explore",
     minCycles: 2,
+    evalFocus: "How fresh and actively relevant is this? Rate heat high if it's timely and useful right now. Decay old information faster.",
   },
   archivist: {
     name: "archivist",
@@ -182,6 +187,7 @@ export const LOADOUTS: Record<string, Loadout> = {
     returnWeights: [0.2, 0.1, 0.3, 0.4],
     walkPreference: "deep",
     minCycles: 4,
+    evalFocus: "Should this knowledge be preserved? Rate decay LOW if worth saving, HIGH if ephemeral. Weight reflects archival value.",
   },
   hunter: {
     name: "hunter",
@@ -193,6 +199,7 @@ export const LOADOUTS: Record<string, Loadout> = {
     returnWeights: [0.5, 0.2, 0.2, 0.1],
     walkPreference: "hot",
     minCycles: 3,
+    evalFocus: "Is this a high-value target? Rate heat high only if truly exceptional. Be selective — mediocre nodes get low scores.",
   },
   // --- Extreme patterns (experimental) ---
   moth: {
@@ -206,6 +213,7 @@ export const LOADOUTS: Record<string, Loadout> = {
     returnWeights: [0.5, 0.1, 0.2, 0.2],
     walkPreference: "hot",
     minCycles: 3,
+    evalFocus: "How HOT is this? Only heat matters. Bright, active, buzzing with attention = high score. Cold and quiet = low.",
   },
   hermit: {
     name: "hermit",
@@ -218,6 +226,7 @@ export const LOADOUTS: Record<string, Loadout> = {
     returnWeights: [0.2, 0.1, 0.1, 0.6],
     walkPreference: "deep",
     minCycles: 4,
+    evalFocus: "Ignore popularity. Is this heavy, stable, enduring knowledge? Weight and low decay matter. Trendy content deserves low scores.",
   },
   kamikaze: {
     name: "kamikaze",
@@ -226,6 +235,7 @@ export const LOADOUTS: Record<string, Loadout> = {
     returnWeights: [0.0, 0.0, 1.0, 0.0],
     walkPreference: "explore",
     minCycles: 1,
+    evalFocus: "Rate everything honestly. No bias, no preference. Just measure what you see.",
   },
   sniper: {
     name: "sniper",
@@ -238,6 +248,7 @@ export const LOADOUTS: Record<string, Loadout> = {
     returnWeights: [0.5, 0.3, 0.1, 0.1],
     walkPreference: "hot",
     minCycles: 2,
+    evalFocus: "Is this exactly what I'm looking for? Score harshly — only a direct hit on my query deserves high heat. Near-misses get low scores.",
   },
 };
 
@@ -392,6 +403,7 @@ export class FastGate {
   private weights: FastGateWeights;
   private _minCycles: number;
   private _walkPreference: WalkMode;
+  private _evalFocus: string;
   readonly memory = new SessionMemory();
   readonly loadoutName: string;
 
@@ -406,6 +418,7 @@ export class FastGate {
     this.returnWeights = l.returnWeights;
     this._minCycles = l.minCycles;
     this._walkPreference = l.walkPreference;
+    this._evalFocus = l.evalFocus;
     this.weights = {
       flags: { ...DEFAULT_WEIGHTS.flags, ...l.weights.flags },
       metrics: { ...DEFAULT_WEIGHTS.metrics, ...l.weights.metrics },
@@ -414,6 +427,7 @@ export class FastGate {
   }
 
   get walkPreference(): WalkMode { return this._walkPreference; }
+  get evalFocus(): string { return this._evalFocus; }
 
   // --- Pick: choose focus target from sense results ---
 
@@ -474,6 +488,55 @@ export class FastGate {
     if (evalH >= 7) return "deep";
     if (evalH >= 5) return "hot";
     return "explore";
+  }
+
+  // --- Action selection: feelings → next cycle behavior ---
+  //
+  // Instead of a fixed pipeline, feelings modulate the cycle:
+  //   satisfaction high → camp (stay, re-sense, exploit nearby)
+  //   frustration high  → leap (big step, flee bad area)
+  //   staleness high    → leap + explore (seek novelty)
+  //   stamina high      → scout (sense-only, skip focus+eval to save energy)
+  //   none dominant     → standard cycle
+
+  chooseAction(energyRatio: number): { type: string; moveStep: number; moveMode: WalkMode } {
+    const qp = this.memory.qualityProfile;
+    const qv = this.qualityVector;
+    const sat = qp[0] * qv[0] + qp[1] * qv[1] + qp[2] * qv[2] + qp[3] * qv[3];
+    const frust = this.memory.frustration;
+    const stam = Math.max(0, 1 - energyRatio);
+    const stale = this.memory.staleness;
+
+    // Find dominant feeling (above threshold)
+    const threshold = 0.5;
+    const feelings = [
+      { name: "sat" as const, value: sat },
+      { name: "frust" as const, value: frust },
+      { name: "stam" as const, value: stam },
+      { name: "stale" as const, value: stale },
+    ];
+    const dominant = feelings.reduce((a, b) => b.value > a.value ? b : a);
+
+    if (dominant.value < threshold) {
+      return { type: "standard", moveStep: 0.3, moveMode: this._walkPreference };
+    }
+
+    switch (dominant.name) {
+      case "sat":
+        // Satisfied → camp: stay, re-sense without moving, exploit area
+        return { type: "camp", moveStep: 0, moveMode: "deep" };
+      case "frust":
+        // Frustrated → leap: big move, get away from bad area
+        return { type: "leap", moveStep: 0.6, moveMode: "explore" };
+      case "stale":
+        // Bored → leap: seek novelty in a new area
+        return { type: "leap", moveStep: 0.5, moveMode: "explore" };
+      case "stam":
+        // Tired → scout: sense-only, skip focus+eval to conserve energy
+        return { type: "scout", moveStep: 0.3, moveMode: this._walkPreference };
+      default:
+        return { type: "standard", moveStep: 0.3, moveMode: this._walkPreference };
+    }
   }
 
   // --- Return: 4D feelings × personality vector ---
