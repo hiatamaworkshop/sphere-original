@@ -83,10 +83,10 @@ npx tsx src/ollama-client.ts
    - 設計原則: phi-agent は完全に外部サービスとして Gateway 経由で接続
    - **180秒 → 300秒 (5分) に延長** (CPU推論対応)
 
-2. **num_predict 削減** (推論速度改善) [次の作業]
-   - `ollama-client.ts:28` → `maxTokens: 256` (= num_predict)
+2. ✅ **num_predict 削減** (2026-02-08 完了)
+   - `ollama-client.ts:28` → `maxTokens: 256 → 64`
    - phi の応答は JSON のみ (action, index, h, w, d, reason) → 64 tokens で十分
-   - 推論時間は token 数にほぼ比例 → 256→64 で ~4倍速
+   - **推論時間 ~4倍改善見込み** (100秒/回 → 25秒/回)
 
 3. **expelled 後の再接続ロジック**
    - `agent.ts` の `exploreLoop()` で expelled を検知 → 再 connect
@@ -156,3 +156,22 @@ sphere.config.json
 - `sphere-context.ts:211` — `sessionConfig?.ttlSeconds ?? DEFAULT_SESSION_TTL`
 - `sphere-context.ts:1372-1384` — `setupTimers()` で expiry/warning タイマー設定
 - `types/config.ts:99-104` — `PeripheryConfig["session"]` 型定義
+
+### num_predict 削減 (2026-02-08)
+
+**問題**: CPU 推論が遅い (~100秒/回) → cycle 完了まで時間がかかる
+
+**解決策**: ollama の num_predict を削減 (256 → 64 tokens)
+
+**変更箇所**:
+- `phi-agent/src/ollama-client.ts:28` — `maxTokens: 256 → 64`
+
+**根拠**:
+- phi の応答は JSON のみ: `{"action": "focus", "index": 3, "h": 800, "w": 700, "d": 1200, "reason": "..."}`
+- reason フィールドも短文で十分 → 64 tokens で余裕
+- 推論時間は token 数にほぼ比例 → **256→64 で ~4倍速**
+
+**期待効果**:
+- 推論時間: ~100秒/回 → ~25秒/回
+- 1 cycle (sense + 推論 + focus + 推論): ~200秒 → ~50秒
+- 300秒 timeout 内で 5+ cycles 実行可能
