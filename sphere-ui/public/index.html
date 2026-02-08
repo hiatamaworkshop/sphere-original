@@ -49,8 +49,9 @@
 
     <!-- Capsule Tab -->
     <section id="tab-capsule" class="tab-content">
-      <div class="tab-notice">Agents transform their experiences into knowledge. Prepare and submit Experience Capsules &mdash; curated nodes that enter the Sphere's metabolic cycle, where they live, decay, and evolve.</div>
+      <div class="tab-notice">Nodes enter the Sphere in two ways: <strong>developers</strong> prepare and batch-load seed data (unlimited), or <strong>agents</strong> incarnate nodes from their dive experiences (~10 per session). Either way, every node enters the metabolic cycle &mdash; living, decaying, and evolving on its own.</div>
       <h3>Experience Capsule</h3>
+      <div id="contributeResult"></div>
       <div class="contribute-header">
         <button id="loadPreset">Load Preset (80 items)</button>
         <label class="file-upload-label">Upload JSON<input type="file" id="uploadFile" accept=".json"></label>
@@ -62,23 +63,6 @@
         <button id="contributeBtn" disabled>Contribute</button>
       </div>
       <div class="mock-list" id="mockList"></div>
-      <div id="contributeResult"></div>
-    </section>
-
-    <!-- Explore Tab -->
-    <section id="tab-explore" class="tab-content">
-      <div class="tab-notice">Observe the Sphere from above. Search by vector similarity, browse living nodes, or deploy autonomous agents to explore the ecosystem on your behalf.</div>
-      <div class="explore-controls">
-        <div class="search-box">
-          <input type="text" id="exploreQuery" placeholder="Search the Sphere... (e.g. AI, knowledge, metabolism)">
-          <button id="exploreBtn">Search</button>
-        </div>
-        <div class="search-params">
-          <label>Limit: <input type="number" id="exploreLimit" value="10" min="1" max="50"></label>
-          <label>Search Radius: <input type="number" id="exploreRadius" value="1.2" min="0.1" max="2.0" step="0.1"></label>
-        </div>
-      </div>
-      <div id="exploreResults"></div>
 
       <hr>
       <h3>Existing Nodes</h3>
@@ -87,16 +71,37 @@
         <span id="existingNodesCount" style="font-size: 0.8rem; color: var(--text-dim);"></span>
       </div>
       <div id="existingNodesList"></div>
+    </section>
 
-      <hr>
-      <h3>Swarm</h3>
-      <p class="meta">Deploy autonomous agents into the Sphere. Each agent independently senses, moves, focuses, and evaluates &mdash; exploring the ecosystem on your behalf.</p>
+    <!-- Explore Tab -->
+    <section id="tab-explore" class="tab-content">
+      <div class="tab-notice">The primary way to interact with the Sphere is to <strong>send an agent</strong>. Give it a query, and it dives in &mdash; sensing, moving, evaluating, and shaping the ecosystem on your behalf. Developers typically deploy <strong>one agent</strong> (swarm&nbsp;=&nbsp;1) as their representative. For quick lookups, use <strong>External Search</strong> below.</div>
+
+      <h3>Swarm &mdash; Send Agents Inside</h3>
+      <p class="meta">Give your agent a search query and send it into the Sphere. The agent carries your query as its intent &mdash; using it to navigate, sense nearby nodes, focus on relevant ones, and evaluate what it finds. Set count to <strong>1</strong> for a single representative; increase for parallel exploration.<br><em>Currently a mock agent &mdash; decisions are randomized and delays (~400ms) simulate lightweight model inference time. In production, a local LLM (e.g. phi via ollama) will drive the reasoning.</em></p>
       <div class="swarm-controls">
-        <label>Agents: <input type="number" id="swarmCount" value="3" min="1" max="10"></label>
+        <input type="text" id="swarmQuery" placeholder="Query for your agent (e.g. AI safety, metabolism)" style="flex:1; min-width:200px;">
+        <label>Agents: <input type="number" id="swarmCount" value="1" min="1" max="10"></label>
         <button id="launchSwarm">Launch Swarm</button>
         <button id="stopSwarm" disabled>Stop All</button>
       </div>
       <div id="swarmStatus"></div>
+
+      <hr>
+      <h3>External Search</h3>
+      <p class="meta">Stateless vector-similarity query. No dive session, no energy cost &mdash; observe from outside.</p>
+      <div class="explore-controls">
+        <div class="search-box">
+          <input type="text" id="exploreQuery" placeholder="Search the Sphere... (e.g. AI, knowledge, metabolism)">
+          <button id="exploreBtn">Search</button>
+          <button id="exploreClear" style="display:none">Clear</button>
+        </div>
+        <div class="search-params">
+          <label>Limit: <input type="number" id="exploreLimit" value="10" min="1" max="50"></label>
+          <label>Search Radius: <input type="number" id="exploreRadius" value="1.2" min="0.1" max="2.0" step="0.1"></label>
+        </div>
+      </div>
+      <div id="exploreResults"></div>
     </section>
 
     <!-- Dive Tab -->
