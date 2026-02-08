@@ -159,6 +159,7 @@ export class PhiAgent {
         ? this.sphere.currentEnergy / this.initialEnergy
         : 1.0;
       this.log(`Satisfaction: ${this.gate.satisfactionDebug(energyRatio)}`);
+      this.log(`DeltaProfile: ${this.gate.memory.deltaDebug()}`);
       if (this.gate.shouldReturn(energyRatio)) {
         this.log(`Satisfied — returning`);
         break;

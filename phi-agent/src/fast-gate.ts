@@ -220,6 +220,12 @@ export class SessionMemory {
   private _totalD = 0;
   private _hits = 0;  // h >= 7
   private _visitedNodeIds = new Set<string>();
+  private _allTags = new Set<string>();
+
+  // --- Delta Profile (observation only, doesn't affect decisions) ---
+  // Δ = [h/10, w/10, 1-d/10, hitDelta, tagDiversity]
+  private _deltas: number[][] = [];
+  private _prevState: number[] | null = null;
 
   record(nodeId: string, h: number, w: number, d: number, tags: string[]): void {
     this.evals.push({ nodeId, h, w, d, tags });
@@ -228,6 +234,27 @@ export class SessionMemory {
     this._totalD += d;
     if (h >= 7) this._hits++;
     this._visitedNodeIds.add(nodeId);
+
+    // Track tag diversity
+    const prevTagCount = this._allTags.size;
+    for (const t of tags) this._allTags.add(t);
+    const newTags = this._allTags.size - prevTagCount;
+
+    // Compute current state snapshot
+    const state = [
+      h / 10,                      // heat (this eval, normalized)
+      w / 10,                      // weight (this eval, normalized)
+      1 - d / 10,                  // preservation (inverted decay)
+      h >= 7 ? 1 : 0,             // hit (binary)
+      newTags / Math.max(tags.length, 1),  // novelty (ratio of new tags)
+    ];
+
+    // Record delta from previous state
+    if (this._prevState) {
+      const delta = state.map((v, i) => v - this._prevState![i]);
+      this._deltas.push(delta);
+    }
+    this._prevState = state;
   }
 
   get totalScore(): number { return this._totalH; }
@@ -244,6 +271,57 @@ export class SessionMemory {
       1 - (this._totalD / n) / 10,   // inverted avg_d (low d = high value)
       this._hits / n,                 // hit rate (h >= 7)
     ];
+  }
+
+  // --- Delta Profile accessors (observation only) ---
+
+  get deltaCount(): number { return this._deltas.length; }
+
+  /** Per-dimension mean of Δ */
+  get deltaMean(): number[] {
+    const n = this._deltas.length;
+    if (n === 0) return [0, 0, 0, 0, 0];
+    const sum = [0, 0, 0, 0, 0];
+    for (const d of this._deltas) {
+      for (let i = 0; i < 5; i++) sum[i] += d[i];
+    }
+    return sum.map(s => s / n);
+  }
+
+  /** Per-dimension variance of Δ */
+  get deltaVariance(): number[] {
+    const n = this._deltas.length;
+    if (n < 2) return [0, 0, 0, 0, 0];
+    const mean = this.deltaMean;
+    const sumSq = [0, 0, 0, 0, 0];
+    for (const d of this._deltas) {
+      for (let i = 0; i < 5; i++) sumSq[i] += (d[i] - mean[i]) ** 2;
+    }
+    return sumSq.map(s => s / (n - 1));
+  }
+
+  /** Approximate entropy of recent deltas (normalized 0-1).
+   *  High = diverse changes. Low = predictable pattern. */
+  get deltaEntropy(): number {
+    const n = this._deltas.length;
+    if (n < 3) return 1.0;  // assume maximum entropy when insufficient data
+
+    // Use variance sum as proxy for entropy (cheap, no binning needed)
+    // High total variance → high entropy (diverse Δ patterns)
+    const v = this.deltaVariance;
+    const totalVar = v.reduce((a, b) => a + b, 0);
+    // Normalize: each dim is [-1,1] so max variance ≈ 1.0 per dim
+    return Math.min(1, totalVar / v.length);
+  }
+
+  /** Debug string for delta profile */
+  deltaDebug(): string {
+    if (this._deltas.length === 0) return "Δ: no data";
+    const m = this.deltaMean;
+    const v = this.deltaVariance;
+    const dims = ["h", "w", "p", "hit", "nov"];
+    const parts = dims.map((d, i) => `${d}:${m[i] >= 0 ? "+" : ""}${m[i].toFixed(2)}(±${Math.sqrt(v[i]).toFixed(2)})`);
+    return `Δ: [${parts.join(", ")}] entropy=${this.deltaEntropy.toFixed(3)}`;
   }
 }
 
