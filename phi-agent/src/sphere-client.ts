@@ -68,7 +68,7 @@ export type SphereEventHandler = (event: SphereEvent) => void;
 
 const DEFAULT_CONFIG: SphereConfig = {
   peripheryUrl: process.env.SPHERE_URL || "http://localhost:3001",
-  wsUrl: process.env.SPHERE_WS || "ws://localhost:3001",
+  wsUrl: process.env.SPHERE_WS || "ws://localhost:8081",  // dev: separate port, production: same as HTTP
 };
 
 export class SphereClient {
