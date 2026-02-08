@@ -443,6 +443,26 @@ export class SessionMemory {
 }
 
 // ============================================================
+// Species Memory Bias — inherited knowledge from past sessions
+// ============================================================
+//
+// Closes the culture loop:
+//   eval-log.jsonl → SpeciesMemoryBias → FastGate scoring → behavior change → new evaluations
+//
+// hotNodeIds: nodes the species visited before → familiarity bonus
+// tags: accumulated vocabulary → keyword search expansion
+
+export interface SpeciesMemoryBias {
+  /** Nodes the species has evaluated before (nodeId → visit count) */
+  hotNodeIds: Map<string, number>;
+  /** Top tags from species evaluation history */
+  tags: string[];
+}
+
+const SPECIES_NODE_BONUS = 3;   // per visit count — moderate nudge toward known territory
+const SPECIES_TAG_BONUS = 3;    // per tag match — less than keywordMatch (default 10)
+
+// ============================================================
 // FastGate
 // ============================================================
 
@@ -456,10 +476,12 @@ export class FastGate {
   private _walkPreference: WalkMode;
   private _evalFocus: string;
   private _lastActionWasScout = false;
+  private _speciesHotNodes: Map<string, number>;
+  private _speciesTags: string[];
   readonly memory = new SessionMemory();
   readonly loadoutName: string;
 
-  constructor(query: string, loadout?: Loadout) {
+  constructor(query: string, loadout?: Loadout, speciesBias?: SpeciesMemoryBias) {
     const l = loadout ?? LOADOUTS.balanced;
     this.loadoutName = l.name;
     this.queryTokens = query
@@ -481,6 +503,9 @@ export class FastGate {
       stateBias: { ...DEFAULT_WEAPON.stateBias, ...wp?.stateBias },
       ratioBias: { ...DEFAULT_WEAPON.ratioBias, ...wp?.ratioBias },
     };
+    // Species memory: inherited knowledge from past sessions
+    this._speciesHotNodes = speciesBias?.hotNodeIds ?? new Map();
+    this._speciesTags = speciesBias?.tags ?? [];
   }
 
   get walkPreference(): WalkMode { return this._walkPreference; }
@@ -522,6 +547,17 @@ export class FastGate {
       const text = (n.summary + " " + (n.tags ?? []).join(" ")).toLowerCase();
       for (const token of this.queryTokens) {
         if (text.includes(token)) base += this.weights.keywordMatch;
+      }
+
+      // --- Species memory: familiarity bonus for known nodes ---
+      const speciesVisits = this._speciesHotNodes.get(n.id);
+      if (speciesVisits) {
+        base += speciesVisits * SPECIES_NODE_BONUS;
+      }
+
+      // --- Species memory: inherited vocabulary extends search ---
+      for (const tag of this._speciesTags) {
+        if (text.includes(tag)) base += SPECIES_TAG_BONUS;
       }
 
       // Floor: ensure positive for multiplicative layers

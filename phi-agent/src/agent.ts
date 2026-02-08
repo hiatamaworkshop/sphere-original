@@ -16,8 +16,8 @@ import { SphereClient } from "./sphere-client.js";
 import type { WalkMode } from "./sphere-client.js";
 import { PromptBuilder, parseAction } from "./prompt-builder.js";
 import { FastGate, LOADOUTS } from "./fast-gate.js";
-import type { Loadout, LoadoutName } from "./fast-gate.js";
-import { appendEvalLog } from "./eval-log.js";
+import type { Loadout, LoadoutName, SpeciesMemoryBias } from "./fast-gate.js";
+import { appendEvalLog, getSpeciesSummary } from "./eval-log.js";
 import type { EvalLogEntry } from "./eval-log.js";
 
 export interface AgentConfig {
@@ -74,7 +74,20 @@ export class PhiAgent {
     const loadout = typeof this.config.loadout === "string"
       ? LOADOUTS[this.config.loadout]
       : this.config.loadout;
-    this.gate = new FastGate(this.config.query, loadout);
+
+    // Load species memory — inherited knowledge from past sessions
+    const loadoutName = typeof this.config.loadout === "string"
+      ? this.config.loadout : this.config.loadout.name;
+    const species = getSpeciesSummary(loadoutName);
+    let speciesBias: SpeciesMemoryBias | undefined;
+    if (species.sessions > 0) {
+      speciesBias = {
+        hotNodeIds: new Map(species.hotNodes.map(n => [n.nodeId, n.count])),
+        tags: species.commonTags.map(t => t.tag),
+      };
+      this.log(`Species memory: ${species.sessions} past sessions, ${species.hotNodes.length} known nodes, ${species.commonTags.length} tags`);
+    }
+    this.gate = new FastGate(this.config.query, loadout, speciesBias);
     this.stats = {
       cycles: 0,
       nodesExamined: 0,

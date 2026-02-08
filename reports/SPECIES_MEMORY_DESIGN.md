@@ -97,12 +97,42 @@ Common tags: psychology, anthropology, society, culture, bias
 
 **変更点**: 種族記憶が Sphere 外に独立した永続層として確立された。
 
+## 読み込み (Culture Loop 完了, 2026-02-08)
+
+### SpeciesMemoryBias → FastGate
+
+起動時に `getSpeciesSummary(loadout)` → `SpeciesMemoryBias` に変換 → FastGate に注入。
+
+```
+SpeciesMemoryBias {
+  hotNodeIds: Map<nodeId, visitCount>  // 種族が過去に訪れたノード
+  tags: string[]                        // 種族の蓄積語彙
+}
+```
+
+スコアリングへの影響 (pickFocusTarget):
+- **既知ノード**: `visitCount × SPECIES_NODE_BONUS(3)` を base に加算 (帰巣本能)
+- **種族語彙**: タグ一致で `SPECIES_TAG_BONUS(3)` を base に加算 (視野拡張)
+- いずれも keywordMatch(10) より弱い — nudge であって mandate ではない
+- base に加算 → Weapon の乗算パイプラインに参加 (性格との掛け合わせが生きる)
+
+### 実証結果 (scholar ×3)
+
+```
+Session 1: 5 evals → eval-log.jsonl に蓄積
+Session 2: 5 evals → 蓄積 + 2ノード再訪
+Session 3: "Species memory: 2 past sessions, 5 known nodes, 10 tags" ← ループ閉鎖
+           → 6195fd7f を3セッション連続訪問 (帰巣)
+           → d06531c6 をセッション2の記憶で再訪 (文化継承)
+           → avgW=9.0 不変 (種族行動の定着)
+```
+
 ## 今後の展望
 
-### 短期: 種族記憶の読み込み活用
-- 次回の scholar 起動時に過去評価を参照
-- 過去に高評価だったノード → Weapon のバイアスに加算
-- 過去に低評価だったノード → 回避リストに追加
+### 短期: 種族記憶の decay / 容量管理
+- eval-log.jsonl は永遠に肥大する
+- 古いセッションの減衰 (重み付き平均 or 古いエントリの間引き)
+- **設計方針**: truncate ではなく Sphere の作法に従う — phi-agent 自身が古い記憶を評価して淘汰
 
 ### 中期: 種族間の比較
 - scholar と scout で同じノードの評価を比較

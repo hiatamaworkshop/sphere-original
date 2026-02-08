@@ -275,12 +275,22 @@ nodeConflict(nodeId) = max(|eval_A - eval_B|) for all species pairs A, B
 
 現時点の到達度:
 - [x] loadout → 個体が評価する (実装済み)
-- [x] species memory → 評価が蓄積される (eval-log.jsonl, 今日実装)
-- [ ] 蓄積された記憶が次の個体の行動に影響する (読み込み未実装)
+- [x] species memory → 評価が蓄積される (eval-log.jsonl)
+- [x] 蓄積された記憶が次の個体の行動に影響する (SpeciesMemoryBias → FastGate, **実装完了**)
 - [ ] bus が種族識別付きで機能する (フィルタ未実装)
 
-**次のマイルストーン**: 種族記憶の読み込み → FastGate のバイアスに反映。
-これだけで最小文化ループが閉じる。bus は後回しでよい。
+**最小文化ループは閉じた** (2026-02-08)。bus なしで3要素ループが成立。
+
+実証結果 (scholar ×3 セッション):
+- `6195fd7f` (psychology/bias/decision): 3セッション連続訪問 — 種族記憶が帰巣本能を生んだ
+- `d06531c6` (philosophy/AI/mind): セッション2で発見 → 種族記憶に蓄積 → セッション3で再訪
+- avgW=9.0 (15評価中): scholar 種族の「重い知識を重んじる」行動が完全に定着
+- 種族の commonTags が queryTokens を拡張 → 次の個体の視野が広がっている
+
+実装:
+- `SpeciesMemoryBias` (FastGate): hotNodeIds (帰巣ボーナス ×3/visit) + tags (語彙拡張 ×3/match)
+- `getSpeciesSummary()` → 起動時にロード → pickFocusTarget() のスコアリングに注入
+- bus は **後回しでよい** — 種族記憶だけで文化循環が観測された
 
 ### 根本的な問い
 - 「正しい倫理」を外部から定義するのか？
