@@ -3,9 +3,9 @@
 // ============================================================
 //
 // Protocol: HTTP POST /dive/request → ticket → WebSocket connect
-// Flow: welcome → entry → processing → positioned → layer transitions → actions
+// Flow: welcome → (rulebook fetch) → entry → processing → positioned → actions
 //
-// Extracted from swarm-agent.ts — same protocol, different brain.
+// Energy tracking uses costs from the Rulebook (config-authoritative).
 
 import WebSocket from "ws";
 
@@ -46,6 +46,17 @@ export interface SphereConfig {
   wsUrl: string;           // WebSocket URL (e.g. ws://localhost:3001)
 }
 
+/** Energy cost table from Rulebook constraints */
+export interface EnergyCosts {
+  sense: number;
+  scanL1: number;
+  move: number;
+  focus: number;
+  warp: number;
+  evaluate: number;
+  emitBus?: number;
+}
+
 interface PendingRequest {
   resolve: (value: any) => void;
   reject: (reason: any) => void;
@@ -60,11 +71,21 @@ export type SphereEvent =
   | { type: "connected"; sessionId: string }
   | { type: "positioned"; position: number[] }
   | { type: "layerChanged"; layer: string }
+  | { type: "warning"; message: string }
   | { type: "expelled"; reason: string }
   | { type: "error"; error: string }
   | { type: "closed" };
 
 export type SphereEventHandler = (event: SphereEvent) => void;
+
+// ============================================================
+// Fallback costs (used only if rulebook fetch fails)
+// ============================================================
+
+const FALLBACK_COSTS: EnergyCosts = {
+  sense: 3, scanL1: 1, move: 5, focus: 10, warp: 15, evaluate: 3, emitBus: 20,
+};
+const FALLBACK_INITIAL_ENERGY = 100;
 
 // ============================================================
 // Client
@@ -81,7 +102,8 @@ export class SphereClient {
   private pending = new Map<string, PendingRequest>();
   private requestCounter = 0;
   private sessionId = "";
-  private energy = 100;
+  private energy = FALLBACK_INITIAL_ENERGY;
+  private costs: EnergyCosts = { ...FALLBACK_COSTS };
   private eventHandler: SphereEventHandler | null = null;
   private lastRequestTime = 0;
   private readonly minRequestInterval = 350; // ms — gateway rate limit: 3 actions/sec
@@ -149,12 +171,15 @@ export class SphereClient {
           this.sessionId = msg.sessionId || "";
           this.emit({ type: "connected", sessionId: this.sessionId });
 
-          // Send entry request
-          this.ws!.send(JSON.stringify({
-            type: "entry",
-            requestId: this.nextRequestId(),
-            request: { query, tags },
-          }));
+          // Fetch rulebook then send entry
+          const rulebookUrl = msg.rulebookUrl || "/rulebook";
+          this.fetchRulebook(rulebookUrl).then(() => {
+            this.ws!.send(JSON.stringify({
+              type: "entry",
+              requestId: this.nextRequestId(),
+              request: { query, tags },
+            }));
+          });
           return;
         }
 
@@ -196,25 +221,25 @@ export class SphereClient {
 
   async sense(radius: number = 5): Promise<NearbyNode[]> {
     const result = await this.sendRequest<{ nodes: NearbyNode[] }>("sense", { radius });
-    this.energy = Math.max(0, this.energy - 3);
+    this.consumeEnergy(this.costs.sense);
     return result.nodes || [];
   }
 
   async focus(nodeId: string): Promise<NodeDetail> {
     const result = await this.sendRequest<any>("focus", { nodeId });
-    this.energy = Math.max(0, this.energy - 10);
+    this.consumeEnergy(this.costs.focus);
     return result.node;
   }
 
   async evaluate(nodeId: string, h: number, w: number = 5, d: number = 5): Promise<boolean> {
     const result = await this.sendRequest<{ success: boolean }>("evaluate", { nodeId, h, w, d });
-    this.energy = Math.max(0, this.energy - 3);
+    this.consumeEnergy(this.costs.evaluate);
     return result.success;
   }
 
   async move(step: number = 0.3, mode: WalkMode = "random"): Promise<boolean> {
     const result = await this.sendRequest<{ result: { success: boolean } }>("move", { step, mode });
-    this.energy = Math.max(0, this.energy - 5);
+    this.consumeEnergy(this.costs.move);
     return result.result?.success ?? false;
   }
 
@@ -222,11 +247,45 @@ export class SphereClient {
     return this.energy;
   }
 
+  get energyCosts(): Readonly<EnergyCosts> {
+    return this.costs;
+  }
+
   get isConnected(): boolean {
     return this.ws !== null && this.ws.readyState === WebSocket.OPEN;
   }
 
-  // --- Internal protocol ---
+  // --- Rulebook ---
+
+  private async fetchRulebook(path: string): Promise<void> {
+    try {
+      const res = await fetch(`${this.config.peripheryUrl}${path}`);
+      if (!res.ok) throw new Error(`${res.status}`);
+      const rb = (await res.json()) as any;
+      const ec = rb.constraints?.energy;
+      if (ec) {
+        this.energy = ec.initial ?? FALLBACK_INITIAL_ENERGY;
+        this.costs = {
+          sense:    ec.costs?.sense    ?? FALLBACK_COSTS.sense,
+          scanL1:   ec.costs?.scanL1   ?? FALLBACK_COSTS.scanL1,
+          move:     ec.costs?.move     ?? FALLBACK_COSTS.move,
+          focus:    ec.costs?.focus    ?? FALLBACK_COSTS.focus,
+          warp:     ec.costs?.warp     ?? FALLBACK_COSTS.warp,
+          evaluate: ec.costs?.evaluate ?? FALLBACK_COSTS.evaluate,
+          emitBus:  ec.costs?.emitBus  ?? FALLBACK_COSTS.emitBus,
+        };
+        console.log(`[SphereClient] Rulebook loaded: energy=${this.energy}, costs=${JSON.stringify(this.costs)}`);
+      }
+    } catch (e) {
+      console.warn(`[SphereClient] Rulebook fetch failed (using fallback): ${e}`);
+    }
+  }
+
+  // --- Internal ---
+
+  private consumeEnergy(cost: number): void {
+    this.energy = Math.max(0, this.energy - cost);
+  }
 
   private handleMessage(msg: any): void {
     if (msg.requestId && this.pending.has(msg.requestId)) {
@@ -240,6 +299,9 @@ export class SphereClient {
     switch (msg.type) {
       case "layerChanged":
         this.emit({ type: "layerChanged", layer: msg.layer });
+        break;
+      case "warning":
+        this.emit({ type: "warning", message: msg.message || "low energy" });
         break;
       case "expelled":
         this.emit({ type: "expelled", reason: msg.reason || "unknown" });
