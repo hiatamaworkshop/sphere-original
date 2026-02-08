@@ -481,7 +481,10 @@ export class PeripheryServer {
     // ===== Agent Rulebook Endpoint =====
     // Provides rules, constraints, and guidance for agents
     this.app.get("/rulebook", (_req, res) => {
-      res.json(getRulebookResponse());
+      res.json(getRulebookResponse({
+        session: this.config.session,
+        energy: this.config.energy,
+      }));
     });
 
     // ===== Dive Ticket Request Endpoint =====
