@@ -43,6 +43,7 @@ E. Focus Echo	保留 — ActiveBus と統合検討
 F. 複数エージェント	B 完了で技術的に可能 (--scale phi-agent=3)
 
 C (種族記憶 decay) をやるか？
+
 あなたの言葉: 「そのためのスフィアの作法だと思わないか？今なら ollama + phi がいるだろう？」つまり — phi-agent が起動時に eval-log.jsonl を読み、古いエントリを LLM で評価し、価値の低い記録を淘汰する。truncate ではなく「忘却にも知性を使う」。Sphere の decay と同じ思想を種族記憶に適用する。
 
 さきに　Ｆ　で同時に動かす挙動を確認してみよう　すぐ終わるからな。
