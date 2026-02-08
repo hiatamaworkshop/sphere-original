@@ -310,6 +310,152 @@ avgLatency < 100ms       // 平均 100ms 以下
 
 ---
 
+## 採用候補
+
+### 案1: FastGate — ローカルスコアリング層
+
+**概要**: phi 呼び出しを 3回/cycle → 1回/cycle に削減
+
+**現状の問題**:
+```
+1 cycle = 3 phi calls × ~25s = ~75s
+→ 300s timeout で 4 cycles が限界
+```
+
+**FastGate 適用後**:
+```
+1 cycle = 1 phi call × ~25s = ~25s
+→ 300s timeout で 12 cycles 可能
+```
+
+**置き換え対象**:
+
+| ステップ | 現状 | FastGate |
+|----------|------|----------|
+| focus 対象選択 | phi (~25s) | ローカルスコアリング (0ms) |
+| evaluate | phi (~25s) | phi (~25s) — **変更なし** |
+| move 方向選択 | phi (~25s) | ヒューリスティック (0ms) |
+
+**focus 対象選択 — スコアリング関数**:
+```
+score = keywordMatch(query, tags+summary) × 10
+      + heat × 0.5
+      + weight × 0.3
+      - distance × 2
+```
+sense 結果に tags/summary/heat/weight/distance が既にある → phi 不要
+
+**move 方向 — ヒューリスティック**:
+```
+eval.h >= 7 → "deep"  (良い発見 → 同じ領域を深掘り)
+eval.h >= 5 → "hot"   (普通 → 活発な領域へ)
+eval.h <  5 → "explore" (外れ → 別の領域へ)
+```
+
+**変更ファイル**: phi-agent のみ (Sphere 側変更なし)
+- 新規: `src/fast-gate.ts`
+- 変更: `src/agent.ts` (exploreCycle の phi 呼び出しを FastGate に差し替え)
+
+### 案2: Prefetch — phi 推論中の I/O 重ね合わせ
+
+**概要**: phi が推論している間に次サイクルの Sphere 操作を先行実行
+
+**現状 (直列)**:
+```
+phi eval(25s) → [idle] → move(50ms) → sense(50ms) → pick → focus(50ms) → phi eval(25s) → ...
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                 この ~150ms が phi 間の空白時間
+```
+
+**Prefetch 適用後**:
+```
+phi eval(25s) ──────────────────────────────────────┐
+  └─ 裏で: move → sense → pick → focus (次ノード準備) │
+phi 完了 → eval 送信 → 即座に次の phi eval 開始 ←──────┘
+```
+
+**仕組み**: Node.js async I/O の活用
+```typescript
+const evalPromise = ollama.generate(evalPrompt);  // phi 開始 (await しない)
+await sphere.move(step, moveMode);                 // 裏で Sphere 操作
+const nextNodes = await sphere.sense(radius);
+const nextTarget = fastGate.pick(nextNodes);
+const nextDetail = await sphere.focus(nextNodes[nextTarget].id);
+const evalResponse = await evalPromise;            // phi 結果回収
+```
+
+**トレードオフ**:
+- move 方向が「前回の eval 結果」ベース (1サイクル遅延)
+- 案1 (FastGate) との併用が前提
+- 実装がやや複雑 (exploreLoop のリファクタ必要)
+
+**効果**: phi 間の空白時間 ~150ms → 0ms (体感差は小さいが、構造的に正しい)
+
+### 案3: EvalLoop — 記憶 + 満足度帰還モデル
+
+**概要**: 案1 の FastGate を包含しつつ、セッション内記憶と帰還判断を追加
+
+**サイクル**:
+```
+move(算出済み) → sense → pick(ローカル) → focus → phi eval → 記憶 + 算出 + move判定
+                                                  ↑ 唯一の phi 呼び出し
+```
+
+**3つの柱**:
+
+**1. レイヤー記憶 (SessionMemory)**
+- 各 cycle の eval 結果 (h, w, d, nodeId) を phi-agent 側に蓄積
+- セッション内で「何を見たか」「何が良かったか」を覚える
+- pick の精度向上: 過去に低評価だったタグ領域を避ける等
+```typescript
+interface SessionMemory {
+  evals: { nodeId: string; h: number; w: number; tags: string[] }[];
+  totalScore: number;      // 累積スコア
+  cycleCount: number;
+}
+```
+
+**2. 算出ベースの move 判定 (computeNextMove)**
+- phi 不要。直前の eval 結果から即算出:
+```
+h >= 7 → "deep"   (良い発見 → 深掘り)
+h >= 5 → "hot"    (普通 → 活発な領域へ)
+h <  5 → "explore" (外れ → 別の領域へ)
+```
+- 将来: SessionMemory を参照して重複領域を避ける
+
+**3. 満足度ベースの帰還 (shouldReturn)**
+- 確率的 return: スコア蓄積に応じて帰還確率が上昇
+```
+satisfaction = totalScore / (cycleCount × 10)
+returnProb  = sigmoid(satisfaction - threshold)
+
+例: 5 cycles, totalScore 35 → satisfaction 0.7 → returnProb ~30%
+例: 8 cycles, totalScore 60 → satisfaction 0.75 → returnProb ~50%
+```
+- 原則: エージェントが満足するまで探索を続けられる
+- 最低 cycles 保証 (例: 3 cycles は必ず探索)
+- energy 枯渇 / expelled → 即 return (エラーではない)
+
+**expelled のグレースフル処理** (Sphere 側、後回し):
+- expelled でもエラーにせず体験カプセルを正常回収
+- phi-agent 側: SessionMemory を AutoCapsule に含める
+- Sphere 側: expelled 時の pipeline 処理を保証
+
+**案1 との違い**:
+| | 案1 (FastGate) | 案3 (EvalLoop) |
+|--|---------------|---------------|
+| phi 呼び出し | 1回/cycle | 1回/cycle (同じ) |
+| 記憶 | なし | SessionMemory |
+| 帰還判断 | cycles/energy のみ | 満足度ベース |
+| 学習 | なし | 過去 eval で pick 精度向上 |
+
+**変更ファイル**: phi-agent のみ (Sphere 側変更なし)
+- 新規: `src/fast-gate.ts` (pick + computeNextMove + shouldReturn + SessionMemory)
+- 変更: `src/agent.ts` (exploreLoop/exploreCycle のリファクタ)
+
+---
+
 ## まとめ
 
 **Fast Path の本質**:
