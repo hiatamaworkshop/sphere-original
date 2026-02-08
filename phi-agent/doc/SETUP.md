@@ -98,7 +98,8 @@ npx tsx src/ollama-client.ts
 ```
 phi-agent/                          # トップレベル (sphere-ui と同列)
 ├── doc/
-│   └── SETUP.md                    # ← このファイル
+│   ├── SETUP.md                    # ← このファイル
+│   └── FAST_PATH_DESIGN.md         # Fast Path アーキテクチャ (設計思想)
 ├── src/
 │   ├── index.ts                    # CLI エントリポイント
 │   ├── agent.ts                    # メインループ (PhiAgent)
@@ -175,3 +176,29 @@ sphere.config.json
 - 推論時間: ~100秒/回 → ~25秒/回
 - 1 cycle (sense + 推論 + focus + 推論): ~200秒 → ~50秒
 - 300秒 timeout 内で 5+ cycles 実行可能
+
+### evaluate JSON パース修正 (2026-02-08)
+
+**問題**: phi が markdown コードブロック ` ```json ... ``` ` で返すため JSON パース失敗
+
+**解決策**: markdown strip + balanced brace extraction
+
+**変更箇所**:
+1. `prompt-builder.ts` — `parseAction()` 改善
+   - markdown コードブロック除去: ` ```json ` / ` ``` ` → strip
+   - `extractBalancedJson()` — ネストした `{ }` に対応 (reason フィールド内の braces)
+   - フォールバック: simple regex (legacy compatibility)
+
+2. `prompt-builder.ts` — `evaluateNode()` プロンプト改善
+   - "TASK:" セクション追加 (明示的指示)
+   - "Output format (JSON only, no markdown):" — markdown 禁止を明記
+   - Example 追加: `{"action":"evaluate","h":8,"w":7,"d":4,"reason":"..."}`
+
+**テスト結果** (2026-02-08):
+```
+✅ evaluate 成功: h=9 w=10 d=5
+✅ Evaluations: 1 (初回 0 → 修正後 1)
+✅ Heat delta: +4
+✅ AutoCapsule 生成: 2 nodes 投入
+✅ Pipeline 正常動作
+```

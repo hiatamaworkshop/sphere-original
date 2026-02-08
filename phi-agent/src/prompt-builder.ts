@@ -63,12 +63,15 @@ I focused on this node:
 - Current heat: ${node.heat}, weight: ${node.weight}
 - Kind: ${node.kind}
 
-Rate this node's value:
+TASK: Rate this node's value with numerical scores:
 - h (heat 0-10): How actively useful is this? 5=neutral, 8+=very relevant, 2-=irrelevant
 - w (weight 0-10): How authoritative/established? 5=neutral
 - d (decay 0-10): How fast should it age? 5=normal, 3=preserve, 8=let it fade
 
-Respond: { "action": "evaluate", "h": <number>, "w": <number>, "d": <number>, "reason": "<brief>" }`;
+Output format (JSON only, no markdown):
+{ "action": "evaluate", "h": <number>, "w": <number>, "d": <number>, "reason": "<brief>" }
+
+Example: {"action":"evaluate","h":8,"w":7,"d":4,"reason":"Highly relevant content"}`;
   }
 
   chooseNextMove(): string {
@@ -100,14 +103,25 @@ export interface AgentAction {
 }
 
 export function parseAction(response: string): AgentAction {
+  // Strip markdown code blocks (```json ... ```)
+  let cleaned = response.replace(/```json\s*/g, "").replace(/```\s*/g, "");
+
   // Try to extract JSON from response (phi may add commentary)
-  const jsonMatch = response.match(/\{[^}]+\}/);
-  if (!jsonMatch) {
+  // Strategy 1: Find balanced braces (handles nested { } in reason field)
+  let jsonStr = extractBalancedJson(cleaned);
+
+  // Strategy 2: Fallback to simple regex (legacy)
+  if (!jsonStr) {
+    const jsonMatch = cleaned.match(/\{[^}]+\}/);
+    jsonStr = jsonMatch?.[0] ?? null;
+  }
+
+  if (!jsonStr) {
     return { action: "skip", reason: "No JSON found in response" };
   }
 
   try {
-    const parsed = JSON.parse(jsonMatch[0]) as AgentAction;
+    const parsed = JSON.parse(jsonStr) as AgentAction;
 
     // Validate action type
     if (!["focus", "evaluate", "move", "skip"].includes(parsed.action)) {
@@ -137,4 +151,48 @@ export function parseAction(response: string): AgentAction {
 
 function clamp(v: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, Math.round(v)));
+}
+
+/**
+ * Extract JSON with balanced braces from response
+ * Handles nested { } in reason field: {"reason": "Text {with} braces"}
+ */
+function extractBalancedJson(text: string): string | null {
+  const start = text.indexOf("{");
+  if (start === -1) return null;
+
+  let depth = 0;
+  let inString = false;
+  let escape = false;
+
+  for (let i = start; i < text.length; i++) {
+    const char = text[i];
+
+    if (escape) {
+      escape = false;
+      continue;
+    }
+
+    if (char === "\\") {
+      escape = true;
+      continue;
+    }
+
+    if (char === '"') {
+      inString = !inString;
+      continue;
+    }
+
+    if (!inString) {
+      if (char === "{") depth++;
+      if (char === "}") {
+        depth--;
+        if (depth === 0) {
+          return text.slice(start, i + 1);
+        }
+      }
+    }
+  }
+
+  return null;
 }
