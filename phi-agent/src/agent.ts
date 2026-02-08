@@ -191,20 +191,35 @@ export class PhiAgent {
     }
   }
 
+  /** Check if enough energy remains for an action */
+  private canAfford(action: "sense" | "move" | "focus" | "evaluate"): boolean {
+    return this.sphere.currentEnergy >= this.sphere.energyCosts[action];
+  }
+
   /** Standard cycle: move → sense → pick → focus → eval → record */
   private async standardCycle(moveStep: number, moveMode: WalkMode): Promise<void> {
     // 1. Move (skip if moveStep=0, e.g. camp or first cycle)
     if (moveStep > 0) {
+      if (!this.canAfford("move")) {
+        this.log(`Energy too low for move (${this.sphere.currentEnergy} < ${this.sphere.energyCosts.move})`);
+        return;
+      }
       await this.sphere.move(moveStep, moveMode);
     }
 
     // 2. Sense nearby nodes
+    if (!this.canAfford("sense")) {
+      this.log(`Energy too low for sense (${this.sphere.currentEnergy} < ${this.sphere.energyCosts.sense})`);
+      return;
+    }
     const nodes = await this.sphere.sense(this.config.senseRadius);
     this.log(`Sensed ${nodes.length} nodes`);
 
     if (nodes.length === 0) {
       this.log("No nodes nearby, exploring...");
-      await this.sphere.move(this.config.moveStep, "explore");
+      if (this.canAfford("move")) {
+        await this.sphere.move(this.config.moveStep, "explore");
+      }
       return;
     }
 
@@ -213,7 +228,11 @@ export class PhiAgent {
     const target = nodes[targetIndex];
     this.log(`FastGate pick: [${targetIndex}] ${target.summary.slice(0, 60)} (flags: 0x${target.flags.toString(16).padStart(4, "0")})`);
 
-    // 4. Focus on target
+    // 4. Focus on target (most expensive action: 10 energy)
+    if (!this.canAfford("focus")) {
+      this.log(`Energy too low for focus (${this.sphere.currentEnergy} < ${this.sphere.energyCosts.focus}) — skipping`);
+      return;
+    }
     const detail = await this.sphere.focus(target.id);
     if (!detail || !detail.kind) {
       this.log(`Focus returned empty for ${target.id} (kind: ${target.kind}) — skipping`);
@@ -242,7 +261,7 @@ export class PhiAgent {
     const d = evalAction.d ?? 5;
 
     // 6. Submit evaluation to Sphere
-    if (evalAction.action === "evaluate") {
+    if (evalAction.action === "evaluate" && this.canAfford("evaluate")) {
       const success = await this.sphere.evaluate(target.id, h, w, d);
       if (success) {
         this.stats.evaluations++;
@@ -257,11 +276,18 @@ export class PhiAgent {
   /** Scout cycle: move → sense only (no focus, no eval, saves energy) */
   private async scoutCycle(moveStep: number, moveMode: WalkMode): Promise<void> {
     if (moveStep > 0) {
+      if (!this.canAfford("move")) {
+        this.log(`Energy too low for move (${this.sphere.currentEnergy} < ${this.sphere.energyCosts.move})`);
+        return;
+      }
       await this.sphere.move(moveStep, moveMode);
+    }
+    if (!this.canAfford("sense")) {
+      this.log(`Energy too low for sense (${this.sphere.currentEnergy} < ${this.sphere.energyCosts.sense})`);
+      return;
     }
     const nodes = await this.sphere.sense(this.config.senseRadius);
     this.log(`Scout: sensed ${nodes.length} nodes (no focus, saving energy)`);
-    // No focus, no eval — just mapping the area. Cost: move(5) + sense(3) = 8 vs standard 21
   }
 
   private log(msg: string): void {

@@ -282,6 +282,37 @@ C: scout の閾値を引き上げ (stamina > 0.8 に)
 
 ---
 
+## Loadout 分類と運用モード (2026-02-08)
+
+### 4 類型
+
+| 役割 | 代表 | Sphere への機能 | 健全性 |
+|------|------|----------------|--------|
+| **ヒーター** (加熱器) | moth | ノードを活性化、生態系の点火役 | 機能的 |
+| **アセッサー** (評価者) | balanced | 平均的な評価で温度を正規化 | 機能的 |
+| **キュレーター** (管理者) | archivist, scholar | 保存価値を判断、d を低くして延命 | 機能的 |
+| **ハンター** (狩人) | sniper, hunter | 厳選して高スコアのみ | scout trap で機能不全 |
+
+### 2つの運用モード
+
+| モード | 目的 | 適合類型 |
+|--------|------|---------|
+| **来訪者** (visitor) | データを見つけて capsule にして帰る | balanced, scholar, archivist |
+| **常駐者** (resident) | 環境の温度・保存・淘汰を調整し続ける | moth (加熱), archivist (保存) |
+
+### 設計思想との整合
+
+Sphere の目的は「データと向き合い、知見を推論に活かす」こと。
+早期撤退系 (scout, kamikaze) は来訪者としても常駐者としても中途半端。
+
+- **scout**: balanced の早帰り版。独自の機能がない
+- **kamikaze**: stamina のみで判断。バイアスがないが、知見も生まない
+- **hermit**: scholar と構造的に近い (staleness 駆動 + deep walk)
+
+→ これらは「例」として保持するが、実用的な代表は **balanced / scholar / archivist / moth + sniper (修正後)** の 5 つ。
+
+---
+
 ## 次の検証
 
 - [x] archivist / hunter のテスト → **完了** (hunter に scout トラップ発見)

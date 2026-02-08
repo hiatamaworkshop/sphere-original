@@ -404,6 +404,7 @@ export class FastGate {
   private _minCycles: number;
   private _walkPreference: WalkMode;
   private _evalFocus: string;
+  private _lastActionWasScout = false;
   readonly memory = new SessionMemory();
   readonly loadoutName: string;
 
@@ -518,23 +519,36 @@ export class FastGate {
     const dominant = feelings.reduce((a, b) => b.value > a.value ? b : a);
 
     if (dominant.value < threshold) {
+      this._lastActionWasScout = false;
+      return { type: "standard", moveStep: 0.3, moveMode: this._walkPreference };
+    }
+
+    // Scout trap guard: scout is a single breath, not a permanent state.
+    // After scout, force standard so new data (focus+eval) can update feelings.
+    if (dominant.name === "stam" && this._lastActionWasScout) {
+      this._lastActionWasScout = false;
       return { type: "standard", moveStep: 0.3, moveMode: this._walkPreference };
     }
 
     switch (dominant.name) {
       case "sat":
         // Satisfied → camp: stay, re-sense without moving, exploit area
+        this._lastActionWasScout = false;
         return { type: "camp", moveStep: 0, moveMode: "deep" };
       case "frust":
         // Frustrated → leap: big move, get away from bad area
+        this._lastActionWasScout = false;
         return { type: "leap", moveStep: 0.6, moveMode: "explore" };
       case "stale":
         // Bored → leap: seek novelty in a new area
+        this._lastActionWasScout = false;
         return { type: "leap", moveStep: 0.5, moveMode: "explore" };
       case "stam":
         // Tired → scout: sense-only, skip focus+eval to conserve energy
+        this._lastActionWasScout = true;
         return { type: "scout", moveStep: 0.3, moveMode: this._walkPreference };
       default:
+        this._lastActionWasScout = false;
         return { type: "standard", moveStep: 0.3, moveMode: this._walkPreference };
     }
   }
