@@ -55,7 +55,7 @@ Sphere は stigmergic system (痕跡協調系) である。
 | 集団勾配 | GlobalAmbientField | コロニー全体の「気分」 |
 | 休眠 | Dormancy (agent 0 → 代謝停止) | コロニー静止 |
 | 揮発性信号 | ActiveBus | 直接接触型通信 (触角) |
-| 種族フェロモン | Capsule evaluations + loadout tag | [未完成] 種族別の痕跡 |
+| 種族フェロモン | eval-log.jsonl (loadout tagged) | 種族別の痕跡 (実装済み) |
 
 ## フェロモン正帰還ループ
 
@@ -91,10 +91,11 @@ scholar が evaluate(h:5, w:9)
 - scholar が残した痕跡は、次の scholar が読む (共鳴による継承)
 - 個体のアイデンティティは「持っている」ものではなく「思い出す」もの
 
-### 既存インフラでの実現
-- Capsule evaluations に `loadout` タグを含める
-- scanL1 で種族の過去評価を集約可能
-- **実装すべきは「ラベル付きフェロモン」だけ** — 基盤は全て存在する
+### 実装 (2026-02-08 完了)
+- `phi-agent/data/eval-log.jsonl`: セッション完了時に loadout 付き評価履歴を追記
+- `getSpeciesSummary(loadout)`: 種族の集約統計 (sessions, avgH/W/D, hotNodes, commonTags)
+- 責務分離: Sphere は loadout を知らない。種族記憶はカップリングレイヤーが管理
+- 詳細: [SPECIES_MEMORY_DESIGN.md](./SPECIES_MEMORY_DESIGN.md)
 
 ### 人間との棲み分け
 - 人間: 個人記憶を持てる (`[user:xxx]` タグ、Dive 経由)
@@ -126,3 +127,6 @@ Sphere が蓄積するものの名前は — **文化**。
 - [PERSONALITY_VECTOR_INTERPRETATION_MEMO.md](./PERSONALITY_VECTOR_INTERPRETATION_MEMO.md) — 4D 内積の多目的利用
 - [DELTA_PROFILE_DESIGN_PRINCIPLES.md](./DELTA_PROFILE_DESIGN_PRINCIPLES.md) — 環境変化の観測
 - [STRUCTURED_FLUCTUATION_MEMO.md](./STRUCTURED_FLUCTUATION_MEMO.md) — 構造化された揺らぎが知覚を鍛える
+- [EMERGENT_PERSONALITY_MEMO.md](./EMERGENT_PERSONALITY_MEMO.md) — 軽量 LLM で性格が創発する
+- [SPECIES_MEMORY_DESIGN.md](./SPECIES_MEMORY_DESIGN.md) — 種族記憶の設計と実装
+- [ETHICS_EMERGENCE_MEMO.md](./ETHICS_EMERGENCE_MEMO.md) — 倫理は生態系から自然発生する
