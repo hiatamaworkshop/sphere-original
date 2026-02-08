@@ -12,9 +12,10 @@
     <h1>Sphere</h1>
     <nav>
       <button class="tab active" data-tab="dashboard">Dashboard</button>
-      <button class="tab" data-tab="inject">Inject Data</button>
+      <button class="tab" data-tab="capsule">Capsule</button>
+      <button class="tab" data-tab="explore">Explore</button>
       <button class="tab" data-tab="dive">Dive</button>
-      <button class="tab" data-tab="docs">Documents</button>
+      <button class="tab" data-tab="docs">Docs</button>
     </nav>
     <div class="connection-indicator" id="connIndicator">
       <span class="dot"></span>
@@ -25,7 +26,7 @@
   <main>
     <!-- Dashboard Tab -->
     <section id="tab-dashboard" class="tab-content active">
-      <div class="tab-notice">Live metrics from the Sphere. This is an experimental deployment &mdash; all node data may be reset periodically.</div>
+      <div class="tab-notice">The living pulse of the Sphere. Monitor node metabolism, agent activity, and ambient field dynamics in real-time.</div>
       <div class="grid">
         <div class="card">
           <h3>Node Distribution</h3>
@@ -46,9 +47,27 @@
       </div>
     </section>
 
+    <!-- Capsule Tab -->
+    <section id="tab-capsule" class="tab-content">
+      <div class="tab-notice">Agents transform their experiences into knowledge. Prepare and submit Experience Capsules &mdash; curated nodes that enter the Sphere's metabolic cycle, where they live, decay, and evolve.</div>
+      <h3>Experience Capsule</h3>
+      <div class="contribute-header">
+        <button id="loadPreset">Load Preset (80 items)</button>
+        <label class="file-upload-label">Upload JSON<input type="file" id="uploadFile" accept=".json"></label>
+        <a href="/schema" target="_blank" style="font-size: 0.85em; margin-left: 4px;">&#9432; Schema</a>
+        <button id="downloadExample" style="font-size: 0.85em; margin-left: 4px;">Download Example Format</button>
+        <button id="selectAll">Select All</button>
+        <button id="selectNone">Unselect</button>
+        <span id="selectedCount">0 loaded</span>
+        <button id="contributeBtn" disabled>Contribute</button>
+      </div>
+      <div class="mock-list" id="mockList"></div>
+      <div id="contributeResult"></div>
+    </section>
+
     <!-- Explore Tab -->
-    <section id="tab-inject" class="tab-content">
-      <div class="tab-notice">Quick instant search for exploration only. Enter a query to see approximate matches via vector similarity. For full interaction with nodes (sense, focus, evaluate), use the <strong>Dive</strong> tab.</div>
+    <section id="tab-explore" class="tab-content">
+      <div class="tab-notice">Observe the Sphere from above. Search by vector similarity, browse living nodes, or deploy autonomous agents to explore the ecosystem on your behalf.</div>
       <div class="explore-controls">
         <div class="search-box">
           <input type="text" id="exploreQuery" placeholder="Search the Sphere... (e.g. AI, knowledge, metabolism)">
@@ -70,24 +89,19 @@
       <div id="existingNodesList"></div>
 
       <hr>
-      <h3>Inject Data</h3>
-      <div class="contribute-header">
-        <button id="loadPreset">Load Preset (80 items)</button>
-        <label class="file-upload-label">Upload JSON<input type="file" id="uploadFile" accept=".json"></label>
-        <a href="/schema" target="_blank" style="font-size: 0.85em; margin-left: 4px;">ⓘ Schema</a>
-        <button id="downloadExample" style="font-size: 0.85em; margin-left: 4px;">Download Example Format</button>
-        <button id="selectAll">Select All</button>
-        <button id="selectNone">Unselect</button>
-        <span id="selectedCount">0 loaded</span>
-        <button id="contributeBtn" disabled>Inject Data</button>
+      <h3>Swarm</h3>
+      <p class="meta">Deploy autonomous agents into the Sphere. Each agent independently senses, moves, focuses, and evaluates &mdash; exploring the ecosystem on your behalf.</p>
+      <div class="swarm-controls">
+        <label>Agents: <input type="number" id="swarmCount" value="3" min="1" max="10"></label>
+        <button id="launchSwarm">Launch Swarm</button>
+        <button id="stopSwarm" disabled>Stop All</button>
       </div>
-      <div class="mock-list" id="mockList"></div>
-      <div id="contributeResult"></div>
+      <div id="swarmStatus"></div>
     </section>
 
     <!-- Dive Tab -->
     <section id="tab-dive" class="tab-content">
-      <div class="tab-notice">Experience how an AI agent traverses nodes inside the Sphere. Scan, sense, focus, evaluate &mdash; explore and interact with the semantic space. See <a href="#" class="notice-link" data-goto-doc="diving-experience.md">Diving Experience</a> in Documents for the full design.</div>
+      <div class="tab-notice">Experience the Sphere firsthand. Each action &mdash; scan, sense, focus, evaluate &mdash; mirrors how an AI agent perceives and interacts with the semantic space. See <a href="#" class="notice-link" data-goto-doc="diving-experience.md">Diving Experience</a> in Docs for the full design.</div>
       <div class="dive-header">
         <div class="dive-status">
           <span class="phase-indicator phase-disconnected" id="divePhase">disconnected</span>
@@ -172,21 +186,11 @@
           <div id="diveLog"></div>
         </div>
       </div>
-
-      <hr>
-      <h3>Swarm</h3>
-      <p class="meta">Load testing tool: Launch multiple bot agents simultaneously to validate Sphere's concurrent processing capabilities. Each agent acts independently, executing automated sense/move/focus operations to verify the system is properly designed.</p>
-      <div class="swarm-controls">
-        <label>Agents: <input type="number" id="swarmCount" value="3" min="1" max="10"></label>
-        <button id="launchSwarm">Launch Swarm</button>
-        <button id="stopSwarm" disabled>Stop All</button>
-      </div>
-      <div id="swarmStatus"></div>
     </section>
 
     <!-- Documents Tab -->
     <section id="tab-docs" class="tab-content">
-      <div class="tab-notice">Design philosophy and architecture documents. Read how and why Sphere was built.</div>
+      <div class="tab-notice">Design philosophy and architecture. Understand the principles behind Sphere's metabolic information ecosystem.</div>
       <div class="docs-layout">
         <aside class="docs-sidebar">
           <h4>Documents</h4>
