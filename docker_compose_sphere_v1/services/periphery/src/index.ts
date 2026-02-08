@@ -147,11 +147,7 @@ const arbiterConfig = {
   pauseErosionBoost: renalConfig.pauseErosionBoost,
   // Dynamic Flags thresholds (from unified nodeFlags config)
   hotHeatThreshold: dynamicThresholds?.hotHeatThreshold
-    ?? arbiterSettings.dynamicFlags?.hotHeatThreshold ?? 80,
-  hubLinkThreshold: dynamicThresholds?.hubLinkThreshold
-    ?? arbiterSettings.dynamicFlags?.hubLinkThreshold ?? 5,
-  isolatedLinkThreshold: dynamicThresholds?.isolatedLinkThreshold
-    ?? arbiterSettings.dynamicFlags?.isolatedLinkThreshold ?? 0,
+    ?? arbiterSettings.dynamicFlags?.hotHeatThreshold ?? 150,
   // Ascension cooldown settings (evaluation freeze + composite score)
   ascensionCooldownMs: arbiterSettings.ascension?.cooldownMs ?? 600000,
   ascensionScoreThreshold: arbiterSettings.ascension?.scoreThreshold ?? 500,

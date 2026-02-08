@@ -36,10 +36,6 @@ export interface ArbiterConfig {
   // === Dynamic Flags 閾値 ===
   // Hot: heat がこの閾値を超えると Hot フラグを付与
   hotHeatThreshold: number;
-  // Hub: リンク数がこの閾値を超えると Hub フラグを付与
-  hubLinkThreshold: number;
-  // Isolated: リンク数がこの閾値以下で Isolated フラグを付与
-  isolatedLinkThreshold: number;
 
   // === Ascension 冷却期間設定 ===
   // 冷却期間（ミリ秒）- 閾値超過後、この期間生存で Amber 昇格
@@ -222,11 +218,10 @@ export class Arbiter {
    *
    * @param projDB - Current projection database
    * @param options.isPaused - Whether Sphere is paused
-   * @param options.linkCounts - Map of nodeId → link count (for Hub/Isolated detection)
    */
   observe(
     projDB: Map<string, SphereNode>,
-    options: { isPaused?: boolean; linkCounts?: Map<string, number> } = {}
+    options: { isPaused?: boolean } = {}
   ): TransitionQueue {
     const queue: TransitionQueue = {
       shouldAscend: [],
@@ -264,7 +259,7 @@ export class Arbiter {
       }
 
       // 4. Dynamic Flags 更新判定
-      const flagUpdate = this.computeFlagUpdate(node, options.linkCounts);
+      const flagUpdate = this.computeFlagUpdate(node);
       if (flagUpdate) {
         queue.flagUpdates.push(flagUpdate);
       }
@@ -506,15 +501,13 @@ export class Arbiter {
    *
    * [Dynamic Flags]
    *   - Hot: heat > hotHeatThreshold
-   *   - Hub: linkCount > hubLinkThreshold
-   *   - Isolated: linkCount <= isolatedLinkThreshold
+   *
+   * Hub/Isolated dynamic flags removed — linkCounts never supplied.
+   * Static Hub/Isolated via Tagger keyword matching is unaffected.
    *
    * @returns FlagUpdate if any changes needed, null otherwise
    */
-  private computeFlagUpdate(
-    node: SphereNode,
-    linkCounts?: Map<string, number>
-  ): FlagUpdate | null {
+  private computeFlagUpdate(node: SphereNode): FlagUpdate | null {
     let add = 0;
     let remove = 0;
 
@@ -528,32 +521,6 @@ export class Arbiter {
       remove |= NodeFlag.Hot;
     }
 
-    // === Hub / Isolated Flags ===
-    if (linkCounts) {
-      const linkCount = linkCounts.get(node.id) ?? 0;
-
-      // Hub: many connections
-      const isHub = linkCount > this.config.hubLinkThreshold;
-      const hasHub = this.hasFlag(node, NodeFlag.Hub);
-
-      if (isHub && !hasHub) {
-        add |= NodeFlag.Hub;
-      } else if (!isHub && hasHub) {
-        remove |= NodeFlag.Hub;
-      }
-
-      // Isolated: no connections (mutually exclusive with Hub)
-      const isIsolated = linkCount <= this.config.isolatedLinkThreshold;
-      const hasIsolated = this.hasFlag(node, NodeFlag.Isolated);
-
-      if (isIsolated && !isHub && !hasIsolated) {
-        add |= NodeFlag.Isolated;
-      } else if ((!isIsolated || isHub) && hasIsolated) {
-        remove |= NodeFlag.Isolated;
-      }
-    }
-
-    // Return update only if there are changes
     if (add === 0 && remove === 0) {
       return null;
     }

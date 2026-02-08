@@ -216,14 +216,11 @@ export interface PeripheryConfig {
     /**
      * Dynamic flag thresholds (Arbiter)
      * [Usage] Arbiter sets/clears flags based on node state
+     * Hub/Isolated removed — linkCounts never supplied. Static flags via Tagger unaffected.
      */
     dynamicThresholds: {
       /** heat > this → Hot flag ON, heat <= this → Hot flag OFF */
-      hotHeatThreshold: number;       // Default: 80
-      /** linkCount > this → Hub flag ON */
-      hubLinkThreshold: number;       // Default: 5
-      /** linkCount <= this → Isolated flag ON (mutually exclusive with Hub) */
-      isolatedLinkThreshold: number;  // Default: 0
+      hotHeatThreshold: number;       // Default: 150
     };
   };
 }
@@ -379,9 +376,7 @@ export const DEFAULT_PERIPHERY_CONFIG: PeripheryConfig = {
     },
     // Dynamic flag thresholds (by Arbiter)
     dynamicThresholds: {
-      hotHeatThreshold: 80,       // heat > 80 → Hot flag
-      hubLinkThreshold: 5,        // links > 5 → Hub flag
-      isolatedLinkThreshold: 0,   // links == 0 → Isolated flag
+      hotHeatThreshold: 150,      // heat > 150 → Hot flag
     },
   },
 };
