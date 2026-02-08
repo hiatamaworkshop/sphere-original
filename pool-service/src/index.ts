@@ -13,7 +13,7 @@
 
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { Pool } from "./pool.js";
-import { DEFAULT_CONFIG, type PoolConfig, type PoolEntry } from "./types.js";
+import { DEFAULT_CONFIG, type PoolConfig } from "./types.js";
 
 // --- CLI args ---
 function parseArgs(): Partial<PoolConfig> & { port?: number } {
@@ -76,7 +76,7 @@ async function main(): Promise<void> {
     if (req.method === "POST" && req.url === "/ingest") {
       const body = await readBody(req);
       try {
-        const raw = JSON.parse(body) as PoolEntry;
+        const raw = JSON.parse(body) as Record<string, unknown>;
         raw.source = raw.source ?? "manual";
         const errors = pool.ingest(raw);
         if (errors.length > 0) {
@@ -97,7 +97,7 @@ async function main(): Promise<void> {
     if (req.method === "POST" && req.url === "/ingest/batch") {
       const body = await readBody(req);
       try {
-        const entries = JSON.parse(body) as PoolEntry[];
+        const entries = JSON.parse(body) as Record<string, unknown>[];
         if (!Array.isArray(entries)) {
           res.writeHead(400, { "Content-Type": "application/json" });
           res.end(JSON.stringify({ error: "Expected JSON array" }));

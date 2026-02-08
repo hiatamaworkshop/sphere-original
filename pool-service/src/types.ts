@@ -9,16 +9,16 @@
 // --- Node format (subset of Sphere's NodeSeed) ---
 
 export interface PoolEntry {
-  /** External source identifier (URL, feed name, etc.) */
+  /** External source identifier (feed name, service name, etc.) */
   source: string;
-  /** L1: keyword tags */
+  /** Keyword tags / categories */
   tags: string[];
-  /** L2: short summary */
-  summary: string;
-  /** L3: full content */
-  content: string;
-  /** L4: optional source reference */
-  ref_url?: string;
+  /** Short title or headline */
+  title: string;
+  /** Full body text */
+  body: string;
+  /** Source URL */
+  url?: string;
   /** Timestamp of ingestion into pool */
   ingestedAt: number;
 }

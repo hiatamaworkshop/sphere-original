@@ -68,18 +68,29 @@ function isValidUrl(url: string): boolean {
 
 // --- Main membrane function ---
 
-export function membrane(raw: PoolEntry): MembraneResult {
+/**
+ * Main membrane function.
+ * Accepts standard field names (title, body, url)
+ * AND legacy Sphere names (summary, content, ref_url) for compatibility.
+ */
+export function membrane(raw: Record<string, unknown>): MembraneResult {
   const errors: string[] = [];
 
+  // --- 0. Field aliasing: world standard ← legacy Sphere names ---
+  const rawTitle = (raw.title ?? raw.summary) as string | undefined;
+  const rawBody  = (raw.body  ?? raw.content) as string | undefined;
+  const rawUrl   = (raw.url   ?? raw.ref_url) as string | undefined;
+  const rawTags  = raw.tags as string[] | undefined;
+
   // --- 1. Required fields existence ---
-  if (!raw.tags || !Array.isArray(raw.tags)) {
+  if (!rawTags || !Array.isArray(rawTags)) {
     errors.push("tags: missing or not an array");
   }
-  if (!raw.summary || typeof raw.summary !== "string") {
-    errors.push("summary: missing or not a string");
+  if (!rawTitle || typeof rawTitle !== "string") {
+    errors.push("title: missing or not a string");
   }
-  if (!raw.content || typeof raw.content !== "string") {
-    errors.push("content: missing or not a string");
+  if (!rawBody || typeof rawBody !== "string") {
+    errors.push("body: missing or not a string");
   }
 
   // Bail early if structure is broken
@@ -87,35 +98,35 @@ export function membrane(raw: PoolEntry): MembraneResult {
     return { valid: false, entry: null, errors };
   }
 
-  // --- 2. Sanitize text fields ---
-  const summary = sanitizeText(raw.summary).slice(0, LIMITS.maxSummaryLength);
-  const content = sanitizeText(raw.content).slice(0, LIMITS.maxContentLength);
+  // --- 2. Sanitize text fields (non-null guaranteed by early return above) ---
+  const title = sanitizeText(rawTitle!).slice(0, LIMITS.maxSummaryLength);
+  const body  = sanitizeText(rawBody!).slice(0, LIMITS.maxContentLength);
 
   // --- 3. Sanitize tags ---
   const tags = [...new Set(
-    raw.tags
+    rawTags!
       .map(sanitizeTag)
       .filter(t => t.length > 0)
   )].slice(0, LIMITS.maxTagCount);
 
   // --- 4. Validate lengths ---
-  if (summary.length < LIMITS.minSummaryLength) {
-    errors.push(`summary: too short after sanitization (${summary.length} < ${LIMITS.minSummaryLength})`);
+  if (title.length < LIMITS.minSummaryLength) {
+    errors.push(`title: too short after sanitization (${title.length} < ${LIMITS.minSummaryLength})`);
   }
-  if (content.length < LIMITS.minContentLength) {
-    errors.push(`content: too short after sanitization (${content.length} < ${LIMITS.minContentLength})`);
+  if (body.length < LIMITS.minContentLength) {
+    errors.push(`body: too short after sanitization (${body.length} < ${LIMITS.minContentLength})`);
   }
   if (tags.length < LIMITS.minTagCount) {
     errors.push(`tags: no valid tags after sanitization`);
   }
 
   // --- 5. Validate optional fields ---
-  let ref_url = raw.ref_url;
-  if (ref_url) {
-    ref_url = ref_url.trim().slice(0, LIMITS.maxRefUrlLength);
-    if (!isValidUrl(ref_url)) {
-      errors.push(`ref_url: invalid URL format`);
-      ref_url = undefined;   // strip invalid URL, don't reject entire entry
+  let url = rawUrl;
+  if (url) {
+    url = url.trim().slice(0, LIMITS.maxRefUrlLength);
+    if (!isValidUrl(url)) {
+      errors.push(`url: invalid URL format`);
+      url = undefined;   // strip invalid URL, don't reject entire entry
     }
   }
 
@@ -123,16 +134,16 @@ export function membrane(raw: PoolEntry): MembraneResult {
     return { valid: false, entry: null, errors };
   }
 
-  // --- 6. Return sanitized entry ---
+  // --- 6. Return sanitized entry (standard field names) ---
   return {
     valid: true,
     entry: {
-      source: raw.source ?? "unknown",
+      source: (raw.source as string) ?? "unknown",
       tags,
-      summary,
-      content,
-      ref_url,
-      ingestedAt: raw.ingestedAt ?? Date.now(),
+      title,
+      body,
+      url,
+      ingestedAt: (raw.ingestedAt as number) ?? Date.now(),
     },
     errors: [],
   };

@@ -19,8 +19,8 @@ const THERMOMETER_PROMPT = `You are a content measurement tool. Analyze the foll
 Content to measure:
 ---
 Tags: {tags}
-Summary: {summary}
-Content: {content}
+Title: {title}
+Body: {body}
 ---
 
 Return ONLY a JSON object, no explanation:
@@ -36,8 +36,8 @@ export class ScorerA {
   buildPrompt(entry: PoolEntry): string {
     return THERMOMETER_PROMPT
       .replace("{tags}", entry.tags.join(", "))
-      .replace("{summary}", entry.summary)
-      .replace("{content}", entry.content.slice(0, 2000));
+      .replace("{title}", entry.title)
+      .replace("{body}", entry.body.slice(0, 2000));
   }
 
   /** Parse LLM response into ThermometerScores */

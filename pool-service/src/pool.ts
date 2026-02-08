@@ -33,8 +33,8 @@ export class Pool {
   }
 
   /** Sanitize + validate, then add to queue. Returns errors if rejected by membrane. */
-  ingest(raw: PoolEntry): string[] {
-    // Membrane: sanitize + validate before queueing
+  ingest(raw: Record<string, unknown>): string[] {
+    // Membrane: sanitize + validate + field aliasing before queueing
     const result = membrane(raw);
     if (!result.valid || !result.entry) {
       this.log(`Membrane rejected: ${result.errors.join("; ")}`);
@@ -47,7 +47,7 @@ export class Pool {
       this.queue.shift();
     }
     this.queue.push(entry);
-    this.log(`Ingested: ${entry.summary.slice(0, 60)} (queue: ${this.queue.length})`);
+    this.log(`Ingested: ${entry.title.slice(0, 60)} (queue: ${this.queue.length})`);
     return [];
   }
 
@@ -61,7 +61,7 @@ export class Pool {
       // Scorer A: LLM thermometer
       const result = await this.scorerA.measure(entry);
       if (!result) {
-        this.log(`Scorer A failed for: ${entry.summary.slice(0, 40)}`);
+        this.log(`Scorer A failed for: ${entry.title.slice(0, 40)}`);
         this.processing = false;
         return { entry, thermometer: { authority: 0, novelty: 0, coherence: 0, catalyst: 0 }, weaponScores: [], finalScore: 0, accepted: false, reason: "scorer_a_failed" };
       }
@@ -70,7 +70,7 @@ export class Pool {
 
       // Coherence floor — hard reject
       if (scores.coherence < this.config.coherenceFloor) {
-        this.log(`Rejected (coherence ${scores.coherence.toFixed(2)} < ${this.config.coherenceFloor}): ${entry.summary.slice(0, 40)}`);
+        this.log(`Rejected (coherence ${scores.coherence.toFixed(2)} < ${this.config.coherenceFloor}): ${entry.title.slice(0, 40)}`);
         this.processing = false;
         return { entry, thermometer: scores, weaponScores: [], finalScore: 0, accepted: false, reason: "coherence_floor" };
       }
@@ -89,7 +89,7 @@ export class Pool {
         reason: accepted ? "weapon_passed" : "weapon_rejected",
       };
 
-      this.log(`${accepted ? "ACCEPTED" : "REJECTED"} (weighted avg: ${weaponResult.weightedAverage.toFixed(1)}): ${entry.summary.slice(0, 40)}`);
+      this.log(`${accepted ? "ACCEPTED" : "REJECTED"} (weighted avg: ${weaponResult.weightedAverage.toFixed(1)}): ${entry.title.slice(0, 40)}`);
 
       // Submit to Sphere if accepted
       if (accepted) {
@@ -105,13 +105,14 @@ export class Pool {
     }
   }
 
-  /** Submit accepted entry to Sphere via contribute endpoint */
+  /** Submit accepted entry to Sphere via contribute endpoint.
+   *  Maps standard field names → Sphere NodeSeed format here. */
   private async submitToSphere(entry: PoolEntry, flags: number): Promise<boolean> {
     const seed: NodeSeed = {
       tags: entry.tags,
-      summary: entry.summary,
-      content: entry.content,
-      ref_url: entry.ref_url,
+      summary: entry.title,       // standard → Sphere L2
+      content: entry.body,        // standard → Sphere L3
+      ref_url: entry.url,         // standard → Sphere L4
       flags,
     };
 
@@ -140,7 +141,7 @@ export class Pool {
         this.log(`Sphere submission failed: ${res.status} ${res.statusText}`);
         return false;
       }
-      this.log(`Submitted to Sphere: ${entry.summary.slice(0, 40)}`);
+      this.log(`Submitted to Sphere: ${entry.title.slice(0, 40)}`);
       return true;
     } catch (err) {
       this.log(`Sphere submission error: ${err}`);
