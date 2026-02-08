@@ -343,6 +343,11 @@ export class SessionMemory {
     this._prevState = state;
   }
 
+  /** Mark a node as visited without recording quality data (parse fail, mock, empty focus) */
+  markVisited(nodeId: string): void {
+    this._visitedNodeIds.add(nodeId);
+  }
+
   get totalScore(): number { return this._totalH; }
   get cycleCount(): number { return this.evals.length; }
   wasVisited(nodeId: string): boolean { return this._visitedNodeIds.has(nodeId); }
@@ -493,6 +498,9 @@ export class FastGate {
 
       // Hard exclude: Compressed (fossil — no content to read)
       if (n.flags & Flag.Compressed) continue;
+
+      // Hard exclude: auto-generated breadcrumbs (Explored/AutoCapsule)
+      if (n.tags && n.tags.includes("auto-generated")) continue;
 
       // --- Base: linear(metrics) + keyword ---
       let base = n.heat * mw.heat + n.weight * mw.weight + n.decay * mw.decay + n.distance * mw.distance;

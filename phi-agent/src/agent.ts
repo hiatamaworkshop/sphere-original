@@ -236,14 +236,14 @@ export class PhiAgent {
     const detail = await this.sphere.focus(target.id);
     if (!detail || !detail.kind) {
       this.log(`Focus returned empty for ${target.id} (kind: ${target.kind}) — skipping`);
-      this.gate.memory.record(target.id, 0, 0, 0, []);
+      this.gate.memory.markVisited(target.id);
       return;
     }
     // Skip mock/placeholder data
     const text = `${detail.summary ?? ""} ${detail.content ?? ""}`.toLowerCase();
     if (text.includes("mock") || text.includes("⚠️")) {
       this.log(`Mock data detected for ${target.id} — skipping`);
-      this.gate.memory.record(target.id, 0, 0, 0, []);
+      this.gate.memory.markVisited(target.id);
       return;
     }
 
@@ -256,12 +256,18 @@ export class PhiAgent {
     const evalAction = parseAction(evalResponse);
     this.log(`phi eval: h=${evalAction.h} w=${evalAction.w} d=${evalAction.d} — ${evalAction.reason}`);
 
+    // Parse failure → mark visited only (don't contaminate quality profile)
+    if (evalAction.action !== "evaluate") {
+      this.gate.memory.markVisited(target.id);
+      return;
+    }
+
     const h = evalAction.h ?? 5;
     const w = evalAction.w ?? 5;
     const d = evalAction.d ?? 5;
 
     // 6. Submit evaluation to Sphere
-    if (evalAction.action === "evaluate" && this.canAfford("evaluate")) {
+    if (this.canAfford("evaluate")) {
       const success = await this.sphere.evaluate(target.id, h, w, d);
       if (success) {
         this.stats.evaluations++;
@@ -269,7 +275,7 @@ export class PhiAgent {
       }
     }
 
-    // 7. Record
+    // 7. Record quality data
     this.gate.memory.record(target.id, h, w, d, detail.tags);
   }
 
