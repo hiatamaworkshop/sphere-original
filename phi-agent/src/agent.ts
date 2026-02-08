@@ -15,11 +15,13 @@ import { OllamaClient } from "./ollama-client.js";
 import { SphereClient } from "./sphere-client.js";
 import type { WalkMode } from "./sphere-client.js";
 import { PromptBuilder, parseAction } from "./prompt-builder.js";
-import { FastGate } from "./fast-gate.js";
+import { FastGate, RETURN_PRESETS } from "./fast-gate.js";
+import type { ReturnPreset } from "./fast-gate.js";
 
 export interface AgentConfig {
   query: string;
   tags?: string[];
+  preset: ReturnPreset;
   maxCycles: number;
   minEnergy: number;
   senseRadius: number;
@@ -40,6 +42,7 @@ export interface AgentStats {
 
 const DEFAULT_AGENT_CONFIG: AgentConfig = {
   query: "knowledge exploration",
+  preset: "balanced",
   maxCycles: 10,
   minEnergy: 10,
   senseRadius: 5,
@@ -146,9 +149,10 @@ export class PhiAgent {
         break;
       }
 
-      // Satisfaction check
+      // Satisfaction check (vector dot product)
+      this.log(`Satisfaction: ${this.gate.satisfactionDebug()}`);
       if (this.gate.shouldReturn()) {
-        this.log(`Satisfied (score: ${this.gate.memory.totalScore}, cycles: ${this.gate.memory.cycleCount})`);
+        this.log(`Satisfied — returning`);
         break;
       }
     }

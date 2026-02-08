@@ -5,7 +5,7 @@
 // Replaces phi for:
 //   - focus target selection (16bit flag + metrics scoring)
 //   - move direction (heuristic from eval result)
-//   - return decision (satisfaction-based)
+//   - return decision (satisfaction vector × return vector)
 //
 // phi is ONLY used for evaluate (content understanding).
 
@@ -32,6 +32,43 @@ const Flag = {
 } as const;
 
 // ============================================================
+// Satisfaction Vector — 4D evaluation profile
+// ============================================================
+//
+// S = [avg_h/10, avg_w/10, 1 - avg_d/10, hitRate]
+//   dim 0: relevance  (high h = found useful content)
+//   dim 1: authority   (high w = found authoritative content)
+//   dim 2: preservation (low d = content worth keeping)
+//   dim 3: hit rate    (h >= 7 ratio = consistency of good finds)
+//
+// R = return vector (dot product target)
+//   Default: [0.4, 0.3, 0.2, 0.1] — balanced, relevance-weighted
+
+export type SatisfactionVector = [number, number, number, number];
+
+// ============================================================
+// Return Vector Presets — agent personality / exploration mode
+// ============================================================
+//
+// Each preset weights the 4 satisfaction dimensions differently:
+//   [relevance, authority, preservation, hitRate]
+
+export const RETURN_PRESETS = {
+  /** Balanced — general exploration (default) */
+  balanced:   [0.4, 0.3, 0.2, 0.1] as SatisfactionVector,
+  /** Scholar — prioritizes authoritative, well-established content */
+  scholar:    [0.2, 0.5, 0.2, 0.1] as SatisfactionVector,
+  /** Scout — quick reconnaissance, returns fast on good finds */
+  scout:      [0.5, 0.1, 0.1, 0.3] as SatisfactionVector,
+  /** Archivist — seeks content worth preserving (low decay) */
+  archivist:  [0.2, 0.3, 0.4, 0.1] as SatisfactionVector,
+  /** Hunter — wants consistent high-quality hits */
+  hunter:     [0.3, 0.2, 0.1, 0.4] as SatisfactionVector,
+} as const;
+
+export type ReturnPreset = keyof typeof RETURN_PRESETS;
+
+// ============================================================
 // SessionMemory — tracks evaluations within a session
 // ============================================================
 
@@ -45,18 +82,36 @@ interface EvalRecord {
 
 export class SessionMemory {
   readonly evals: EvalRecord[] = [];
-  private _totalScore = 0;
+  private _totalH = 0;
+  private _totalW = 0;
+  private _totalD = 0;
+  private _hits = 0;  // h >= 7
   private _visitedNodeIds = new Set<string>();
 
   record(nodeId: string, h: number, w: number, d: number, tags: string[]): void {
     this.evals.push({ nodeId, h, w, d, tags });
-    this._totalScore += h;
+    this._totalH += h;
+    this._totalW += w;
+    this._totalD += d;
+    if (h >= 7) this._hits++;
     this._visitedNodeIds.add(nodeId);
   }
 
-  get totalScore(): number { return this._totalScore; }
+  get totalScore(): number { return this._totalH; }
   get cycleCount(): number { return this.evals.length; }
   wasVisited(nodeId: string): boolean { return this._visitedNodeIds.has(nodeId); }
+
+  /** 4D satisfaction vector: [relevance, authority, preservation, hitRate] */
+  get satisfaction(): SatisfactionVector {
+    const n = this.evals.length;
+    if (n === 0) return [0, 0, 0, 0];
+    return [
+      (this._totalH / n) / 10,       // avg_h normalized 0-1
+      (this._totalW / n) / 10,       // avg_w normalized 0-1
+      1 - (this._totalD / n) / 10,   // inverted avg_d (low d = high value)
+      this._hits / n,                 // hit rate (h >= 7)
+    ];
+  }
 }
 
 // ============================================================
@@ -65,13 +120,15 @@ export class SessionMemory {
 
 export class FastGate {
   private queryTokens: string[];
+  private returnVector: SatisfactionVector;
   readonly memory = new SessionMemory();
 
-  constructor(query: string) {
+  constructor(query: string, returnVector?: SatisfactionVector) {
     this.queryTokens = query
       .toLowerCase()
       .split(/[\s,]+/)
       .filter(t => t.length >= 2);
+    this.returnVector = returnVector ?? RETURN_PRESETS.balanced;
   }
 
   // --- Pick: choose focus target from sense results ---
@@ -133,15 +190,32 @@ export class FastGate {
     return "explore";
   }
 
-  // --- Return: satisfaction-based ---
+  // --- Return: satisfaction vector × return vector ---
+  //
+  // S · R → returnProb = clamp((dot - 0.5) * 2, 0, 1)
+  //
+  // Examples (with default R = [0.4, 0.3, 0.2, 0.1]):
+  //   Neutral (h=5,w=5,d=5, 0 hits): S=[0.5,0.5,0.5,0.0] → dot=0.45 → prob=0%
+  //   Good (h=7,w=6,d=4, 60% hits): S=[0.7,0.6,0.6,0.6] → dot=0.64 → prob=28%
+  //   Excellent (h=9,w=8,d=3, 80%): S=[0.9,0.8,0.7,0.8] → dot=0.82 → prob=64%
 
   shouldReturn(minCycles: number = 3): boolean {
     const count = this.memory.cycleCount;
     if (count < minCycles) return false;
 
-    const satisfaction = this.memory.totalScore / (count * 10);
-    // 0.5→0%, 0.7→40%, 1.0→100%
-    const returnProb = Math.max(0, (satisfaction - 0.5) * 2);
+    const s = this.memory.satisfaction;
+    const r = this.returnVector;
+    const dot = s[0] * r[0] + s[1] * r[1] + s[2] * r[2] + s[3] * r[3];
+    const returnProb = Math.max(0, Math.min(1, (dot - 0.5) * 2));
     return Math.random() < returnProb;
+  }
+
+  /** For debug logging */
+  satisfactionDebug(): string {
+    const s = this.memory.satisfaction;
+    const r = this.returnVector;
+    const dot = s[0] * r[0] + s[1] * r[1] + s[2] * r[2] + s[3] * r[3];
+    const prob = Math.max(0, Math.min(1, (dot - 0.5) * 2));
+    return `S=[${s.map(v => v.toFixed(2)).join(",")}] dot=${dot.toFixed(3)} prob=${(prob * 100).toFixed(0)}%`;
   }
 }
