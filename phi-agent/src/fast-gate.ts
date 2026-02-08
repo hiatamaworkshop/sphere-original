@@ -8,6 +8,9 @@
 //   - return decision (satisfaction vector × return vector)
 //
 // phi is ONLY used for evaluate (content understanding).
+//
+// Scoring weights are configurable via constructor.
+// Hub flag is deprecated (dynamic linkCounts not supplied to Arbiter).
 
 import type { NearbyNode } from "./sphere-client.js";
 import type { WalkMode } from "./sphere-client.js";
@@ -25,11 +28,60 @@ const Flag = {
   Volatile:    0x0020,
   Hot:         0x0040,
   Frozen:      0x0080,
-  Hub:         0x0100,
+  Hub:         0x0100,   // deprecated (dynamic), Tagger-only
   Isolated:    0x0200,
   Compressed:  0x4000,
   Candidate:   0x8000,
 } as const;
+
+// ============================================================
+// Scoring Weights — configurable coefficients
+// ============================================================
+
+export interface FastGateWeights {
+  /** Flag bonuses (additive score) */
+  flags: {
+    hot: number;
+    authority: number;
+    freshness: number;
+    sticky: number;
+    candidate: number;
+    catalyst: number;
+    ephemeral: number;   // negative
+    isolated: number;    // negative
+    volatile: number;    // negative
+  };
+  /** Metric multipliers */
+  metrics: {
+    heat: number;
+    weight: number;
+    decay: number;       // negative: high decay = less desirable
+    distance: number;    // negative: far = less desirable
+  };
+  /** Keyword match bonus per token hit */
+  keywordMatch: number;
+}
+
+export const DEFAULT_WEIGHTS: FastGateWeights = {
+  flags: {
+    hot: 8,
+    authority: 5,
+    freshness: 3,
+    sticky: 3,
+    candidate: 2,
+    catalyst: 2,
+    ephemeral: -3,
+    isolated: -2,
+    volatile: -1,
+  },
+  metrics: {
+    heat: 0.5,
+    weight: 0.3,
+    decay: -0.1,
+    distance: -2,
+  },
+  keywordMatch: 10,
+};
 
 // ============================================================
 // Satisfaction Vector — 4D evaluation profile
@@ -121,14 +173,24 @@ export class SessionMemory {
 export class FastGate {
   private queryTokens: string[];
   private returnVector: SatisfactionVector;
+  private weights: FastGateWeights;
   readonly memory = new SessionMemory();
 
-  constructor(query: string, returnVector?: SatisfactionVector) {
+  constructor(
+    query: string,
+    returnVector?: SatisfactionVector,
+    weights?: Partial<FastGateWeights>,
+  ) {
     this.queryTokens = query
       .toLowerCase()
       .split(/[\s,]+/)
       .filter(t => t.length >= 2);
     this.returnVector = returnVector ?? RETURN_PRESETS.balanced;
+    this.weights = {
+      flags: { ...DEFAULT_WEIGHTS.flags, ...weights?.flags },
+      metrics: { ...DEFAULT_WEIGHTS.metrics, ...weights?.metrics },
+      keywordMatch: weights?.keywordMatch ?? DEFAULT_WEIGHTS.keywordMatch,
+    };
   }
 
   // --- Pick: choose focus target from sense results ---
@@ -138,6 +200,8 @@ export class FastGate {
 
     let bestIndex = 0;
     let bestScore = -Infinity;
+    const fw = this.weights.flags;
+    const mw = this.weights.metrics;
 
     for (let i = 0; i < nodes.length; i++) {
       const n = nodes[i];
@@ -151,27 +215,28 @@ export class FastGate {
       let score = 0;
 
       // --- 16bit flag scoring ---
-      if (n.flags & Flag.Hot)        score += 8;
-      if (n.flags & Flag.Authority)  score += 5;
-      if (n.flags & Flag.Hub)        score += 4;
-      if (n.flags & Flag.Freshness)  score += 3;
-      if (n.flags & Flag.Sticky)     score += 3;
-      if (n.flags & Flag.Candidate)  score += 2;
-      if (n.flags & Flag.Catalyst)   score += 2;
-      if (n.flags & Flag.Ephemeral)  score -= 3;
-      if (n.flags & Flag.Isolated)   score -= 2;
-      if (n.flags & Flag.Volatile)   score -= 1;
+      if (n.flags & Flag.Hot)        score += fw.hot;
+      if (n.flags & Flag.Authority)  score += fw.authority;
+      if (n.flags & Flag.Freshness)  score += fw.freshness;
+      if (n.flags & Flag.Sticky)     score += fw.sticky;
+      if (n.flags & Flag.Candidate)  score += fw.candidate;
+      if (n.flags & Flag.Catalyst)   score += fw.catalyst;
+      if (n.flags & Flag.Ephemeral)  score += fw.ephemeral;
+      if (n.flags & Flag.Isolated)   score += fw.isolated;
+      if (n.flags & Flag.Volatile)   score += fw.volatile;
+      // Hub: deprecated (dynamic linkCounts not supplied), Tagger-only keyword match remains via tags
 
       // --- Keyword relevance (summary + tags vs query) ---
       const text = (n.summary + " " + (n.tags ?? []).join(" ")).toLowerCase();
       for (const token of this.queryTokens) {
-        if (text.includes(token)) score += 10;
+        if (text.includes(token)) score += this.weights.keywordMatch;
       }
 
       // --- Metrics ---
-      score += n.heat * 0.5;
-      score += n.weight * 0.3;
-      score -= n.distance * 2;
+      score += n.heat * mw.heat;
+      score += n.weight * mw.weight;
+      score += n.decay * mw.decay;
+      score += n.distance * mw.distance;
 
       if (score > bestScore) {
         bestScore = score;

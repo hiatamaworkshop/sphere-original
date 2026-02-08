@@ -98,7 +98,8 @@
       "_comment": "Arbiter settings (state transition judgment)",
 
       "dynamicFlags": {
-        "hotHeatThreshold": 10,
+        "_comment": "Hot = baseHeat(100) + 2 max evals(50) = 150. Hub deprecated (linkCounts not supplied)",
+        "hotHeatThreshold": 150,
         "hubLinkThreshold": 5,
         "isolatedLinkThreshold": 0
       },
