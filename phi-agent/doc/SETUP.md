@@ -202,3 +202,47 @@ sphere.config.json
 ✅ AutoCapsule 生成: 2 nodes 投入
 ✅ Pipeline 正常動作
 ```
+
+### FastGate (EvalLoop) 実装 (2026-02-08)
+
+**問題**: phi 呼び出し 3回/cycle (~75s) → 300s timeout で 4 cycles が限界
+
+**解決策**: FastGate — ローカルスコアリング + ヒューリスティックで phi 呼び出しを 1回/cycle に削減
+
+**変更箇所**:
+1. `src/fast-gate.ts` (新規) — 16bit flag スコアリング + SessionMemory + 満足度帰還
+2. `src/agent.ts` — EvalLoop アーキテクチャに書き換え
+3. `src/sphere-client.ts` — NearbyNode 型拡張 (flags, kind, decay, tags) + throttle (350ms)
+4. `src/prompt-builder.ts` — null ガード (content/tags/summary)
+5. `src/ollama-client.ts` — temperature 0.3→0.2
+
+**アーキテクチャ**:
+```
+1 cycle = move(heuristic) → sense → pick(FastGate, 0ms) → focus → phi eval(~25s) → record + compute
+                                                                    ↑ 唯一の phi 呼び出し
+```
+
+| ステップ | 旧 | 新 (FastGate) |
+|----------|-----|---------------|
+| focus 対象選択 | phi (~25s) | 16bit flag + keyword + metrics (0ms) |
+| evaluate | phi (~25s) | phi (~25s) — 変更なし |
+| move 方向選択 | phi (~25s) | h >= 7→deep, h >= 5→hot, else→explore (0ms) |
+
+**テスト結果** (2026-02-08):
+```
+旧: 2 cycles / 245s, 0 evaluations
+新: 5 cycles / 117.8s, 4 evaluations
+   ✅ ~23.6s/cycle (phi 1回のみ)
+   ✅ FastGate 16bit flag scoring 動作確認 (Hot, Hub+Hot, Freshness)
+   ✅ phi eval JSON パース成功 (h=5~9, w=3~8, d=3~6)
+   ⚠️ Cycle 2: ghost/fossil ノード (mock data) を掴んだ
+   ⚠️ Cycle 5: expelled (evaluate timeout) — session 300s 以内だがエネルギー枯渇付近
+```
+
+**既知の問題**:
+1. **ghost/fossil フィルタ未実装**: sense 結果に ghost/fossil が含まれ、focus すると mock data が返る
+   - 対策: FastGate.pickFocusTarget で kind === "ghost" | "fossil" をスキップ
+   - 本番ではこれらが 16bit flags (Frozen=0x0080, Compressed=0x4000) に反映される可能性あり
+2. **ローカル energy 消費が速い**: 100 → ~21/cycle → 5 cycle で枯渇
+   - Sphere 側のエネルギーとは別 (SphereClient 内の近似値)
+3. **expelled タイミング**: evaluate 送信中に expelled → timeout error

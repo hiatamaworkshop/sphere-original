@@ -186,8 +186,16 @@ export class PhiAgent {
       this.gate.memory.record(target.id, 0, 0, 0, []);  // mark visited to avoid re-pick
       return "hot";  // stay in populated area
     }
+    // Skip mock/placeholder data
+    const text = `${detail.summary ?? ""} ${detail.content ?? ""}`.toLowerCase();
+    if (text.includes("mock") || text.includes("⚠️")) {
+      this.log(`Mock data detected for ${target.id} — skipping`);
+      this.gate.memory.record(target.id, 0, 0, 0, []);
+      return "hot";
+    }
+
     this.stats.nodesExamined++;
-    this.log(`Focused: [${detail.kind}] ${detail.tags.join(", ")} — ${detail.summary.slice(0, 60)}`);
+    this.log(`Focused: [${detail.kind}] ${detail.tags?.join(", ") ?? ""} — ${(detail.summary ?? "").slice(0, 60)}`);
 
     // 5. phi evaluates content (only phi call per cycle)
     const evalPrompt = this.prompt.evaluateNode(detail);

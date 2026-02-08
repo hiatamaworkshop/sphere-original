@@ -391,7 +391,14 @@ export class GatewayServer {
             context.on("warning", (msg) => {
                 this.send(socket, { type: "warning", message: msg });
             });
-            context.on("expelled", (reason) => {
+            context.on("expelled", async (reason) => {
+                // Process AutoCapsule + buffered evaluations before closing
+                try {
+                    await context.returnOnExpelled();
+                }
+                catch (err) {
+                    console.log(`[GatewayServer] returnOnExpelled failed: ${err}`);
+                }
                 this.send(socket, { type: "expelled", reason });
                 socket.close(4003, reason);
                 this.connections.delete(sessionId);
