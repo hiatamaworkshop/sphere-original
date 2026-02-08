@@ -375,6 +375,7 @@ document.getElementById('exploreBtn').addEventListener('click', async () => {
     const data = await api(`/sphere/explore?q=${encodeURIComponent(q)}&limit=${limit}&radius=${radius}`);
     if (!data.results || data.results.length === 0) {
       el.innerHTML = `<div class="no-results">No results found (searched ${data.meta?.total ?? 0} nodes)</div>`;
+      document.getElementById('exploreClear').style.display = 'inline-block';
       return;
     }
     el.innerHTML = `<div class="meta">Found ${data.meta.matched} matches in ${data.meta.total} nodes (showing ${data.meta.returned})</div>` +
@@ -390,6 +391,7 @@ document.getElementById('exploreBtn').addEventListener('click', async () => {
           <div class="result-id">${r.id}</div>
         </div>
       `).join('');
+    document.getElementById('exploreClear').style.display = 'inline-block';
   } catch (e) {
     el.innerHTML = `<div class="error">Error: ${e.message}</div>`;
   }
@@ -397,6 +399,12 @@ document.getElementById('exploreBtn').addEventListener('click', async () => {
 
 document.getElementById('exploreQuery').addEventListener('keydown', (e) => {
   if (e.key === 'Enter') document.getElementById('exploreBtn').click();
+});
+
+document.getElementById('exploreClear').addEventListener('click', () => {
+  document.getElementById('exploreResults').innerHTML = '';
+  document.getElementById('exploreQuery').value = '';
+  document.getElementById('exploreClear').style.display = 'none';
 });
 
 // === Existing Nodes ===
@@ -940,11 +948,12 @@ function getRandomEntryRequest() {
 
 document.getElementById('launchSwarm').addEventListener('click', async () => {
   const count = parseInt(document.getElementById('swarmCount').value);
+  const userQuery = document.getElementById('swarmQuery').value.trim();
   document.getElementById('launchSwarm').disabled = true;
   document.getElementById('stopSwarm').disabled = false;
 
   for (let i = 0; i < count; i++) {
-    await launchSwarmAgent(i);
+    await launchSwarmAgent(i, userQuery);
     await new Promise(r => setTimeout(r, 500));
   }
 });
@@ -957,7 +966,7 @@ document.getElementById('stopSwarm').addEventListener('click', () => {
   document.getElementById('stopSwarm').disabled = true;
 });
 
-async function launchSwarmAgent(index) {
+async function launchSwarmAgent(index, userQuery) {
   try {
     const data = await api('/dive/request', { method: 'POST' });
     if (!data.success) {
@@ -974,7 +983,9 @@ async function launchSwarmAgent(index) {
       switch (msg.type) {
         case 'welcome':
           agent.agentId = msg.sessionId || '';
-          const swarmEntry = getRandomEntryRequest();
+          const swarmEntry = userQuery
+            ? { query: userQuery, tags: userQuery.split(/[\s,]+/).slice(0, 5) }
+            : getRandomEntryRequest();
           ws.send(JSON.stringify({
             type: 'entry',
             requestId: `swarm-${index}-${Date.now()}`,
@@ -986,33 +997,62 @@ async function launchSwarmAgent(index) {
           agent.phase = 'processing';
           break;
         case 'positioned':
-          agent.phase = 'active';
-          autoExplore(agent);
+          agent.phase = 'transitioning';
+          agent.layer = 'tutorial';
+          // Transition: tutorial → sanctuary → core (evaluations only work in core)
+          setTimeout(() => {
+            ws.send(JSON.stringify({ type: 'enterSanctuary', requestId: `s-${Date.now()}` }));
+          }, 500);
+          break;
+        case 'layerChanged':
+          agent.layer = msg.layer;
+          if (msg.layer === 'sanctuary') {
+            setTimeout(() => {
+              ws.send(JSON.stringify({ type: 'enterCore', requestId: `s-${Date.now()}` }));
+            }, 500);
+          } else if (msg.layer === 'core') {
+            agent.phase = 'active';
+            autoExplore(agent);
+          }
           break;
         case 'senseResult':
           if (msg.nodes?.length > 0) {
             const target = msg.nodes[Math.floor(Math.random() * msg.nodes.length)];
-            ws.send(JSON.stringify({ type: 'focus', requestId: `s-${Date.now()}`, nodeId: target.id }));
+            setTimeout(() => {
+              ws.send(JSON.stringify({ type: 'focus', requestId: `s-${Date.now()}`, nodeId: target.id }));
+            }, 400);
           } else {
+            // No nodes nearby — move to new area
             const modes = ['random', 'hot', 'explore'];
-            ws.send(JSON.stringify({ type: 'move', requestId: `s-${Date.now()}`, step: 0.3, mode: modes[Math.floor(Math.random() * modes.length)] }));
+            setTimeout(() => {
+              ws.send(JSON.stringify({ type: 'move', requestId: `s-${Date.now()}`, step: 0.3, mode: modes[Math.floor(Math.random() * modes.length)] }));
+            }, 400);
           }
           agent.actions++;
           break;
         case 'focusResult':
           if (msg.node) {
             const evalH = Math.floor(3 + Math.random() * 5);
-            ws.send(JSON.stringify({
-              type: 'evaluate', requestId: `s-${Date.now()}`, nodeId: msg.node.id,
-              h: evalH, w: 5, d: 5
-            }));
+            setTimeout(() => {
+              ws.send(JSON.stringify({
+                type: 'evaluate', requestId: `s-${Date.now()}`, nodeId: msg.node.id,
+                h: evalH, w: 5, d: 5
+              }));
+            }, 400);
           }
           agent.actions++;
           break;
         case 'evaluateResult':
+          agent.actions++;
+          // Move after evaluate to explore new area
+          setTimeout(() => {
+            const modes = ['random', 'hot', 'explore', 'deep'];
+            ws.send(JSON.stringify({ type: 'move', requestId: `s-${Date.now()}`, step: 0.3, mode: modes[Math.floor(Math.random() * modes.length)] }));
+          }, 400);
+          break;
         case 'moveResult':
           agent.actions++;
-          setTimeout(() => autoExplore(agent), 2000);
+          setTimeout(() => autoExplore(agent), 1500);
           break;
         case 'error':
           console.warn(`[Swarm Agent ${agent.index}] Error:`, msg.error);
