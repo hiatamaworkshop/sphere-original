@@ -584,7 +584,9 @@ export class PeripheryServer {
             ? 0 // 0 = use HTTP server (same port)
             : (this.config.server.wsPort ?? DEFAULT_GATEWAY_CONFIG.port);
         this.gatewayServer = new GatewayServer(this.ticketIssuer, this.entryBuffer, { port: wsPort }, this.incarnationPipeline, this.questStore, this.coreAdapter, undefined, // amberCache
-        this.globalFieldLayer, this.activeBusLayer);
+        this.globalFieldLayer, this.activeBusLayer, this.config.session, // Session timeout config for external agents (phi-agent, etc.)
+        this.config.energy // Energy budget config
+        );
         const httpServer = this.app.listen(httpPort, () => {
             console.log(`[PeripheryServer] 🚀 Listening on port ${httpPort}`);
             console.log(`[PeripheryServer] ${SPHERE_NAME} v${SPHERE_VERSION}`);

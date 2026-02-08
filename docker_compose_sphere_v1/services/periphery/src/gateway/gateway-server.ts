@@ -34,6 +34,7 @@ import type { SphereCoreAdapter } from "./sphere-core-adapter.js";
 import type { UnifiedAmberCache } from "./amber-cache.js";
 import type { GlobalFieldLayer } from "../field/index.js";
 import type { ActiveBusLayer, BusMessage } from "../bus/index.js";
+import type { PeripheryConfig } from "../types/config.js";
 
 // ============================================================
 // Configuration
@@ -239,7 +240,9 @@ export class GatewayServer {
     private coreAdapter?: SphereCoreAdapter,
     private amberCache?: UnifiedAmberCache,
     private globalFieldLayer?: GlobalFieldLayer,
-    private activeBusLayer?: ActiveBusLayer
+    private activeBusLayer?: ActiveBusLayer,
+    private sessionConfig?: PeripheryConfig["session"],
+    private energyConfig?: PeripheryConfig["energy"]
   ) {
     // Subscribe to ActiveBus for WebSocket broadcast
     if (this.activeBusLayer) {
@@ -573,6 +576,8 @@ export class GatewayServer {
         coreAdapter: this.coreAdapter,
         globalFieldLayer: this.globalFieldLayer,
         activeBusLayer: this.activeBusLayer,
+        sessionConfig: this.sessionConfig,
+        energyConfig: this.energyConfig,
       });
 
       // Set up context event handlers

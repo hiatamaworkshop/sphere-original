@@ -148,9 +148,7 @@ class SwarmAgent {
                 this.resolveRequest(msg.requestId, msg);
                 break;
             case "evaluateResult":
-                if (msg.success) {
-                    this.stats.evaluations++;
-                }
+                // Evaluation tracking is done in evaluate() method
                 this.resolveRequest(msg.requestId, msg);
                 break;
             case "moveResult":
@@ -226,8 +224,8 @@ class SwarmAgent {
     // ============================================================
     async sense(radius = 5) {
         const result = await this.sendRequest("sense", { radius });
-        // Energy cost: 2
-        this.stats.energy = Math.max(0, this.stats.energy - 2);
+        // Energy cost: 3 (matches server-side)
+        this.stats.energy = Math.max(0, this.stats.energy - 3);
         return result.nodes || [];
     }
     async focus(nodeId) {
@@ -245,11 +243,20 @@ class SwarmAgent {
      */
     async evaluate(nodeId, h, w = 5, d = 5) {
         const result = await this.sendRequest("evaluate", { nodeId, h, w, d });
-        // Track heat delta
-        this.stats.totalHeatDelta += (h - 5);
+        // Track heat delta only on success
+        if (result.success) {
+            this.stats.totalHeatDelta += (h - 5);
+            this.stats.evaluations++;
+        }
         // Energy cost: 3
         this.stats.energy = Math.max(0, this.stats.energy - 3);
         return result.success;
+    }
+    async move(step = 0.3, mode = "random") {
+        const result = await this.sendRequest("move", { step, mode });
+        // Energy cost: 5
+        this.stats.energy = Math.max(0, this.stats.energy - 5);
+        return result.result?.success ?? false;
     }
     async enterLayer(layer) {
         const type = layer === "sanctuary" ? "enterSanctuary" : "enterCore";
@@ -262,36 +269,47 @@ class SwarmAgent {
     // Exploration Behaviors
     // ============================================================
     async randomBehavior() {
-        // Sense → Evaluate random nodes with random h/w/d scores
+        // Sense → Focus → Evaluate random node → Move
         const nodes = await this.sense(5);
-        for (const node of nodes.slice(0, 3)) {
-            // h: random 3-8, w: neutral 5, d: neutral 5
+        await this.delay(400); // rate limit: 3 actions/sec
+        if (nodes.length > 0) {
+            const target = nodes[Math.floor(Math.random() * nodes.length)];
+            await this.focus(target.id);
+            await this.delay(400);
             const h = 3 + Math.floor(Math.random() * 6); // 3-8
-            await this.evaluate(node.id, h, 5, 5);
-            await this.delay(200);
+            await this.evaluate(target.id, h, 5, 5);
+            await this.delay(400);
         }
+        // Move to explore new area
+        const modes = ["random", "hot", "explore"];
+        await this.move(0.3, modes[Math.floor(Math.random() * modes.length)]);
     }
     async focusedBehavior() {
-        // Sense → Focus on highest heat → Evaluate positively
+        // Sense → Focus on highest heat → Evaluate positively → Move toward hot
         const nodes = await this.sense(5);
+        await this.delay(400);
         if (nodes.length > 0) {
-            // Sort by heat descending
             const sorted = [...nodes].sort((a, b) => b.heat - a.heat);
             const target = sorted[0];
             await this.focus(target.id);
-            // Positive evaluation: h=8 (boost heat), w=7 (increase weight), d=3 (slow decay)
+            await this.delay(400);
             await this.evaluate(target.id, 8, 7, 3);
+            await this.delay(400);
         }
+        await this.move(0.3, "hot");
     }
     async distributedBehavior() {
-        // Explore different areas by moving
+        // Sense → Focus → Evaluate moderate → Move to explore
         const nodes = await this.sense(5);
+        await this.delay(400);
         if (nodes.length > 0) {
-            // Evaluate a random node with moderate positive score
             const target = nodes[Math.floor(Math.random() * nodes.length)];
-            // Moderate evaluation: h=7, w=6, d=5
+            await this.focus(target.id);
+            await this.delay(400);
             await this.evaluate(target.id, 7, 6, 5);
+            await this.delay(400);
         }
+        await this.move(0.3, "explore");
     }
     // ============================================================
     // Main Explore Flow
@@ -331,7 +349,22 @@ class SwarmAgent {
             this.stats.timing.positioned = Date.now() - entryStart;
             this.stats.timing.total = Date.now() - pipelineStart;
             this.stats.status = "exploring";
-            // Step 5: Explore in tutorial
+            // Step 5: Transition to Core layer (tutorial → sanctuary → core)
+            // Must reach Core before evaluations are accepted
+            try {
+                await this.delay(500);
+                await this.enterLayer("sanctuary");
+                await this.delay(500);
+                await this.enterLayer("core");
+                if (DEBUG)
+                    console.log(`[${this.name}] Reached Core layer`);
+            }
+            catch (error) {
+                if (DEBUG)
+                    console.log(`[${this.name}] Layer transition failed:`, error);
+                // Continue in tutorial — evaluations will be discarded but sense/move still work
+            }
+            // Step 6: Explore
             const startTime = Date.now();
             const endBy = startTime + this.maxDuration;
             while (Date.now() < endBy && this.stats.status === "exploring" && this.stats.energy > 10) {
@@ -347,16 +380,10 @@ class SwarmAgent {
                             await this.distributedBehavior();
                             break;
                     }
-                    // Move to Core layer after tutorial (if enough energy)
-                    if (this.currentLayer === "tutorial" && this.stats.energy > 20) {
-                        await this.enterLayer("sanctuary");
-                        await this.delay(500);
-                        await this.enterLayer("core");
-                    }
                     await this.delay(1000);
                 }
                 catch (error) {
-                    // Continue on error
+                    // Continue on error (rate limit, etc.)
                     if (DEBUG)
                         console.log(`[${this.name}] Error:`, error);
                     await this.delay(500);
@@ -366,7 +393,7 @@ class SwarmAgent {
                 if (DEBUG)
                     console.log(`[${this.name}] Low energy (${this.stats.energy}), returning early`);
             }
-            // Step 6: Return
+            // Step 7: Return
             await this.return();
             this.stats.status = "completed";
             this.stats.endTime = Date.now();

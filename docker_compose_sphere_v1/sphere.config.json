@@ -88,6 +88,12 @@
       "wsPort": 8081
     },
 
+    "session": {
+      "_comment": "Gateway session timeout for Dive connections (phi-agent needs longer TTL for CPU inference)",
+      "ttlSeconds": 300,
+      "warningBeforeEndSeconds": 30
+    },
+
     "arbiter": {
       "_comment": "Arbiter settings (state transition judgment)",
 

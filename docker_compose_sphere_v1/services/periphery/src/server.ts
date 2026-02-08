@@ -701,7 +701,9 @@ export class PeripheryServer {
       this.coreAdapter,
       undefined,  // amberCache
       this.globalFieldLayer,
-      this.activeBusLayer
+      this.activeBusLayer,
+      this.config.session,   // Session timeout config for external agents (phi-agent, etc.)
+      this.config.energy     // Energy budget config
     );
     const httpServer = this.app.listen(httpPort, () => {
       console.log(`[PeripheryServer] 🚀 Listening on port ${httpPort}`);

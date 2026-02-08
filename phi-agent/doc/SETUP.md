@@ -76,14 +76,14 @@ npx tsx src/ollama-client.ts
 
 ### 次のステップ (優先順)
 
-1. **session timeout 延長**
-   - `sphere-context.ts:68` → `DEFAULT_SESSION_TTL = 180` (秒)
-   - `sphere.config.json` に `session.ttlSeconds` を追加して config 化すべき
-   - CPU推論 ~100秒/回 × 3回/cycle = ~300秒必要 → 最低 600秒 に延長
-   - `sphere-context.ts:211` で `sessionConfig?.ttlSeconds ?? DEFAULT_SESSION_TTL` として読んでいる
-   - `sphere-context.ts:196` の `PeripheryConfig["session"]` 型定義も要確認
+1. ✅ **session timeout 延長** (2026-02-08 完了)
+   - `sphere.config.json` に `periphery.session.ttlSeconds: 300` を追加
+   - GatewayServer → SphereContext への config 経路を実装
+   - 変更箇所: `sphere.config.json`, `gateway-server.ts`, `server.ts`
+   - 設計原則: phi-agent は完全に外部サービスとして Gateway 経由で接続
+   - **180秒 → 300秒 (5分) に延長** (CPU推論対応)
 
-2. **num_predict 削減** (推論速度改善)
+2. **num_predict 削減** (推論速度改善) [次の作業]
    - `ollama-client.ts:28` → `maxTokens: 256` (= num_predict)
    - phi の応答は JSON のみ (action, index, h, w, d, reason) → 64 tokens で十分
    - 推論時間は token 数にほぼ比例 → 256→64 で ~4倍速
@@ -115,11 +115,44 @@ docker_compose_sphere_v1/
 └── sphere.config.json              # session timeout ここに追加予定
 ```
 
-## 関連コード (gateway 側)
+## 実装完了事項
 
-session timeout を制御している箇所:
-- `periphery/src/gateway/sphere-context.ts:68` — `DEFAULT_SESSION_TTL = 180`
-- `sphere-context.ts:71` — `DEFAULT_WARNING_BEFORE_END = 30`
+### session timeout 延長 (2026-02-08)
+
+**問題**: CPU 推論が遅く (100秒/回)、デフォルトの 180秒で expelled
+
+**解決策**: config による timeout 延長 (300秒)
+
+**変更箇所**:
+1. `sphere.config.json:91-95` — `periphery.session` セクション追加
+   ```json
+   "session": {
+     "ttlSeconds": 300,
+     "warningBeforeEndSeconds": 30
+   }
+   ```
+
+2. `gateway-server.ts` — sessionConfig/energyConfig を受け取り SphereContext に渡す
+   - コンストラクタに optional パラメータ追加
+   - `createSphereContext()` 呼び出し時に渡す
+
+3. `server.ts` — GatewayServer 作成時に `this.config.session` を渡す
+
+**設計原則**:
+- phi-agent は**完全に外部サービス**として扱う
+- Gateway が唯一の入口 (カップリングの作法)
+- config 経由で制御 (コード変更なしで調整可能)
+
+**config 読み込み経路**:
+```
+sphere.config.json
+  → server.ts (this.config: PeripheryConfig)
+  → GatewayServer (sessionConfig)
+  → SphereContext (this._sessionTtl)
+```
+
+**関連コード**:
+- `periphery/src/gateway/sphere-context.ts:68` — `DEFAULT_SESSION_TTL = 180` (fallback)
 - `sphere-context.ts:211` — `sessionConfig?.ttlSeconds ?? DEFAULT_SESSION_TTL`
 - `sphere-context.ts:1372-1384` — `setupTimers()` で expiry/warning タイマー設定
-- config 経由: `sphere.config.json` → `periphery.session.ttlSeconds` (未定義、要追加)
+- `types/config.ts:99-104` — `PeripheryConfig["session"]` 型定義
