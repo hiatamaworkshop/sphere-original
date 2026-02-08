@@ -685,9 +685,35 @@ Good hunting, explorer.
 `.trim(),
 };
 /**
- * Get rulebook for API response
+ * Get rulebook for API response.
+ * Config overrides are applied to constraints so agents receive authoritative values.
  */
-export function getRulebookResponse() {
+export function getRulebookResponse(configOverrides) {
+    // Merge config into constraints (config is authoritative)
+    const constraints = { ...rulebook.constraints };
+    if (configOverrides?.session) {
+        constraints.session = {
+            ...constraints.session,
+            maxDurationSeconds: configOverrides.session.ttlSeconds,
+            warningBeforeExpiry: configOverrides.session.warningBeforeEndSeconds,
+        };
+    }
+    if (configOverrides?.energy) {
+        constraints.energy = {
+            ...constraints.energy,
+            initial: configOverrides.energy.initial,
+            warningThreshold: configOverrides.energy.warningThreshold,
+            costs: {
+                ...constraints.energy.costs,
+                sense: configOverrides.energy.costs.sense ?? constraints.energy.costs.sense,
+                scanL1: configOverrides.energy.costs.scan ?? constraints.energy.costs.scanL1,
+                move: configOverrides.energy.costs.move ?? constraints.energy.costs.move,
+                focus: configOverrides.energy.costs.focus ?? constraints.energy.costs.focus,
+                warp: configOverrides.energy.costs.warp ?? constraints.energy.costs.warp,
+                evaluate: configOverrides.energy.costs.evaluate ?? constraints.energy.costs.evaluate,
+            },
+        };
+    }
     return {
         version: rulebook.version,
         welcome: rulebook.welcome,
@@ -700,7 +726,7 @@ export function getRulebookResponse() {
         nodeFlags: rulebook.nodeFlags,
         contribution: rulebook.contribution,
         pipeline: rulebook.pipeline,
-        constraints: rulebook.constraints,
+        constraints,
         taboos: rulebook.taboos,
         wisdom: rulebook.wisdom,
         closing: rulebook.closing,

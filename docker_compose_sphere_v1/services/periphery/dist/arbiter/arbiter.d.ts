@@ -26,8 +26,6 @@ export interface ArbiterConfig {
     erosionHeatThreshold: number;
     pauseErosionBoost: number;
     hotHeatThreshold: number;
-    hubLinkThreshold: number;
-    isolatedLinkThreshold: number;
     ascensionCooldownMs: number;
     ascensionScoreThreshold: number;
     lowerThresholdRatio: number;
@@ -173,11 +171,9 @@ export declare class Arbiter {
      *
      * @param projDB - Current projection database
      * @param options.isPaused - Whether Sphere is paused
-     * @param options.linkCounts - Map of nodeId → link count (for Hub/Isolated detection)
      */
     observe(projDB: Map<string, SphereNode>, options?: {
         isPaused?: boolean;
-        linkCounts?: Map<string, number>;
     }): TransitionQueue;
     /**
      * Monitor existing candidates: dropout or promotion
@@ -223,8 +219,9 @@ export declare class Arbiter {
      *
      * [Dynamic Flags]
      *   - Hot: heat > hotHeatThreshold
-     *   - Hub: linkCount > hubLinkThreshold
-     *   - Isolated: linkCount <= isolatedLinkThreshold
+     *
+     * Hub/Isolated dynamic flags removed — linkCounts never supplied.
+     * Static Hub/Isolated via Tagger keyword matching is unaffected.
      *
      * @returns FlagUpdate if any changes needed, null otherwise
      */

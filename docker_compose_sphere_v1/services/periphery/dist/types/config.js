@@ -138,9 +138,7 @@ export const DEFAULT_PERIPHERY_CONFIG = {
         },
         // Dynamic flag thresholds (by Arbiter)
         dynamicThresholds: {
-            hotHeatThreshold: 80, // heat > 80 → Hot flag
-            hubLinkThreshold: 5, // links > 5 → Hub flag
-            isolatedLinkThreshold: 0, // links == 0 → Isolated flag
+            hotHeatThreshold: 150, // heat > 150 → Hot flag
         },
     },
 };

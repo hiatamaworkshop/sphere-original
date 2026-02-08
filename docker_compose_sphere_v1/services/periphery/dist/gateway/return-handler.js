@@ -74,8 +74,12 @@ export class ReturnHandler {
                     errors.push(`${err.code}: ${err.message}`);
                 }
                 console.log(`[ReturnHandler] Proposed capsule rejected:`, validation.errors);
-                // Fall back to auto-generated capsule
+                // Fall back to auto-generated capsule, carrying over evaluations
                 finalCapsule = this.generateCapsuleFromAuto(autoCapsule);
+                if (proposedCapsule.evaluations && proposedCapsule.evaluations.length > 0) {
+                    finalCapsule.evaluations = proposedCapsule.evaluations;
+                    console.log(`[ReturnHandler] Carrying ${proposedCapsule.evaluations.length} evaluations from rejected capsule`);
+                }
                 console.log(`[ReturnHandler] Using auto-generated capsule instead`);
             }
         }

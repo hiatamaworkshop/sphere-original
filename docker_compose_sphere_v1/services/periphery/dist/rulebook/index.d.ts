@@ -475,9 +475,20 @@ export declare const rulebook: {
     closing: string;
 };
 /**
- * Get rulebook for API response
+ * Get rulebook for API response.
+ * Config overrides are applied to constraints so agents receive authoritative values.
  */
-export declare function getRulebookResponse(): {
+export declare function getRulebookResponse(configOverrides?: {
+    session?: {
+        ttlSeconds: number;
+        warningBeforeEndSeconds: number;
+    };
+    energy?: {
+        initial: number;
+        warningThreshold: number;
+        costs: Record<string, number>;
+    };
+}): {
     version: string;
     welcome: string;
     principles: ({
