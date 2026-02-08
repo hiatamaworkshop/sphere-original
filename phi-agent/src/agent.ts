@@ -68,7 +68,7 @@ export class PhiAgent {
     this.sphere = sphere;
     this.config = { ...DEFAULT_AGENT_CONFIG, ...config };
     this.prompt = new PromptBuilder(this.config.query);
-    this.gate = new FastGate(this.config.query);
+    this.gate = new FastGate(this.config.query, RETURN_PRESETS[this.config.preset]);
     this.stats = {
       cycles: 0,
       nodesExamined: 0,

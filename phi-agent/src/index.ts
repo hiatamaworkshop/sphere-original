@@ -16,16 +16,29 @@
 import { OllamaClient } from "./ollama-client.js";
 import { SphereClient } from "./sphere-client.js";
 import { PhiAgent } from "./agent.js";
+import { RETURN_PRESETS } from "./fast-gate.js";
+import type { ReturnPreset } from "./fast-gate.js";
 
-function parseArgs(): { query: string; cycles: number; debug: boolean } {
+const VALID_PRESETS = Object.keys(RETURN_PRESETS) as ReturnPreset[];
+
+function parseArgs(): { query: string; cycles: number; preset: ReturnPreset; debug: boolean } {
   const args = process.argv.slice(2);
   let query = "knowledge exploration";
   let cycles = 10;
+  let preset: ReturnPreset = "balanced";
   let debug = true;
 
   for (let i = 0; i < args.length; i++) {
     if (args[i] === "--cycles" && args[i + 1]) {
       cycles = parseInt(args[i + 1], 10);
+      i++;
+    } else if (args[i] === "--preset" && args[i + 1]) {
+      const p = args[i + 1] as ReturnPreset;
+      if (VALID_PRESETS.includes(p)) {
+        preset = p;
+      } else {
+        console.log(`Unknown preset "${args[i + 1]}", using "balanced". Available: ${VALID_PRESETS.join(", ")}`);
+      }
       i++;
     } else if (args[i] === "--quiet") {
       debug = false;
@@ -34,16 +47,17 @@ function parseArgs(): { query: string; cycles: number; debug: boolean } {
     }
   }
 
-  return { query, cycles, debug };
+  return { query, cycles, preset, debug };
 }
 
 async function main(): Promise<void> {
-  const { query, cycles, debug } = parseArgs();
+  const { query, cycles, preset, debug } = parseArgs();
 
   console.log("========================================");
   console.log("  phi-agent — Sphere Coupling Service");
   console.log("========================================");
   console.log(`Query:  "${query}"`);
+  console.log(`Preset: ${preset} ${JSON.stringify(RETURN_PRESETS[preset])}`);
   console.log(`Cycles: ${cycles}`);
   console.log();
 
@@ -59,6 +73,7 @@ async function main(): Promise<void> {
 
   const agent = new PhiAgent(ollama, sphere, {
     query,
+    preset,
     maxCycles: cycles,
     debug,
   });
