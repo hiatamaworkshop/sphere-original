@@ -19,6 +19,7 @@ import { SphereClient } from "./sphere-client.js";
 import { PhiAgent } from "./agent.js";
 import { LOADOUTS } from "./fast-gate.js";
 import type { LoadoutName } from "./fast-gate.js";
+import { getSpeciesSummary } from "./eval-log.js";
 
 const VALID_LOADOUTS = Object.keys(LOADOUTS) as LoadoutName[];
 
@@ -103,6 +104,22 @@ async function main(): Promise<void> {
 
   if (stats.error) {
     console.log(`Error:       ${stats.error}`);
+  }
+
+  // Species memory summary
+  const species = getSpeciesSummary(loadout);
+  if (species.sessions > 0) {
+    console.log();
+    console.log("--- Species Memory ---");
+    console.log(`Sessions:    ${species.sessions} (${species.loadout})`);
+    console.log(`Total evals: ${species.totalEvals}`);
+    console.log(`Avg scores:  h=${species.avgH.toFixed(1)} w=${species.avgW.toFixed(1)} d=${species.avgD.toFixed(1)}`);
+    if (species.hotNodes.length > 0) {
+      console.log(`Hot nodes:   ${species.hotNodes.map(n => `${n.nodeId.slice(0, 8)}(×${n.count})`).join(", ")}`);
+    }
+    if (species.commonTags.length > 0) {
+      console.log(`Common tags: ${species.commonTags.slice(0, 5).map(t => t.tag).join(", ")}`);
+    }
   }
 
   process.exit(stats.status === "completed" ? 0 : 1);
