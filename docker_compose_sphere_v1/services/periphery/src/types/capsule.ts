@@ -156,6 +156,9 @@ export interface NodeEvaluation {
   w: number;                // Weight evaluation (0-10, neutral=5)
   d: number;                // Decay evaluation (0-10, neutral=5, higher=faster decay)
   context?: string;         // Optional: why this score (not vectorized, L3)
+  // [Design] loadout/agentId are NOT stored here.
+  // Species memory is managed by the coupling layer (phi-agent), not Sphere.
+  // Sphere doesn't need to know who evaluated — only the evaluation itself matters.
 }
 
 /**

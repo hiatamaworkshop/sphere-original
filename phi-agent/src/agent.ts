@@ -17,6 +17,8 @@ import type { WalkMode } from "./sphere-client.js";
 import { PromptBuilder, parseAction } from "./prompt-builder.js";
 import { FastGate, LOADOUTS } from "./fast-gate.js";
 import type { Loadout, LoadoutName } from "./fast-gate.js";
+import { appendEvalLog } from "./eval-log.js";
+import type { EvalLogEntry } from "./eval-log.js";
 
 export interface AgentConfig {
   query: string;
@@ -115,7 +117,10 @@ export class PhiAgent {
       this.stats.status = "exploring";
       await this.exploreLoop();
 
-      // Step 5: Clean disconnect
+      // Step 5: Persist species memory (evaluation log)
+      this.persistEvalLog();
+
+      // Step 6: Clean disconnect
       this.stats.status = "completed";
       await this.sphere.disconnect();
       this.log("Returned from Sphere");
@@ -134,6 +139,34 @@ export class PhiAgent {
 
   stop(): void {
     this.running = false;
+  }
+
+  /** Persist session evaluations to species memory log (JSONL) */
+  private persistEvalLog(): void {
+    const evals = this.gate.memory.evals;
+    if (evals.length === 0) {
+      this.log("No evaluations to persist");
+      return;
+    }
+    const entry: EvalLogEntry = {
+      loadout: this.gate.loadoutName,
+      query: this.config.query,
+      timestamp: this.stats.startTime,
+      duration: Date.now() - this.stats.startTime,
+      evaluations: evals.map(e => ({
+        nodeId: e.nodeId,
+        h: e.h,
+        w: e.w,
+        d: e.d,
+        tags: e.tags,
+      })),
+    };
+    try {
+      appendEvalLog(entry);
+      this.log(`Species memory: persisted ${evals.length} evaluations (${this.gate.loadoutName})`);
+    } catch (err) {
+      this.log(`Species memory write failed: ${err}`);
+    }
   }
 
   private async exploreLoop(): Promise<void> {
