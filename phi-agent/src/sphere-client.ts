@@ -83,6 +83,8 @@ export class SphereClient {
   private sessionId = "";
   private energy = 100;
   private eventHandler: SphereEventHandler | null = null;
+  private lastRequestTime = 0;
+  private readonly minRequestInterval = 350; // ms — gateway rate limit: 3 actions/sec
 
   constructor(config: Partial<SphereConfig> = {}) {
     this.config = { ...DEFAULT_CONFIG, ...config };
@@ -199,7 +201,7 @@ export class SphereClient {
   }
 
   async focus(nodeId: string): Promise<NodeDetail> {
-    const result = await this.sendRequest<{ node: NodeDetail }>("focus", { nodeId });
+    const result = await this.sendRequest<any>("focus", { nodeId });
     this.energy = Math.max(0, this.energy - 10);
     return result.node;
   }
@@ -248,8 +250,17 @@ export class SphereClient {
     }
   }
 
+  private async throttle(): Promise<void> {
+    const now = Date.now();
+    const elapsed = now - this.lastRequestTime;
+    if (elapsed < this.minRequestInterval) {
+      await new Promise(r => setTimeout(r, this.minRequestInterval - elapsed));
+    }
+    this.lastRequestTime = Date.now();
+  }
+
   private sendRequest<T>(type: string, payload: Record<string, unknown>): Promise<T> {
-    return new Promise((resolve, reject) => {
+    return this.throttle().then(() => new Promise((resolve, reject) => {
       if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
         reject(new Error("Not connected"));
         return;
@@ -263,7 +274,7 @@ export class SphereClient {
 
       this.pending.set(requestId, { resolve, reject, timer });
       this.ws.send(JSON.stringify({ type, requestId, ...payload }));
-    });
+    }));
   }
 
   private nextRequestId(): string {

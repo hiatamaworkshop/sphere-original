@@ -181,6 +181,11 @@ export class PhiAgent {
 
     // 4. Focus on target
     const detail = await this.sphere.focus(target.id);
+    if (!detail || !detail.kind) {
+      this.log(`Focus returned empty for ${target.id} (kind: ${target.kind}) — skipping`);
+      this.gate.memory.record(target.id, 0, 0, 0, []);  // mark visited to avoid re-pick
+      return "hot";  // stay in populated area
+    }
     this.stats.nodesExamined++;
     this.log(`Focused: [${detail.kind}] ${detail.tags.join(", ")} — ${detail.summary.slice(0, 60)}`);
 

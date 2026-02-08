@@ -54,12 +54,16 @@ If none are relevant: { "action": "move", "mode": "<walkmode>", "reason": "<brie
   }
 
   evaluateNode(node: NodeDetail): string {
+    const tags = node.tags?.join(", ") ?? "(none)";
+    const summary = node.summary ?? "(no summary)";
+    const content = node.content?.slice(0, 500) ?? "(no content)";
+
     return `My query: "${this.query}"
 
 I focused on this node:
-- Tags: ${node.tags.join(", ")}
-- Summary: ${node.summary}
-- Content: ${node.content.slice(0, 500)}
+- Tags: ${tags}
+- Summary: ${summary}
+- Content: ${content}
 - Current heat: ${node.heat}, weight: ${node.weight}
 - Kind: ${node.kind}
 
