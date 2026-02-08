@@ -136,29 +136,44 @@ services:
   #     - sphere-network
   #   restart: unless-stopped
 
-  # Agents - Autonomous Explorers (Future implementation)
-  # agents:
-  #   build:
-  #     context: ./services/agents
-  #     dockerfile: Dockerfile
-  #   container_name: sphere-agents
-  #   environment:
-  #     PERIPHERY_URL: http://periphery:3001
-  #   depends_on:
-  #     - periphery
-  #   networks:
-  #     - sphere-network
-  #   restart: unless-stopped
+  # ============================================================================
+  # Agent Layer (activate with: docker-compose --profile agent up)
+  # ============================================================================
 
-  # Observatory UI - Visualization Interface (Future implementation)
-  # observatory_ui:
-  #   build:
-  #     context: ./services/observatory_ui
-  #     dockerfile: Dockerfile
-  #   container_name: sphere-observatory
-  #   networks:
-  #     - sphere-network
-  #   restart: unless-stopped
+  # Ollama - Local LLM inference server
+  ollama:
+    image: ollama/ollama:latest
+    container_name: sphere-ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama-models:/root/.ollama
+    networks:
+      - sphere-network
+    restart: unless-stopped
+    profiles:
+      - agent
+
+  # Phi Agent - Autonomous Sphere explorer (phi via ollama)
+  phi-agent:
+    build:
+      context: ../phi-agent
+      dockerfile: Dockerfile
+    container_name: sphere-phi-agent
+    environment:
+      OLLAMA_HOST: http://ollama:11434
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-phi3:mini}
+      SPHERE_URL: http://periphery:3001
+      SPHERE_WS: ws://periphery:3001
+    depends_on:
+      periphery:
+        condition: service_healthy
+      ollama:
+        condition: service_started
+    networks:
+      - sphere-network
+    profiles:
+      - agent
 
   # ============================================================================
   # Testing & Development
@@ -204,3 +219,5 @@ volumes:
     name: sphere-minio-data
   periphery-logs:
     name: sphere-periphery-logs
+  ollama-models:
+    name: sphere-ollama-models
