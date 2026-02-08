@@ -67,6 +67,14 @@ interface PendingRequest {
 // Events emitted to the agent
 // ============================================================
 
+/** ActiveBus message received from another agent */
+export interface BusMessage {
+  id: string;
+  timestamp: number;
+  senderId: string;
+  payload: Uint8Array;
+}
+
 export type SphereEvent =
   | { type: "connected"; sessionId: string }
   | { type: "positioned"; position: number[] }
@@ -74,6 +82,7 @@ export type SphereEvent =
   | { type: "warning"; message: string }
   | { type: "expelled"; reason: string }
   | { type: "error"; error: string }
+  | { type: "bus_message"; message: BusMessage }
   | { type: "closed" };
 
 export type SphereEventHandler = (event: SphereEvent) => void;
@@ -243,6 +252,15 @@ export class SphereClient {
     return result.result?.success ?? false;
   }
 
+  async emitBus(payload: Uint8Array, free = false): Promise<boolean> {
+    const cost = this.costs.emitBus ?? 20;
+    if (!free && this.energy < cost) return false;
+    const b64 = Buffer.from(payload).toString("base64");
+    const result = await this.sendRequest<{ success: boolean }>("emit", { payload: b64 });
+    if (!free) this.consumeEnergy(cost);
+    return result.success ?? false;
+  }
+
   get currentEnergy(): number {
     return this.energy;
   }
@@ -309,6 +327,19 @@ export class SphereClient {
       case "error":
         this.emit({ type: "error", error: msg.error || "unknown" });
         break;
+      case "bus_message": {
+        const d = msg.data;
+        if (d) {
+          const busMsg: BusMessage = {
+            id: d.id,
+            timestamp: d.timestamp,
+            senderId: d.senderId,
+            payload: new Uint8Array(Buffer.from(d.payload, "base64")),
+          };
+          this.emit({ type: "bus_message", message: busMsg });
+        }
+        break;
+      }
     }
   }
 

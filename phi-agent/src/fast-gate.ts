@@ -521,7 +521,7 @@ export class FastGate {
   // All gates are soft (1.0 = neutral, floor 0.1).
   // Only visited nodes and Compressed (fossil, no content) are hard-excluded.
 
-  pickFocusTarget(nodes: NearbyNode[]): number {
+  pickFocusTarget(nodes: NearbyNode[], busBonus?: (nodeId: string) => number): number {
     if (nodes.length === 0) return -1;
 
     let bestIndex = 0;
@@ -558,6 +558,11 @@ export class FastGate {
       // --- Species memory: inherited vocabulary extends search ---
       for (const tag of this._speciesTags) {
         if (text.includes(tag)) base += SPECIES_TAG_BONUS;
+      }
+
+      // --- ActiveBus: other agents flagged this node ---
+      if (busBonus) {
+        base += busBonus(n.id);
       }
 
       // Floor: ensure positive for multiplicative layers

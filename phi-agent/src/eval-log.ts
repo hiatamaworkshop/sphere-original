@@ -36,6 +36,9 @@ export interface EvalLogEntry {
   duration: number;
   /** All evaluations from this session */
   evaluations: EvalLogRecord[];
+  /** ActiveBus activity (optional — absent in older entries) */
+  busEmits?: number;
+  busRecvs?: number;
 }
 
 export interface EvalLogRecord {

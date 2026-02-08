@@ -13,12 +13,20 @@
 
 import { OllamaClient } from "./ollama-client.js";
 import { SphereClient } from "./sphere-client.js";
-import type { WalkMode } from "./sphere-client.js";
+import type { WalkMode, BusMessage } from "./sphere-client.js";
 import { PromptBuilder, parseAction } from "./prompt-builder.js";
 import { FastGate, LOADOUTS } from "./fast-gate.js";
 import type { Loadout, LoadoutName, SpeciesMemoryBias } from "./fast-gate.js";
 import { appendEvalLog, getSpeciesSummary } from "./eval-log.js";
 import type { EvalLogEntry } from "./eval-log.js";
+
+/** Decoded bus hint from another agent */
+interface BusHint {
+  nodeId: string;
+  h: number;
+  w: number;
+  receivedAt: number;
+}
 
 export interface AgentConfig {
   query: string;
@@ -61,6 +69,9 @@ export class PhiAgent {
   private stats: AgentStats;
   private running = false;
   private initialEnergy = 100;
+  private busHints: Map<string, BusHint> = new Map();
+  private busEmitCount = 0;
+  private busRecvCount = 0;
 
   constructor(
     ollama: OllamaClient,
@@ -117,6 +128,13 @@ export class PhiAgent {
       // Step 2: Connect to Sphere
       this.log("Connecting to Sphere...");
       const tags = this.config.tags || this.config.query.split(/[\s,]+/).slice(0, 5);
+      // Listen for ActiveBus messages from other agents
+      this.sphere.onEvent((event) => {
+        if (event.type === "bus_message") {
+          this.handleBusMessage(event.message);
+        }
+      });
+
       await this.sphere.connect(this.config.query, tags);
       this.initialEnergy = this.sphere.currentEnergy;
       this.log(`Positioned in Sphere (energy: ${this.initialEnergy}, loadout: ${this.gate.loadoutName})`);
@@ -173,10 +191,12 @@ export class PhiAgent {
         d: e.d,
         tags: e.tags,
       })),
+      busEmits: this.busEmitCount,
+      busRecvs: this.busRecvCount,
     };
     try {
       appendEvalLog(entry);
-      this.log(`Species memory: persisted ${evals.length} evaluations (${this.gate.loadoutName})`);
+      this.log(`Species memory: persisted ${evals.length} evaluations (${this.gate.loadoutName}), bus: ${this.busEmitCount} emits / ${this.busRecvCount} recvs`);
     } catch (err) {
       this.log(`Species memory write failed: ${err}`);
     }
@@ -269,8 +289,8 @@ export class PhiAgent {
       return;
     }
 
-    // 3. FastGate picks target (local, 0ms)
-    const targetIndex = this.gate.pickFocusTarget(nodes);
+    // 3. FastGate picks target (local, 0ms) — with ActiveBus hints
+    const targetIndex = this.gate.pickFocusTarget(nodes, (id) => this.getBusBonus(id));
     const target = nodes[targetIndex];
     this.log(`FastGate pick: [${targetIndex}] ${target.summary.slice(0, 60)} (flags: 0x${target.flags.toString(16).padStart(4, "0")})`);
 
@@ -318,11 +338,60 @@ export class PhiAgent {
       if (success) {
         this.stats.evaluations++;
         this.stats.totalHeatDelta += (h - 5);
+        // 6b. Broadcast notable discovery to other agents
+        await this.tryEmitBus(target.id, h, w);
       }
     }
 
     // 7. Record quality data
     this.gate.memory.record(target.id, h, w, d, detail.tags);
+  }
+
+  // ===== ActiveBus =====
+
+  /** Handle incoming bus message from another agent */
+  private handleBusMessage(msg: BusMessage): void {
+    if (msg.payload.length < 3) return;
+    const h = msg.payload[0];
+    const w = msg.payload[1];
+    const nodeId = new TextDecoder().decode(msg.payload.slice(2));
+    if (!nodeId) return;
+
+    this.busHints.set(nodeId, { nodeId, h, w, receivedAt: Date.now() });
+    this.busRecvCount++;
+    this.log(`Bus recv: node=${nodeId.slice(0, 8)} h=${h} w=${w} from=${msg.senderId.slice(0, 8)}`);
+  }
+
+  /** Involuntary emit — strong reaction leaks into the air.
+   *  First emit per session is free ("birth cry"). */
+  private async tryEmitBus(nodeId: string, h: number, w: number): Promise<void> {
+    // Reflex threshold: only strong reactions leak
+    if (h < 8) return;
+
+    const free = this.busEmitCount === 0;
+
+    // Encode: [h, w, ...nodeId_utf8]
+    const idBytes = new TextEncoder().encode(nodeId);
+    const payload = new Uint8Array(2 + Math.min(idBytes.length, 62));
+    payload[0] = h;
+    payload[1] = w;
+    payload.set(idBytes.slice(0, 62), 2);
+
+    const success = await this.sphere.emitBus(payload, free);
+    if (success) {
+      this.busEmitCount++;
+      this.log(`Bus emit: node=${nodeId.slice(0, 8)} h=${h} w=${w} free=${free} (energy: ${this.sphere.currentEnergy})`);
+    }
+  }
+
+  /** Get bus hint bonus for a node (used by FastGate scoring) */
+  getBusBonus(nodeId: string): number {
+    const hint = this.busHints.get(nodeId);
+    if (!hint) return 0;
+    // Decay hint value over time (5 min half-life)
+    const age = Date.now() - hint.receivedAt;
+    const decay = Math.exp(-age / 300_000);
+    return 3 * decay;  // max +3 bonus, same scale as species memory
   }
 
   /** Scout cycle: move → sense only (no focus, no eval, saves energy) */
