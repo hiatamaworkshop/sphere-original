@@ -35,23 +35,11 @@ const Flag = {
 } as const;
 
 // ============================================================
-// Scoring Weights — configurable coefficients
+// Scoring Weights — base layer (linear: metrics + keyword)
 // ============================================================
 
 export interface FastGateWeights {
-  /** Flag bonuses (additive score) */
-  flags: {
-    hot: number;
-    authority: number;
-    freshness: number;
-    sticky: number;
-    candidate: number;
-    catalyst: number;
-    ephemeral: number;   // negative
-    isolated: number;    // negative
-    volatile: number;    // negative
-  };
-  /** Metric multipliers */
+  /** Metric multipliers (base linear score) */
   metrics: {
     heat: number;
     weight: number;
@@ -63,17 +51,6 @@ export interface FastGateWeights {
 }
 
 export const DEFAULT_WEIGHTS: FastGateWeights = {
-  flags: {
-    hot: 8,
-    authority: 5,
-    freshness: 3,
-    sticky: 3,
-    candidate: 2,
-    catalyst: 2,
-    ephemeral: -3,
-    isolated: -2,
-    volatile: -1,
-  },
   metrics: {
     heat: 0.5,
     weight: 0.3,
@@ -81,6 +58,47 @@ export const DEFAULT_WEIGHTS: FastGateWeights = {
     distance: -2,
   },
   keywordMatch: 10,
+};
+
+// ============================================================
+// Weapon — multiplicative scoring layers
+// ============================================================
+//
+// score = linear(metrics) × gate(flags) × state(hot/frozen) × ratio(h/w)
+//
+// All biases are soft gates (1.0 = neutral, never 0).
+// Flag present → bias applied. Flag absent → 1.0 (neutral).
+// Only visited nodes are hard-excluded.
+
+/** Resolved weapon with all fields populated (after merging with defaults) */
+export interface Weapon {
+  flagBias: {
+    authority: number;
+    catalyst: number;
+    freshness: number;
+    sticky: number;
+  };
+  stateBias: {
+    hot: number;
+    frozen: number;
+  };
+  ratioBias: {
+    heatDensity: number;
+    stability: number;
+  };
+}
+
+/** Partial weapon spec for Loadout (unspecified fields default to neutral) */
+export interface WeaponSpec {
+  flagBias?: Partial<Weapon["flagBias"]>;
+  stateBias?: Partial<Weapon["stateBias"]>;
+  ratioBias?: Partial<Weapon["ratioBias"]>;
+}
+
+export const DEFAULT_WEAPON: Weapon = {
+  flagBias: { authority: 1.0, catalyst: 1.0, freshness: 1.0, sticky: 1.0 },
+  stateBias: { hot: 1.0, frozen: 0.5 },
+  ratioBias: { heatDensity: 0, stability: 0 },
 };
 
 // ============================================================
@@ -132,7 +150,8 @@ export type ReturnWeights = [number, number, number, number];
 
 export interface Loadout {
   name: string;
-  weights: Partial<FastGateWeights>;
+  weights?: Partial<FastGateWeights>;
+  weapon?: WeaponSpec;
   /** What counts as "good" — personality-specific quality assessment */
   qualityVector: QualityVector;
   /** How feelings affect return — [satisfaction, frustration, stamina, staleness] */
@@ -146,7 +165,11 @@ export interface Loadout {
 export const LOADOUTS: Record<string, Loadout> = {
   balanced: {
     name: "balanced",
-    weights: {},
+    weapon: {
+      flagBias: { authority: 1.2, catalyst: 1.1 },
+      stateBias: { hot: 1.2, frozen: 0.5 },
+      ratioBias: { heatDensity: 0.2, stability: 0.1 },
+    },
     qualityVector: QUALITY_PRESETS.balanced,
     returnWeights: [0.3, 0.2, 0.3, 0.2],
     walkPreference: "explore",
@@ -155,9 +178,11 @@ export const LOADOUTS: Record<string, Loadout> = {
   },
   scholar: {
     name: "scholar",
-    weights: {
-      flags: { ...DEFAULT_WEIGHTS.flags, authority: 8, freshness: 1 },
-      metrics: { ...DEFAULT_WEIGHTS.metrics, weight: 0.5, distance: -1 },
+    weights: { metrics: { ...DEFAULT_WEIGHTS.metrics, weight: 0.5, distance: -1 } },
+    weapon: {
+      flagBias: { authority: 1.8, freshness: 0.7, sticky: 1.2 },
+      stateBias: { hot: 0.8, frozen: 0.6 },
+      ratioBias: { stability: 0.5 },
     },
     qualityVector: QUALITY_PRESETS.scholar,
     returnWeights: [0.2, 0.1, 0.1, 0.6],
@@ -167,9 +192,11 @@ export const LOADOUTS: Record<string, Loadout> = {
   },
   scout: {
     name: "scout",
-    weights: {
-      flags: { ...DEFAULT_WEIGHTS.flags, hot: 10, freshness: 6 },
-      metrics: { ...DEFAULT_WEIGHTS.metrics, heat: 0.8, distance: -3 },
+    weights: { metrics: { ...DEFAULT_WEIGHTS.metrics, heat: 0.8, distance: -3 } },
+    weapon: {
+      flagBias: { freshness: 1.5 },
+      stateBias: { hot: 1.5, frozen: 0.3 },
+      ratioBias: { heatDensity: 0.3 },
     },
     qualityVector: QUALITY_PRESETS.scout,
     returnWeights: [0.4, 0.3, 0.2, 0.1],
@@ -179,9 +206,11 @@ export const LOADOUTS: Record<string, Loadout> = {
   },
   archivist: {
     name: "archivist",
-    weights: {
-      flags: { ...DEFAULT_WEIGHTS.flags, sticky: 6, authority: 6 },
-      metrics: { ...DEFAULT_WEIGHTS.metrics, weight: 0.5, decay: -0.3 },
+    weights: { metrics: { ...DEFAULT_WEIGHTS.metrics, weight: 0.5, decay: -0.3 } },
+    weapon: {
+      flagBias: { authority: 1.3, sticky: 1.5 },
+      stateBias: { hot: 0.7, frozen: 0.8 },
+      ratioBias: { stability: -0.3 },
     },
     qualityVector: QUALITY_PRESETS.archivist,
     returnWeights: [0.2, 0.1, 0.3, 0.4],
@@ -191,9 +220,10 @@ export const LOADOUTS: Record<string, Loadout> = {
   },
   hunter: {
     name: "hunter",
-    weights: {
-      flags: { ...DEFAULT_WEIGHTS.flags, hot: 10 },
-      metrics: { ...DEFAULT_WEIGHTS.metrics, heat: 0.8 },
+    weights: { metrics: { ...DEFAULT_WEIGHTS.metrics, heat: 0.8 } },
+    weapon: {
+      stateBias: { hot: 1.8, frozen: 0.4 },
+      ratioBias: { heatDensity: 0.4 },
     },
     qualityVector: QUALITY_PRESETS.hunter,
     returnWeights: [0.5, 0.2, 0.2, 0.1],
@@ -204,10 +234,10 @@ export const LOADOUTS: Record<string, Loadout> = {
   // --- Extreme patterns (experimental) ---
   moth: {
     name: "moth",
-    weights: {
-      flags: { ...DEFAULT_WEIGHTS.flags, hot: 20, authority: 0, freshness: 0, sticky: 0, catalyst: 0 },
-      metrics: { ...DEFAULT_WEIGHTS.metrics, heat: 2.0, weight: 0, decay: 0, distance: -1 },
-      keywordMatch: 0,
+    weights: { metrics: { ...DEFAULT_WEIGHTS.metrics, heat: 2.0, weight: 0, decay: 0, distance: -1 }, keywordMatch: 0 },
+    weapon: {
+      stateBias: { hot: 2.0, frozen: 0.3 },
+      ratioBias: { heatDensity: 0.5 },
     },
     qualityVector: [0.8, 0.0, 0.0, 0.2],
     returnWeights: [0.5, 0.1, 0.2, 0.2],
@@ -217,10 +247,11 @@ export const LOADOUTS: Record<string, Loadout> = {
   },
   hermit: {
     name: "hermit",
-    weights: {
-      flags: { ...DEFAULT_WEIGHTS.flags, hot: -5, authority: 15, sticky: 10, freshness: -2, ephemeral: -10 },
-      metrics: { ...DEFAULT_WEIGHTS.metrics, heat: -0.3, weight: 1.0, decay: -0.5, distance: -1 },
-      keywordMatch: 3,
+    weights: { metrics: { ...DEFAULT_WEIGHTS.metrics, heat: -0.3, weight: 1.0, decay: -0.5, distance: -1 }, keywordMatch: 3 },
+    weapon: {
+      flagBias: { authority: 1.8, freshness: 0.5, sticky: 1.5 },
+      stateBias: { hot: 0.5, frozen: 0.7 },
+      ratioBias: { stability: 0.6 },
     },
     qualityVector: [0.0, 0.6, 0.4, 0.0],
     returnWeights: [0.2, 0.1, 0.1, 0.6],
@@ -230,7 +261,6 @@ export const LOADOUTS: Record<string, Loadout> = {
   },
   kamikaze: {
     name: "kamikaze",
-    weights: {},
     qualityVector: [0.25, 0.25, 0.25, 0.25],
     returnWeights: [0.0, 0.0, 1.0, 0.0],
     walkPreference: "explore",
@@ -239,10 +269,11 @@ export const LOADOUTS: Record<string, Loadout> = {
   },
   sniper: {
     name: "sniper",
-    weights: {
-      flags: { ...DEFAULT_WEIGHTS.flags, hot: 10, authority: 10 },
-      metrics: { ...DEFAULT_WEIGHTS.metrics, heat: 1.0 },
-      keywordMatch: 20,
+    weights: { metrics: { ...DEFAULT_WEIGHTS.metrics, heat: 1.0 }, keywordMatch: 20 },
+    weapon: {
+      flagBias: { authority: 1.5 },
+      stateBias: { hot: 1.3, frozen: 0.4 },
+      ratioBias: { heatDensity: 0.3, stability: 0.2 },
     },
     qualityVector: [0.1, 0.1, 0.0, 0.8],
     returnWeights: [0.5, 0.3, 0.1, 0.1],
@@ -401,6 +432,7 @@ export class FastGate {
   private qualityVector: QualityVector;
   private returnWeights: ReturnWeights;
   private weights: FastGateWeights;
+  private weapon: Weapon;
   private _minCycles: number;
   private _walkPreference: WalkMode;
   private _evalFocus: string;
@@ -421,58 +453,77 @@ export class FastGate {
     this._walkPreference = l.walkPreference;
     this._evalFocus = l.evalFocus;
     this.weights = {
-      flags: { ...DEFAULT_WEIGHTS.flags, ...l.weights.flags },
-      metrics: { ...DEFAULT_WEIGHTS.metrics, ...l.weights.metrics },
-      keywordMatch: l.weights.keywordMatch ?? DEFAULT_WEIGHTS.keywordMatch,
+      metrics: { ...DEFAULT_WEIGHTS.metrics, ...l.weights?.metrics },
+      keywordMatch: l.weights?.keywordMatch ?? DEFAULT_WEIGHTS.keywordMatch,
+    };
+    const wp = l.weapon;
+    this.weapon = {
+      flagBias: { ...DEFAULT_WEAPON.flagBias, ...wp?.flagBias },
+      stateBias: { ...DEFAULT_WEAPON.stateBias, ...wp?.stateBias },
+      ratioBias: { ...DEFAULT_WEAPON.ratioBias, ...wp?.ratioBias },
     };
   }
 
   get walkPreference(): WalkMode { return this._walkPreference; }
   get evalFocus(): string { return this._evalFocus; }
 
-  // --- Pick: choose focus target from sense results ---
+  // --- Pick: compositional scoring pipeline ---
+  //
+  // score = base(metrics + keyword)
+  //       × flagGate(authority, catalyst, freshness, sticky)
+  //       × stateGate(hot, frozen)
+  //       × ratioMod(heatDensity, stability)
+  //
+  // All gates are soft (1.0 = neutral, floor 0.1).
+  // Only visited nodes and Compressed (fossil, no content) are hard-excluded.
 
   pickFocusTarget(nodes: NearbyNode[]): number {
     if (nodes.length === 0) return -1;
 
     let bestIndex = 0;
     let bestScore = -Infinity;
-    const fw = this.weights.flags;
     const mw = this.weights.metrics;
+    const wp = this.weapon;
 
     for (let i = 0; i < nodes.length; i++) {
       const n = nodes[i];
 
-      // Skip: already visited
+      // Hard exclude: already focused
       if (this.memory.wasVisited(n.id)) continue;
 
-      // Skip: dead nodes (Frozen or Fossil)
-      if (n.flags & (Flag.Frozen | Flag.Compressed)) continue;
+      // Hard exclude: Compressed (fossil — no content to read)
+      if (n.flags & Flag.Compressed) continue;
 
-      let score = 0;
+      // --- Base: linear(metrics) + keyword ---
+      let base = n.heat * mw.heat + n.weight * mw.weight + n.decay * mw.decay + n.distance * mw.distance;
 
-      // --- 16bit flag scoring ---
-      if (n.flags & Flag.Hot)        score += fw.hot;
-      if (n.flags & Flag.Authority)  score += fw.authority;
-      if (n.flags & Flag.Freshness)  score += fw.freshness;
-      if (n.flags & Flag.Sticky)     score += fw.sticky;
-      if (n.flags & Flag.Candidate)  score += fw.candidate;
-      if (n.flags & Flag.Catalyst)   score += fw.catalyst;
-      if (n.flags & Flag.Ephemeral)  score += fw.ephemeral;
-      if (n.flags & Flag.Isolated)   score += fw.isolated;
-      if (n.flags & Flag.Volatile)   score += fw.volatile;
-
-      // --- Keyword relevance (summary + tags vs query) ---
       const text = (n.summary + " " + (n.tags ?? []).join(" ")).toLowerCase();
       for (const token of this.queryTokens) {
-        if (text.includes(token)) score += this.weights.keywordMatch;
+        if (text.includes(token)) base += this.weights.keywordMatch;
       }
 
-      // --- Metrics ---
-      score += n.heat * mw.heat;
-      score += n.weight * mw.weight;
-      score += n.decay * mw.decay;
-      score += n.distance * mw.distance;
+      // Floor: ensure positive for multiplicative layers
+      base = Math.max(base, 0.1);
+
+      // --- Flag gate: multiplicative (static tagger flags) ---
+      let flagGate = 1.0;
+      if (n.flags & Flag.Authority)  flagGate *= wp.flagBias.authority;
+      if (n.flags & Flag.Catalyst)   flagGate *= wp.flagBias.catalyst;
+      if (n.flags & Flag.Freshness)  flagGate *= wp.flagBias.freshness;
+      if (n.flags & Flag.Sticky)     flagGate *= wp.flagBias.sticky;
+
+      // --- State gate: multiplicative (dynamic flags) ---
+      let stateGate = 1.0;
+      if (n.flags & Flag.Hot)    stateGate *= wp.stateBias.hot;
+      if (n.flags & Flag.Frozen) stateGate *= wp.stateBias.frozen;
+
+      // --- Ratio modifier ---
+      const heatDensity = n.heat / (n.weight + 1);
+      const stability = n.weight * (1 - n.decay / 1000);
+      const ratioMod = Math.max(0.1, 1 + heatDensity * wp.ratioBias.heatDensity + stability * wp.ratioBias.stability);
+
+      // --- Final score ---
+      const score = base * flagGate * stateGate * ratioMod;
 
       if (score > bestScore) {
         bestScore = score;
