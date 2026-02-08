@@ -226,7 +226,7 @@ export const LOADOUTS: Record<string, Loadout> = {
       ratioBias: { heatDensity: 0.4 },
     },
     qualityVector: QUALITY_PRESETS.hunter,
-    returnWeights: [0.5, 0.2, 0.2, 0.1],
+    returnWeights: [0.3, 0.4, 0.2, 0.1],
     walkPreference: "hot",
     minCycles: 3,
     evalFocus: "Is this a high-value target? Rate heat high only if truly exceptional. Be selective — mediocre nodes get low scores.",
@@ -304,6 +304,7 @@ export class SessionMemory {
   private _totalD = 0;
   private _hits = 0;  // h >= 7
   private _misses = 0;  // h < 5
+  private _peakH = 0;  // best h ever seen
   private _visitedNodeIds = new Set<string>();
   private _allTags = new Set<string>();
 
@@ -319,6 +320,7 @@ export class SessionMemory {
     this._totalD += d;
     if (h >= 7) this._hits++;
     if (h < 5) this._misses++;
+    this._peakH = Math.max(this._peakH, h);
     this._visitedNodeIds.add(nodeId);
 
     // Track tag diversity
@@ -364,11 +366,23 @@ export class SessionMemory {
     ];
   }
 
-  /** Frustration: proportion of misses (h < 5). 0 = no misses, 1 = all misses */
+  /** Frustration: max(missRate, recentDecline, belowPeak).
+   *  missRate: proportion of h < 5 evaluations
+   *  recentDecline: latest h dropped vs previous (immediate disappointment)
+   *  belowPeak: latest h vs best ever seen (lingering dissatisfaction)
+   *  All signals are 0-1. Personality weights determine which loadouts respond. */
   get frustration(): number {
     const n = this.evals.length;
     if (n === 0) return 0;
-    return this._misses / n;
+    const missRate = this._misses / n;
+    // Recent decline: negative h delta from last eval pair (×2 amplification)
+    const d = this._deltas;
+    const decline = d.length > 0
+      ? Math.min(1, Math.max(0, -d[d.length - 1][0] * 2))
+      : 0;
+    // Below peak: gap between best-ever h and latest h
+    const belowPeak = (this._peakH - this.evals[n - 1].h) / 10;
+    return Math.max(missRate, decline, belowPeak);
   }
 
   /** Staleness: 1 - entropy. 0 = still surprising, 1 = predictable */
