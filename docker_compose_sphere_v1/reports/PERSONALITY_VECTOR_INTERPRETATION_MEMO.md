@@ -128,7 +128,7 @@ Loadout = {
 
 scholar:  重いもの重視 × 重さ=良い × 飽きたら帰る × 深く潜る
 scout:    熱いもの重視 × 熱さ=良い × 満足したら帰る × 広く探す
-kamikaze: 何でも見る × 均等判断 × 体力だけで帰る × 広く探す
+wanderer: 何でも見る × 均等判断 × 体力だけで帰る × 広く探す
 ```
 
 ---
@@ -138,7 +138,7 @@ kamikaze: 何でも見る × 均等判断 × 体力だけで帰る × 広く探�
 | 知見 | 根拠 |
 |------|------|
 | energySensitivity は feelings の一次元に統合すべき | 極端テストで支配問題が発生 → 4D統合で解消 |
-| returnVector=[0,0,0,0] でも物理法則が安全装置になる | kamikaze テスト (expelled → returnOnExpelled) |
+| returnVector=[0,0,0,0] でも物理法則が安全装置になる | wanderer テスト (expelled → returnOnExpelled) |
 | 同じ weights でも returnWeights の違いで帰還パターンが分離する | balanced vs scholar vs scout テスト |
 | 4D feelings は極端値でも破綻しない | 新システム balanced テスト: stamina=1.00 でも 35% (旧: 70%+) |
 

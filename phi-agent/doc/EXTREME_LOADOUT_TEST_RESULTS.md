@@ -7,7 +7,7 @@
 
 ## 全 Loadout 比較 (既存 + 極端4種)
 
-| | **balanced** | **scholar** | **scout** | **moth** | **hermit** | **kamikaze** | **sniper** |
+| | **balanced** | **scholar** | **scout** | **moth** | **hermit** | **wanderer** | **sniper** |
 |---|---|---|---|---|---|---|---|
 | Walk mode | explore | deep | explore | hot | deep | explore | hot |
 | minCycles | 3 | 5 | 2 | 2 | 4 | 1 | 1 |
@@ -38,7 +38,7 @@ finalProb = baseProbability(satisfaction) + energyPressure(sensitivity)
 |---------|------|--------|---------|
 | moth (sens=1.5) | 0% | 49% → 帰還 | **energy** |
 | hermit (sens=0.3) | 41% | 46% → 帰還 | 混合 |
-| kamikaze (sens=0.1) | 0% (常にゼロ) | 74% @ energy=3 | **energy** (極限) |
+| wanderer (sens=0.1) | 0% (常にゼロ) | 74% @ energy=3 | **energy** (極限) |
 | sniper (sens=3.0) | 0% | 70% @ energy=66 | **energy** (即時) |
 
 ### 発見 1: energySensitivity の支配域
@@ -51,7 +51,7 @@ sensitivity 0.5-1.5 → 両方が意味を持つ「スイートスポット」
 
 ### 発見 2: returnVector=[0,0,0,0] は有効な人格
 
-kamikaze は「何を見ても満足しない」探索者。しかしシステムは破綻しない。
+wanderer は「何を見ても満足しない」探索者。しかしシステムは破綻しない。
 エネルギー物理法則が最終安全装置として機能する。
 → **returnVector をゼロにしても、エネルギー枯渇 → expelled → returnOnExpelled が成果を保全**
 
@@ -69,7 +69,7 @@ moth (heat偏重) も sniper (hitRate偏重) も、**体験を十分に積む前
 
 ## Delta Profile 観測
 
-### kamikaze の entropy 推移（最も長い観測）
+### wanderer の entropy 推移（最も長い観測）
 
 ```
 Cycle 2: Δ=[h:0, w:0, p:0, hit:0, nov:-1]           entropy=1.000 (データ不足)
@@ -79,7 +79,7 @@ Cycle 5: (mock skip, no new delta)                      entropy=0.245 (さらに
 ```
 
 **同じ評価結果 (h=5,w=6,d=3) の繰り返しで entropy が下がる** — 設計通り。
-kamikaze は多様な体験をしていないのではなく、Sphere の内容が均質だった。
+wanderer は多様な体験をしていないのではなく、Sphere の内容が均質だった。
 
 ### hermit の entropy 推移
 
@@ -206,7 +206,7 @@ feelings = [satisfaction, frustration, stamina, staleness]
 
 ### 全 Loadout 比較 (v3 = 4D feelings)
 
-| | **moth** v1 | **moth** v3 | **hermit** v1 | **hermit** v3 | **kamikaze** v1 | **kamikaze** v3 | **sniper** v1 | **sniper** v3 |
+| | **moth** v1 | **moth** v3 | **hermit** v1 | **hermit** v3 | **wanderer** v1 | **wanderer** v3 | **sniper** v1 | **sniper** v3 |
 |---|---|---|---|---|---|---|---|---|
 | returnWeights | N/A | [0.5,0.1,0.2,0.2] | N/A | [0.2,0.1,0.1,0.6] | N/A | [0.0,0.0,1.0,0.0] | N/A | [0.5,0.3,0.1,0.1] |
 | **Cycles** | 2 | **5** | 4 | **5** | 5 | **4** | 2 | **5** |
@@ -245,7 +245,7 @@ qualityVector: [0.0, 0.6, 0.4, 0.0] (weight + preservation 重視)
 **成功**: hermit は staleness 駆動で帰還。「同じパターンが続いたから飽きた」。
 scholar と同じ構造だが、qualityVector が異なるため**何に満足するか**が異なる。
 
-### kamikaze v3 分析
+### wanderer v3 分析
 
 ```
 returnWeights: [0.0, 0.0, 1.0, 0.0] (stamina のみ)
@@ -260,7 +260,7 @@ qualityVector: [0.3, 0.3, 0.3, 0.3] (均等)
 新システムでは stamina=1-energyRatio が returnWeights[2]=1.0 と直結。
 stamina 0.76 で desire=0.76 → prob=52%。**旧システムより早く帰っている**。
 
-これは正しい挙動: kamikaze は「体力だけで判断する」設計。
+これは正しい挙動: wanderer は「体力だけで判断する」設計。
 旧システムの energySensitivity=0.1 は「圧力を無視する」だったが、
 新システムの returnWeights=[0,0,1,0] は「体力**のみ**で判断する」— 意味が異なる。
 
@@ -295,7 +295,7 @@ sniper は「十分に当てたら帰る」設計だが、現在の Sphere で�
 |------|------|------|
 | moth | 2 cycles (圧力支配) | 5 cycles (粘る) |
 | hermit | 4 cycles (混合) | 5 cycles (staleness 駆動) |
-| kamikaze | 5 cycles (圧力ほぼゼロ) | 4 cycles (stamina 直結) |
+| wanderer | 5 cycles (圧力ほぼゼロ) | 4 cycles (stamina 直結) |
 | sniper | 2 cycles (圧力支配) | 5 cycles (粘る) |
 
 **結論**: energy が一方的に支配することがなくなった。各 Loadout の returnWeights が意図通りに機能している。
@@ -306,7 +306,7 @@ sniper は「十分に当てたら帰る」設計だが、現在の Sphere で�
 |------|-------------|-------------|
 | satisfaction (sat) | hitRate 偏重で閾値に届かないケースあり | sniper |
 | frustration (frust) | 0 (現在のテストでは h<5 がほぼ発生しない) | 全て |
-| stamina (stam) | returnWeights で weight を変えれば線形に制御可能 | kamikaze (1.0), sniper (0.1) |
+| stamina (stam) | returnWeights で weight を変えれば線形に制御可能 | wanderer (1.0), sniper (0.1) |
 | staleness (stale) | Cycle 4 以降で急上昇、scholar/hermit の帰還をトリガー | hermit |
 
 ### 未活性な次元: frustration
@@ -317,7 +317,7 @@ sniper は「十分に当てたら帰る」設計だが、現在の Sphere で�
 ### returnWeights の設計指針 (v3 実証済み)
 
 ```
-stamina 重み 1.0 → energy 直結、体力のみで判断 (kamikaze)
+stamina 重み 1.0 → energy 直結、体力のみで判断 (wanderer)
 stamina 重み 0.1 → energy ほぼ無視、他の次元で判断 (sniper)
 staleness 重み 0.6 → Cycle 4+ で飽き駆動帰還 (hermit, scholar)
 satisfaction 重み 0.5 → 高品質ノード連続で帰還 (sniper, 閾値注意)

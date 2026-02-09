@@ -259,8 +259,8 @@ export const LOADOUTS: Record<string, Loadout> = {
     minCycles: 4,
     evalFocus: "Ignore popularity. Is this heavy, stable, enduring knowledge? Weight and low decay matter. Trendy content deserves low scores.",
   },
-  kamikaze: {
-    name: "kamikaze",
+  wanderer: {
+    name: "wanderer",
     qualityVector: [0.25, 0.25, 0.25, 0.25],
     returnWeights: [0.0, 0.0, 1.0, 0.0],
     walkPreference: "explore",

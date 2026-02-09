@@ -71,11 +71,11 @@ phi3:mini (3.8B パラメータ) は、GPT-4 や Claude と比較すれば「知
 llama3.2:1b (1B) を Sphere に投入した。初回は `"action": "rate"` を返しフォーマット不一致で全滅。
 parseAction に action alias マッピング1行を追加したところ、フォーマット遵守率 100% で復活した。
 
-4種族 (kamikaze, hunter, moth, hermit) × 2回の比較テスト結果:
+4種族 (wanderer, hunter, moth, hermit) × 2回の比較テスト結果:
 
 | 種族 | Run1 h avg | Run2 h avg | バラつき | Bus emit | 特徴 |
 |------|-----------|-----------|---------|----------|------|
-| kamikaze | 4.3 | 10.0 | **極大** | 0→2 | Run 間で性格が一変 |
+| wanderer | 4.3 | 10.0 | **極大** | 0→2 | Run 間で性格が一変 |
 | hunter | 8.5 | 9.7 | 中 | 2→3 | 安定して攻撃的 |
 | moth | 7.4 | 9.3 | 中 | 1→3 | h 上昇傾向 |
 | hermit | 5.0 | 8.3 | 大 | 0→2 | 一貫して「trendy」を忌避 |

@@ -20,7 +20,7 @@
 
 | Loadout | Sess | Evals | h avg | w avg | d avg | Bus E | Bus R | 性格署名 |
 |---------|------|-------|-------|-------|-------|-------|-------|----------|
-| kamikaze | 13 | 34 | **7.0** | 4.9 | 4.5 | **13** | 17 | h最高、Bus最活発 |
+| wanderer | 13 | 34 | **7.0** | 4.9 | 4.5 | **13** | 17 | h最高、Bus最活発 |
 | moth | 6 | 19 | **6.7** | **3.5** | 4.9 | **8** | 9 | heat特化、w最低 |
 | scout | 6 | 18 | 6.5 | 4.4 | 4.1 | 4 | 8 | fresh重視 |
 | hermit | 13 | 40 | 5.3 | 3.9 | 4.7 | 3 | **19** | 控えめ、Bus受信多 |
@@ -33,12 +33,12 @@
 ## 発見 1: Bus 通信の非対称性
 
 ```
-emit 上位: kamikaze(13), moth(8), scout(4), hermit(3)
+emit 上位: wanderer(13), moth(8), scout(4), hermit(3)
 emit ゼロ: balanced, hunter, scholar, archivist, sniper
-recv 上位: hermit(19), kamikaze(17), moth(9), hunter(8), scout(8), scholar(6)
+recv 上位: hermit(19), wanderer(17), moth(9), hunter(8), scout(8), scholar(6)
 ```
 
-**emit 条件は h>=8**。kamikaze(h=7.0) と moth(h=6.7) は平均が高いだけでなく、
+**emit 条件は h>=8**。wanderer(h=7.0) と moth(h=6.7) は平均が高いだけでなく、
 高スコアノードに遭遇する頻度が高い (= 熱を追う行動パターン)。
 hunter/scholar/sniper は h が低めで閾値に届きにくい。
 
@@ -51,7 +51,7 @@ hunter/scholar/sniper は h が低めで閾値に届きにくい。
 | Loadout | Legacy w avg | phi3:mini w avg | 差分 |
 |---------|-------------|----------------|------|
 | scholar | 8.3 | 5.7 | **-2.6** |
-| kamikaze | 7.4 | 4.9 | **-2.5** |
+| wanderer | 7.4 | 4.9 | **-2.5** |
 | hermit | 7.8 | 3.9 | **-3.9** |
 | hunter | 6.3 | 3.8 | **-2.5** |
 | moth | 7.8 | 3.5 | **-4.3** |
@@ -93,11 +93,11 @@ w スコアの分布を変えた副作用がある。Digestor での calibration
     2 |
     0 +---+---+---+---+---+---+---+→ h
       0   4   5   6   7   8   9  10
-                  kami moth           ← heat 生産者 (h高い)
+                  wand moth           ← heat 生産者 (h高い)
 ```
 
 3つのクラスタ:
-1. **Heat 生産者** (h>6): kamikaze, moth — Bus emit が活発、生態系の「温度源」
+1. **Heat 生産者** (h>6): wanderer, moth — Bus emit が活発、生態系の「温度源」
 2. **Weight 蓄積者** (w>5.5): scholar, archivist — 評価は控えめだが権威を認定
 3. **中央集団** (h≈5, w≈4): balanced, hunter, sniper, hermit, scout — 基底状態
 
@@ -105,7 +105,7 @@ w スコアの分布を変えた副作用がある。Digestor での calibration
 
 ```
 d 高め (>4.5): hunter(5.0), moth(4.9), sniper(4.8), hermit(4.7)
-d 中程度 (4.0-4.5): kamikaze(4.5), scholar(4.3), balanced(4.2), scout(4.1)
+d 中程度 (4.0-4.5): wanderer(4.5), scholar(4.3), balanced(4.2), scout(4.1)
 d 低め (<4.0): archivist(3.0)
 ```
 
@@ -119,7 +119,7 @@ Docker 内の llama3.2:1b データ (4 sessions) は **全種族 h=8-10** を記
 
 | Loadout | 手動テスト h | Docker h | 差分 |
 |---------|-----------|---------|------|
-| kamikaze | 1.0 | 10.0 | **+9.0** |
+| wanderer | 1.0 | 10.0 | **+9.0** |
 | hunter | 1.0 | 9.7 | **+8.7** |
 | moth | 3.6 | 9.3 | **+5.7** |
 | hermit | 1.3 | 8.3 | **+7.0** |

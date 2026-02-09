@@ -51,7 +51,7 @@ data/
   "hunger": 0.50,
   "halfLifeHours": 72,
   // 世代プロファイル（species-profile.json と同一構造）
-  "species": { "kamikaze": {...}, "scholar": {...}, ... },
+  "species": { "wanderer": {...}, "scholar": {...}, ... },
   "global": {...}
 }
 ```

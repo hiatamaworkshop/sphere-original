@@ -119,7 +119,7 @@ moth は熱狂的に最高評価を与える。**phi の判断そのものが性
 | hunter | 高価値ターゲットか？厳格に。凡庸なものは低評価 |
 | moth | 熱さのみ。明るく活発 = 高評価。冷たい = 低評価 |
 | hermit | 人気を無視。重く安定した知識のみ |
-| kamikaze | バイアスなし。見たままを測定 |
+| wanderer | バイアスなし。見たままを測定 |
 | sniper | 直撃のみ高評価。ニアミスは低評価 |
 
 ---
@@ -303,10 +303,10 @@ C: scout の閾値を引き上げ (stamina > 0.8 に)
 ### 設計思想との整合
 
 Sphere の目的は「データと向き合い、知見を推論に活かす」こと。
-早期撤退系 (scout, kamikaze) は来訪者としても常駐者としても中途半端。
+早期撤退系 (scout, wanderer) は来訪者としても常駐者としても中途半端。
 
 - **scout**: balanced の早帰り版。独自の機能がない
-- **kamikaze**: stamina のみで判断。バイアスがないが、知見も生まない
+- **wanderer**: stamina のみで判断。バイアスがないが、知見も生まない
 - **hermit**: scholar と構造的に近い (staleness 駆動 + deep walk)
 
 → これらは「例」として保持するが、実用的な代表は **balanced / scholar / archivist / moth + sniper (修正後)** の 5 つ。

@@ -24,7 +24,7 @@ llama3.2:1b (1B) は evalFocus の **方向 (高い/低い)** だけを検出し
 |---------|-----------------|-------|-------|------|
 | moth | "Only heat matters, buzzing" | 9.0 | 4.7 | 低 |
 | balanced | "Balance relevance, authority" | 8.0 | 7.0 | 低 |
-| kamikaze | "Honestly, no bias" | 8.3 | 8.3 | 低 |
+| wanderer | "Honestly, no bias" | 8.3 | 8.3 | 低 |
 | archivist | "Preserve? Decay LOW" | 7.0 | 6.0 | 低 |
 | hunter | "Only if exceptional, selective" | 6.8 | 6.3 | 低 |
 | sniper | "Direct hit only, harsh" | 6.0 | 6.5 | 中 |
@@ -46,7 +46,7 @@ llama3.2:1b (1B) は evalFocus の **方向 (高い/低い)** だけを検出し
 | scout | "Fresh, timely, right now" | 2.2 | 1.2 | 低 | 0/0 |
 | hermit | "Ignore popularity, trendy=low" | **1.3** | 2.3 | 低 | 0/0 |
 | hunter | "Only if exceptional, selective" | **1.0** | 0.0 | **ゼロ** | 0/0 |
-| kamikaze | "Honestly, no bias" | **1.0** | 0.0 | **ゼロ** | 0/0 |
+| wanderer | "Honestly, no bias" | **1.0** | 0.0 | **ゼロ** | 0/0 |
 
 **1B の特徴**: h が 1-9.3 の範囲で二極化。種族間の差が 3B より遥かに大きい。
 
@@ -107,7 +107,7 @@ hermit:  "Ignore popularity. Trendy content deserves low scores."
 #### Anti-3. 「中立に」無方向型
 
 ```
-kamikaze: "Rate everything honestly. No bias, no preference. Just measure."
+wanderer: "Rate everything honestly. No bias, no preference. Just measure."
           → 1B: h=1.0 ✗  3B: h=8.3 ✓
 ```
 

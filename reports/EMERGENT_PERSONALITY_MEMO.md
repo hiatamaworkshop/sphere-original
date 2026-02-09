@@ -100,7 +100,7 @@ evaluate は環境を **変えてしまう**。scholar が weight +4 したノ�
 
 ### 即座に使えること
 - 性格追加コスト: Loadout 定義 (~15行の JSON) のみ
-- 9種の性格が既に実証済み (balanced, scholar, scout, archivist, hunter, moth, hermit, kamikaze, sniper)
+- 9種の性格が既に実証済み (balanced, scholar, scout, archivist, hunter, moth, hermit, wanderer, sniper)
 - 同じ ollama インスタンスで複数性格を同時実行可能
 
 ### 将来の展望
