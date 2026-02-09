@@ -8,8 +8,8 @@ services:
   # Reverse Proxy / API Gateway
   nginx:
     build:
-      context: ./services/nginx
-      dockerfile: Dockerfile
+      context: ..
+      dockerfile: docker_compose_sphere_v1/services/nginx/Dockerfile
     container_name: sphere-nginx
     ports:
       - "80:80"
@@ -216,6 +216,30 @@ services:
       POOL_PORT: "4000"
     ports:
       - "4000:4000"
+    depends_on:
+      periphery:
+        condition: service_healthy
+      ollama:
+        condition: service_started
+    networks:
+      - sphere-network
+    restart: unless-stopped
+    profiles:
+      - agent
+
+  # Explorers - Sphere Perception UI (Gradio)
+  explorers:
+    build:
+      context: ../explorers
+      dockerfile: Dockerfile
+    container_name: sphere-explorers
+    environment:
+      SPHERE_URL: http://periphery:3001
+      OLLAMA_HOST: http://ollama:11434
+    ports:
+      - "7860:7860"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
     depends_on:
       periphery:
         condition: service_healthy

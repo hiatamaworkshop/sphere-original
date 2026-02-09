@@ -37,11 +37,17 @@ def execute_phi_agent(
     """
 
     # Build Docker command
+    # WebSocket URL: replace http:// with ws:// in sphere_url
+    ws_url = sphere_url.replace("http://", "ws://").replace("https://", "wss://")
+
     cmd = [
         "docker", "run", "--rm",
+        "--network", "sphere-network",
+        "-v", "sphere-phi-agent-data:/app/data",
         "-e", f"LOADOUT={loadout}",
         "-e", f"QUERY={query}",
         "-e", f"SPHERE_URL={sphere_url}",
+        "-e", f"SPHERE_WS={ws_url}",
         "-e", f"OLLAMA_HOST={ollama_host}",
         "-e", f"OLLAMA_MODEL={model}",
         "-e", "DAEMON=false",

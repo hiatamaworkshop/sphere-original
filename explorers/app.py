@@ -127,32 +127,14 @@ def create_ui():
     with gr.Blocks(title="Explorers — Sphere") as app:
 
         gr.Markdown("""
-        # Explorers
+        # Explorers — Sphere
 
-        Launch phi-agent with different **Loadouts** (personality presets) and observe their perception cycles.
-        Each species has different **weights**, **quality vectors**, and **return behaviors** — producing distinct exploration patterns.
-
-        **Note**: This UI does NOT implement FastGate or Feelings logic. It only launches phi-agent containers.
-        The agent's personality emerges from: `Loadout (vectors) × Physics (Sphere) × Sensor (LLM)`.
+        Launch phi-agent with different Loadouts (personality presets) and observe their perception cycles. Each species has different weights, quality vectors, and return behaviors — producing distinct exploration patterns. The agent's personality emerges from: Loadout (vectors) × Physics (Sphere) × Sensor (LLM).
         """)
 
         with gr.Row():
             with gr.Column(scale=1):
                 gr.Markdown("## Configuration")
-
-                species_dropdown = gr.Dropdown(
-                    choices=SPECIES,
-                    value="balanced",
-                    label="Species (Loadout)",
-                    info="Select personality preset"
-                )
-
-                species_info = gr.Textbox(
-                    value=SPECIES_DESC["balanced"],
-                    label="Description",
-                    interactive=False,
-                    lines=2
-                )
 
                 query_input = gr.Textbox(
                     label="Query",
@@ -166,6 +148,20 @@ def create_ui():
                     value="llama3.2:1b",
                     label="Model",
                     info="Ollama model name"
+                )
+
+                species_dropdown = gr.Dropdown(
+                    choices=SPECIES,
+                    value="balanced",
+                    label="Species (Loadout)",
+                    info="Select personality preset"
+                )
+
+                species_info = gr.Textbox(
+                    value=SPECIES_DESC["balanced"],
+                    label="Description",
+                    interactive=False,
+                    lines=2
                 )
 
                 with gr.Accordion("Advanced Settings", open=False):
@@ -231,12 +227,12 @@ def create_ui():
 
         1. **Select Species**: Each loadout has different personality vectors
         2. **Enter Query**: Agent uses this as its search intent
-        3. **Launch**: UI spawns phi-agent Docker container
+        3. **Launch**: UI spawns phi-agent to Sphere
         4. **Observe**: Real-time display of sense/focus/evaluate cycles
 
         **Architecture**: `UI → phi-agent (Docker) → Sphere API`
 
-        **Data Access**: Displays L2 (tags + summary) only. Content (L3) stays in Sphere.
+        **Data Access**: L1+2 (tags + summary) and evaluations by the agent are retrieved to improve the Loadout in future generation in Digestor system.
         """)
 
     return app, theme, css

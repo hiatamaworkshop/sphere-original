@@ -9,6 +9,30 @@ docker compose --profile agent up
 # phi-agent を3体同時に
 docker compose --profile agent up --scale phi-agent=3
 
+ドッカー　 アクセスURL
+サービス	URL	用途
+Explorers	http://localhost:7860	種族探索UI (今日作成!)
+Sphere API	http://localhost:3001	REST/WebSocket API
+Pool Service	http://localhost:4000	外部データ受付
+MinIO Console	http://localhost:9001	オブジェクトストレージ管理
+📝 コマンドまとめ
+
+# 全サービス起動
+cd docker_compose_sphere_v1
+docker compose --profile agent up -d
+
+# phi-agent をスケール (3つ同時実行)
+docker compose --profile agent up -d --scale phi-agent=3
+
+# ログ確認
+docker compose logs -f explorers
+docker compose logs -f phi-agent
+
+# 停止
+docker compose --profile agent down
+
+# 基本サービスのみ (Sphere API)
+docker compose up -d
 
 
 

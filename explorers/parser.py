@@ -123,7 +123,9 @@ def format_cycle_output(cycles: List[Dict[str, Any]]) -> str:
         # Add nearby count
         nearby = c.get('nearbyNodes', [])
         if nearby:
-            line += f" — {len(nearby)} nodes nearby"
+            # nearbyNodes can be int (count) or list (nodes)
+            count = len(nearby) if isinstance(nearby, list) else nearby
+            line += f" — {count} nodes nearby"
 
         # Add focused node info
         focused = c.get('focused')
