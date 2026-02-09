@@ -9,7 +9,7 @@
 //
 // Like CleanerFish: independent, periodic, stateless.
 
-import { readFileSync, writeFileSync, existsSync } from "node:fs";
+import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync, renameSync } from "node:fs";
 import { join } from "node:path";
 import { computeScore, computeHunger, prune } from "./scoring.js";
 import type { FlatEval, ScoredEval } from "./scoring.js";
@@ -20,6 +20,7 @@ import { buildProfile } from "./profiler.js";
 const DATA_DIR = process.env.DATA_DIR ?? "/app/data";
 const EVAL_LOG = join(DATA_DIR, "eval-log.jsonl");
 const PROFILE_OUT = join(DATA_DIR, "species-profile.json");
+const GEN_DIR = join(DATA_DIR, "generations");
 const INTERVAL_MS = parseInt(process.env.DIGEST_INTERVAL_MS ?? "3600000"); // 1h default
 const HALF_LIFE_HOURS = parseFloat(process.env.HALF_LIFE_HOURS ?? "72");
 const MIN_EVALS = parseInt(process.env.MIN_EVALS ?? "50");
@@ -84,6 +85,76 @@ function scoreAll(flat: FlatEval[]): ScoredEval[] {
   }));
 }
 
+// ---- Generation archive ----
+
+function nextGeneration(): number {
+  if (!existsSync(GEN_DIR)) return 1;
+  const files = readdirSync(GEN_DIR).filter(f => /^gen-\d+\.json$/.test(f));
+  if (files.length === 0) return 1;
+  const nums = files.map(f => parseInt(f.match(/gen-(\d+)\.json/)![1], 10));
+  return Math.max(...nums) + 1;
+}
+
+function saveGeneration(
+  gen: number,
+  profile: ReturnType<typeof buildProfile>,
+  inputEvals: number,
+  hunger: number,
+): void {
+  if (!existsSync(GEN_DIR)) mkdirSync(GEN_DIR, { recursive: true });
+  const padded = String(gen).padStart(3, "0");
+  const data = {
+    generation: gen,
+    timestamp: new Date().toISOString(),
+    inputEvaluations: inputEvals,
+    survivedEvaluations: profile.survivedEvaluations,
+    hunger,
+    halfLifeHours: HALF_LIFE_HOURS,
+    species: profile.species,
+    global: profile.global,
+  };
+  writeFileSync(join(GEN_DIR, `gen-${padded}.json`), JSON.stringify(data, null, 2), "utf-8");
+  console.log(`[digestor] Generation ${gen} archived`);
+}
+
+// ---- Truncate eval-log to survived entries ----
+
+function rebuildEntries(survived: ScoredEval[]): EvalLogEntry[] {
+  // Group survived evals back into session-like entries by loadout+timestamp
+  const groups = new Map<string, { loadout: string; model?: string; timestamp: number; evals: ScoredEval[] }>();
+  for (const e of survived) {
+    const key = `${e.loadout}:${e.timestamp}`;
+    const g = groups.get(key);
+    if (g) {
+      g.evals.push(e);
+    } else {
+      groups.set(key, { loadout: e.loadout, model: e.model, timestamp: e.timestamp, evals: [e] });
+    }
+  }
+  const entries: EvalLogEntry[] = [];
+  for (const g of groups.values()) {
+    entries.push({
+      loadout: g.loadout,
+      model: g.model,
+      timestamp: g.timestamp,
+      evaluations: g.evals.map(e => ({
+        nodeId: e.nodeId, h: e.h, w: e.w, d: e.d, tags: e.tags,
+      })),
+    });
+  }
+  return entries;
+}
+
+function truncateLog(survived: ScoredEval[]): void {
+  const entries = rebuildEntries(survived);
+  const lines = entries.map(e => JSON.stringify(e)).join("\n") + "\n";
+  // Atomic write: tmp → rename (safe against concurrent agent appends)
+  const tmpFile = EVAL_LOG + ".tmp";
+  writeFileSync(tmpFile, lines, "utf-8");
+  renameSync(tmpFile, EVAL_LOG);
+  console.log(`[digestor] eval-log truncated: ${entries.length} sessions (from survived evals)`);
+}
+
 // ---- Main digest cycle ----
 
 function digest(): void {
@@ -109,9 +180,16 @@ function digest(): void {
   // Step 3: Build species profile (aggregate + environmental blend)
   const profile = buildProfile(survived, flat.length);
 
-  // Step 4: Write output (overwrite)
+  // Step 4: Write profile (overwrite)
   writeFileSync(PROFILE_OUT, JSON.stringify(profile, null, 2), "utf-8");
   console.log(`[digestor] Profile written: ${Object.keys(profile.species).length} species, ${profile.survivedEvaluations} surviving evals`);
+
+  // Step 5: Archive generation snapshot
+  const gen = nextGeneration();
+  saveGeneration(gen, profile, flat.length, hunger);
+
+  // Step 6: Truncate eval-log to survived entries only
+  truncateLog(survived);
 
   // Log species summary
   for (const [name, sp] of Object.entries(profile.species)) {
