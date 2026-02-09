@@ -140,6 +140,22 @@ export function parseAction(response: string): AgentAction {
       parsed.action = actionAliases[parsed.action];
     }
 
+    // Fallback: JSON has no "action" key but contains score-like fields → infer evaluate
+    // Handles: {"h":8,"w":7,"d":5}, {"heat":8,"weight":7}, {"score":9,"reason":"..."}
+    if (!parsed.action) {
+      const raw = parsed as unknown as Record<string, unknown>;
+      const h = raw.h ?? raw.heat ?? raw.score ?? raw.relevance;
+      const w = raw.w ?? raw.weight ?? raw.authority;
+      const d = raw.d ?? raw.decay;
+      if (h !== undefined || w !== undefined) {
+        parsed.action = "evaluate";
+        parsed.h = typeof h === "number" ? h : undefined;
+        parsed.w = typeof w === "number" ? w : undefined;
+        parsed.d = typeof d === "number" ? d : undefined;
+        parsed.reason = (raw.reason as string) ?? "Inferred from keyless JSON";
+      }
+    }
+
     // Validate action type
     if (!["focus", "evaluate", "move", "skip"].includes(parsed.action)) {
       return { action: "skip", reason: `Unknown action: ${parsed.action}` };

@@ -40,6 +40,7 @@ export class OllamaClient {
       model: this.config.model,
       prompt,
       stream: false,
+      format: "json",  // Structural constraint: force valid JSON output at token sampling level
       options: {
         temperature: this.config.temperature,
         num_predict: this.config.maxTokens,

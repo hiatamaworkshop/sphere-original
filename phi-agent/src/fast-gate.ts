@@ -585,7 +585,7 @@ export class FastGate {
 
       // --- Ratio modifier ---
       const heatDensity = n.heat / (n.weight + 1);
-      const stability = n.weight * (1 - n.decay / 1000);
+      const stability = n.weight * (1 - n.decay / 2000);  // decay baseline=1000, range 0-2000
       const ratioMod = Math.max(0.1, 1 + heatDensity * wp.ratioBias.heatDensity + stability * wp.ratioBias.stability);
 
       // --- Final score ---
@@ -598,14 +598,6 @@ export class FastGate {
     }
 
     return bestIndex;
-  }
-
-  // --- Move: heuristic based on eval result ---
-
-  computeNextMove(evalH: number): WalkMode {
-    if (evalH >= 7) return "deep";
-    if (evalH >= 5) return "hot";
-    return "explore";
   }
 
   // --- Action selection: feelings → next cycle behavior ---
@@ -651,13 +643,14 @@ export class FastGate {
       case "sat":
         // Satisfied → camp: stay, re-sense without moving, exploit area
         this._lastActionWasScout = false;
-        return { type: "camp", moveStep: 0, moveMode: "deep" };
+        return { type: "camp", moveStep: 0, moveMode: this._walkPreference };
       case "frust":
-        // Frustrated → leap: big move, get away from bad area
+        // Frustrated → leap: big move, personality-driven escape
+        // hunter flees toward heat, hermit toward stability
         this._lastActionWasScout = false;
-        return { type: "leap", moveStep: 0.6, moveMode: "explore" };
+        return { type: "leap", moveStep: 0.6, moveMode: this._walkPreference };
       case "stale":
-        // Bored → leap: seek novelty in a new area
+        // Bored → leap: force "explore" to break pattern (override personality)
         this._lastActionWasScout = false;
         return { type: "leap", moveStep: 0.5, moveMode: "explore" };
       case "stam":
