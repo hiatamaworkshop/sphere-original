@@ -240,6 +240,7 @@ services:
       - "7860:7860"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
+      - phi-agent-data:/app/data
     depends_on:
       periphery:
         condition: service_healthy
