@@ -17,7 +17,7 @@ import type { WalkMode, BusMessage } from "./sphere-client.js";
 import { PromptBuilder, parseAction } from "./prompt-builder.js";
 import { FastGate, LOADOUTS } from "./fast-gate.js";
 import type { Loadout, LoadoutName, SpeciesMemoryBias } from "./fast-gate.js";
-import { appendEvalLog, getSpeciesSummary } from "./eval-log.js";
+import { appendEvalLog, loadSpeciesProfile } from "./eval-log.js";
 import type { EvalLogEntry } from "./eval-log.js";
 
 /** Decoded bus hint from another agent */
@@ -86,45 +86,20 @@ export class PhiAgent {
       ? LOADOUTS[this.config.loadout]
       : this.config.loadout;
 
-    // Load species memory — inherited knowledge from past sessions
-    // Environmental blend: 0.7 × own species + 0.3 × all species (environmental pressure)
+    // Load species memory — pre-blended profile from Digestor
+    // (0.7 × own species + 0.3 × global, computed by Digestor)
     const loadoutName = typeof this.config.loadout === "string"
       ? this.config.loadout : this.config.loadout.name;
-    const species = getSpeciesSummary(loadoutName);
-    const allSpecies = getSpeciesSummary();
+    const profile = loadSpeciesProfile(loadoutName);
     let speciesBias: SpeciesMemoryBias | undefined;
-    if (species.sessions > 0 || allSpecies.sessions > 0) {
-      const SELF_W = 0.7;
-      const ENV_W = 0.3;
-
-      // Blend hotNodes: merge visit counts with weighted ratio
-      const blendedNodes = new Map<string, number>();
-      for (const n of species.hotNodes) {
-        blendedNodes.set(n.nodeId, (blendedNodes.get(n.nodeId) ?? 0) + n.count * SELF_W);
-      }
-      for (const n of allSpecies.hotNodes) {
-        blendedNodes.set(n.nodeId, (blendedNodes.get(n.nodeId) ?? 0) + n.count * ENV_W);
-      }
-
-      // Blend tags: merge counts with weighted ratio
-      const blendedTagMap = new Map<string, number>();
-      for (const t of species.commonTags) {
-        blendedTagMap.set(t.tag, (blendedTagMap.get(t.tag) ?? 0) + t.count * SELF_W);
-      }
-      for (const t of allSpecies.commonTags) {
-        blendedTagMap.set(t.tag, (blendedTagMap.get(t.tag) ?? 0) + t.count * ENV_W);
-      }
-      // Sort by blended count, take top tags
-      const blendedTags = [...blendedTagMap.entries()]
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, 15)
-        .map(([tag]) => tag);
-
+    if (profile) {
       speciesBias = {
-        hotNodeIds: blendedNodes,
-        tags: blendedTags,
+        hotNodeIds: profile.hotNodeIds,
+        tags: profile.tags,
       };
-      this.log(`Species memory: ${species.sessions} own + ${allSpecies.sessions} total sessions (blend ${SELF_W}/${ENV_W}), ${blendedNodes.size} nodes, ${blendedTags.length} tags`);
+      this.log(`Species profile: ${profile.sessions} evals, ${profile.hotNodeIds.size} nodes, ${profile.tags.length} tags (${loadoutName})`);
+    } else {
+      this.log(`Species profile: not found for ${loadoutName} (no profile or empty)`);
     }
     this.gate = new FastGate(this.config.query, loadout, speciesBias);
     this.stats = {

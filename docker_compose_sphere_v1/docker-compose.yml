@@ -183,6 +183,26 @@ services:
     profiles:
       - agent
 
+  # Digestor - Species memory metabolism (periodic eval-log pruning + profile generation)
+  digestor:
+    build:
+      context: ../digestor
+      dockerfile: Dockerfile
+    container_name: sphere-digestor
+    environment:
+      DATA_DIR: /app/data
+      DIGEST_INTERVAL_MS: "${DIGEST_INTERVAL_MS:-3600000}"
+      HALF_LIFE_HOURS: "${HALF_LIFE_HOURS:-72}"
+      MIN_EVALS: "50"
+      MIN_PER_SPECIES: "20"
+    volumes:
+      - phi-agent-data:/app/data
+    networks:
+      - sphere-network
+    restart: unless-stopped
+    profiles:
+      - agent
+
   # Pool Service - External data intake gateway (LLM scoring + Weapon pipeline)
   pool-service:
     build:

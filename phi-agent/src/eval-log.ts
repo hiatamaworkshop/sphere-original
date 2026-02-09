@@ -161,3 +161,66 @@ export function getSpeciesSummary(loadout?: string): SpeciesSummary {
 
   return summary;
 }
+
+// ============================================================
+// Species Profile — Digestor output (replaces direct eval-log reads)
+// ============================================================
+
+const PROFILE_FILE = join(DATA_DIR, "species-profile.json");
+
+interface ProfileNodeCount {
+  nodeId: string;
+  count: number;
+}
+
+interface ProfileSpeciesEntry {
+  evaluations: number;
+  avgH: number;
+  avgW: number;
+  avgD: number;
+  hotNodes: ProfileNodeCount[];
+  commonTags: string[];
+}
+
+interface ProfileData {
+  generated: string;
+  totalEvaluations: number;
+  survivedEvaluations: number;
+  species: Record<string, ProfileSpeciesEntry>;
+  global: ProfileSpeciesEntry;
+}
+
+export interface SpeciesProfileBias {
+  hotNodeIds: Map<string, number>;
+  tags: string[];
+  sessions: number;
+}
+
+/**
+ * Load species bias from Digestor-produced species-profile.json.
+ * Pre-blended (0.7 own + 0.3 global) by the Digestor.
+ * Returns undefined if profile doesn't exist or loadout not found.
+ */
+export function loadSpeciesProfile(loadout: string): SpeciesProfileBias | undefined {
+  if (!existsSync(PROFILE_FILE)) return undefined;
+  try {
+    const raw = readFileSync(PROFILE_FILE, "utf-8");
+    const profile: ProfileData = JSON.parse(raw);
+    // Use species-specific entry (pre-blended), fallback to global
+    const entry = profile.species?.[loadout] ?? profile.global;
+    if (!entry || entry.evaluations === 0) return undefined;
+
+    const hotNodeIds = new Map<string, number>();
+    for (const n of entry.hotNodes ?? []) {
+      hotNodeIds.set(n.nodeId, n.count);
+    }
+
+    return {
+      hotNodeIds,
+      tags: entry.commonTags ?? [],
+      sessions: entry.evaluations,
+    };
+  } catch {
+    return undefined;
+  }
+}

@@ -196,6 +196,72 @@ SpeciesMemoryBias を構築。現行の `getSpeciesSummary()` を差し替え。
 time_decay が自然に淘汰する。Digestor の最初の数回実行で legacy が消え、
 phi3:mini tagged データだけが残る。人為的に切らない。
 
+### 運用判断 (2026-02-09 確定)
+
+#### 実行トリガー
+
+**定期時間実行 (cron 的)。** 対象の evaluation 件数が最低ライン以下ならスキップ。
+
+```
+実行間隔: 1h (初期値、調整可能)
+スキップ条件: total evaluations < 50 (処理する意味がない量)
+```
+
+本番では件数監視トリガーも検討可能だが、テスト段階はシンプルに定期実行。
+
+#### species-profile.json の書き込み
+
+**毎回上書き。** テスト段階では世代管理しない。
+Digestor の実行ごとに species-profile.json を上書きする。
+phi-agent はセッション開始時に最新版を読む。
+
+将来の世代管理 (rollback 用) は必要になった時点で追加。
+
+#### phi-agent 側の読み込み — 一本化
+
+**最初から species-profile.json 読み込みに一本化。**
+現行の `getSpeciesSummary()` (eval-log.jsonl 直読み) は廃止。
+テストデータ (93 entries) があるので初回から profile ファイルで運用できる。
+
+```
+廃止: getSpeciesSummary() → eval-log.jsonl 直読み
+採用: loadSpeciesProfile() → species-profile.json 読み
+      ファイルが存在しない場合 → 空の SpeciesMemoryBias (graceful fallback)
+```
+
+**環境ブレンド (0.7/0.3) の責務移動**:
+- 現在: agent.ts 起動時に eval-log を 2回読んでブレンド
+- 移行後: Digestor が集約時にブレンド済み profile を出力。agent は読むだけ
+
+#### コンテナ構成 — 別コンテナ
+
+**独立 Dockerfile + 独立コンテナ。** phi-agent イメージとは分離。
+
+```
+digestor/
+  Dockerfile
+  src/
+    digestor.ts      — メインロジック (2ステップ処理)
+    scoring.ts       — balanced_qv scoring + time_decay
+    profiler.ts      — 種族別集約 + ブレンド
+  package.json
+  tsconfig.json
+```
+
+Docker compose に追加:
+```yaml
+digestor:
+  build:
+    context: ../digestor
+  volumes:
+    - phi-agent-data:/app/data    # eval-log.jsonl 読み + species-profile.json 書き
+  profiles:
+    - agent
+  # cron 的実行: entrypoint で sleep loop or node-cron
+```
+
+phi-agent-data ボリュームを共有。eval-log.jsonl を読み、species-profile.json を書く。
+
 ## フィードバックの環境ブレンド (Mutation)
 
 Species Profile の還元時に、自種族の集約と全種族の集約をブレンドする。
