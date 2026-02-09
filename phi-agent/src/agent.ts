@@ -181,6 +181,7 @@ export class PhiAgent {
     }
     const entry: EvalLogEntry = {
       loadout: this.gate.loadoutName,
+      model: this.ollama.modelName,
       query: this.config.query,
       timestamp: this.stats.startTime,
       duration: Date.now() - this.stats.startTime,

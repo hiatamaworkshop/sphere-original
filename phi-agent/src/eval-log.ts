@@ -28,6 +28,8 @@ const LOG_FILE = join(DATA_DIR, "eval-log.jsonl");
 export interface EvalLogEntry {
   /** Loadout name (species identifier) */
   loadout: string;
+  /** LLM model used (sensory organ) — optional for backward compat */
+  model?: string;
   /** Search query */
   query: string;
   /** Session start timestamp */

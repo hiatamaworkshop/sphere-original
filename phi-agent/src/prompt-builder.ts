@@ -130,6 +130,16 @@ export function parseAction(response: string): AgentAction {
   try {
     const parsed = JSON.parse(jsonStr) as AgentAction;
 
+    // Normalize action aliases (lightweight models may use synonyms)
+    const actionAliases: Record<string, AgentAction["action"]> = {
+      rate: "evaluate", score: "evaluate", assess: "evaluate", judge: "evaluate",
+      select: "focus", choose: "focus", inspect: "focus",
+      walk: "move", go: "move", navigate: "move",
+    };
+    if (actionAliases[parsed.action]) {
+      parsed.action = actionAliases[parsed.action];
+    }
+
     // Validate action type
     if (!["focus", "evaluate", "move", "skip"].includes(parsed.action)) {
       return { action: "skip", reason: `Unknown action: ${parsed.action}` };
