@@ -1,0 +1,660 @@
+{
+  "generation": 6,
+  "timestamp": "2026-02-09T11:26:27.805Z",
+  "inputEvaluations": 592,
+  "survivedEvaluations": 497,
+  "hunger": 0.8368,
+  "halfLifeHours": 72,
+  "species": {
+    "scholar": {
+      "evaluations": 62,
+      "avgH": 5.4308755760368665,
+      "avgW": 7.367982086064776,
+      "avgD": 4.525034075420264,
+      "hotNodes": [
+        {
+          "nodeId": "904b2c1f6ce3b0fb",
+          "count": 24.199999999999996
+        },
+        {
+          "nodeId": "84bed15fb3e8faa2",
+          "count": 16.3
+        },
+        {
+          "nodeId": "f7dcec2535f28615",
+          "count": 14.399999999999999
+        },
+        {
+          "nodeId": "49dcf8ad122f38ce",
+          "count": 13.2
+        },
+        {
+          "nodeId": "8f0d116bcdc25011",
+          "count": 12.7
+        },
+        {
+          "nodeId": "6195fd7f36b7c6b9",
+          "count": 10.899999999999999
+        },
+        {
+          "nodeId": "ebd810081fe8cc2e",
+          "count": 10.5
+        },
+        {
+          "nodeId": "ad0692f4836319a4",
+          "count": 9.5
+        },
+        {
+          "nodeId": "813a1f642f2042dd",
+          "count": 8.4
+        },
+        {
+          "nodeId": "a2ceaef8abd862c4",
+          "count": 6.8999999999999995
+        }
+      ],
+      "commonTags": [
+        "anthropology",
+        "methodology",
+        "research",
+        "theory",
+        "computation",
+        "cognition",
+        "linguistics",
+        "philosophy",
+        "AI",
+        "mind",
+        "psychology",
+        "bias",
+        "decision",
+        "probability",
+        "paradox"
+      ]
+    },
+    "kamikaze": {
+      "evaluations": 96,
+      "avgH": 7.164880952380953,
+      "avgW": 6.24859364520456,
+      "avgD": 4.347681924882629,
+      "hotNodes": [
+        {
+          "nodeId": "f7dcec2535f28615",
+          "count": 34.699999999999996
+        },
+        {
+          "nodeId": "49dcf8ad122f38ce",
+          "count": 20.2
+        },
+        {
+          "nodeId": "904b2c1f6ce3b0fb",
+          "count": 19.299999999999997
+        },
+        {
+          "nodeId": "ebd810081fe8cc2e",
+          "count": 18.9
+        },
+        {
+          "nodeId": "84bed15fb3e8faa2",
+          "count": 18.4
+        },
+        {
+          "nodeId": "8f0d116bcdc25011",
+          "count": 13.4
+        },
+        {
+          "nodeId": "6195fd7f36b7c6b9",
+          "count": 10.2
+        },
+        {
+          "nodeId": "a2ceaef8abd862c4",
+          "count": 9
+        },
+        {
+          "nodeId": "813a1f642f2042dd",
+          "count": 8.4
+        },
+        {
+          "nodeId": "ad0692f4836319a4",
+          "count": 8.1
+        }
+      ],
+      "commonTags": [
+        "theory",
+        "mathematics",
+        "information",
+        "computation",
+        "biology",
+        "evolution",
+        "game-theory",
+        "economics",
+        "anthropology",
+        "methodology",
+        "research",
+        "database",
+        "data-structure",
+        "algorithm",
+        "psychology"
+      ]
+    },
+    "hermit": {
+      "evaluations": 64,
+      "avgH": 5.757589285714285,
+      "avgW": 6.2121353118712275,
+      "avgD": 4.048723591549296,
+      "hotNodes": [
+        {
+          "nodeId": "904b2c1f6ce3b0fb",
+          "count": 24.199999999999996
+        },
+        {
+          "nodeId": "84bed15fb3e8faa2",
+          "count": 17
+        },
+        {
+          "nodeId": "8f0d116bcdc25011",
+          "count": 16.2
+        },
+        {
+          "nodeId": "f7dcec2535f28615",
+          "count": 14.399999999999999
+        },
+        {
+          "nodeId": "49dcf8ad122f38ce",
+          "count": 13.2
+        },
+        {
+          "nodeId": "ad0692f4836319a4",
+          "count": 12.299999999999999
+        },
+        {
+          "nodeId": "813a1f642f2042dd",
+          "count": 11.2
+        },
+        {
+          "nodeId": "ebd810081fe8cc2e",
+          "count": 10.5
+        },
+        {
+          "nodeId": "6195fd7f36b7c6b9",
+          "count": 10.2
+        },
+        {
+          "nodeId": "a2ceaef8abd862c4",
+          "count": 9.7
+        }
+      ],
+      "commonTags": [
+        "theory",
+        "linguistics",
+        "anthropology",
+        "methodology",
+        "research",
+        "computation",
+        "mathematics",
+        "cognition",
+        "culture",
+        "psychology",
+        "bias",
+        "decision",
+        "philosophy",
+        "AI",
+        "mind"
+      ]
+    },
+    "archivist": {
+      "evaluations": 190,
+      "avgH": 6.432030075187969,
+      "avgW": 6.449306364502807,
+      "avgD": 3.5041512231282432,
+      "hotNodes": [
+        {
+          "nodeId": "84bed15fb3e8faa2",
+          "count": 28.9
+        },
+        {
+          "nodeId": "49dcf8ad122f38ce",
+          "count": 28.599999999999998
+        },
+        {
+          "nodeId": "813a1f642f2042dd",
+          "count": 21
+        },
+        {
+          "nodeId": "ebd810081fe8cc2e",
+          "count": 20.299999999999997
+        },
+        {
+          "nodeId": "ad0692f4836319a4",
+          "count": 18.6
+        },
+        {
+          "nodeId": "8f0d116bcdc25011",
+          "count": 16.9
+        },
+        {
+          "nodeId": "a2ceaef8abd862c4",
+          "count": 15.299999999999997
+        },
+        {
+          "nodeId": "f7dcec2535f28615",
+          "count": 14.399999999999999
+        },
+        {
+          "nodeId": "904b2c1f6ce3b0fb",
+          "count": 14.399999999999999
+        },
+        {
+          "nodeId": "341fa3b6d262dc86",
+          "count": 8.399999999999999
+        }
+      ],
+      "commonTags": [
+        "theory",
+        "mathematics",
+        "computation",
+        "neuroscience",
+        "linguistics",
+        "biology",
+        "game-theory",
+        "economics",
+        "cognition",
+        "culture",
+        "evolution",
+        "memory",
+        "brain",
+        "distributed",
+        "consensus"
+      ]
+    },
+    "hunter": {
+      "evaluations": 19,
+      "avgH": 6.085714285714285,
+      "avgW": 5.270358996081754,
+      "avgD": 4.019940696812453,
+      "hotNodes": [
+        {
+          "nodeId": "f7dcec2535f28615",
+          "count": 17.9
+        },
+        {
+          "nodeId": "904b2c1f6ce3b0fb",
+          "count": 17.2
+        },
+        {
+          "nodeId": "49dcf8ad122f38ce",
+          "count": 15.299999999999999
+        },
+        {
+          "nodeId": "84bed15fb3e8faa2",
+          "count": 14.2
+        },
+        {
+          "nodeId": "ebd810081fe8cc2e",
+          "count": 11.9
+        },
+        {
+          "nodeId": "8f0d116bcdc25011",
+          "count": 9.9
+        },
+        {
+          "nodeId": "ad0692f4836319a4",
+          "count": 8.799999999999999
+        },
+        {
+          "nodeId": "813a1f642f2042dd",
+          "count": 8.4
+        },
+        {
+          "nodeId": "a2ceaef8abd862c4",
+          "count": 6.8999999999999995
+        },
+        {
+          "nodeId": "6195fd7f36b7c6b9",
+          "count": 6
+        }
+      ],
+      "commonTags": [
+        "theory",
+        "mathematics",
+        "information",
+        "anthropology",
+        "methodology",
+        "research",
+        "cognition",
+        "computation",
+        "biology",
+        "evolution",
+        "linguistics",
+        "culture",
+        "database",
+        "data-structure",
+        "algorithm"
+      ]
+    },
+    "moth": {
+      "evaluations": 18,
+      "avgH": 7.2523809523809515,
+      "avgW": 5.61421864520456,
+      "avgD": 3.82754303599374,
+      "hotNodes": [
+        {
+          "nodeId": "f7dcec2535f28615",
+          "count": 17.2
+        },
+        {
+          "nodeId": "904b2c1f6ce3b0fb",
+          "count": 16.5
+        },
+        {
+          "nodeId": "84bed15fb3e8faa2",
+          "count": 16.3
+        },
+        {
+          "nodeId": "49dcf8ad122f38ce",
+          "count": 13.2
+        },
+        {
+          "nodeId": "8f0d116bcdc25011",
+          "count": 12.7
+        },
+        {
+          "nodeId": "ebd810081fe8cc2e",
+          "count": 10.5
+        },
+        {
+          "nodeId": "ad0692f4836319a4",
+          "count": 8.799999999999999
+        },
+        {
+          "nodeId": "813a1f642f2042dd",
+          "count": 8.4
+        },
+        {
+          "nodeId": "a2ceaef8abd862c4",
+          "count": 6.8999999999999995
+        },
+        {
+          "nodeId": "6195fd7f36b7c6b9",
+          "count": 6.7
+        }
+      ],
+      "commonTags": [
+        "theory",
+        "mathematics",
+        "linguistics",
+        "computation",
+        "information",
+        "game-theory",
+        "economics",
+        "anthropology",
+        "methodology",
+        "research",
+        "cognition",
+        "functional",
+        "psychology",
+        "bias",
+        "decision"
+      ]
+    },
+    "scout": {
+      "evaluations": 18,
+      "avgH": 6.435714285714285,
+      "avgW": 4.991996422982338,
+      "avgD": 4.060876369327073,
+      "hotNodes": [
+        {
+          "nodeId": "f7dcec2535f28615",
+          "count": 17.9
+        },
+        {
+          "nodeId": "49dcf8ad122f38ce",
+          "count": 17.4
+        },
+        {
+          "nodeId": "904b2c1f6ce3b0fb",
+          "count": 15.099999999999998
+        },
+        {
+          "nodeId": "84bed15fb3e8faa2",
+          "count": 13.5
+        },
+        {
+          "nodeId": "ebd810081fe8cc2e",
+          "count": 12.6
+        },
+        {
+          "nodeId": "8f0d116bcdc25011",
+          "count": 9.9
+        },
+        {
+          "nodeId": "813a1f642f2042dd",
+          "count": 8.4
+        },
+        {
+          "nodeId": "ad0692f4836319a4",
+          "count": 8.1
+        },
+        {
+          "nodeId": "a2ceaef8abd862c4",
+          "count": 6.8999999999999995
+        },
+        {
+          "nodeId": "6195fd7f36b7c6b9",
+          "count": 6
+        }
+      ],
+      "commonTags": [
+        "theory",
+        "mathematics",
+        "computation",
+        "information",
+        "biology",
+        "evolution",
+        "anthropology",
+        "methodology",
+        "research",
+        "distributed",
+        "consensus",
+        "astronomy",
+        "relativity",
+        "gravity",
+        "algorithm"
+      ]
+    },
+    "sniper": {
+      "evaluations": 11,
+      "avgH": 4.749350649350649,
+      "avgW": 4.871794402780318,
+      "avgD": 4.23764404609475,
+      "hotNodes": [
+        {
+          "nodeId": "f7dcec2535f28615",
+          "count": 15.799999999999999
+        },
+        {
+          "nodeId": "904b2c1f6ce3b0fb",
+          "count": 15.099999999999998
+        },
+        {
+          "nodeId": "84bed15fb3e8faa2",
+          "count": 14.2
+        },
+        {
+          "nodeId": "49dcf8ad122f38ce",
+          "count": 13.2
+        },
+        {
+          "nodeId": "ebd810081fe8cc2e",
+          "count": 11.9
+        },
+        {
+          "nodeId": "8f0d116bcdc25011",
+          "count": 10.6
+        },
+        {
+          "nodeId": "813a1f642f2042dd",
+          "count": 9.1
+        },
+        {
+          "nodeId": "ad0692f4836319a4",
+          "count": 8.799999999999999
+        },
+        {
+          "nodeId": "a2ceaef8abd862c4",
+          "count": 6.8999999999999995
+        },
+        {
+          "nodeId": "6195fd7f36b7c6b9",
+          "count": 6
+        }
+      ],
+      "commonTags": [
+        "theory",
+        "mathematics",
+        "information",
+        "biology",
+        "evolution",
+        "linguistics",
+        "anthropology",
+        "methodology",
+        "research",
+        "neuroscience",
+        "database",
+        "data-structure",
+        "algorithm",
+        "probability",
+        "counterintuitive"
+      ]
+    },
+    "balanced": {
+      "evaluations": 19,
+      "avgH": 4.980451127819549,
+      "avgW": 4.828253732923859,
+      "avgD": 3.7988880652335064,
+      "hotNodes": [
+        {
+          "nodeId": "f7dcec2535f28615",
+          "count": 16.5
+        },
+        {
+          "nodeId": "904b2c1f6ce3b0fb",
+          "count": 16.5
+        },
+        {
+          "nodeId": "49dcf8ad122f38ce",
+          "count": 14.6
+        },
+        {
+          "nodeId": "84bed15fb3e8faa2",
+          "count": 14.2
+        },
+        {
+          "nodeId": "ebd810081fe8cc2e",
+          "count": 11.9
+        },
+        {
+          "nodeId": "8f0d116bcdc25011",
+          "count": 9.9
+        },
+        {
+          "nodeId": "813a1f642f2042dd",
+          "count": 9.8
+        },
+        {
+          "nodeId": "ad0692f4836319a4",
+          "count": 8.799999999999999
+        },
+        {
+          "nodeId": "a2ceaef8abd862c4",
+          "count": 8.299999999999999
+        },
+        {
+          "nodeId": "6195fd7f36b7c6b9",
+          "count": 6
+        }
+      ],
+      "commonTags": [
+        "theory",
+        "mathematics",
+        "information",
+        "anthropology",
+        "methodology",
+        "research",
+        "biology",
+        "evolution",
+        "computation",
+        "neuroscience",
+        "memory",
+        "brain",
+        "networking",
+        "DNS",
+        "infrastructure"
+      ]
+    }
+  },
+  "global": {
+    "evaluations": 497,
+    "avgH": 6.285714285714286,
+    "avgW": 6.269617706237424,
+    "avgD": 3.943661971830986,
+    "hotNodes": [
+      {
+        "nodeId": "f7dcec2535f28615",
+        "count": 48
+      },
+      {
+        "nodeId": "904b2c1f6ce3b0fb",
+        "count": 48
+      },
+      {
+        "nodeId": "84bed15fb3e8faa2",
+        "count": 45
+      },
+      {
+        "nodeId": "49dcf8ad122f38ce",
+        "count": 44
+      },
+      {
+        "nodeId": "ebd810081fe8cc2e",
+        "count": 35
+      },
+      {
+        "nodeId": "8f0d116bcdc25011",
+        "count": 33
+      },
+      {
+        "nodeId": "813a1f642f2042dd",
+        "count": 28
+      },
+      {
+        "nodeId": "ad0692f4836319a4",
+        "count": 27
+      },
+      {
+        "nodeId": "a2ceaef8abd862c4",
+        "count": 23
+      },
+      {
+        "nodeId": "6195fd7f36b7c6b9",
+        "count": 20
+      }
+    ],
+    "commonTags": [
+      "theory",
+      "mathematics",
+      "computation",
+      "linguistics",
+      "information",
+      "anthropology",
+      "methodology",
+      "research",
+      "game-theory",
+      "economics",
+      "biology",
+      "cognition",
+      "neuroscience",
+      "evolution",
+      "culture"
+    ]
+  }
+}
