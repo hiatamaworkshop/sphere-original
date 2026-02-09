@@ -349,6 +349,16 @@ export class PhiAgent {
 
     // 7. Record quality data
     this.gate.memory.record(target.id, h, w, d, detail.tags);
+
+    // 8. Emit cycle JSON for UI (structured output, always printed)
+    this.emitCycleJson("standard", nodes.length, {
+      nodeId: target.id,
+      tags: detail.tags ?? [],
+      summary: (detail.summary ?? "").slice(0, 100),
+    }, {
+      h, w, d,
+      reason: (evalAction.reason ?? "").slice(0, 100),
+    });
   }
 
   // ===== ActiveBus =====
@@ -413,6 +423,27 @@ export class PhiAgent {
     }
     const nodes = await this.sphere.sense(this.config.senseRadius);
     this.log(`Scout: sensed ${nodes.length} nodes (no focus, saving energy)`);
+
+    // Emit cycle JSON for UI (scout = sense only, no eval)
+    this.emitCycleJson("scout", nodes.length);
+  }
+
+  /** Emit structured JSON for UI consumption (always printed, independent of debug flag) */
+  private emitCycleJson(
+    action: string,
+    nearbyNodes?: number,
+    focused?: { nodeId: string; tags: string[]; summary: string },
+    evaluation?: { h: number; w: number; d: number; reason: string }
+  ): void {
+    const data = {
+      cycle: this.stats.cycles,
+      action,
+      energy: this.sphere.currentEnergy,
+      ...(nearbyNodes !== undefined && { nearbyNodes }),
+      ...(focused && { focused }),
+      ...(evaluation && { evaluation }),
+    };
+    console.log(JSON.stringify(data));
   }
 
   private log(msg: string): void {
