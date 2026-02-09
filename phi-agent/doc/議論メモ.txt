@@ -72,10 +72,28 @@ llama3.2:1b でも動いた。 エイリアス1行で動作。下位モデル
 を利用し、種族＋武器を選んでスフィアアクセスをする、というパターンが考えられる　という意味だ
 
 
+Digestor　小スフィアの作法
+
+別コンテナ (疎結合) — CleanerFish パターン
+eval-log.jsonl を shared volume 経由で読み書き
+定期実行 (cron 的 / volume サイズ監視)
+定期実行時に　全項目を　balanced -> その種族型　でスコア付け
+何体くらいで評価をする？　データはコピーして並列で走らせて平均とるか？
+下限域のものは CleanerFish が消す　スフィア同様、環境で可変式？
 
 
+フィードバック
+0.7 × 自種族 + 0.3 × 全種族 環境ブレンド (Phase 2 実装済み)
+Species Profile → hotNodes, commonTags (現在) → 将来 avgH/W/D, qv 補正
+種族メモリーのブレンドも同じ発想で　7:3　程度で別種族の思想を取り入れ
+記憶を搭載し、探索に行く　あくまで緩やかに効くはず
 
 
-
-
+未決事項:
+half_life の具体値 -> 
+hunger 閾値の具体カーブ　-> どの程度データを残しておくべきか
+pruning の単位 (session 単位? evaluation 単位?)
+生存抽選の確率分布
+Species Profile の出力フォーマット (現在の SpeciesMemoryBias を拡張? 別ファイル?)
+今回発見した format:json 前後の w スコア era 差をどう扱うか
 

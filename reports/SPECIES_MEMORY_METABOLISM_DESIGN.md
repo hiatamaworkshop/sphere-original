@@ -1,8 +1,9 @@
 # Species Memory Metabolism — 種族記憶の代謝設計
 
-**Date**: 2026-02-09
-**Status**: 設計完了 / 実装待ち (eval-log が十分に蓄積してから)
+**Date**: 2026-02-09 (Phase 3 具体化: 同日)
+**Status**: Phase 3 設計確定 / 実装可 (eval-log 93 entries 蓄積済み)
 **前提**: [SPECIES_MEMORY_DESIGN.md](./SPECIES_MEMORY_DESIGN.md)
+**データ**: [DATA_ACCUMULATION_20260209.md](./DATA_ACCUMULATION_20260209.md) — 93 entries / 288 evaluations
 
 ---
 
@@ -80,7 +81,120 @@ scholar の qv で scholar の記憶を評価
 
 - balanced = [0.33, 0.34, 0.33] — どの次元も等しく評価
 - time_decay = exp(-age / half_life) — 古い記憶は自然に薄れる
-- hunger = f(file_size) — ファイルが大きいほど閾値が上がる (CleanerFish と同じ)
+- hunger = f(evaluation件数) — 件数が多いほど閾値が上がる (CleanerFish と同じ)
+
+## Phase 3 具体仕様 (2026-02-09 確定)
+
+### 処理フロー — 2ステップモデル
+
+```
+eval-log.jsonl (生の記憶プール)
+    ↓ 読み込み (evaluation 単位にフラット化)
+    ↓
+Step 1: 淘汰 (中立)
+    淘汰score = balanced_qv · [h, w, d] × time_decay
+    hunger_threshold で足切り
+    生存抽選: score < threshold でも min 5% で生き残る
+    ↓
+Step 2: 種族別集約 (種族固有)
+    生存 evaluations を loadout 別にグルーピング
+    各種族の qv で再スコア → hotNodes, commonTags, avgH/W/D 算出
+    環境ブレンド: 0.7 × 自種族集約 + 0.3 × 全種族集約
+    ↓
+species-profile.json (出力)
+    phi-agent が起動時に読み込み
+```
+
+### 具体パラメータ
+
+#### time_decay — half_life
+
+```
+time_decay = exp(-age_hours / half_life_hours)
+half_life = 72h (初期値, 調整可能)
+
+例:
+  1日前 → × 0.79
+  3日前 → × 0.50
+  7日前 → × 0.12
+```
+
+Sphere の TTL (-10/tick) に相当。eval-log の「tick」は Digestor の実行間隔。
+初期値は長め (72h) にして観察。蓄積速度に応じて調整。
+
+#### hunger — evaluation 件数ベース
+
+```
+hunger = f(total_evaluation_count)
+
+件数 < 200   → hunger = 0.2 (ほぼ削除しない)
+件数 200-500 → hunger = 0.4-0.6 (中程度)
+件数 > 500   → hunger = 0.8-1.0 (積極削除)
+```
+
+**pruning 単位は evaluation (= 1記憶)。** session 単位ではない。
+session は 2-5 eval を含み粒度が荒い。evaluation 1件 = 1記憶 = 1判断。
+
+#### 生存抽選 — 下限域のノイズ保全
+
+```
+if (score >= threshold) → 生存 (確定)
+if (score < threshold)  → 生存確率 = max(0.05, score / threshold)
+```
+
+eval-log のエントリはメタデータのみ (ストレージコスト低い)。
+Sphere の decompose (完全消去) と異なり、少し残す方がノイズの価値が大きい。
+
+#### 種族別の最低保持件数
+
+```
+各種族 minimum 20 evaluations (これ以下なら pruning しない)
+全9種族で minimum 180 evaluations
+上限目安: 500-1000 evaluations
+```
+
+### Species Profile 出力フォーマット
+
+```json
+{
+  "generated": "2026-02-09T12:00:00Z",
+  "totalEvaluations": 288,
+  "survivedEvaluations": 220,
+  "species": {
+    "scholar": {
+      "sessions": 10,
+      "evaluations": 30,
+      "avgH": 5.0,
+      "avgW": 5.7,
+      "avgD": 4.3,
+      "hotNodes": ["nodeId1", "nodeId2", ...],
+      "commonTags": ["psychology", "theory", ...],
+      "busEmitRate": 0.0,
+      "busRecvRate": 0.5
+    },
+    ...
+  },
+  "global": {
+    "avgH": 5.8,
+    "avgW": 4.3,
+    "hotNodes": [...],
+    "commonTags": [...]
+  }
+}
+```
+
+**phi-agent 側の読み込み**: 起動時に `species-profile.json` を読み、
+自種族の `species[loadout]` と `global` を 0.7/0.3 でブレンドして
+SpeciesMemoryBias を構築。現行の `getSpeciesSummary()` を差し替え。
+
+**将来の API 化**: Digestor が常駐サービスになった段階で
+`GET /profile/:loadout` エンドポイントに移行可能。最初はファイルベース。
+
+### era 差 (format:json 前後) の扱い
+
+**初期ノイズとして放置。** Legacy データ (model タグなし) を特別扱いしない。
+time_decay が自然に淘汰する。Digestor の最初の数回実行で legacy が消え、
+phi3:mini tagged データだけが残る。人為的に切らない。
 
 ## フィードバックの環境ブレンド (Mutation)
 
@@ -158,17 +272,17 @@ Species Profile (後天的形質) = Loadout への補正値
 
 ## 実装の前提条件
 
-1. eval-log.jsonl に十分なデータが蓄積されていること (最低 20-30 セッション)
-2. 複数種族が並行して動いていること (ブレンドの意味がある)
+1. ~~eval-log.jsonl に十分なデータが蓄積されていること (最低 20-30 セッション)~~ → **達成** (93 sessions)
+2. ~~複数種族が並行して動いていること (ブレンドの意味がある)~~ → **達成** (全9種族)
 3. 閾値の調整はデータを見てから — 理論先行で決めない
 
-## 実装順序 (提案)
+## 実装順序
 
-1. **Phase 0** (現在): eval-log 蓄積。現状の SpeciesMemoryBias で運用
-2. **Phase 1**: `getSpeciesSummary()` を loadout=undefined で全種族集約可能にする (既に可能)
-3. **Phase 2**: 環境ブレンド (0.7/0.3) を SpeciesMemoryBias 構築時に適用
-4. **Phase 3**: Digestor コンテナ — 定期実行、scoring + pruning
-5. **Phase 4**: Species Profile → Loadout overlay (qualityVector 補正)
+1. **Phase 0** ✅: eval-log 蓄積 (93 entries / 288 evaluations)
+2. **Phase 1** ✅: `getSpeciesSummary()` を loadout=undefined で全種族集約可能にする
+3. **Phase 2** ✅: 環境ブレンド (0.7/0.3) を agent.ts 起動時に適用
+4. **Phase 3** ← **NOW**: Digestor コンテナ — 定期実行、2ステップ scoring + pruning + species-profile.json 出力
+5. **Phase 4**: Species Profile → Loadout overlay (qualityVector 補正、将来)
 
 ## 設計哲学 — 種は環境から生まれる
 
@@ -200,3 +314,6 @@ Sphere が scholar を許容しなければ、scholar はそこでは別の何�
 - [STRUCTURED_FLUCTUATION_MEMO.md](./STRUCTURED_FLUCTUATION_MEMO.md) — 構造化された揺らぎ
 - [EMERGENT_PERSONALITY_MEMO.md](./EMERGENT_PERSONALITY_MEMO.md) — 性格は測定器具に宿る
 - [LOADOUT_DESIGN_MEMO.md](./LOADOUT_DESIGN_MEMO.md) — Loadout = 静的人格
+- [DATA_ACCUMULATION_20260209.md](./DATA_ACCUMULATION_20260209.md) — データ蓄積セッション
+- [EVALFOCUS_PROMPT_PATTERNS.md](./EVALFOCUS_PROMPT_PATTERNS.md) — model bias の観察
+- [EXTERNAL_ACCESS_PATTERNS.md](./EXTERNAL_ACCESS_PATTERNS.md) — score 正規化は Digestor の責務
