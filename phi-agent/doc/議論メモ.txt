@@ -130,3 +130,13 @@ Species Profile の出力フォーマット (現在の SpeciesMemoryBias を拡�
 　-> プロセッサを搭載して成型、レイヤー側はAPI取得？
 今回発見した format:json 前後の w スコア era 差をどう扱うか ->初期ノイズで良い
 
+
+
+
+moth (fast-gate.ts:246)
+"Observe this node. Is it popular? Active? Does it attract attention or surprise? Is it reliable? Will it last? Rate heat (1-9), weight (1-9), and decay (1-9)."
+質問順序: 人気/活発さ（heat）→ 信頼性（weight）→ 持続性（decay）
+
+hermit (fast-gate.ts:260)
+"Observe this node. Is it stable and deep? Will it endure over time? Is it reliable? Does it seem active or popular? Rate heat (1-9), weight (1-9), and decay (1-9)."
+質問順序: 安定性/深さ（weight/decay）→ 持続性（decay）→ 信頼性（weight）→ 活発さ（heat）

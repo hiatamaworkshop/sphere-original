@@ -174,7 +174,7 @@ export const LOADOUTS: Record<string, Loadout> = {
     returnWeights: [0.3, 0.2, 0.3, 0.2],
     walkPreference: "explore",
     minCycles: 3,
-    evalFocus: "Rate this node's overall value — balance relevance, authority, and longevity.",
+    evalFocus: "Observe this node as a neutral explorer.\n\nRate (1–9, 5=neutral):\nheat = how much motion or attention you feel\nweight = how dense or grounded it feels\ndecay = how fast it seems to fade or change",
   },
   scholar: {
     name: "scholar",
@@ -188,7 +188,7 @@ export const LOADOUTS: Record<string, Loadout> = {
     returnWeights: [0.2, 0.1, 0.1, 0.6],
     walkPreference: "deep",
     minCycles: 5,
-    evalFocus: "Judge this node's depth and authority. Is this established, trustworthy knowledge? Prioritize weight over heat.",
+    evalFocus: "Observe this node as a scholar seeking knowledge.\n\nRate (1–9, 5=neutral):\nheat = how much motion or attention you feel\nweight = how dense or grounded it feels\ndecay = how fast it seems to fade or change",
   },
   scout: {
     name: "scout",
@@ -202,7 +202,7 @@ export const LOADOUTS: Record<string, Loadout> = {
     returnWeights: [0.4, 0.3, 0.2, 0.1],
     walkPreference: "explore",
     minCycles: 2,
-    evalFocus: "How fresh and actively relevant is this? Rate heat high if it's timely and useful right now. Decay old information faster.",
+    evalFocus: "Observe this node as a scout seeking novelty.\n\nRate (1–9, 5=neutral):\nheat = how much motion or attention you feel\nweight = how dense or grounded it feels\ndecay = how fast it seems to fade or change",
   },
   archivist: {
     name: "archivist",
@@ -216,7 +216,7 @@ export const LOADOUTS: Record<string, Loadout> = {
     returnWeights: [0.2, 0.1, 0.3, 0.4],
     walkPreference: "deep",
     minCycles: 4,
-    evalFocus: "Should this knowledge be preserved? Rate decay LOW if worth saving, HIGH if ephemeral. Weight reflects archival value.",
+    evalFocus: "Observe this node as an archivist preserving knowledge.\n\nRate (1–9, 5=neutral):\nheat = how much motion or attention you feel\nweight = how dense or grounded it feels\ndecay = how fast it seems to fade or change",
   },
   hunter: {
     name: "hunter",
@@ -229,7 +229,7 @@ export const LOADOUTS: Record<string, Loadout> = {
     returnWeights: [0.3, 0.4, 0.2, 0.1],
     walkPreference: "hot",
     minCycles: 3,
-    evalFocus: "Is this a high-value target? Rate heat high only if truly exceptional. Be selective — mediocre nodes get low scores.",
+    evalFocus: "Observe this node as a hunter seeking high-value targets.\n\nRate (1–9, 5=neutral):\nheat = how much motion or attention you feel\nweight = how dense or grounded it feels\ndecay = how fast it seems to fade or change",
   },
   // --- Extreme patterns (experimental) ---
   moth: {
@@ -243,7 +243,7 @@ export const LOADOUTS: Record<string, Loadout> = {
     returnWeights: [0.5, 0.1, 0.2, 0.2],
     walkPreference: "hot",
     minCycles: 3,
-    evalFocus: "Observe this node. Is it popular? Active? Does it attract attention or surprise? Is it reliable? Will it last? Rate heat (1-9), weight (1-9), and decay (1-9).",
+    evalFocus: "Observe this node like a moth drawn to light.\n\nRate (1–9, 5=neutral):\nheat = how much motion or attention you feel\nweight = how dense or grounded it feels\ndecay = how fast it seems to fade or change",
   },
   hermit: {
     name: "hermit",
@@ -257,7 +257,7 @@ export const LOADOUTS: Record<string, Loadout> = {
     returnWeights: [0.2, 0.1, 0.1, 0.6],
     walkPreference: "deep",
     minCycles: 4,
-    evalFocus: "Observe this node. Is it stable and deep? Will it endure over time? Is it reliable? Does it seem active or popular? Rate heat (1-9), weight (1-9), and decay (1-9).",
+    evalFocus: "Observe this node quietly, like a hermit in isolation.\n\nRate (1–9, 5=neutral):\nheat = how much motion or attention you feel\nweight = how dense or grounded it feels\ndecay = how fast it seems to fade or change",
   },
   wanderer: {
     name: "wanderer",
@@ -265,7 +265,7 @@ export const LOADOUTS: Record<string, Loadout> = {
     returnWeights: [0.0, 0.0, 1.0, 0.0],
     walkPreference: "explore",
     minCycles: 1,
-    evalFocus: "Rate everything honestly. No bias, no preference. Just measure what you see.",
+    evalFocus: "Observe this node without bias.\n\nRate (1–9, 5=neutral):\nheat = how much motion or attention you feel\nweight = how dense or grounded it feels\ndecay = how fast it seems to fade or change",
   },
   sniper: {
     name: "sniper",
@@ -279,7 +279,7 @@ export const LOADOUTS: Record<string, Loadout> = {
     returnWeights: [0.5, 0.3, 0.1, 0.1],
     walkPreference: "hot",
     minCycles: 2,
-    evalFocus: "Is this exactly what I'm looking for? Score harshly — only a direct hit on my query deserves high heat. Near-misses get low scores.",
+    evalFocus: "Observe this node as a sniper seeking precision targets.\n\nRate (1–9, 5=neutral):\nheat = how much motion or attention you feel\nweight = how dense or grounded it feels\ndecay = how fast it seems to fade or change",
   },
 };
 

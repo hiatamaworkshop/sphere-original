@@ -25,7 +25,7 @@ const DEFAULT_CONFIG: OllamaConfig = {
   host: process.env.OLLAMA_HOST || "http://localhost:11434",
   model: process.env.OLLAMA_MODEL || "phi3:mini",
   temperature: 0.2,
-  maxTokens: 96,  // JSON-only response — 64 caused truncation with longer evalFocus prompts
+  maxTokens: 128,  // JSON-only response — increased for experiment stability
 };
 
 export class OllamaClient {
