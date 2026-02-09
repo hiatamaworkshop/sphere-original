@@ -2,7 +2,8 @@
   "permissions": {
     "allow": [
       "Bash(npx tsx:*)",
-      "Bash(docker ps:*)"
+      "Bash(docker ps:*)",
+      "Bash(docker run:*)"
     ]
   }
 }
