@@ -1,4 +1,4 @@
-# Species Explorer UI
+# Explorers
 
 Minimal web UI to launch phi-agent containers with different **Loadouts** (personality presets) and observe their perception cycles.
 
@@ -44,7 +44,7 @@ docker build -t phi-agent:latest .
 ### 2. Check Environment
 
 ```bash
-cd species-explorer
+cd explorers
 python check_env.py
 ```
 
@@ -146,7 +146,7 @@ app.use(cors({
 ## File Structure
 
 ```
-species-explorer/
+explorers/
 ├── app.py              # Gradio UI
 ├── executor.py         # phi-agent Docker executor
 ├── parser.py           # stdout parser
@@ -186,7 +186,7 @@ docker build -t phi-agent:latest .
 
 ## Related Documents
 
-- [SPECIES_EXPLORER_UI_DESIGN.md](../reports/SPECIES_EXPLORER_UI_DESIGN.md) — Design philosophy and architecture
+- [EXPLORERS_UI_DESIGN.md](../reports/EXPLORERS_UI_DESIGN.md) — Design philosophy and architecture
 - [COUPLING_LAYER_AND_DIGESTOR_GUIDE.md](../docs/COUPLING_LAYER_AND_DIGESTOR_GUIDE.md) — How phi-agent works
 - [LOADOUT_DESIGN_MEMO.md](../reports/LOADOUT_DESIGN_MEMO.md) — Species personality vectors
 

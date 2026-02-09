@@ -101,7 +101,7 @@ def check_ollama(host):
 
 def main():
     print("=" * 60)
-    print("Species Explorer — Environment Check")
+    print("Explorers — Environment Check")
     print("=" * 60)
     print()
 

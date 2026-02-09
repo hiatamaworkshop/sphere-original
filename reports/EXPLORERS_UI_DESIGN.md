@@ -1,4 +1,4 @@
-# Species Explorer UI — Design Document
+# Explorers — Sphere Perception UI
 
 > Stigmergic measurement apparatus for observing emergent personality in the Sphere
 
@@ -9,7 +9,7 @@
 
 ## 概要
 
-**Species Explorer UI** は、Sphere における種族 (Loadout) と LLM センサーの組み合わせによる創発的性格を観測するための最小限のインターフェースである。
+**Explorers** は、Sphere における種族 (Loadout) と LLM センサーの組み合わせによる創発的性格を観測するための最小限のインターフェースである。
 
 ### 目的
 
@@ -33,7 +33,7 @@
 
 ```
 ┌─────────────────────────────────────────────┐
-│ Species Explorer UI                         │
+│ Explorers — Sphere Perception UI           │
 │ (Hugging Face Space / Render)              │
 │                                             │
 │  [Model: llama3.2:1b]                      │
@@ -85,7 +85,7 @@
 
 | レイヤー | 責務 | 実装場所 |
 |---------|------|---------|
-| **UI** | ユーザー選択受付、結果表示、Docker 起動 | Hugging Face / Render (フロント) |
+| **Explorers** | ユーザー選択受付、結果表示、Docker 起動 | Hugging Face / Render (フロント) |
 | **phi-agent** | FastGate, Feelings, Loadout (全探索ロジック) | Docker コンテナ |
 | **Sphere API** | 物理法則、状態遷移、探索エンドポイント | Render (バックエンド) |
 | **Digestor** | 種族記憶代謝 (scoring, pruning, archiving) | 別コンテナ (定期実行) |

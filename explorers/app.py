@@ -1,5 +1,5 @@
 """
-Species Explorer UI — Gradio MVP
+Explorers — Gradio MVP
 
 Minimal UI to launch phi-agent containers and observe their perception cycles.
 Displays: species selector, execute button, real-time cycle viewer.
@@ -124,10 +124,10 @@ def create_ui():
     }
     """
 
-    with gr.Blocks(title="Species Explorer — Sphere") as app:
+    with gr.Blocks(title="Explorers — Sphere") as app:
 
         gr.Markdown("""
-        # Species Explorer
+        # Explorers
 
         Launch phi-agent with different **Loadouts** (personality presets) and observe their perception cycles.
         Each species has different **weights**, **quality vectors**, and **return behaviors** — producing distinct exploration patterns.
@@ -161,9 +161,10 @@ def create_ui():
                     lines=2
                 )
 
-                model_input = gr.Textbox(
-                    label="Model",
+                model_input = gr.Dropdown(
+                    choices=["llama3.2:1b"],
                     value="llama3.2:1b",
+                    label="Model",
                     info="Ollama model name"
                 )
 
@@ -236,8 +237,6 @@ def create_ui():
         **Architecture**: `UI → phi-agent (Docker) → Sphere API`
 
         **Data Access**: Displays L2 (tags + summary) only. Content (L3) stays in Sphere.
-
-        **See Also**: [SPECIES_EXPLORER_UI_DESIGN.md](../reports/SPECIES_EXPLORER_UI_DESIGN.md) for full design philosophy.
         """)
 
     return app, theme, css
