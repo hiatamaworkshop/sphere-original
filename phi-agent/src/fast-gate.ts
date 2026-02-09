@@ -243,7 +243,7 @@ export const LOADOUTS: Record<string, Loadout> = {
     returnWeights: [0.5, 0.1, 0.2, 0.2],
     walkPreference: "hot",
     minCycles: 3,
-    evalFocus: "How HOT is this? Only heat matters. Bright, active, buzzing with attention = high score. Cold and quiet = low.",
+    evalFocus: "Observe this node. Is it popular? Active? Does it attract attention or surprise? Is it reliable? Will it last? Rate heat (1-9), weight (1-9), and decay (1-9).",
   },
   hermit: {
     name: "hermit",
@@ -257,7 +257,7 @@ export const LOADOUTS: Record<string, Loadout> = {
     returnWeights: [0.2, 0.1, 0.1, 0.6],
     walkPreference: "deep",
     minCycles: 4,
-    evalFocus: "Ignore popularity. Is this heavy, stable, enduring knowledge? Weight and low decay matter. Trendy content deserves low scores.",
+    evalFocus: "Observe this node. Is it stable and deep? Will it endure over time? Is it reliable? Does it seem active or popular? Rate heat (1-9), weight (1-9), and decay (1-9).",
   },
   wanderer: {
     name: "wanderer",
