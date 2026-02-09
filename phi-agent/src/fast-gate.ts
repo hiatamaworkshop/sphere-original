@@ -181,7 +181,7 @@ export const LOADOUTS: Record<string, Loadout> = {
     weights: { metrics: { ...DEFAULT_WEIGHTS.metrics, weight: 0.5, distance: -1 } },
     weapon: {
       flagBias: { authority: 1.8, freshness: 0.7, sticky: 1.2 },
-      stateBias: { hot: 0.8, frozen: 0.6 },
+      stateBias: { hot: 0.8, frozen: 1.3 },
       ratioBias: { stability: 0.5 },
     },
     qualityVector: QUALITY_PRESETS.scholar,
@@ -209,7 +209,7 @@ export const LOADOUTS: Record<string, Loadout> = {
     weights: { metrics: { ...DEFAULT_WEIGHTS.metrics, weight: 0.5, decay: -0.3 } },
     weapon: {
       flagBias: { authority: 1.3, sticky: 1.5 },
-      stateBias: { hot: 0.7, frozen: 0.8 },
+      stateBias: { hot: 0.7, frozen: 1.5 },
       ratioBias: { stability: -0.3 },
     },
     qualityVector: QUALITY_PRESETS.archivist,
@@ -250,7 +250,7 @@ export const LOADOUTS: Record<string, Loadout> = {
     weights: { metrics: { ...DEFAULT_WEIGHTS.metrics, heat: -0.3, weight: 1.0, decay: -0.5, distance: -1 }, keywordMatch: 3 },
     weapon: {
       flagBias: { authority: 1.8, freshness: 0.5, sticky: 1.5 },
-      stateBias: { hot: 0.5, frozen: 0.7 },
+      stateBias: { hot: 0.5, frozen: 1.2 },
       ratioBias: { stability: 0.6 },
     },
     qualityVector: [0.0, 0.6, 0.4, 0.0],
@@ -535,7 +535,10 @@ export class FastGate {
       // Hard exclude: already focused
       if (this.memory.wasVisited(n.id)) continue;
 
-      // Hard exclude: Compressed (fossil — no content to read)
+      // Hard exclude: Ghost/Fossil — sense-visible but not focusable
+      // Ghost: tags+summary readable in sense results (L1+L2), but no L3 content
+      // Fossil: Compressed flag, L1 only
+      if (n.kind === "ghost" || n.kind === "fossil") continue;
       if (n.flags & Flag.Compressed) continue;
 
       // Hard exclude: auto-generated breadcrumbs (Explored/AutoCapsule)

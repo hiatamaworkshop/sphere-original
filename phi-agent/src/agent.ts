@@ -87,16 +87,44 @@ export class PhiAgent {
       : this.config.loadout;
 
     // Load species memory — inherited knowledge from past sessions
+    // Environmental blend: 0.7 × own species + 0.3 × all species (environmental pressure)
     const loadoutName = typeof this.config.loadout === "string"
       ? this.config.loadout : this.config.loadout.name;
     const species = getSpeciesSummary(loadoutName);
+    const allSpecies = getSpeciesSummary();
     let speciesBias: SpeciesMemoryBias | undefined;
-    if (species.sessions > 0) {
+    if (species.sessions > 0 || allSpecies.sessions > 0) {
+      const SELF_W = 0.7;
+      const ENV_W = 0.3;
+
+      // Blend hotNodes: merge visit counts with weighted ratio
+      const blendedNodes = new Map<string, number>();
+      for (const n of species.hotNodes) {
+        blendedNodes.set(n.nodeId, (blendedNodes.get(n.nodeId) ?? 0) + n.count * SELF_W);
+      }
+      for (const n of allSpecies.hotNodes) {
+        blendedNodes.set(n.nodeId, (blendedNodes.get(n.nodeId) ?? 0) + n.count * ENV_W);
+      }
+
+      // Blend tags: merge counts with weighted ratio
+      const blendedTagMap = new Map<string, number>();
+      for (const t of species.commonTags) {
+        blendedTagMap.set(t.tag, (blendedTagMap.get(t.tag) ?? 0) + t.count * SELF_W);
+      }
+      for (const t of allSpecies.commonTags) {
+        blendedTagMap.set(t.tag, (blendedTagMap.get(t.tag) ?? 0) + t.count * ENV_W);
+      }
+      // Sort by blended count, take top tags
+      const blendedTags = [...blendedTagMap.entries()]
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 15)
+        .map(([tag]) => tag);
+
       speciesBias = {
-        hotNodeIds: new Map(species.hotNodes.map(n => [n.nodeId, n.count])),
-        tags: species.commonTags.map(t => t.tag),
+        hotNodeIds: blendedNodes,
+        tags: blendedTags,
       };
-      this.log(`Species memory: ${species.sessions} past sessions, ${species.hotNodes.length} known nodes, ${species.commonTags.length} tags`);
+      this.log(`Species memory: ${species.sessions} own + ${allSpecies.sessions} total sessions (blend ${SELF_W}/${ENV_W}), ${blendedNodes.size} nodes, ${blendedTags.length} tags`);
     }
     this.gate = new FastGate(this.config.query, loadout, speciesBias);
     this.stats = {

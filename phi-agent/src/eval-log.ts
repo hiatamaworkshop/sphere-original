@@ -109,10 +109,10 @@ export interface SpeciesSummary {
   commonTags: Array<{ tag: string; count: number }>;
 }
 
-export function getSpeciesSummary(loadout: string): SpeciesSummary {
+export function getSpeciesSummary(loadout?: string): SpeciesSummary {
   const entries = readEvalLog(loadout);
   const summary: SpeciesSummary = {
-    loadout,
+    loadout: loadout ?? "(all)",
     sessions: entries.length,
     totalEvals: 0,
     avgH: 0,
