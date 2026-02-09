@@ -1,212 +1,98 @@
-# qwen2.5:0.5b Model Comparison Test — Summary
+# qwen2.5:0.5b — Daemon Mode Test Results
 
-**Date**: 2026-02-09
-**Model**: qwen2.5:0.5b (397 MB, 0.5B parameters)
-**Query**: "knowledge exploration"
-**Sphere**: http://sphere-periphery:3001
+**日付**: 2026-02-09
+**方法**: Docker daemon mode, 3 agents (wanderer*, moth, hermit), ~18 min
+**データ**: 54 sessions / 168 evaluations
+**速度**: 32-34s/session (phi3:mini baseline: ~60s → **47% 高速**)
 
----
-
-## Test Results
-
-### Execution Metrics
-
-| Species | Time (s) | Cycles | Evals | avgH | avgW | avgD | Notes |
-|---------|----------|--------|-------|------|------|------|-------|
-| balanced | 27.7 | 4 | 3 | 8.3 | 7.0 | 4.0 | Baseline |
-| hunter | 23.8 | 5 | 3* | 8.0 | 7.0 | 4.0 | *1 JSON parse failure |
-| scholar | 23.0 | 4 | 3 | 9.0 | 6.3 | 3.7 | Fastest |
-| hermit | 24.4 | 4 | 3 | 8.0 | 7.0 | 4.0 | — |
-
-**Average execution time**: 24.7s (vs baseline ~60s with llama3.2:1b)
-
-### Raw Evaluation Data
-
-**balanced** (3 evals):
-- Cycle 1: h=8, w=7, d=4 (Topological manifolds)
-- Cycle 2: h=9, w=7, d=4 (Stanford prison experiment)
-- Cycle 3: h=8, w=7, d=4 (Evolution by natural selection)
-
-**hunter** (3 evals, 1 failure):
-- Cycle 1: h=undefined (JSON parse failure)
-- Cycle 2: h=8, w=7, d=4 (Topological manifolds)
-- Cycle 3: h=8, w=7, d=4 (Evolution by natural selection)
-- Cycle 4: h=8, w=7, d=4 (Pentatonic scale)
-
-**scholar** (3 evals):
-- Cycle 1: h=9, w=7, d=4 (Sapir-Whorf hypothesis)
-- Cycle 2: h=8, w=7, d=4 (Chomsky hierarchy)
-- Cycle 3: h=10, w=5, d=3 (Birthday paradox)
-
-**hermit** (3 evals):
-- Cycle 1: h=8, w=7, d=4 (Nash equilibrium)
-- Cycle 2: h=8, w=7, d=4 (Stanford prison experiment)
-- Cycle 3: h=8, w=7, d=4 (Topological manifolds)
+*wanderer は loadout リネーム影響で "balanced" として記録
 
 ---
 
-## Analysis
+## 種族別統計
 
-### ✅ Speed Improvement: SUCCESS
+| Loadout | Sess | Evals | avgH | stdH | avgW | stdW | avgD | stdD | BusE | BusR |
+|---------|------|-------|------|------|------|------|------|------|------|------|
+| balanced(=wanderer) | 18 | 56 | 7.3 | 2.3 | 5.9 | 1.9 | 3.5 | 0.7 | 38 | 72 |
+| hermit | 18 | 57 | 7.5 | 1.8 | 6.3 | 1.9 | 3.5 | 0.8 | 36 | 67 |
+| moth | 18 | 55 | 7.4 | 2.2 | 6.1 | 2.1 | 3.6 | 0.9 | 32 | 54 |
 
-- **Target**: <40s per session (50% reduction from 60s baseline)
-- **Result**: 24.7s average (**59% faster** than baseline)
-- **Conclusion**: ✅ 0.5B model delivers significant speed improvement
+## スコア分布
 
-### ⚠️ Species Differentiation: WEAK
+```
+h 分布 (全種族で h=8 に集中):
+  balanced: 0:3  2:1  3:1  5:4  6:4  [8:26]  9:16  10:1
+  hermit:   0:1  2:1  4:1  5:7  6:1  [8:36]   9:9  10:1
+  moth:     0:2  2:2  3:1  5:5  6:1  [8:26]  9:17  10:1
 
-**Expected**:
-- hunter avgH > balanced (heat seeker bias)
-- scholar avgW > balanced (weight lover bias)
-- hermit avgD > balanced (stability seeker bias)
-
-**Observed**:
-- hunter avgH (8.0) < balanced avgH (8.3) ❌
-- scholar avgW (6.3) < balanced avgW (7.0) ❌
-- hermit avgD (4.0) = balanced avgD (4.0) ❌
-
-**Differences from baseline**:
-- All species converge to h≈8, w≈7, d≈4
-- Very low variance (±0.5 points)
-- No clear personality differentiation
-
-### 🔍 Score Distribution
-
-**h (heat)**: 8.0-9.0 (tight range, median 8.0)
-**w (weight)**: 5.0-7.0 (slight variance, median 7.0)
-**d (decay)**: 3.0-4.0 (very tight range, median 4.0)
-
-**Observations**:
-- Scores are in valid range (not all 10 or all 0)
-- Model understands the task and produces reasonable evaluations
-- But: lacks **sensitivity to quality vector differences** in the prompt
-
-### 🚨 JSON Format Issues
-
-- **1 parse failure** in hunter Cycle 1
-- Model occasionally ignores `format:json` directive
-- Success rate: 11/12 = 92%
-
----
-
-## Comparison vs Baseline
-
-| Metric | Baseline (llama3.2:1b + phi3:mini) | qwen2.5:0.5b | Δ |
-|--------|-----------------------------------|--------------|---|
-| **Speed** | ~60s | 24.7s | **-59%** ✅ |
-| **hunter avgH** | 6.0 | 8.0 | +2.0 (but no species diff) |
-| **scholar avgW** | 7.71 | 6.3 | -1.4 ❌ |
-| **Species differences** | Clear (hunter > balanced by +0.8 H) | **Absent** ❌ |
-| **JSON compliance** | ~100% | 92% ⚠️ |
-
----
-
-## Verdict
-
-**Category**: ⚠️ **Conditional Pass** (Speed OK, Personality Weak)
-
-### What Works
-
-1. ✅ **Speed**: 59% faster execution (24.7s vs 60s)
-2. ✅ **Scores in valid range**: Not all 10/0, shows understanding
-3. ✅ **Stable operation**: No crashes, Docker integration works
-4. ✅ **Bus communication**: Emits/receives work correctly
-
-### What Doesn't Work
-
-1. ❌ **Species differentiation lost**: All species evaluate similarly
-2. ❌ **Quality vector sensitivity**: Model ignores fine-grained evalFocus differences
-3. ⚠️ **JSON compliance**: 8% failure rate (1/12 evals)
-
----
-
-## Interpretation (Per EMERGENT_PERSONALITY_MEMO.md)
-
-> 性格 = 測定器具 (Loadout) × 物理法則 (Sphere) × 感覚器官 (任意の LLM)
-
-**Hypothesis**: 0.5B model lacks **resolution** in the sensor (LLM) component.
-
-- **Loadout (vectors)**: Different ✅
-- **Physics (Sphere)**: Same ✅
-- **Sensor (qwen2.5:0.5b)**: **Too coarse-grained** ❌
-
-**Analogy**: Using a low-resolution camera (0.5B) to read fine print (quality vector differences).
-- The text exists (Loadout differs)
-- But the sensor cannot resolve it (LLM too small)
-
-**Result**: Personality **does not emerge** because the measurement instrument lacks sensitivity.
-
----
-
-## Next Steps (Per MODEL_COMPARISON_PROTOCOL.md)
-
-### Option 1: Prompt Simplification (Recommended)
-
-**Problem**: evalFocus is too complex for 0.5B model
-**Solution**: Simplify evalFocus to single-dimension focus
-
-Example:
-- hunter: "Rate ONLY heat (h). Ignore weight and decay."
-- scholar: "Rate ONLY weight (w). Ignore heat and decay."
-
-**Expected**: Species differences re-emerge with simplified instructions
-
-### Option 2: Larger Model (Fallback)
-
-**Test phi3.5:mini (3.8B)** if simplification fails:
-- Higher parameter count → better instruction following
-- Expected: Species differentiation restored
-- Trade-off: Slower execution (~40-50s)
-
-### Option 3: Hybrid Strategy
-
-- Use qwen2.5:0.5b for **daemon mode** (speed priority, personality not critical)
-- Use phi3:mini for **interactive mode** (personality matters)
-
----
-
-## Conclusion
-
-**qwen2.5:0.5b delivers speed but sacrifices personality.**
-
-- **For raw speed**: ✅ Use it (59% faster)
-- **For species memory experiments**: ❌ Inadequate (no personality differentiation)
-- **For production**: ⚠️ Needs prompt tuning or larger model
-
-**Recommended action**: Proceed to Option 1 (prompt simplification) before trying larger models.
-
----
-
-## Appendices
-
-### A. Species Memory Statistics (Post-Test)
-
-From test output:
-
-- **balanced**: 22 evals total, avgH=5.0, avgW=4.6, avgD=3.8
-- **hunter**: 22 evals total, avgH=6.3, avgW=5.1, avgD=4.0
-- **scholar**: 65 evals total, avgH=5.2, avgW=**7.8**, avgD=4.7 (weight bias visible in aggregate)
-- **hermit**: 67 evals total, avgH=5.6, avgW=6.2, avgD=4.1
-
-**Observation**: Species memory **does show differences** (scholar avgW=7.8 is highest).
-But **current session** (3 evals each) does not reflect this due to low sample size and model limitations.
-
-### B. Execution Environment
-
-- **Docker**: sphere-network, sphere-phi-agent-data volume
-- **Sphere**: periphery @ localhost:3001
-- **Ollama**: host.docker.internal:11434
-- **phi-agent**: latest image (built 2026-02-09)
-
-### C. Raw Output Files
-
-Stored in `eval-log.jsonl` (appended to species memory).
-To extract qwen test data:
-```bash
-tail -12 phi-agent/data/eval-log.jsonl > test-qwen2.5-0.5b/eval-log-qwen-test.jsonl
+w 分布 (全種族で w=7 に集中):
+  balanced: 0:3  2:3  5:7  6:11  [7:32]
+  hermit:   0:2  1:1  2:1  3:1  5:9  6:3  [7:37]  9:1  10:2
+  moth:     0:4  2:1  3:2  5:4  6:6  [7:37]  10:1
 ```
 
+## phi3:mini ベースラインとの比較
+
+| Loadout | 0.5B h | 3B h | Δh | 0.5B w | 3B w | Δw |
+|---------|--------|------|-----|--------|------|-----|
+| wanderer→balanced | 7.3 | 7.0 | +0.3 | 5.9 | 4.9 | +1.0 |
+| hermit | 7.5 | 5.3 | **+2.2** | 6.3 | 3.9 | **+2.4** |
+| moth | 7.4 | 6.7 | +0.7 | 6.1 | 3.5 | **+2.6** |
+
+## 種族差の比較
+
+| 指標 | 0.5B (range) | phi3:mini (range) | 比率 |
+|------|-------------|-------------------|------|
+| h | 7.3-7.5 (**0.2pt**) | 5.0-7.0 (2.0pt) | **10x 縮小** |
+| w | 5.9-6.3 (**0.4pt**) | 3.5-6.8 (3.3pt) | **8x 縮小** |
+| d | 3.5-3.6 (**0.1pt**) | 3.0-5.0 (2.0pt) | **20x 縮小** |
+
+## 結論
+
+### 種族性: 消失
+
+qwen2.5:0.5b は evalFocus の指示を事実上無視している。全種族が同一の「安全」スコアパターン
+(h≈8, w≈7, d≈3.5) に収束する。
+
+- **hermit** の evalFocus: "Ignore popularity... Weight and low decay matter" → **効果なし** (w=6.3 vs balanced 5.9, 差 0.4pt)
+- **moth** の evalFocus: "How HOT is this? Only heat matters" → **効果なし** (h=7.4 vs balanced 7.3, 差 0.1pt)
+
+phi3:mini では moth の h が wanderer に次いで2番目に高く、hermit の w が scholar に次いで高かった。
+0.5B ではこの分化が完全に消失している。
+
+### スコア分布: 二峰性
+
+h 分布は h=8 にモード (全評価の 52%) があり、h=0-3 に散在する異常値がある。
+これはモデルが「デフォルト回答」と「パース失敗/混乱」の二択になっていることを示す。
+phi3:mini の連続的で種族ごとに異なる分布とは対照的。
+
+### 速度: 優秀
+
+32-34s/session は phi3:mini (60s) の **47% 高速**。
+しかし種族性が消失しているため、Sphere のエコシステムにとっての価値は限定的。
+
+### 判定
+
+| 基準 | phi3:mini | qwen2.5:0.5b | 判定 |
+|------|-----------|-------------|------|
+| 種族差 (h range) | 2.0pt | 0.2pt | **FAIL** |
+| 種族差 (w range) | 3.3pt | 0.4pt | **FAIL** |
+| 種族差 (d range) | 2.0pt | 0.1pt | **FAIL** |
+| 実行速度 | ~60s | ~33s | **PASS** |
+| JSON安定性 | OK | OK | PASS |
+
+**qwen2.5:0.5b は Sphere の感覚器官としては不適格。**
+LLM は交換可能な感覚器官だが、0.5B は感度が低すぎて種族の「個性」を表現できない。
+
 ---
 
-**Created**: 2026-02-09
-**Status**: Analysis complete, awaiting decision on next steps
+## 次のステップ
+
+1. **llama3.2:1b を daemon mode で再テスト** — 手動テスト vs Docker daemon で +8.7 の差があった。正しい方法で再検証が必要
+2. **phi3:mini を引き続きベースラインとして使用** — 種族差が明確、Sphere のエコシステムとして機能
+3. **1B-2B 帯の他モデル** — gemma2:2b, qwen2.5:1.5b など中間サイズの候補
+
+---
+
+**テスト方法**: TEST_PROTOCOL.md に準拠 (daemon mode, 3 agents, 50+ sessions)
+**データ保存**: eval-log.jsonl (54 sessions, 168 evaluations)
