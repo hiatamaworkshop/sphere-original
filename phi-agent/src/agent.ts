@@ -81,7 +81,7 @@ export class PhiAgent {
     this.ollama = ollama;
     this.sphere = sphere;
     this.config = { ...DEFAULT_AGENT_CONFIG, ...config };
-    this.prompt = new PromptBuilder(this.config.query);
+    this.prompt = new PromptBuilder(this.config.query, this.ollama.modelName);
     const loadout = typeof this.config.loadout === "string"
       ? LOADOUTS[this.config.loadout]
       : this.config.loadout;

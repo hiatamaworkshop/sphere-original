@@ -174,7 +174,7 @@ export const LOADOUTS: Record<string, Loadout> = {
     returnWeights: [0.3, 0.2, 0.3, 0.2],
     walkPreference: "explore",
     minCycles: 3,
-    evalFocus: "Observe this node as a neutral explorer.\n\nRate (0–10, 5=neutral):\nheat = motion/attention (0=still, 10=active)\nweight = density (0=light, 10=heavy)\ndecay = fade rate (0=lasting, 10=fleeting)",
+    evalFocus: "Observe this node as a neutral explorer.\n\nRate (0–10, 5=neutral):\nheat = motion/attention (0=still, 10=active)\nweight = density (0=light, 10=heavy)\ndecay = fade rate (0=long-lived, 10=short-lived)",
   },
   scholar: {
     name: "scholar",
@@ -188,7 +188,7 @@ export const LOADOUTS: Record<string, Loadout> = {
     returnWeights: [0.2, 0.1, 0.1, 0.6],
     walkPreference: "deep",
     minCycles: 5,
-    evalFocus: "Observe this node as a scholar seeking knowledge.\n\nRate (0–10, 5=neutral):\nheat = motion/attention (0=still, 10=active)\nweight = density (0=light, 10=heavy)\ndecay = fade rate (0=lasting, 10=fleeting)",
+    evalFocus: "Observe this node as a scholar seeking knowledge.\n\nRate (0–10, 5=neutral):\nheat = motion/attention (0=still, 10=active)\nweight = density (0=light, 10=heavy)\ndecay = fade rate (0=long-lived, 10=short-lived)",
   },
   scout: {
     name: "scout",
@@ -202,7 +202,7 @@ export const LOADOUTS: Record<string, Loadout> = {
     returnWeights: [0.4, 0.3, 0.2, 0.1],
     walkPreference: "explore",
     minCycles: 2,
-    evalFocus: "Observe this node as a scout seeking novelty.\n\nRate (0–10, 5=neutral):\nheat = motion/attention (0=still, 10=active)\nweight = density (0=light, 10=heavy)\ndecay = fade rate (0=lasting, 10=fleeting)",
+    evalFocus: "Observe this node as a scout seeking novelty.",
   },
   archivist: {
     name: "archivist",
@@ -216,7 +216,7 @@ export const LOADOUTS: Record<string, Loadout> = {
     returnWeights: [0.2, 0.1, 0.3, 0.4],
     walkPreference: "deep",
     minCycles: 4,
-    evalFocus: "Observe this node as an archivist preserving knowledge.\n\nRate (0–10, 5=neutral):\nheat = motion/attention (0=still, 10=active)\nweight = density (0=light, 10=heavy)\ndecay = fade rate (0=lasting, 10=fleeting)",
+    evalFocus: "Observe this node as an archivist preserving knowledge.\n\nRate (0–10, 5=neutral):\nheat = motion/attention (0=still, 10=active)\nweight = density (0=light, 10=heavy)\ndecay = fade rate (0=long-lived, 10=short-lived)",
   },
   hunter: {
     name: "hunter",
@@ -229,7 +229,7 @@ export const LOADOUTS: Record<string, Loadout> = {
     returnWeights: [0.3, 0.4, 0.2, 0.1],
     walkPreference: "hot",
     minCycles: 3,
-    evalFocus: "Observe this node as a hunter seeking high-value targets.\n\nRate (0–10, 5=neutral):\nheat = motion/attention (0=still, 10=active)\nweight = density (0=light, 10=heavy)\ndecay = fade rate (0=lasting, 10=fleeting)",
+    evalFocus: "Observe this node as a hunter seeking high-value targets.\n\nRate (0–10, 5=neutral):\nheat = motion/attention (0=still, 10=active)\nweight = density (0=light, 10=heavy)\ndecay = fade rate (0=long-lived, 10=short-lived)",
   },
   // --- Extreme patterns (experimental) ---
   moth: {
@@ -243,7 +243,7 @@ export const LOADOUTS: Record<string, Loadout> = {
     returnWeights: [0.5, 0.1, 0.2, 0.2],
     walkPreference: "hot",
     minCycles: 3,
-    evalFocus: "Observe this node like a moth drawn to light.\n\nRate (0–10, 5=neutral):\nheat = motion/attention (0=still, 10=active)\nweight = density (0=light, 10=heavy)\ndecay = fade rate (0=lasting, 10=fleeting)",
+    evalFocus: "Observe this node like a moth drawn to light.",
   },
   hermit: {
     name: "hermit",
@@ -257,7 +257,7 @@ export const LOADOUTS: Record<string, Loadout> = {
     returnWeights: [0.2, 0.1, 0.1, 0.6],
     walkPreference: "deep",
     minCycles: 4,
-    evalFocus: "Observe this node quietly, like a hermit in isolation.\n\nRate (0–10, 5=neutral):\nheat = motion/attention (0=still, 10=active)\nweight = density (0=light, 10=heavy)\ndecay = fade rate (0=lasting, 10=fleeting)",
+    evalFocus: "Observe this node quietly, like a hermit in isolation.",
   },
   wanderer: {
     name: "wanderer",
@@ -265,7 +265,7 @@ export const LOADOUTS: Record<string, Loadout> = {
     returnWeights: [0.0, 0.0, 1.0, 0.0],
     walkPreference: "explore",
     minCycles: 1,
-    evalFocus: "Observe this node without bias.\n\nRate (0–10, 5=neutral):\nheat = motion/attention (0=still, 10=active)\nweight = density (0=light, 10=heavy)\ndecay = fade rate (0=lasting, 10=fleeting)",
+    evalFocus: "Observe this node without bias.\n\nRate (0–10, 5=neutral):\nheat = motion/attention (0=still, 10=active)\nweight = density (0=light, 10=heavy)\ndecay = fade rate (0=long-lived, 10=short-lived)",
   },
   sniper: {
     name: "sniper",
@@ -279,7 +279,7 @@ export const LOADOUTS: Record<string, Loadout> = {
     returnWeights: [0.5, 0.3, 0.1, 0.1],
     walkPreference: "hot",
     minCycles: 2,
-    evalFocus: "Observe this node as a sniper seeking precision targets.\n\nRate (0–10, 5=neutral):\nheat = motion/attention (0=still, 10=active)\nweight = density (0=light, 10=heavy)\ndecay = fade rate (0=lasting, 10=fleeting)",
+    evalFocus: "Observe this node as a sniper seeking precision targets.\n\nRate (0–10, 5=neutral):\nheat = motion/attention (0=still, 10=active)\nweight = density (0=light, 10=heavy)\ndecay = fade rate (0=long-lived, 10=short-lived)",
   },
 };
 

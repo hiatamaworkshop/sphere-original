@@ -24,13 +24,41 @@ Respond ONLY with valid JSON. No explanations, no markdown.`;
 
 export class PromptBuilder {
   private query: string;
+  private modelName: string;
 
-  constructor(query: string) {
+  constructor(query: string, modelName: string = "") {
     this.query = query;
+    this.modelName = modelName;
   }
 
   get systemPrompt(): string {
     return SYSTEM_PROMPT;
+  }
+
+  /**
+   * Enhance evalFocus for gemma2:2b
+   * Adds word examples + 2-step analysis pattern
+   */
+  private enhanceEvalFocus(base: string): string {
+    if (!this.modelName.startsWith("gemma2")) {
+      return base; // No enhancement for other models
+    }
+
+    // gemma2:2b specific pattern (2026-02-10)
+    const enhancement = `
+
+Rate (0–10, 5=neutral):
+heat = motion/attention (0=still, 10=active)
+  ex: dormant topic -> low, steady discussion -> neutral, viral trend -> high
+weight = density (0=light, 10=heavy)
+  ex: casual mention -> low, blog post -> neutral, deep research -> high
+decay = fade rate (0=long-lived, 10=short-lived)
+  ex: timeless truth -> low, news article -> neutral, trending meme -> high
+
+Step 1: Write a brief report analyzing this node's heat, weight, and decay.
+Step 2: Assign accurate numerical scores based on your analysis.`;
+
+    return base + enhancement;
   }
 
   chooseFocusTarget(nodes: NearbyNode[]): string {
@@ -57,8 +85,11 @@ If none are relevant: { "action": "move", "mode": "<walkmode>", "reason": "<brie
     const tags = node.tags?.join(", ") ?? "(none)";
     const summary = node.summary ?? "(no summary)";
     const content = node.content?.slice(0, 500) ?? "(no content)";
-    const perspective = evalFocus
-      ? `\nPerspective: ${evalFocus}`
+
+    // Enhance evalFocus for gemma2:2b (adds word examples + 2-step)
+    const enhancedFocus = evalFocus ? this.enhanceEvalFocus(evalFocus) : "";
+    const perspective = enhancedFocus
+      ? `\nPerspective: ${enhancedFocus}`
       : "";
 
     return `My query: "${this.query}"
