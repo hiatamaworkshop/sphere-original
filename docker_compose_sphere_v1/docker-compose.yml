@@ -145,7 +145,7 @@ services:
 
   # Ollama - Local LLM inference server
   ollama:
-    image: ollama/ollama:0.1.29
+    image: ollama/ollama:latest
     container_name: sphere-ollama
     ports:
       - "11434:11434"

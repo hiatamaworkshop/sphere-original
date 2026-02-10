@@ -11,10 +11,10 @@ docker compose --profile agent up --scale phi-agent=3
 
 ドッカー　 アクセスURL
 サービス	URL	用途
-Explorers	http://localhost:7860	種族探索UI (今日作成!)
-Sphere API	http://localhost:3001	REST/WebSocket API
-Pool Service	http://localhost:4000	外部データ受付
-MinIO Console	http://localhost:9001	オブジェクトストレージ管理
+Explorers		http://localhost:7860	 種族探索UI (今日作成!)
+Sphere API	http://localhost:3001	 REST/WebSocket API
+Pool Service	http://localhost:4000	 外部データ受付
+MinIO Console	http://localhost:9001	 オブジェクトストレージ管理
 📝 コマンドまとめ
 
 # 全サービス起動
@@ -81,15 +81,14 @@ LLMは推論が重い　スフィアノードの判断にだけ推論を使い�
 
 
 phi3:mini　メインのモデル　やや軽量　スタンダードとして
-llama3.2:1b　動いた。 エイリアス1行で動作した。下位モデル　ちゃんと動作している
-qwen2.5:1.5b　ダメだった
+llama3.2:1b　エイリアス1行で動作した。下位モデル　ちゃんとラーニング動作している　現状最速動作
+qwen2.5:1.5b　ダメだった　ー＞ gen3の優秀なベースラインデータで復活
 qwen2.5:0.5b 　ダメだった
 gemma2:2b — おそらくはジェネレーションラーニングをするだろう、ならば十分なんじゃないか？ 一応phi3 mini との比較をする
 速度面でllama3.2:1bとの比較はどうだ？
 　＞　速度は最強　ただし llama はあくまで軽量で常駐型スコアラーとしては問題なし　内部エージェントとして使える
 推論が若干スタンプなのでジェネレーションによる改善を試みる
-
-その前にexplorer ui の方でユーザーがモデルを選べるようになっているが、これにgemma2.2b を追加することができるか？　私もリクエスト１つの速度を体感してみたい
+->　乗り越えられず　独自のクセが強いモデルらしい
 
 
 ごく軽量のモデルでもOK　評価スコアはイマイチのようだが　高速に動作する

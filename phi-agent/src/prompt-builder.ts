@@ -36,16 +36,78 @@ export class PromptBuilder {
   }
 
   /**
-   * Enhance evalFocus for gemma2:2b
-   * Adds word examples + 2-step analysis pattern
+   * Map abstract species names to concrete role descriptions
    */
-  private enhanceEvalFocus(base: string): string {
-    if (!this.modelName.startsWith("gemma2")) {
-      return base; // No enhancement for other models
+  private getConcreteRole(evalFocus: string): string {
+    const roleMap: Record<string, string> = {
+      moth: "attention-driven explorer drawn to trending topics",
+      hermit: "contemplative scholar focused on depth and stability",
+      scout: "rapid information gatherer seeking new discoveries",
+      scholar: "thorough academic researcher analyzing content deeply",
+      hunter: "strategic knowledge tracker pursuing specific patterns",
+      sniper: "precision analyst focused on temporal relevance",
+      wanderer: "adaptive explorer following curiosity freely",
+      archivist: "systematic cataloger preserving knowledge structures",
+      balanced: "balanced analytical observer evaluating all aspects equally",
+    };
+
+    // Detect species from evalFocus (e.g., "like a moth drawn to light")
+    for (const [species, description] of Object.entries(roleMap)) {
+      if (evalFocus.toLowerCase().includes(species)) {
+        return description;
+      }
     }
 
-    // gemma2:2b specific pattern (2026-02-10)
-    const enhancement = `
+    return "analytical observer"; // fallback
+  }
+
+  /**
+   * Enhance evalFocus for gemma2:2b and qwen2.5:1.5b
+   * gemma2: word examples + 2-step analysis
+   * qwen2.5: sequential dimension evaluation (3-step + PAUSE + concrete role)
+   */
+  private enhanceEvalFocus(base: string): string {
+    // qwen2.5: Sequential dimension evaluation with PAUSE and concrete role
+    if (this.modelName.startsWith("qwen2.5")) {
+      const concreteRole = this.getConcreteRole(base);
+      const enhancement = `
+
+Remember: You are ${concreteRole}.
+
+Evaluate each dimension with focused attention:
+
+━━━ Step 1: HEAT (motion/attention) ━━━
+Definition: Activity level and attention flow
+Your perspective: As ${concreteRole}, assess current discussion intensity
+Scale: 0 = dormant, 5 = steady, 10 = viral
+Analysis: [your reasoning here]
+Heat score (0-10): [N]
+
+[PAUSE - Move to next dimension]
+
+━━━ Step 2: WEIGHT (depth/authority) ━━━
+Definition: Content density and established authority
+Your perspective: As ${concreteRole}, assess substantialness
+Scale: 0 = superficial, 5 = moderate, 10 = authoritative
+Analysis: [your reasoning here]
+Weight score (0-10): [N]
+
+[PAUSE - Move to next dimension]
+
+━━━ Step 3: LONGEVITY (how long it stays relevant) ━━━
+Definition: Duration of relevance and usefulness
+Your perspective: As ${concreteRole}, assess how long this will remain valuable
+Scale: 0 = ephemeral/days, 5 = months, 10 = timeless/permanent
+Analysis: [your reasoning here]
+Longevity score (0-10): [N]
+
+Final JSON: {"h": <heat>, "w": <weight>, "longevity": <longevity>, "reason": "<combined summary>"}`;
+      return enhancement; // Replace base, not append
+    }
+
+    // gemma2: word examples + 2-step analysis
+    if (this.modelName.startsWith("gemma2")) {
+      const enhancement = `
 
 Rate (0–10, 5=neutral):
 heat = motion/attention (0=still, 10=active)
@@ -57,8 +119,10 @@ decay = fade rate (0=long-lived, 10=short-lived)
 
 Step 1: Write a brief report analyzing this node's heat, weight, and decay.
 Step 2: Assign accurate numerical scores based on your analysis.`;
+      return base + enhancement;
+    }
 
-    return base + enhancement;
+    return base; // No enhancement for other models
   }
 
   chooseFocusTarget(nodes: NearbyNode[]): string {
@@ -167,17 +231,23 @@ export function parseAction(response: string): AgentAction {
     }
 
     // Fallback: JSON has no "action" key but contains score-like fields → infer evaluate
-    // Handles: {"h":8,"w":7,"d":5}, {"heat":8,"weight":7}, {"score":9,"reason":"..."}
+    // Handles: {"h":8,"w":7,"d":5}, {"heat":8,"weight":7}, {"longevity":8}, {"score":9,"reason":"..."}
     if (!parsed.action) {
       const raw = parsed as unknown as Record<string, unknown>;
       const h = raw.h ?? raw.heat ?? raw.score ?? raw.relevance;
       const w = raw.w ?? raw.weight ?? raw.authority;
       const d = raw.d ?? raw.decay;
+      const longevity = raw.longevity;
       if (h !== undefined || w !== undefined) {
         parsed.action = "evaluate";
         parsed.h = typeof h === "number" ? h : undefined;
         parsed.w = typeof w === "number" ? w : undefined;
-        parsed.d = typeof d === "number" ? d : undefined;
+        // longevity → decay conversion (longevity: 0=ephemeral, 10=timeless → decay: 10=ephemeral, 0=timeless)
+        if (typeof longevity === "number") {
+          parsed.d = 10 - longevity;
+        } else {
+          parsed.d = typeof d === "number" ? d : undefined;
+        }
         parsed.reason = (raw.reason as string) ?? "Inferred from keyless JSON";
       }
     }
