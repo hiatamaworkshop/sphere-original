@@ -68,14 +68,9 @@ export function computePhysicsModifiers(
     result.ttl_decay_multiplier *= mods?.Sticky?.ttlDecayMultiplier ?? 0.8;
   }
 
-  // Volatile: 高速蒸発
-  if (flags & NodeFlag.Volatile) {
-    result.ttl_decay_multiplier *= mods?.Volatile?.ttlDecayMultiplier ?? 1.3;
-  }
-
-  // Hub: weight増加
-  if (flags & NodeFlag.Hub) {
-    result.weight_multiplier *= mods?.Hub?.weightMultiplier ?? 1.1;
+  // Volatile: 高速蒸発 (deprecated - use TemporalShort)
+  if (flags & 0x0020) {  // Legacy Volatile flag
+    result.ttl_decay_multiplier *= 1.3;
   }
 
   return result;
