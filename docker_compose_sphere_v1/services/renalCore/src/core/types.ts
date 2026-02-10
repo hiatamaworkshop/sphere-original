@@ -5,7 +5,7 @@
  * 16bit Flags & Core Interfaces
  * - 物性 vs 意味: Flags は「意味」ではなく「物性」
  * - Authority フラグ → decay_rate × 0.95（物理パラメータへ変換）
- * - Freshness フラグ → heat_boost × 1.2
+ * - TemporalShort フラグ → decay × 1.3, ttl_decay × 1.2
  * - エージェントの足跡を物理定数に変換する
  */
 

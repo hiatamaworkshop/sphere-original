@@ -63,7 +63,7 @@ export class Pool {
       if (!result) {
         this.log(`Scorer A failed for: ${entry.title.slice(0, 40)}`);
         this.processing = false;
-        return { entry, thermometer: { authority: 0, novelty: 0, coherence: 0, catalyst: 0 }, weaponScores: [], finalScore: 0, accepted: false, reason: "scorer_a_failed" };
+        return { entry, thermometer: { authority: 0, novelty: 0, coherence: 0 }, weaponScores: [], finalScore: 0, accepted: false, reason: "scorer_a_failed" };
       }
 
       const { scores, metrics } = result;

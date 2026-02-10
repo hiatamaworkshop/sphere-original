@@ -2,19 +2,23 @@
 // Scorer A — LLM Thermometer
 // ============================================================
 //
-// Fixed prompt → 4 scores (JSON). No judgment, no personality.
-// LLM is a measurement device: returns {authority, novelty, coherence, catalyst}.
+// Fixed prompt → 3 scores (JSON). No judgment, no personality.
+// LLM is a measurement device: returns {authority, novelty, coherence}.
 // Threshold decision is dot(scores, intakeWeights) — done externally.
+//
+// Flag mapping (FLAG_SYSTEM_REDESIGN.md):
+//   authority > 0.6 → Authority (0x0080)  — Density layer
+//   novelty   > 0.5 → TemporalShort (0x0001) — Temporal layer
+//   coherence → inverse decay (no flag, metric only)
 
 import type { PoolEntry, ThermometerScores, InitialMetrics } from "./types.js";
 import { assignFlags } from "./tagger.js";
 
-const THERMOMETER_PROMPT = `You are a content measurement tool. Analyze the following content and return EXACTLY a JSON object with 4 scores, each between 0.0 and 1.0:
+const THERMOMETER_PROMPT = `You are a content measurement tool. Analyze the following content and return EXACTLY a JSON object with 3 scores, each between 0.0 and 1.0:
 
 - authority: How authoritative is this? (domain expertise, citations, established knowledge)
 - novelty: How novel is this? (new information, not redundant)
 - coherence: How internally consistent and well-formed is this?
-- catalyst: How likely is this to spark connections or further exploration?
 
 Content to measure:
 ---
@@ -24,7 +28,7 @@ Body: {body}
 ---
 
 Return ONLY a JSON object, no explanation:
-{"authority":0.0,"novelty":0.0,"coherence":0.0,"catalyst":0.0}`;
+{"authority":0.0,"novelty":0.0,"coherence":0.0}`;
 
 export class ScorerA {
   constructor(
@@ -60,7 +64,6 @@ export class ScorerA {
         authority: clamp(obj.authority),
         novelty: clamp(obj.novelty),
         coherence: clamp(obj.coherence),
-        catalyst: clamp(obj.catalyst),
       };
     } catch {
       return null;
@@ -69,18 +72,18 @@ export class ScorerA {
 
   /** Convert thermometer scores + flags → initial Sphere metrics */
   deriveMetrics(scores: ThermometerScores, flags: number): InitialMetrics {
-    // authority + catalyst → heat (how much attention it deserves)
-    const heat = Math.round(50 + (scores.authority + scores.catalyst) * 25);
-    // authority + novelty → weight (how substantial it is)
-    const weight = Math.round(50 + (scores.authority + scores.novelty) * 25);
+    // authority + novelty → heat (how much attention it deserves)
+    const heat = Math.round(50 + (scores.authority + scores.novelty) * 25);
+    // authority → weight (how substantial it is)
+    const weight = Math.round(50 + scores.authority * 50);
     // coherence → inverse decay (well-formed content decays slower)
     const decay = Math.round(50 * (1 - scores.coherence));
 
     // Score-to-flag bridge: augment tagger flags with LLM scores
+    // Flag values: FLAG_SYSTEM_REDESIGN.md 16-bit canonical
     let augmentedFlags = flags;
-    if (scores.authority > 0.6) augmentedFlags |= 0x0001;  // Authority
-    if (scores.catalyst > 0.5)  augmentedFlags |= 0x0002;  // Catalyst
-    if (scores.novelty > 0.5)   augmentedFlags |= 0x0004;  // Freshness
+    if (scores.authority > 0.6) augmentedFlags |= 0x0080;  // Authority (Density layer)
+    if (scores.novelty > 0.5)   augmentedFlags |= 0x0001;  // TemporalShort (Temporal layer)
 
     return { heat, weight, decay, flags: augmentedFlags };
   }

@@ -161,17 +161,16 @@ Membrane → Queue → Scorer A (LLM) → Coherence Floor → Weapons → Accept
 
 ### Scorer A (LLM 温度計)
 
-ollama に固定プロンプトを送り、4次元スコアを取得:
+ollama に固定プロンプトを送り、3次元スコアを取得:
 - `authority` (権威性 0-1)
 - `novelty` (新規性 0-1)
 - `coherence` (整合性 0-1)
-- `catalyst` (触媒性 0-1)
 
 スコアから初期 metrics を算出:
-- `heat = 50 + (authority + catalyst) × 25`
-- `weight = 50 + (authority + novelty) × 25`
+- `heat = 50 + (authority + novelty) × 25`
+- `weight = 50 + authority × 50`
 - `decay = 50 × (1 - coherence)`
-- flags: authority>0.6→Authority, catalyst>0.5→Catalyst, novelty>0.5→Freshness
+- flags: authority>0.6→Authority(0x0080), novelty>0.5→TemporalShort(0x0001)
 
 ### Coherence Floor
 
@@ -185,7 +184,7 @@ ollama に固定プロンプトを送り、4次元スコアを取得:
 |--------|---------|------|
 | sentinel | 0.5 | バランス型、w/d 均等 |
 | curator | 0.3 | 保存重視、authority+sticky 高感度 |
-| scout | 0.2 | 多様性重視、catalyst+freshness 高感度 |
+| scout | 0.2 | 多様性重視、TemporalShort 高感度 |
 
 `score = base(w, d) × flagGate × ratioMod`
 

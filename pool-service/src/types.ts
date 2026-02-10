@@ -32,8 +32,6 @@ export interface ThermometerScores {
   novelty: number;
   /** Internal consistency, well-formed (0-1) */
   coherence: number;
-  /** Potential to spark connections (0-1) */
-  catalyst: number;
 }
 
 // --- Initial metrics assigned by Scorer A ---
@@ -115,8 +113,8 @@ export interface PoolConfig {
   ollamaModel: string;
   /** Intake threshold: dot(scores, intakeWeights) must exceed this */
   intakeThreshold: number;
-  /** Weights for dot product scoring */
-  intakeWeights: [number, number, number, number];
+  /** Weights for dot product scoring [authority, novelty, coherence] */
+  intakeWeights: [number, number, number];
   /** Coherence floor — reject below this regardless of other scores */
   coherenceFloor: number;
   /** Max entries in pool before forced flush */
@@ -132,7 +130,7 @@ export const DEFAULT_CONFIG: PoolConfig = {
   ollamaUrl: "http://localhost:11434",
   ollamaModel: "phi3:mini",
   intakeThreshold: 0.5,
-  intakeWeights: [0.3, 0.3, 0.2, 0.2],
+  intakeWeights: [0.4, 0.3, 0.3],
   coherenceFloor: 0.3,
   poolCapacity: 100,
   scoringIntervalMs: 5000,

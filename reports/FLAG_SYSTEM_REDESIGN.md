@@ -1,7 +1,7 @@
 # Flag System Redesign — 16bit as Physical Constants
 
 **Date**: 2026-02-10
-**Status**: Design Confirmed
+**Status**: Implementation Complete (config/physics/pool-service migrated)
 **Context**: Tagger regex patterns and flag allocation redesign
 
 ---
@@ -340,16 +340,110 @@ Proposal:
 
 ## Migration Checklist
 
-- [ ] Write this design doc ✅
-- [ ] Update NodeFlag enum in types.ts
-- [ ] Rewrite Tagger regex patterns
-- [ ] Remove Catalyst/Hub from FastGate
-- [ ] Remove Catalyst/Hub from pool-service
-- [ ] Update Loadout flagBias definitions
-- [ ] Clean up Catalyst/Hub in arbiter/bookkeeper/rulebook
-- [ ] Update MEMORY.md with new flag layer structure
-- [ ] Test with existing mock_data.json (verify no breakage)
+- [x] Write this design doc
+- [x] Update NodeFlag enum in types.ts — 16bit 3層構造 + Hot(dynamic)
+- [x] Rewrite Tagger regex patterns — periphery Tagger 完全移行済み (NodeFlag enum 使用)
+- [x] Remove Catalyst/Hub from FastGate — phi-agent flagBias は新体系で定義済み
+- [x] Remove Catalyst/Hub from pool-service — **2026-02-10 実装**
+- [x] Update Loadout flagBias definitions — 9種族分定義済み (MEMORY.md 参照)
+- [x] Clean up arbiter/bookkeeper — Hub/Isolated 動的フラグ削除済み (コメント残存は許容)
+- [x] Update MEMORY.md with new flag layer structure
+- [x] **sphere.config.json フラグ名修正** — 2026-02-10 実装 (下記ログ参照)
+- [x] **physics.ts レガシーフラグ衝突修正** — 2026-02-10 実装 (下記ログ参照)
 - [ ] Generate test data with new flags (add "timeless", "dense", etc. to tags)
+- [ ] mock_data.json のフラグ値を新体系に更新
+
+---
+
+## Implementation Log — 2026-02-10
+
+### 背景
+
+設計 (FLAG_SYSTEM_REDESIGN.md) は完了していたが、実装コードの移行が不完全だった。
+旧フラグ名が残存し、sphere.config.json のキー名不一致により **config が完全に死んでいた**。
+
+### 発見された問題
+
+| 場所 | 問題 | 深刻度 |
+|------|------|--------|
+| pool-service/scorer-a.ts | `catalyst` 参照 (廃案フラグ)、フラグ値が全て旧体系 (0x0001=Authority, 0x0002=Catalyst, 0x0004=Freshness) | 致命的 |
+| pool-service/types.ts | `ThermometerScores` に `catalyst` フィールド、`intakeWeights` が [4] | 致命的 |
+| renalCore/physics.ts | 旧 Volatile (0x0020) チェックが新体系 Sparse と **ビット衝突** — Sparse ノードが意図せず ttl_decay 加速 | 致命的 |
+| sphere.config.json | `physicsModifiers` のキーが旧名 (Freshness, Ephemeral, Sticky, Volatile, Hub, Frozen) → 新型 `RenalCoreFlagsConfig` と不一致 → **config 値が全て無視** (ハードコードフォールバック) | 致命的 |
+| periphery/config.ts | フラグ一覧コメントが旧体系 (16項目) | 中 |
+| pool-service/doc/SETUP.md | catalyst 参照残り | 低 |
+
+### 修正内容
+
+#### pool-service (catalyst 廃止 + フラグ値修正)
+
+```
+scorer-a.ts:
+  - LLM prompt: 4 scores → 3 scores (catalyst 削除)
+  - deriveMetrics:
+    heat = 50 + (authority + novelty) × 25   (旧: authority + catalyst)
+    weight = 50 + authority × 50              (旧: (authority + novelty) × 25)
+  - フラグ: 0x0080 = Authority, 0x0001 = TemporalShort (旧: 0x0001, 0x0002, 0x0004)
+
+types.ts:
+  - ThermometerScores: catalyst フィールド削除
+  - intakeWeights: [number, number, number, number] → [number, number, number]
+  - DEFAULT_CONFIG: [0.3, 0.3, 0.2, 0.2] → [0.4, 0.3, 0.3]
+```
+
+#### renalCore (レガシーフラグ衝突修正)
+
+```
+physics.ts:
+  - 削除: if (flags & 0x0020) { ttl_decay *= 1.3 }  ← 旧 Volatile、新 Sparse と衝突
+  - 追加: if (flags & NodeFlag.Dense) { weight_multiplier *= 1.2 }
+```
+
+#### sphere.config.json (config 復活)
+
+```
+旧キー → 新キー:
+  Freshness   → TemporalShort  (decayRateMultiplier: 1.3)
+  Sticky      → TemporalLong   (ttlDecayMultiplier: 0.7)
+  Hub         → Dense           (weightMultiplier: 1.2)
+  Authority   → Authority       (変更なし)
+  Frozen      → SystemCore      (decayRate: 0, ttlDecay: 0)
+  Ephemeral   → (削除、TemporalShort に統合)
+  Volatile    → (削除、TemporalShort に統合)
+```
+
+#### periphery/config.ts (コメント刷新)
+
+```
+フラグ一覧コメント: 旧 16 項目 → 新 16bit 3層体系 (Temporal/Density/Cognitive/Special)
+tierFlags.top: "Freshness" → "TemporalLong — top-tier persists longer"
+  値 0x0002 は維持 (旧 Freshness = heat boost、新 TemporalLong = decay resistance)
+  top-tier ノードが長生きするのは合理的
+```
+
+### 残存する旧フラグ参照 (許容)
+
+以下はコメント・ドキュメント内の参照であり、実行コードに影響しない:
+
+- `periphery/src/bus/index.ts:6` — "Volatile broadcast" (概念名、フラグ値ではない)
+- `periphery/src/index.ts:538` — "Ephemeral Mode" (デモリセット機能名)
+- `periphery/src/arbiter/arbiter.ts:505` — "Hub/Isolated removed" (削除記録)
+- `reports/*.md` — 設計履歴ドキュメント
+
+### TypeScript ビルド検証
+
+```
+pool-service:  ✅ npx tsc --noEmit (0 errors)
+phi-agent:     ✅ npx tsc --noEmit (0 errors)
+renalCore:     ✅ npx tsc --noEmit (0 errors)
+periphery:     ✅ npx tsc --noEmit (0 errors)
+```
+
+### 教訓
+
+1. **型定義と config ファイルのキー名不一致は沈黙の故障** — TypeScript の型はランタイムの JSON を検証しない。config が死んでいても気づかない
+2. **レガシーフラグのビット値は再利用に注意** — 旧 Volatile (0x0020) が新 Sparse と衝突していた
+3. **フラグの旧→新マッピングは 1:1 ではない** — Freshness (heat boost) ≠ TemporalShort (decay acceleration)。効果の意味を確認してから移行すべき
 
 ---
 

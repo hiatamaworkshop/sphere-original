@@ -58,14 +58,14 @@ export function computePhysicsModifiers(
     result.decay_rate_multiplier *= mods?.TemporalShort?.decayRateMultiplier ?? 1.3;
   }
 
-  // TemporalLong: ttl減衰に抵抗 (replaces Sticky)
+  // TemporalLong: ttl減衰に抵抗
   if (flags & NodeFlag.TemporalLong) {
     result.ttl_decay_multiplier *= mods?.TemporalLong?.ttlDecayMultiplier ?? 0.7;
   }
 
-  // Volatile: 高速蒸発 (deprecated - use TemporalShort)
-  if (flags & 0x0020) {  // Legacy Volatile flag
-    result.ttl_decay_multiplier *= 1.3;
+  // Dense: weight増幅
+  if (flags & NodeFlag.Dense) {
+    result.weight_multiplier *= 1.2;
   }
 
   return result;

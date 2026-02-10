@@ -186,21 +186,27 @@ export interface PeripheryConfig {
   // [Principle] All flag-related settings in one place
   // [Consumers] Tagger, Packer, Arbiter, Physics
   //
-  // Flag values (from @sphere/renal-core NodeFlag enum):
-  //   0x0001 = Authority   - Decay slows (×0.95)
-  //   0x0002 = Freshness   - Heat boost (×1.2)
-  //   0x0004 = Catalyst    - Promotes Link formation
-  //   0x0008 = Ephemeral   - Decay accelerates (×1.5)
-  //   0x0010 = Sticky      - TTL decay resists (×0.8)
-  //   0x0020 = Volatile    - TTL decay accelerates (×1.3)
-  //   0x0040 = Hot         - Dynamic: heat > threshold
-  //   0x0080 = Frozen      - Metabolism suspended (Relic)
-  //   0x0100 = Hub         - Dynamic: linkCount > threshold
-  //   0x0200 = Isolated    - Dynamic: linkCount <= threshold
-  //   0x1000 = UserMarked  - Manual importance
-  //   0x2000 = SystemCore  - Relic/immutable
-  //   0x4000 = Compressed  - Fossilized
-  //   0x8000 = Candidate   - Ascension cooling period
+  // 16-bit Flag values (FLAG_SYSTEM_REDESIGN.md / @sphere/renal-core NodeFlag):
+  //   Temporal (bits 0-3):
+  //     0x0001 = TemporalShort  - decay ×1.3, ttl_decay ×1.2 (trending)
+  //     0x0002 = TemporalLong   - decay ×0.8, ttl_decay ×0.7 (timeless)
+  //     0x0004 = TemporalCyclic - TBD (seasonal)
+  //     0x0008 = Hot            - Dynamic: heat > threshold (Arbiter)
+  //   Density (bits 4-7):
+  //     0x0010 = Dense          - weight ×1.2 (theory, formula)
+  //     0x0020 = Sparse         - weight ×0.9 (casual, brief)
+  //     0x0040 = Composite      - weight ×1.1 (multi-concept)
+  //     0x0080 = Authority      - decay ×0.95 (peer-reviewed, official)
+  //   Cognitive (bits 8-11):
+  //     0x0100 = Insightful     - FastGate scoring only
+  //     0x0200 = Confusing      - FastGate scoring only
+  //     0x0400 = Provoking      - FastGate scoring only
+  //     0x0800 = Soothing       - FastGate scoring only
+  //   Special (bits 12-15):
+  //     0x1000 = UserMarked     - immune to decay
+  //     0x2000 = SystemCore     - Frozen metabolism (Relic)
+  //     0x4000 = Compressed     - Fossilized
+  //     0x8000 = Candidate      - Ascension cooling period
   // =========================================================================
   nodeFlags?: {
     /**
@@ -208,7 +214,7 @@ export interface PeripheryConfig {
      * [Usage] tierFlags.top is OR'd with Tagger's classificationFlags
      */
     tierFlags: {
-      top: number;      // Default: 0x0002 (Freshness)
+      top: number;      // Default: 0x0002 (TemporalLong — top-tier persists longer)
       normal: number;   // Default: 0x0000
       ghost: number;    // Default: 0x0000
     };
@@ -280,7 +286,7 @@ export const DEFAULT_PERIPHERY_CONFIG: PeripheryConfig = {
     standardDecayCoefficient: 1000,  // d baseline
     // @deprecated - Use nodeFlags.tierFlags instead (below)
     tierFlags: {
-      top: 0x0002,    // Freshness flag
+      top: 0x0002,    // TemporalLong (top-tier persists longer)
       normal: 0x0000,
       ghost: 0x0000,
     },
@@ -370,7 +376,7 @@ export const DEFAULT_PERIPHERY_CONFIG: PeripheryConfig = {
   nodeFlags: {
     // Static flags assigned at node creation (by Packer)
     tierFlags: {
-      top: 0x0002,      // Freshness - top tier nodes get visibility boost
+      top: 0x0002,      // TemporalLong - top tier nodes persist longer
       normal: 0x0000,   // No special flags
       ghost: 0x0000,    // No special flags (Ephemeral could be added)
     },
