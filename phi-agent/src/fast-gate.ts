@@ -548,6 +548,12 @@ export class FastGate {
     this._speciesTags = speciesBias?.tags ?? [];
   }
 
+  /** Inject species bias after construction (for async loading via IO Gateway) */
+  setSpeciesBias(bias: SpeciesMemoryBias): void {
+    this._speciesHotNodes = bias.hotNodeIds;
+    this._speciesTags = bias.tags;
+  }
+
   get walkPreference(): WalkMode { return this._walkPreference; }
   get evalFocus(): string { return this._evalFocus; }
 

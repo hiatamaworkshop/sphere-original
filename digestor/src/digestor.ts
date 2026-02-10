@@ -14,13 +14,15 @@ import { join } from "node:path";
 import { computeScore, computeHunger, prune } from "./scoring.js";
 import type { FlatEval, ScoredEval } from "./scoring.js";
 import { buildProfile } from "./profiler.js";
+import { startServer } from "./server.js";
 
 // ---- Config (environment variables) ----
 
-const DATA_DIR = process.env.DATA_DIR ?? "/app/data";
-const EVAL_LOG = join(DATA_DIR, "eval-log.jsonl");
-const PROFILE_OUT = join(DATA_DIR, "species-profile.json");
-const GEN_DIR = join(DATA_DIR, "generations");
+export const DATA_DIR = process.env.DATA_DIR ?? "/app/data";
+export const EVAL_LOG = join(DATA_DIR, "eval-log.jsonl");
+export const PROFILE_OUT = join(DATA_DIR, "species-profile.json");
+export const GEN_DIR = join(DATA_DIR, "generations");
+const GATEWAY_PORT = parseInt(process.env.GATEWAY_PORT ?? "5000");
 const INTERVAL_MS = parseInt(process.env.DIGEST_INTERVAL_MS ?? "3600000"); // 1h default
 const HALF_LIFE_HOURS = parseFloat(process.env.HALF_LIFE_HOURS ?? "72");
 const MIN_EVALS = parseInt(process.env.MIN_EVALS ?? "50");
@@ -208,6 +210,11 @@ async function main(): Promise<void> {
   console.log(`[digestor] Starting — ${ONCE ? "one-shot" : `interval=${INTERVAL_MS}ms`}, half_life=${HALF_LIFE_HOURS}h, min_evals=${MIN_EVALS}`);
   console.log(`[digestor] Source: ${EVAL_LOG}`);
   console.log(`[digestor] Output: ${PROFILE_OUT}`);
+
+  // Start IO Gateway (HTTP server)
+  if (!ONCE) {
+    startServer(GATEWAY_PORT, { dataDir: DATA_DIR, evalLog: EVAL_LOG, profileOut: PROFILE_OUT, genDir: GEN_DIR });
+  }
 
   // Run immediately on startup
   digest();

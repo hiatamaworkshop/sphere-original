@@ -24,7 +24,7 @@ import { SphereClient } from "./sphere-client.js";
 import type { WalkMode, BusMessage } from "./sphere-client.js";
 import { PromptBuilder, parseAction } from "./prompt-builder.js";
 import { FastGate, LOADOUTS } from "./fast-gate.js";
-import type { Loadout, LoadoutName, SpeciesMemoryBias } from "./fast-gate.js";
+import type { Loadout, LoadoutName } from "./fast-gate.js";
 import { appendEvalLog, loadSpeciesProfile } from "./eval-log.js";
 import type { EvalLogEntry } from "./eval-log.js";
 
@@ -128,22 +128,8 @@ export class PhiAgent {
       ? LOADOUTS[this.config.loadout]
       : this.config.loadout;
 
-    // Load species memory — pre-blended profile from Digestor
-    // (0.7 × own species + 0.3 × global, computed by Digestor)
-    const loadoutName = typeof this.config.loadout === "string"
-      ? this.config.loadout : this.config.loadout.name;
-    const profile = loadSpeciesProfile(loadoutName);
-    let speciesBias: SpeciesMemoryBias | undefined;
-    if (profile) {
-      speciesBias = {
-        hotNodeIds: profile.hotNodeIds,
-        tags: profile.tags,
-      };
-      this.log(`Species profile: ${profile.sessions} evals, ${profile.hotNodeIds.size} nodes, ${profile.tags.length} tags (${loadoutName})`);
-    } else {
-      this.log(`Species profile: not found for ${loadoutName} (no profile or empty)`);
-    }
-    this.gate = new FastGate(this.config.query, loadout, speciesBias);
+    // Species memory is loaded asynchronously in run() via IO Gateway or file
+    this.gate = new FastGate(this.config.query, loadout);
     this.stats = {
       cycles: 0,
       nodesExamined: 0,
@@ -160,6 +146,21 @@ export class PhiAgent {
     this.stats.startTime = Date.now();
     this.sessionStart = Date.now();
     this.stats.status = "connecting";
+
+    // Load species memory — pre-blended profile from Digestor
+    // (0.7 × own species + 0.3 × global, via IO Gateway or file)
+    const loadoutName = typeof this.config.loadout === "string"
+      ? this.config.loadout : this.config.loadout.name;
+    const profile = await loadSpeciesProfile(loadoutName);
+    if (profile) {
+      this.gate.setSpeciesBias({
+        hotNodeIds: profile.hotNodeIds,
+        tags: profile.tags,
+      });
+      this.log(`Species profile: ${profile.sessions} evals, ${profile.hotNodeIds.size} nodes, ${profile.tags.length} tags (${loadoutName})`);
+    } else {
+      this.log(`Species profile: not found for ${loadoutName} (no profile or empty)`);
+    }
 
     try {
       // Step 1: Verify ollama is ready
@@ -199,7 +200,7 @@ export class PhiAgent {
       this.stats.status = "exploring";
       if (this.config.evaluate) {
         await this.exploreLoop();
-        this.persistEvalLog();
+        await this.persistEvalLog();
       } else {
         await this.liaisonExplore();
       }
@@ -512,7 +513,7 @@ export class PhiAgent {
   // ===== Species Memory =====
 
   /** Persist session evaluations to species memory log (JSONL) */
-  private persistEvalLog(): void {
+  private async persistEvalLog(): Promise<void> {
     const evals = this.gate.memory.evals;
     if (evals.length === 0) {
       this.log("No evaluations to persist");
@@ -535,7 +536,7 @@ export class PhiAgent {
       busRecvs: this.busRecvCount,
     };
     try {
-      appendEvalLog(entry);
+      await appendEvalLog(entry);
       this.log(`Species memory: persisted ${evals.length} evaluations (${this.gate.loadoutName}), bus: ${this.busEmitCount} emits / ${this.busRecvCount} recvs`);
     } catch (err) {
       this.log(`Species memory write failed: ${err}`);

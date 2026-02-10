@@ -12,6 +12,11 @@
 //   Species (loadout) accumulates collective evaluation history.
 //   Next scholar reads what past scholars evaluated.
 //   "Identity is not what you have — it's what you remember."
+//
+// [IO Gateway]
+//   When DIGESTOR_URL is set, uses HTTP to communicate with
+//   Digestor's IO Gateway instead of direct file I/O.
+//   File mode is preserved as fallback for backward compatibility.
 
 import { readFileSync, appendFileSync, mkdirSync, existsSync } from "node:fs";
 import { join, dirname } from "node:path";
@@ -20,6 +25,7 @@ import { fileURLToPath } from "node:url";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const DATA_DIR = join(__dirname, "..", "data");
 const LOG_FILE = join(DATA_DIR, "eval-log.jsonl");
+const DIGESTOR_URL = process.env.DIGESTOR_URL; // e.g. "http://digestor:5000"
 
 // ============================================================
 // Types
@@ -56,11 +62,26 @@ export interface EvalLogRecord {
 // ============================================================
 
 /**
- * Append a session's evaluations to the log file.
- * Creates data directory if needed.
+ * Append a session's evaluations to the log.
+ * HTTP mode (DIGESTOR_URL): POST to IO Gateway.
+ * File mode (fallback): direct append to eval-log.jsonl.
  */
-export function appendEvalLog(entry: EvalLogEntry): void {
+export async function appendEvalLog(entry: EvalLogEntry): Promise<void> {
   if (entry.evaluations.length === 0) return;  // nothing to log
+
+  if (DIGESTOR_URL) {
+    const res = await fetch(`${DIGESTOR_URL}/evaluations`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(entry),
+    });
+    if (!res.ok) {
+      throw new Error(`IO Gateway POST failed: ${res.status} ${await res.text()}`);
+    }
+    return;
+  }
+
+  // File mode (legacy)
   if (!existsSync(DATA_DIR)) {
     mkdirSync(DATA_DIR, { recursive: true });
   }
@@ -197,16 +218,34 @@ export interface SpeciesProfileBias {
 }
 
 /**
- * Load species bias from Digestor-produced species-profile.json.
+ * Load species bias from Digestor.
+ * HTTP mode (DIGESTOR_URL): GET from IO Gateway.
+ * File mode (fallback): read species-profile.json directly.
  * Pre-blended (0.7 own + 0.3 global) by the Digestor.
  * Returns undefined if profile doesn't exist or loadout not found.
  */
-export function loadSpeciesProfile(loadout: string): SpeciesProfileBias | undefined {
+export async function loadSpeciesProfile(loadout: string): Promise<SpeciesProfileBias | undefined> {
+  if (DIGESTOR_URL) {
+    try {
+      const res = await fetch(`${DIGESTOR_URL}/species/${encodeURIComponent(loadout)}/profile`);
+      if (!res.ok) return undefined;
+      const entry = await res.json() as ProfileSpeciesEntry;
+      if (!entry || entry.evaluations === 0) return undefined;
+      const hotNodeIds = new Map<string, number>();
+      for (const n of entry.hotNodes ?? []) {
+        hotNodeIds.set(n.nodeId, n.count);
+      }
+      return { hotNodeIds, tags: entry.commonTags ?? [], sessions: entry.evaluations };
+    } catch {
+      return undefined;
+    }
+  }
+
+  // File mode (legacy)
   if (!existsSync(PROFILE_FILE)) return undefined;
   try {
     const raw = readFileSync(PROFILE_FILE, "utf-8");
     const profile: ProfileData = JSON.parse(raw);
-    // Use species-specific entry (pre-blended), fallback to global
     const entry = profile.species?.[loadout] ?? profile.global;
     if (!entry || entry.evaluations === 0) return undefined;
 
