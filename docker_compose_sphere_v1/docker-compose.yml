@@ -57,7 +57,7 @@ services:
 
   # Projection DB (MinIO - S3 Compatible Object Storage)
   minio:
-    image: minio/minio:latest
+    image: minio/minio:RELEASE.2024-02-09T21-25-16Z
     container_name: sphere-minio
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:-sphere_admin}
@@ -145,7 +145,7 @@ services:
 
   # Ollama - Local LLM inference server
   ollama:
-    image: ollama/ollama:latest
+    image: ollama/ollama:0.1.29
     container_name: sphere-ollama
     ports:
       - "11434:11434"
@@ -154,6 +154,18 @@ services:
     networks:
       - sphere-network
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 8G
+        reservations:
+          memory: 4G
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 120s
     profiles:
       - agent
 
@@ -177,9 +189,14 @@ services:
       periphery:
         condition: service_healthy
       ollama:
-        condition: service_started
+        condition: service_healthy
     networks:
       - sphere-network
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
     profiles:
       - agent
 
@@ -220,7 +237,7 @@ services:
       periphery:
         condition: service_healthy
       ollama:
-        condition: service_started
+        condition: service_healthy
     networks:
       - sphere-network
     restart: unless-stopped
@@ -245,7 +262,7 @@ services:
       periphery:
         condition: service_healthy
       ollama:
-        condition: service_started
+        condition: service_healthy
     networks:
       - sphere-network
     restart: unless-stopped
