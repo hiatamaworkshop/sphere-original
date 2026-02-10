@@ -1,20 +1,23 @@
 // ============================================================
-// PhiAgent — Two-phase exploration architecture
+// PhiAgent — Main exploration loop (EvalLoop architecture)
 // ============================================================
 //
-// Phase 1 — Explore (shared, fast, no LLM):
-//   move → sense → FastGate pick → focus → collect → repeat
+// Cycle (evaluator mode):
+//   1. move (FastGate computed direction, 0ms)
+//   2. sense → FastGate picks target (0ms)
+//   3. focus → phi evaluates content (~25s, only phi call)
+//   4. record + compute next move (0ms)
+//   5. satisfaction check → return or continue
 //
-// Phase 2 — Branch on mode:
-//   evaluator: batch h→w→d per-dimension scoring → evaluate → species memory
-//   liaison:   return response only (no evaluation, no write-back)
+// Liaison mode:
+//   Fast exploration only — no LLM eval, no write-back, response only
 //
 // phi is the amber generator. FastGate is the decision maker.
 
 import { OllamaClient } from "./ollama-client.js";
 import { SphereClient } from "./sphere-client.js";
-import type { BusMessage } from "./sphere-client.js";
-import { PromptBuilder } from "./prompt-builder.js";
+import type { WalkMode, BusMessage } from "./sphere-client.js";
+import { PromptBuilder, parseAction } from "./prompt-builder.js";
 import { FastGate, LOADOUTS } from "./fast-gate.js";
 import type { Loadout, LoadoutName, SpeciesMemoryBias } from "./fast-gate.js";
 import { appendEvalLog, loadSpeciesProfile } from "./eval-log.js";
@@ -22,19 +25,6 @@ import type { EvalLogEntry } from "./eval-log.js";
 
 /** Agent mode: evaluator (scores + writes back) or liaison (read-only, external response) */
 export type AgentMode = "evaluator" | "liaison";
-
-/** Node collected during exploration phase (before evaluation) */
-interface CollectedNode {
-  nodeId: string;
-  tags: string[];
-  summary: string;
-  content: string;
-  heat: number;
-  weight: number;
-  ttl: number;
-  kind: string;
-  flags: number;
-}
 
 /** Species-specific voice guidance for return responses */
 const SPECIES_VOICE: Record<string, string> = {
@@ -75,7 +65,7 @@ export interface AgentStats {
   totalHeatDelta: number;
   startTime: number;
   endTime: number;
-  status: "idle" | "connecting" | "exploring" | "evaluating" | "completed" | "failed";
+  status: "idle" | "connecting" | "exploring" | "completed" | "failed";
   error?: string;
 }
 
@@ -159,6 +149,7 @@ export class PhiAgent {
   async run(): Promise<AgentStats> {
     this.running = true;
     this.stats.startTime = Date.now();
+    this.sessionStart = Date.now();
     this.stats.status = "connecting";
 
     try {
@@ -190,28 +181,16 @@ export class PhiAgent {
       await this.sphere.transitionToCore();
       this.log("Reached Core layer");
 
-      // Step 4: Explore (fast — no LLM calls)
+      // Step 4: Explore — branch on mode
       this.stats.status = "exploring";
-      const collected = await this.explore();
-
-      // Step 5: Branch on mode
       if (this.config.mode === "evaluator") {
-        this.stats.status = "evaluating";
-        await this.batchEvaluate(collected);
+        await this.exploreLoop();
         this.persistEvalLog();
       } else {
-        // Liaison: populate encounters without scores (for response)
-        for (const n of collected) {
-          this.encounters.push({
-            nodeId: n.nodeId,
-            tags: n.tags,
-            summary: n.summary.slice(0, 200),
-            h: 0, w: 0, d: 0,
-          });
-        }
+        await this.liaisonExplore();
       }
 
-      // Step 6: Return response — agent reflects on what it discovered
+      // Step 5: Return response — agent reflects on what it discovered
       try {
         const response = await this.generateReturnResponse();
         if (response) {
@@ -225,7 +204,7 @@ export class PhiAgent {
         this.log(`Return response failed: ${err}`);
       }
 
-      // Step 7: Clean disconnect
+      // Step 6: Clean disconnect
       this.stats.status = "completed";
       await this.sphere.disconnect();
       this.log("Returned from Sphere");
@@ -246,30 +225,197 @@ export class PhiAgent {
     this.running = false;
   }
 
-  // ===== Phase 1: Explore (shared, fast, no LLM) =====
+  // ===== Evaluator: Real-time exploration + evaluation =====
 
-  /** Fast exploration — collect nodes without LLM evaluation */
-  private async explore(): Promise<CollectedNode[]> {
-    const collected: CollectedNode[] = [];
-
+  private async exploreLoop(): Promise<void> {
     while (
       this.running &&
       this.stats.cycles < this.config.maxCycles &&
       this.sphere.currentEnergy > this.config.minEnergy
     ) {
-      // Evaluator: reserve energy for batch evaluation
-      if (this.config.mode === "evaluator") {
-        const evalReserve = (collected.length + 1) * this.sphere.energyCosts.evaluate;
-        const cycleCost = this.sphere.energyCosts.sense + this.sphere.energyCosts.focus
-          + (this.stats.cycles > 0 ? this.sphere.energyCosts.move : 0);
-        if (this.sphere.currentEnergy - cycleCost < evalReserve) {
-          this.log(`Energy reserve reached (need ${evalReserve} for ${collected.length + 1} evals)`);
-          break;
+      this.stats.cycles++;
+
+      // Feelings-driven action selection
+      const energyRatio = this.initialEnergy > 0
+        ? this.sphere.currentEnergy / this.initialEnergy
+        : 1.0;
+      const action = this.stats.cycles <= 1
+        ? { type: "standard", moveStep: 0, moveMode: this.gate.walkPreference }  // first cycle: no move
+        : this.gate.chooseAction(energyRatio);
+
+      this.log(`--- Cycle ${this.stats.cycles}/${this.config.maxCycles} (energy: ${this.sphere.currentEnergy}) [${action.type}] ---`);
+
+      try {
+        switch (action.type) {
+          case "scout":
+            await this.scoutCycle(action.moveStep, action.moveMode);
+            break;
+          case "camp":
+            await this.standardCycle(0, action.moveMode);  // moveStep=0: no move
+            break;
+          case "leap":
+            await this.standardCycle(action.moveStep, action.moveMode);
+            break;
+          default:
+            await this.standardCycle(action.moveStep, action.moveMode);
+            break;
         }
+      } catch (err) {
+        this.log(`Cycle error: ${err}`);
+        break;
       }
 
+      // Feelings check (4D feelings × personality vector)
+      const postRatio = this.initialEnergy > 0
+        ? this.sphere.currentEnergy / this.initialEnergy
+        : 1.0;
+      this.log(`Feelings: ${this.gate.feelingsDebug(postRatio)}`);
+      this.log(`DeltaProfile: ${this.gate.memory.deltaDebug()}`);
+      if (this.gate.shouldReturn(postRatio)) {
+        this.log(`Satisfied — returning`);
+        break;
+      }
+    }
+
+    if (this.sphere.currentEnergy <= this.config.minEnergy) {
+      this.log(`Low energy (${this.sphere.currentEnergy}), ending exploration`);
+    }
+  }
+
+  /** Standard cycle: move → sense → pick → focus → eval → record */
+  private async standardCycle(moveStep: number, moveMode: WalkMode): Promise<void> {
+    // 1. Move (skip if moveStep=0, e.g. camp or first cycle)
+    if (moveStep > 0) {
+      if (!this.canAfford("move")) {
+        this.log(`Energy too low for move (${this.sphere.currentEnergy} < ${this.sphere.energyCosts.move})`);
+        return;
+      }
+      await this.sphere.move(moveStep, moveMode);
+    }
+
+    // 2. Sense nearby nodes
+    if (!this.canAfford("sense")) {
+      this.log(`Energy too low for sense (${this.sphere.currentEnergy} < ${this.sphere.energyCosts.sense})`);
+      return;
+    }
+    const nodes = await this.sphere.sense(this.config.senseRadius);
+    this.log(`Sensed ${nodes.length} nodes`);
+
+    if (nodes.length === 0) {
+      this.log("No nodes nearby, exploring...");
+      if (this.canAfford("move")) {
+        await this.sphere.move(this.config.moveStep, "explore");
+      }
+      return;
+    }
+
+    // 3. FastGate picks target (local, 0ms) — with ActiveBus hints
+    const targetIndex = this.gate.pickFocusTarget(nodes, (id) => this.getBusBonus(id));
+    const target = nodes[targetIndex];
+    this.log(`FastGate pick: [${targetIndex}] ${target.summary.slice(0, 60)} (flags: 0x${target.flags.toString(16).padStart(4, "0")})`);
+
+    // 4. Focus on target (most expensive action: 10 energy)
+    if (!this.canAfford("focus")) {
+      this.log(`Energy too low for focus (${this.sphere.currentEnergy} < ${this.sphere.energyCosts.focus}) — skipping`);
+      return;
+    }
+    const detail = await this.sphere.focus(target.id);
+    if (!detail || !detail.kind) {
+      this.log(`Focus returned empty for ${target.id} (kind: ${target.kind}) — skipping`);
+      this.gate.memory.markVisited(target.id);
+      return;
+    }
+    // Skip mock/placeholder data
+    const text = `${detail.summary ?? ""} ${detail.content ?? ""}`.toLowerCase();
+    if (text.includes("mock") || text.includes("⚠️")) {
+      this.log(`Mock data detected for ${target.id} — skipping`);
+      this.gate.memory.markVisited(target.id);
+      return;
+    }
+
+    this.stats.nodesExamined++;
+    this.log(`Focused: [${detail.kind}] ${detail.tags?.join(", ") ?? ""} — ${(detail.summary ?? "").slice(0, 60)}`);
+
+    // 5. phi evaluates content (only phi call per cycle)
+    const evalPrompt = this.prompt.evaluateNode(detail, this.gate.evalFocus);
+    const evalResponse = await this.ollama.generate(evalPrompt, this.prompt.systemPrompt);
+    const evalAction = parseAction(evalResponse);
+    this.log(`phi eval: h=${evalAction.h} w=${evalAction.w} d=${evalAction.d} — ${evalAction.reason}`);
+
+    // Parse failure → mark visited only (don't contaminate quality profile)
+    if (evalAction.action !== "evaluate") {
+      this.gate.memory.markVisited(target.id);
+      return;
+    }
+
+    const h = evalAction.h ?? 5;
+    const w = evalAction.w ?? 5;
+    const d = evalAction.d ?? 5;
+
+    // 6. Submit evaluation to Sphere
+    if (this.canAfford("evaluate")) {
+      const success = await this.sphere.evaluate(target.id, h, w, d);
+      if (success) {
+        this.stats.evaluations++;
+        this.stats.totalHeatDelta += (h - 5);
+        // 6b. Broadcast notable discovery to other agents
+        await this.tryEmitBus(target.id, h, w);
+      }
+    }
+
+    // 7. Record quality data
+    this.gate.memory.record(target.id, h, w, d, detail.tags);
+
+    // 7b. Store encounter for return response (agent "remembers" what it saw)
+    this.encounters.push({
+      nodeId: target.id,
+      tags: detail.tags ?? [],
+      summary: (detail.summary ?? "").slice(0, 200),
+      h, w, d,
+    });
+
+    // 8. Emit cycle JSON for UI (structured output, always printed)
+    this.emitCycleJson("standard", nodes.length, {
+      nodeId: target.id,
+      tags: detail.tags ?? [],
+      summary: (detail.summary ?? "").slice(0, 100),
+    }, {
+      h, w, d,
+      reason: (evalAction.reason ?? "").slice(0, 100),
+    });
+  }
+
+  /** Scout cycle: move → sense only (no focus, no eval, saves energy) */
+  private async scoutCycle(moveStep: number, moveMode: WalkMode): Promise<void> {
+    if (moveStep > 0) {
+      if (!this.canAfford("move")) {
+        this.log(`Energy too low for move (${this.sphere.currentEnergy} < ${this.sphere.energyCosts.move})`);
+        return;
+      }
+      await this.sphere.move(moveStep, moveMode);
+    }
+    if (!this.canAfford("sense")) {
+      this.log(`Energy too low for sense (${this.sphere.currentEnergy} < ${this.sphere.energyCosts.sense})`);
+      return;
+    }
+    const nodes = await this.sphere.sense(this.config.senseRadius);
+    this.log(`Scout: sensed ${nodes.length} nodes (no focus, saving energy)`);
+
+    // Emit cycle JSON for UI (scout = sense only, no eval)
+    this.emitCycleJson("scout", nodes.length);
+  }
+
+  // ===== Liaison: Fast exploration only (no LLM, no eval) =====
+
+  /** Fast exploration — collect nodes for response without evaluation */
+  private async liaisonExplore(): Promise<void> {
+    while (
+      this.running &&
+      this.stats.cycles < this.config.maxCycles &&
+      this.sphere.currentEnergy > this.config.minEnergy
+    ) {
       this.stats.cycles++;
-      this.log(`--- Explore ${this.stats.cycles}/${this.config.maxCycles} (energy: ${this.sphere.currentEnergy}) ---`);
+      this.log(`--- Explore ${this.stats.cycles}/${this.config.maxCycles} (energy: ${this.sphere.currentEnergy}) [liaison] ---`);
 
       try {
         // Move (skip first cycle)
@@ -301,13 +447,12 @@ export class PhiAgent {
           continue;
         }
         const target = nodes[targetIndex];
-        this.log(`FastGate pick: [${targetIndex}] ${target.summary.slice(0, 60)} (flags: 0x${target.flags.toString(16).padStart(4, "0")})`);
+        this.log(`FastGate pick: [${targetIndex}] ${target.summary.slice(0, 60)}`);
 
         // Focus on target
         if (!this.canAfford("focus")) break;
         const detail = await this.sphere.focus(target.id);
         if (!detail || !detail.kind) {
-          this.log(`Focus returned empty for ${target.id} — skipping`);
           this.gate.memory.markVisited(target.id);
           continue;
         }
@@ -315,7 +460,6 @@ export class PhiAgent {
         // Skip mock/placeholder data
         const text = `${detail.summary ?? ""} ${detail.content ?? ""}`.toLowerCase();
         if (text.includes("mock") || text.includes("⚠️")) {
-          this.log(`Mock data detected for ${target.id} — skipping`);
           this.gate.memory.markVisited(target.id);
           continue;
         }
@@ -324,19 +468,14 @@ export class PhiAgent {
         this.gate.memory.markVisited(target.id);
         this.log(`Collected: [${detail.kind}] ${detail.tags?.join(", ") ?? ""} — ${(detail.summary ?? "").slice(0, 60)}`);
 
-        collected.push({
+        // Store encounter without scores (liaison = read-only)
+        this.encounters.push({
           nodeId: target.id,
           tags: detail.tags ?? [],
-          summary: detail.summary ?? "",
-          content: detail.content ?? "",
-          heat: detail.heat,
-          weight: detail.weight,
-          ttl: detail.ttl,
-          kind: detail.kind,
-          flags: target.flags,
+          summary: (detail.summary ?? "").slice(0, 200),
+          h: 0, w: 0, d: 0,
         });
 
-        // Emit cycle JSON (explore phase — no eval)
         this.emitCycleJson("explore", nodes.length, {
           nodeId: target.id,
           tags: detail.tags ?? [],
@@ -351,96 +490,7 @@ export class PhiAgent {
     if (this.sphere.currentEnergy <= this.config.minEnergy) {
       this.log(`Low energy (${this.sphere.currentEnergy}), ending exploration`);
     }
-
-    this.log(`Exploration complete: ${collected.length} nodes collected`);
-    return collected;
-  }
-
-  // ===== Phase 2a: Batch Evaluate (evaluator mode) =====
-
-  /** Batch evaluation: score each collected node per-dimension (h→w→d) */
-  private async batchEvaluate(collected: CollectedNode[]): Promise<void> {
-    if (collected.length === 0) {
-      this.log("No nodes to evaluate");
-      return;
-    }
-
-    this.log(`Batch evaluating ${collected.length} nodes (per-dimension)...`);
-
-    for (let i = 0; i < collected.length; i++) {
-      const node = collected[i];
-
-      if (!this.canAfford("evaluate")) {
-        this.log("Energy too low for evaluate, stopping batch");
-        break;
-      }
-
-      this.log(`--- Evaluate ${i + 1}/${collected.length}: ${node.tags.slice(0, 3).join(", ")} ---`);
-
-      // Score heat
-      const hPrompt = this.prompt.evaluateDimension(node, "heat", this.gate.evalFocus);
-      const hResponse = await this.ollama.generate(hPrompt, this.prompt.systemPrompt);
-      const h = this.parseDimScore(hResponse, "h");
-
-      // Score weight
-      const wPrompt = this.prompt.evaluateDimension(node, "weight", this.gate.evalFocus);
-      const wResponse = await this.ollama.generate(wPrompt, this.prompt.systemPrompt);
-      const w = this.parseDimScore(wResponse, "w");
-
-      // Score longevity (→ decay inverted: longevity 10=timeless → d=0=long-lived)
-      const dPrompt = this.prompt.evaluateDimension(node, "longevity", this.gate.evalFocus);
-      const dResponse = await this.ollama.generate(dPrompt, this.prompt.systemPrompt);
-      const longevity = this.parseDimScore(dResponse, "longevity");
-      const d = 10 - longevity;
-
-      this.log(`Scores: h=${h} w=${w} d=${d} (longevity=${longevity})`);
-
-      // Submit to Sphere
-      const success = await this.sphere.evaluate(node.nodeId, h, w, d);
-      if (success) {
-        this.stats.evaluations++;
-        this.stats.totalHeatDelta += (h - 5);
-        await this.tryEmitBus(node.nodeId, h, w);
-      }
-
-      // Record in session memory (for species memory persistence)
-      this.gate.memory.record(node.nodeId, h, w, d, node.tags);
-
-      // Store encounter for return response
-      this.encounters.push({
-        nodeId: node.nodeId,
-        tags: node.tags,
-        summary: node.summary.slice(0, 200),
-        h, w, d,
-      });
-
-      // Emit cycle JSON for UI
-      this.emitCycleJson("evaluate", undefined, {
-        nodeId: node.nodeId,
-        tags: node.tags,
-        summary: node.summary.slice(0, 100),
-      }, { h, w, d, reason: "" });
-    }
-  }
-
-  /** Parse single-dimension score from LLM JSON response */
-  private parseDimScore(response: string, key: string): number {
-    try {
-      const parsed = JSON.parse(response);
-      const raw = parsed[key] ?? parsed.score ?? parsed.value ?? 5;
-      return Math.max(0, Math.min(10, Math.round(typeof raw === "number" ? raw : 5)));
-    } catch {
-      // Fallback: extract JSON from response text
-      const match = response.match(/\{[^}]+\}/);
-      if (match) {
-        try {
-          const parsed = JSON.parse(match[0]);
-          const raw = parsed[key] ?? 5;
-          return Math.max(0, Math.min(10, Math.round(typeof raw === "number" ? raw : 5)));
-        } catch { /* fall through */ }
-      }
-      return 5;
-    }
+    this.log(`Liaison exploration complete: ${this.encounters.length} nodes collected`);
   }
 
   // ===== Species Memory =====
