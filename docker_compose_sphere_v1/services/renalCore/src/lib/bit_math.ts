@@ -41,7 +41,7 @@ const DEFAULT_MODIFIERS = {
   Dense: { weightMultiplier: 1.2 },
   Authority: { decayRateMultiplier: 0.95 },
   // Special (bits 12-15)
-  Frozen: { decayRateMultiplier: 0, ttlDecayMultiplier: 0 },
+  SystemCore: { decayRateMultiplier: 0, ttlDecayMultiplier: 0 },  // Frozen metabolism (Relic)
 };
 
 /**
@@ -59,8 +59,8 @@ export const computeEffectiveDecayRate = (
   let rate = baseDecayRate;
   const mods = config?.physicsModifiers ?? DEFAULT_MODIFIERS;
 
-  // Frozen: 代謝停止
-  if (flags & NodeFlag.Frozen) {
+  // SystemCore: 代謝停止 (Frozen metabolism for Relic)
+  if (flags & NodeFlag.SystemCore) {
     return 0;
   }
 
@@ -116,8 +116,8 @@ export const computeEffectiveTTLDecay = (
   let decay = baseTTLDecay;
   const mods = config?.physicsModifiers ?? DEFAULT_MODIFIERS;
 
-  // Frozen: 代謝停止
-  if (flags & NodeFlag.Frozen) {
+  // SystemCore: 代謝停止 (Frozen metabolism for Relic)
+  if (flags & NodeFlag.SystemCore) {
     return 0;
   }
 
@@ -168,8 +168,8 @@ export const computeEffectiveWeightDecay = (
   let decay = baseWeightDecay;
   const mods = config?.physicsModifiers ?? DEFAULT_MODIFIERS;
 
-  // Frozen: 代謝停止
-  if (flags & NodeFlag.Frozen) {
+  // SystemCore: 代謝停止 (Frozen metabolism for Relic)
+  if (flags & NodeFlag.SystemCore) {
     return 0;
   }
 

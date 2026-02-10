@@ -135,13 +135,13 @@ export class Bookkeeper {
         for (const node of shouldAscend) {
             node.kind = "amber";
             node.metrics.h = Bookkeeper.AMBER_DEFAULT_HEAT; // heat リセット（sense/scanL1 支配防止）
-            node.metrics.flg |= NodeFlag.Frozen; // 代謝停止
+            node.metrics.flg |= NodeFlag.SystemCore; // 代謝停止 (Frozen metabolism)
             await this.projectionRepo.set(node.id, node);
         }
         // 2. Erosion: Amber → Active
         for (const node of shouldErode) {
             node.kind = "active";
-            node.metrics.flg &= ~NodeFlag.Frozen; // 代謝再開
+            node.metrics.flg &= ~NodeFlag.SystemCore; // 代謝再開
             await this.projectionRepo.set(node.id, node);
         }
         // 3. Revival: Fossil → Active

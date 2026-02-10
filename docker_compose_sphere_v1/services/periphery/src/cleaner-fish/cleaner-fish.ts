@@ -201,7 +201,7 @@ export class CleanerFish {
       kind: "fossil",
       metrics: {
         ...node.metrics,
-        flg: node.metrics.flg | NodeFlag.Compressed | NodeFlag.Frozen,
+        flg: node.metrics.flg | NodeFlag.Compressed | NodeFlag.SystemCore,  // Frozen metabolism
       },
       timestamp: Date.now(),
     };

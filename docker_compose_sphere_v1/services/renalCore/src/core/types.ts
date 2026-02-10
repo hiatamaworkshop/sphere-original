@@ -24,6 +24,7 @@ export enum NodeFlag {
   TemporalShort  = 0x0001,  // 短命: decay_rate × 1.3, ttl_decay × 1.2 (trending, breaking)
   TemporalLong   = 0x0002,  // 長命: decay_rate × 0.8, ttl_decay × 0.7 (timeless, stable)
   TemporalCyclic = 0x0004,  // 周期: TBD (seasonal resurface)
+  Hot            = 0x0008,  // 高熱: 現在高い熱量を持つ (dynamic, Arbiter-assigned)
 
   // Density (bits 4-7)
   Dense      = 0x0010,  // 高密度: weight × 1.2 (theory, formula)
@@ -43,6 +44,10 @@ export enum NodeFlag {
   Compressed  = 0x4000,  // 圧縮済み: Fossil化 (TODO: move to state)
   Candidate   = 0x8000,  // 候補: Ascension cooling period (TODO: move to state)
 }
+
+// State flags (dynamic, Arbiter-assigned)
+// Frozen is represented by SystemCore (0x2000) for metabolism purposes
+export const Frozen = NodeFlag.SystemCore;  // Alias for backwards compatibility
 
 /**
  * CrystallizationRecord: 結晶化時に吸収されたノードの記録

@@ -29,6 +29,7 @@ const Flag = {
   TemporalShort:  0x0001,
   TemporalLong:   0x0002,
   TemporalCyclic: 0x0004,
+  Hot:            0x0008,  // Dynamic: Arbiter-assigned
 
   // Density (bits 4-7)
   Dense:      0x0010,
@@ -47,6 +48,9 @@ const Flag = {
   SystemCore:  0x2000,
   Compressed:  0x4000,  // TODO: move to state
   Candidate:   0x8000,  // TODO: move to state
+
+  // Aliases for state flags
+  Frozen: 0x2000,  // Alias for SystemCore (backwards compatibility)
 } as const;
 
 // ============================================================

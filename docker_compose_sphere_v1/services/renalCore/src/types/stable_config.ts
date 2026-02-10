@@ -54,7 +54,7 @@ export interface RenalCoreFlagsConfig {
     Dense: FlagPhysicsModifier;
     Authority: FlagPhysicsModifier;
     // Special (bits 12-15)
-    Frozen: FlagPhysicsModifier;
+    SystemCore: FlagPhysicsModifier;  // Frozen metabolism (Relic)
   };
 }
 

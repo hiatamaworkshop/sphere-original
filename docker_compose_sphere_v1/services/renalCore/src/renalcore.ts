@@ -128,8 +128,8 @@ export class RenalCore {
   private processDecay(loadFactor: number) {
     // === Node Decay ===
     for (const node of this.projectionDB.values()) {
-      // Frozen フラグがある場合は代謝を停止（relic, environment 等）
-      if (hasFlag(node, NodeFlag.Frozen)) {
+      // SystemCore フラグがある場合は代謝を停止（relic, environment 等）
+      if (hasFlag(node, NodeFlag.SystemCore)) {
         continue;
       }
 

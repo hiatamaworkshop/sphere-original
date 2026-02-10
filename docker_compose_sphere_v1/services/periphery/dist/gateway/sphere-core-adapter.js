@@ -153,7 +153,7 @@ export class SphereCoreAdapter {
      * Check if node is Amber (frozen, cacheable)
      */
     isAmber(node) {
-        return node.kind === "amber" && (node.metrics.flg & NodeFlag.Frozen) !== 0;
+        return node.kind === "amber" && (node.metrics.flg & NodeFlag.SystemCore) !== 0; // Frozen metabolism
     }
     /**
      * Get node from cache if valid

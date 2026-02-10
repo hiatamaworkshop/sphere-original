@@ -26,63 +26,87 @@
  */
 import { NodeFlag } from "@sphere/renal-core";
 /**
- * Tag patterns for 16bit classification
+ * Tag patterns for 16bit classification (3-layer system)
  *
- * [Design] Map tag keywords to NodeFlag combinations
- * [Coverage] Authority, Freshness, Catalyst, Ephemeral, Sticky, Volatile,
- *            Hot, Hub, UserMarked, SystemCore
+ * [Design] FLAG_SYSTEM_REDESIGN.md
+ *   - Temporal (bits 0-3): when does this matter?
+ *   - Density (bits 4-7): how much is packed in?
+ *   - Cognitive (bits 8-11): how does it feel?
+ *   - Special (bits 12-15): system/user metadata
  *
- * [Note] Dynamic flags (Frozen, Isolated, Candidate, Compressed) are set by Arbiter
+ * [Philosophy] Sparse patterns. Agents compensate via Loadout.
+ * [Note] Dynamic flags (Compressed, Candidate) are set by Arbiter
  */
 const TAG_FLAG_PATTERNS = [
-    // Authority (0x0001): Official sources, academic rigor, or specifications
+    // --- Temporal Layer (bits 0-3) ---
+    // TemporalShort (0x0001): time-sensitive, decays quickly
     {
-        pattern: /\b(official|authoritative|source|reference|standard|canonical|spec|specification|documentation|doc|peer-reviewed|research|paper|thesis|verified|proven|original)\b/i,
+        pattern: /\b(new|latest|breaking|recent|fresh|trending|viral|hot|2024|2025|2026|today|now|current|update|modern|live|just-in)\b/i,
+        flags: NodeFlag.TemporalShort,
+    },
+    // TemporalLong (0x0002): timeless, resists decay
+    {
+        pattern: /\b(timeless|classic|fundamental|proven|stable|reliable|legacy|permanent|long-term|enduring|fixed|anchor)\b/i,
+        flags: NodeFlag.TemporalLong,
+    },
+    // TemporalCyclic (0x0004): resurfaces periodically (future use)
+    // {
+    //   pattern: /\b(seasonal|cyclic|recurring|periodic)\b/i,
+    //   flags: NodeFlag.TemporalCyclic,
+    // },
+    // --- Density Layer (bits 4-7) ---
+    // Dense (0x0010): high information density
+    {
+        pattern: /\b(theory|formula|rigorous|technical|dense|detailed|comprehensive|in-depth|academic|formal|mathematical)\b/i,
+        flags: NodeFlag.Dense,
+    },
+    // Sparse (0x0020): low density
+    {
+        pattern: /\b(casual|light|brief|anecdotal|simple|short|note|memo|thought|overview|intro|summary)\b/i,
+        flags: NodeFlag.Sparse,
+    },
+    // Composite (0x0040): multi-concept fusion
+    {
+        pattern: /\b(synthesis|integration|combination|hybrid|composite|fusion|interdisciplinary|cross-domain)\b/i,
+        flags: NodeFlag.Composite,
+    },
+    // Authority (0x0080): compressed trust
+    {
+        pattern: /\b(official|authoritative|peer-reviewed|research|paper|verified|canonical|standard|specification|reference|source|doc|documentation)\b/i,
         flags: NodeFlag.Authority,
     },
-    // Freshness (0x0002): Recent updates, current timeframes, or breaking info
+    // --- Cognitive Layer (bits 8-11) ---
+    // Conservative start: regex-detectable patterns only
+    // Future: LLM-based Tagger for nuanced cognitive flags
+    // Insightful (0x0100): generates "aha" moments
     {
-        pattern: /\b(new|fresh|latest|recent|breaking|update|revised|modern|upcoming|2024|2025|2026|today|now|current|realtime|live|just-in)\b/i,
-        flags: NodeFlag.Freshness,
+        pattern: /\b(insight|revelation|breakthrough|discovery|realization|epiphany|illuminating|enlightening)\b/i,
+        flags: NodeFlag.Insightful,
     },
-    // Catalyst (0x0004): Intermediaries, structural foundations, or integration points
+    // Confusing (0x0200): low resolution, ambiguous
     {
-        pattern: /\b(hub|central|core|foundation|base|link|connect|bridge|relation|integration|interface|gateway|junction|middleware|api|glue|nexus|pipeline)\b/i,
-        flags: NodeFlag.Catalyst,
+        pattern: /\b(confusing|unclear|ambiguous|vague|obscure|complex|paradox|contradictory)\b/i,
+        flags: NodeFlag.Confusing,
     },
-    // Ephemeral (0x0008): Short-lived, experimental, or draft-state content
+    // Provoking (0x0400): challenges assumptions
     {
-        pattern: /\b(temporary|ephemeral|transient|short-term|brief|draft|wip|experimental|prototype|test|beta|trial|random|thought|note|memo|volatile|fleeting)\b/i,
-        flags: NodeFlag.Ephemeral,
+        pattern: /\b(controversial|debate|challenge|question|provocative|radical|disruptive|unconventional)\b/i,
+        flags: NodeFlag.Provoking,
     },
-    // Sticky (0x0010): Essential, stable, or long-term foundational knowledge
+    // Soothing (0x0800): calming, reassuring
     {
-        pattern: /\b(important|critical|essential|fundamental|key|permanent|stable|reliable|proven|fixed|legacy|anchor|root|main|major|primary|vital)\b/i,
-        flags: NodeFlag.Sticky,
+        pattern: /\b(calming|reassuring|stable|peaceful|harmonious|consistent|predictable|gentle)\b/i,
+        flags: NodeFlag.Soothing,
     },
-    // Volatile (0x0020): Fast-changing, unstable, or frequently mutating content
-    {
-        pattern: /\b(unstable|changing|mutable|dynamic|flux|shifting|evolving|fluid|variable|fluctuating|turbulent|chaotic)\b/i,
-        flags: NodeFlag.Volatile,
-    },
-    // Hot (0x0040): High activity, trending topics, or controversial debate
-    {
-        pattern: /\b(trending|popular|viral|hot|active|discussion|debate|controversial|shout|alert|emergency|attention|boom|hype|burst)\b/i,
-        flags: NodeFlag.Hot,
-    },
-    // Hub (0x0100): Structural summaries, navigational aids, or collections
-    {
-        pattern: /\b(overview|summary|index|catalog|collection|guide|tutorial|introduction|101|map|portal|archive|list|directory|atlas|handbook)\b/i,
-        flags: NodeFlag.Hub,
-    },
-    // UserMarked (0x1000): User-indicated importance or bookmarks
+    // --- Special Layer (bits 12-15) ---
+    // UserMarked (0x1000): user bookmarks
     {
         pattern: /\b(favorite|bookmark|starred|pinned|saved|marked|flagged|remember|keep|preserved|highlighted)\b/i,
         flags: NodeFlag.UserMarked,
     },
-    // SystemCore (0x2000): System infrastructure, configuration, or architecture
+    // SystemCore (0x2000): infrastructure
     {
-        pattern: /\b(system|config|settings|internal|kernel|infrastructure|architecture|framework|schema|model|engine|runtime|bootstrap)\b/i,
+        pattern: /\b(system|config|settings|internal|kernel|infrastructure|architecture|framework|schema|model|engine|runtime|bootstrap|core)\b/i,
         flags: NodeFlag.SystemCore,
     },
 ];
