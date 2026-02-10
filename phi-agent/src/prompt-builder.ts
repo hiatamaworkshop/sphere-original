@@ -192,6 +192,38 @@ Output JSON only:
 { "action": "evaluate", "h": <number>, "w": <number>, "d": <number>, "reason": "<brief>" }`;
   }
 
+  /**
+   * Per-dimension evaluation prompt — used in batch scoring mode.
+   * Each dimension gets its own LLM call for focused, accurate scoring.
+   */
+  evaluateDimension(
+    node: { tags: string[]; summary: string; content: string; heat: number; weight: number; kind: string },
+    dimension: "heat" | "weight" | "longevity",
+    evalFocus?: string,
+  ): string {
+    const role = evalFocus ? this.getConcreteRole(evalFocus) : "analytical observer";
+    const tags = node.tags?.join(", ") || "(none)";
+    const content = node.content?.slice(0, 500) || "(no content)";
+
+    const dimInfo: Record<string, { scale: string; key: string }> = {
+      heat:      { scale: "motion/attention (0=dormant, 5=steady, 10=viral)", key: "h" },
+      weight:    { scale: "density/authority (0=superficial, 5=moderate, 10=authoritative)", key: "w" },
+      longevity: { scale: "relevance duration (0=ephemeral, 5=months, 10=timeless)", key: "longevity" },
+    };
+
+    const { scale, key } = dimInfo[dimension];
+
+    return `My query: "${this.query}"
+
+As ${role}:
+Node: ${tags} — ${node.summary}
+Content: ${content}
+
+Rate ${dimension.toUpperCase()} (0-10): ${scale}
+
+{"${key}": <0-10>, "reason": "<brief>"}`;
+  }
+
   chooseNextMove(): string {
     return `My query: "${this.query}"
 

@@ -239,17 +239,36 @@ export const LOADOUTS: Record<string, Loadout> = {
   },
   archivist: {
     name: "archivist",
-    weights: { metrics: { ...DEFAULT_WEIGHTS.metrics, weight: 0.5, decay: -0.3 } },
-    weapon: {
-      flagBias: { authority: 1.3, temporalLong: 1.5, dense: 1.2, soothing: 1.2 },
-      stateBias: { hot: 0.7, frozen: 1.5 },
-      ratioBias: { stability: -0.3 },
+    weights: {
+      metrics: {
+        ...DEFAULT_WEIGHTS.metrics,
+        heat: -0.3,      // hermit integration: low-heat preference
+        weight: 0.5,
+        decay: -0.3
+      },
+      keywordMatch: 2    // hermit integration: moderate keyword focus
     },
-    qualityVector: QUALITY_PRESETS.archivist,
-    returnWeights: [0.2, 0.1, 0.3, 0.4],
+    weapon: {
+      flagBias: {
+        authority: 1.5,       // hermit+archivist average
+        temporalLong: 1.5,
+        dense: 1.3,           // hermit value
+        soothing: 1.3,        // hermit value
+        insightful: 1.1       // hermit integration: quiet insight
+      },
+      stateBias: {
+        hot: 0.6,      // hermit+archivist average
+        frozen: 1.4    // hermit+archivist average
+      },
+      ratioBias: {
+        stability: 0.5   // hermit integration: strong stability bias
+      }
+    },
+    qualityVector: [0.05, 0.55, 0.35, 0.05],  // weight/decay focused (hermit influence)
+    returnWeights: [0.2, 0.1, 0.1, 0.6],       // staleness-driven (hermit value)
     walkPreference: "deep",
     minCycles: 4,
-    evalFocus: "Observe this node as an archivist preserving knowledge.\n\nRate (0–10, 5=neutral):\nheat = motion/attention (0=still, 10=active)\nweight = density (0=light, 10=heavy)\ndecay = fade rate (0=long-lived, 10=short-lived)",
+    evalFocus: "Observe this node as an archivist seeking stable knowledge.\n\nRate (0–10, 5=neutral):\nheat = motion/attention (0=still, 10=active)\nweight = density (0=light, 10=heavy)\ndecay = fade rate (0=long-lived, 10=short-lived)",
   },
   hunter: {
     name: "hunter",
@@ -279,20 +298,6 @@ export const LOADOUTS: Record<string, Loadout> = {
     walkPreference: "hot",
     minCycles: 3,
     evalFocus: "Observe this node like a moth drawn to light.",
-  },
-  hermit: {
-    name: "hermit",
-    weights: { metrics: { ...DEFAULT_WEIGHTS.metrics, heat: -0.3, weight: 1.0, decay: -0.5, distance: -1 }, keywordMatch: 3 },
-    weapon: {
-      flagBias: { authority: 1.8, temporalLong: 1.5, dense: 1.3, soothing: 1.3 },
-      stateBias: { hot: 0.5, frozen: 1.2 },
-      ratioBias: { stability: 0.6 },
-    },
-    qualityVector: [0.0, 0.6, 0.4, 0.0],
-    returnWeights: [0.2, 0.1, 0.1, 0.6],
-    walkPreference: "deep",
-    minCycles: 4,
-    evalFocus: "Observe this node quietly, like a hermit in isolation.",
   },
   wanderer: {
     name: "wanderer",
