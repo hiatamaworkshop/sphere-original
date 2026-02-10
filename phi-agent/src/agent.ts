@@ -2,15 +2,20 @@
 // PhiAgent — Main exploration loop (EvalLoop architecture)
 // ============================================================
 //
-// Cycle (evaluator mode):
+// Capabilities (independent flags):
+//   evaluate:  score nodes via LLM, write back to Sphere (default: ON)
+//   response:  generate return narrative at session end (default: OFF)
+//   stream:    emit real-time events during exploration (default: OFF, future)
+//
+// Cycle (evaluate=true):
 //   1. move (FastGate computed direction, 0ms)
 //   2. sense → FastGate picks target (0ms)
 //   3. focus → phi evaluates content (~25s, only phi call)
 //   4. record + compute next move (0ms)
 //   5. satisfaction check → return or continue
 //
-// Liaison mode:
-//   Fast exploration only — no LLM eval, no write-back, response only
+// Cycle (evaluate=false):
+//   Fast traversal — sense/focus only, no LLM, no write-back
 //
 // phi is the amber generator. FastGate is the decision maker.
 
@@ -22,9 +27,6 @@ import { FastGate, LOADOUTS } from "./fast-gate.js";
 import type { Loadout, LoadoutName, SpeciesMemoryBias } from "./fast-gate.js";
 import { appendEvalLog, loadSpeciesProfile } from "./eval-log.js";
 import type { EvalLogEntry } from "./eval-log.js";
-
-/** Agent mode: evaluator (scores + writes back) or liaison (read-only, external response) */
-export type AgentMode = "evaluator" | "liaison";
 
 /** Species-specific voice guidance for return responses */
 const SPECIES_VOICE: Record<string, string> = {
@@ -50,7 +52,12 @@ export interface AgentConfig {
   query: string;
   tags?: string[];
   loadout: LoadoutName | Loadout;
-  mode: AgentMode;
+  /** Score nodes via LLM, write back to Sphere, persist eval-log */
+  evaluate: boolean;
+  /** Generate return narrative at session end */
+  response: boolean;
+  /** Emit real-time events during exploration (future) */
+  stream: boolean;
   maxCycles: number;
   minEnergy: number;
   senseRadius: number;
@@ -72,7 +79,9 @@ export interface AgentStats {
 const DEFAULT_AGENT_CONFIG: AgentConfig = {
   query: "knowledge exploration",
   loadout: "balanced",
-  mode: "evaluator",
+  evaluate: true,
+  response: false,
+  stream: false,
   maxCycles: 10,
   minEnergy: 10,
   senseRadius: 5,
@@ -174,34 +183,41 @@ export class PhiAgent {
 
       await this.sphere.connect(this.config.query, tags);
       this.initialEnergy = this.sphere.currentEnergy;
-      this.log(`Positioned in Sphere (energy: ${this.initialEnergy}, loadout: ${this.gate.loadoutName}, mode: ${this.config.mode})`);
+      const flags = [
+        this.config.evaluate ? "evaluate" : null,
+        this.config.response ? "response" : null,
+        this.config.stream ? "stream" : null,
+      ].filter(Boolean).join("+") || "observe-only";
+      this.log(`Positioned in Sphere (energy: ${this.initialEnergy}, loadout: ${this.gate.loadoutName}, flags: ${flags})`);
 
       // Step 3: Transition to Core layer
       this.log("Transitioning to Core...");
       await this.sphere.transitionToCore();
       this.log("Reached Core layer");
 
-      // Step 4: Explore — branch on mode
+      // Step 4: Explore — branch on evaluate flag
       this.stats.status = "exploring";
-      if (this.config.mode === "evaluator") {
+      if (this.config.evaluate) {
         await this.exploreLoop();
         this.persistEvalLog();
       } else {
         await this.liaisonExplore();
       }
 
-      // Step 5: Return response — agent reflects on what it discovered
-      try {
-        const response = await this.generateReturnResponse();
-        if (response) {
-          console.log("\n========================================");
-          console.log("  Return Response");
-          console.log("========================================");
-          console.log(response);
-          console.log("========================================\n");
+      // Step 5: Return response (only if response flag is on)
+      if (this.config.response) {
+        try {
+          const response = await this.generateReturnResponse();
+          if (response) {
+            console.log("\n========================================");
+            console.log("  Return Response");
+            console.log("========================================");
+            console.log(response);
+            console.log("========================================\n");
+          }
+        } catch (err) {
+          this.log(`Return response failed: ${err}`);
         }
-      } catch (err) {
-        this.log(`Return response failed: ${err}`);
       }
 
       // Step 6: Clean disconnect
@@ -602,7 +618,7 @@ export class PhiAgent {
   private async generateReturnResponse(): Promise<string> {
     if (this.encounters.length === 0) return "";
 
-    const hasScores = this.config.mode === "evaluator";
+    const hasScores = this.config.evaluate;
 
     const encounterList = this.encounters
       .map((e, i) => {
@@ -652,8 +668,8 @@ Your monologue starts from where you entered the Sphere. Answer these questions:
 
     // Add signature: — {species} ({nodeCount} nodes, {duration})
     const duration = this.formatDuration(Date.now() - this.sessionStart);
-    const modeTag = this.config.mode === "liaison" ? " [liaison]" : "";
-    const signature = `\n\n— ${this.gate.loadoutName}${modeTag} (${this.encounters.length} nodes, ${duration})`;
+    const flagTag = this.config.evaluate ? "" : " [no-eval]";
+    const signature = `\n\n— ${this.gate.loadoutName}${flagTag} (${this.encounters.length} nodes, ${duration})`;
 
     return response + signature;
   }

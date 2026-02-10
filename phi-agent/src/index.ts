@@ -3,36 +3,38 @@
 // ============================================================
 //
 // Usage:
-//   npx tsx src/index.ts                               # default query
+//   npx tsx src/index.ts                               # default: evaluate only
 //   npx tsx src/index.ts "AI safety"                    # custom query
 //   npx tsx src/index.ts "metabolism" --cycles 20       # more cycles
 //   npx tsx src/index.ts "physics" --loadout scholar    # personality
-//   npx tsx src/index.ts "query" --mode liaison         # no evaluation, response only
+//   npx tsx src/index.ts "query" --response             # evaluate + response
+//   npx tsx src/index.ts "query" --no-evaluate --response  # response only (old liaison)
 //
 // Environment:
 //   OLLAMA_HOST    ollama API URL (default: http://localhost:11434)
 //   OLLAMA_MODEL   model name (default: phi3:mini)
 //   SPHERE_URL     periphery HTTP URL (default: http://localhost:3001)
 //   SPHERE_WS      periphery WebSocket URL (default: ws://localhost:3001)
-//   AGENT_MODE     evaluator | liaison (default: evaluator)
+//   EVALUATE       true/false (default: true)
+//   RESPONSE       true/false (default: false)
+//   STREAM         true/false (default: false, future)
 
 import { OllamaClient } from "./ollama-client.js";
 import { SphereClient } from "./sphere-client.js";
 import { PhiAgent } from "./agent.js";
-import type { AgentMode } from "./agent.js";
 import { LOADOUTS } from "./fast-gate.js";
 import type { LoadoutName } from "./fast-gate.js";
 import { getSpeciesSummary } from "./eval-log.js";
 
 const VALID_LOADOUTS = Object.keys(LOADOUTS) as LoadoutName[];
 
-const VALID_MODES: AgentMode[] = ["evaluator", "liaison"];
-
 interface ParsedArgs {
   query: string;
   cycles: number;
   loadout: LoadoutName;
-  mode: AgentMode;
+  evaluate: boolean;
+  response: boolean;
+  stream: boolean;
   debug: boolean;
   daemon: boolean;
   daemonSleepMs: number;
@@ -44,7 +46,9 @@ function parseArgs(): ParsedArgs {
   let query = "knowledge exploration";
   let cycles = 10;
   let loadout: LoadoutName | "random" = "balanced";
-  let mode: AgentMode = "evaluator";
+  let evaluate = true;
+  let response = false;
+  let stream = false;
   let debug = true;
   let daemon = false;
   let daemonSleepMs = 30_000;
@@ -61,14 +65,12 @@ function parseArgs(): ParsedArgs {
         console.log(`Unknown loadout "${p}", using "balanced". Available: ${VALID_LOADOUTS.join(", ")}, random`);
       }
       i++;
-    } else if (args[i] === "--mode" && args[i + 1]) {
-      const m = args[i + 1] as AgentMode;
-      if (VALID_MODES.includes(m)) {
-        mode = m;
-      } else {
-        console.log(`Unknown mode "${m}", using "evaluator". Available: ${VALID_MODES.join(", ")}`);
-      }
-      i++;
+    } else if (args[i] === "--no-evaluate") {
+      evaluate = false;
+    } else if (args[i] === "--response") {
+      response = true;
+    } else if (args[i] === "--stream") {
+      stream = true;
     } else if (args[i] === "--daemon") {
       daemon = true;
     } else if (args[i] === "--sleep" && args[i + 1]) {
@@ -90,10 +92,9 @@ function parseArgs(): ParsedArgs {
       loadout = envL as LoadoutName | "random";
     }
   }
-  if (process.env.AGENT_MODE) {
-    const envM = process.env.AGENT_MODE as AgentMode;
-    if (VALID_MODES.includes(envM)) mode = envM;
-  }
+  if (process.env.EVALUATE === "false") evaluate = false;
+  if (process.env.RESPONSE === "true") response = true;
+  if (process.env.STREAM === "true") stream = true;
   if (process.env.DAEMON === "true") daemon = true;
   if (process.env.DAEMON_SLEEP_MS) daemonSleepMs = parseInt(process.env.DAEMON_SLEEP_MS, 10) || daemonSleepMs;
   if (process.env.DEBUG === "false") debug = false;
@@ -103,12 +104,18 @@ function parseArgs(): ParsedArgs {
     ? VALID_LOADOUTS[Math.floor(Math.random() * VALID_LOADOUTS.length)]
     : loadout;
 
-  return { query, cycles, loadout: resolvedLoadout, mode, debug, daemon, daemonSleepMs };
+  return { query, cycles, loadout: resolvedLoadout, evaluate, response, stream, debug, daemon, daemonSleepMs };
 }
 
 async function runOnce(config: ParsedArgs): Promise<number> {
-  const { query, cycles, loadout, mode, debug } = config;
+  const { query, cycles, loadout, evaluate, response, stream, debug } = config;
   const l = LOADOUTS[loadout];
+
+  const flags = [
+    evaluate ? "evaluate" : null,
+    response ? "response" : null,
+    stream ? "stream" : null,
+  ].filter(Boolean).join("+") || "observe-only";
 
   console.log("========================================");
   console.log("  phi-agent — Sphere Coupling Service");
@@ -118,7 +125,7 @@ async function runOnce(config: ParsedArgs): Promise<number> {
   console.log(`Quality: [${l.qualityVector.map(v => v.toFixed(1)).join(", ")}]`);
   console.log(`Return:  [${l.returnWeights.map(v => v.toFixed(1)).join(", ")}] (sat,frust,stam,stale)`);
   console.log(`Cycles:  ${cycles}`);
-  console.log(`Mode:    ${mode}`);
+  console.log(`Flags:   ${flags}`);
   if (config.daemon) console.log(`Daemon:  sleep ${config.daemonSleepMs}ms between runs`);
   console.log();
 
@@ -135,7 +142,9 @@ async function runOnce(config: ParsedArgs): Promise<number> {
   const agent = new PhiAgent(ollama, sphere, {
     query,
     loadout,
-    mode,
+    evaluate,
+    response,
+    stream,
     maxCycles: cycles,
     debug,
   });
