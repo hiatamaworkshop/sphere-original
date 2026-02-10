@@ -15,7 +15,7 @@ const SYSTEM_PROMPT = `You are an autonomous agent exploring a knowledge Sphere 
 Your capabilities:
 - SENSE: Perceive nearby nodes (tags + summary + heat/weight metrics)
 - FOCUS: Inspect a node's full content (L3/L4 access)
-- EVALUATE: Rate a node's relevance (heat 0-10, weight 0-10, decay 0-10)
+- EVALUATE: Rate a node's value (h, w, d scores)
 - MOVE: Navigate the space (modes: random, hot, fresh, deep, explore)
 
 Your goal: Find and evaluate knowledge relevant to your query. High-heat nodes are important and actively used. High-weight nodes are established and authoritative. Nodes naturally decay over time — your evaluations shape what survives.
@@ -70,15 +70,10 @@ I focused on this node:
 - Current heat: ${node.heat}, weight: ${node.weight}
 - Kind: ${node.kind}
 ${perspective}
-TASK: Rate this node's value with numerical scores:
-- h (heat 0-10): How actively useful is this? 5=neutral, 8+=very relevant, 2-=irrelevant
-- w (weight 0-10): How authoritative/established? 5=neutral
-- d (decay 0-10): How fast should it age? 5=normal, 3=preserve, 8=let it fade
+TASK: Rate this node using the scale in Perspective above.
 
-Output format (JSON only, no markdown):
-{ "action": "evaluate", "h": <number>, "w": <number>, "d": <number>, "reason": "<brief>" }
-
-Example: {"action":"evaluate","h":8,"w":7,"d":4,"reason":"Highly relevant content"}`;
+Output JSON only:
+{ "action": "evaluate", "h": <number>, "w": <number>, "d": <number>, "reason": "<brief>" }`;
   }
 
   chooseNextMove(): string {
