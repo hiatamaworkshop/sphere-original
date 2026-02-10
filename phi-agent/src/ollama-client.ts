@@ -24,7 +24,7 @@ export interface OllamaResponse {
 const DEFAULT_CONFIG: OllamaConfig = {
   host: process.env.OLLAMA_HOST || "http://localhost:11434",
   model: process.env.OLLAMA_MODEL || "phi3:mini",
-  temperature: 0.2,
+  temperature: 0.4,
   maxTokens: 128,  // JSON-only response — increased for experiment stability
 };
 
