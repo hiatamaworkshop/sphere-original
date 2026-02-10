@@ -410,6 +410,30 @@ Digestor  ──file──────→ species-profile✓ クラスタ内結�
 | species-profile.json | Digestor | phi-agent (startup) | GET /species/:name/profile |
 | generations/gen-NNN.json | Digestor | Explorers, 分析ツール | GET /generations |
 
+### 現状: Docker Volume 共有の限界 (2026-02-11)
+
+現在、phi-agent / Digestor / Explorers は **同一の Docker Named Volume** (`sphere-phi-agent-data`) を `/app/data` にマウントして相乗りしている。
+
+```
+Docker Named Volume: sphere-phi-agent-data
+  ├── eval-log.jsonl          ← phi-agent APPEND, Digestor TRUNCATE
+  ├── species-profile.json    ← Digestor OVERWRITE, phi-agent READ
+  └── generations/            ← Digestor WRITE, Explorers READ
+```
+
+**単一ホスト・単一エージェントでは動く。** atomic write (tmp→rename) で安全性も確保されている。
+
+**しかし構造的に問題がある:**
+- phi-agent を複数インスタンスにすると concurrent append で壊れるリスク
+- Digestor は「独立した代謝エンジン」のはずが、ファイルシステム共有で密結合
+- クラスタ外のサービス (Observatory, 新 UI) がデータにアクセスする手段がない
+
+**IO Gateway はこの問題を解消する唯一の手段。** Volume 共有を API 境界に置き換えることで:
+- phi-agent は `POST /evaluations` で eval を投げる（ファイル直書きしない）
+- Digestor は Data Store を直接操作（同一プロセス or 同一コンテナ内）
+- 外部は読み取り API を叩く
+- ファイルシステム共有が消滅し、サービス境界が明確になる
+
 ### データ蓄積 = サービス境界
 
 > 永続データが蓄積される場所に、サービス境界が自然に生まれる。

@@ -144,6 +144,9 @@ npx tsx src/mock/contribution.ts wave 30 2000
 
 cd "c:\Users\kazuh\Desktop\Various\programming\DockerFiles\sphere-original\phi-agent" && bash -c 'OLLAMA_MODEL=gemma2:2b SPHERE_WS=ws://localhost:3001 npx tsx src/index.ts "pursuing ambitious goals" --cycles 10 --loadout hunter' 2>&1 | head -200
 
+pool service の謎　外部投入用としていつの間にか過剰設計で作られていた
+たぶんＤＢ初期化とかウィザード構想のせいで作られた
+
 安易な高速化や最適化は無視すべき！　それは誰かがやる
 自分の仕事は循環を生み　設計に専念すること　残り時間はわずかだと思え
 チューニング禁止
