@@ -273,7 +273,7 @@ def create_ui():
                         )
 
                         model_input = gr.Dropdown(
-                            choices=["llama3.2:1b", "gemma2:2b", "phi3.5:mini"],
+                            choices=["llama3.2:1b", "gemma2:2b", "phi3:mini"],
                             value="llama3.2:1b",
                             label="Model",
                             info="Ollama model name"
