@@ -325,6 +325,7 @@ const coreAdapter = new SphereCoreAdapter(projectionRepo, referenceRepo, parser,
     basePerceptionRadius: sphereConfig.perception?.basePerceptionRadius ?? config.perception?.basePerceptionRadius ?? 0.5,
     maxSenseResults: sphereConfig.perception?.maxSenseResults ?? config.perception?.maxSenseResults ?? 15,
 });
+coreAdapter.setSpatialRepo(spatialRepo);
 console.log("  ✅ Gatekeeper (schema-driven)");
 console.log("  ✅ Parser + Buffer (Agent entry)");
 console.log("  ✅ IncarnationBuffer (summary vectorization batch)");
