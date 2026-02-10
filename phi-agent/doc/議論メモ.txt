@@ -142,6 +142,32 @@ npx tsx src/mock/contribution.ts wave 30 2000
 
 
 
+cd "c:\Users\kazuh\Desktop\Various\programming\DockerFiles\sphere-original\phi-agent" && bash -c 'OLLAMA_MODEL=gemma2:2b SPHERE_WS=ws://localhost:3001 npx tsx src/index.ts "pursuing ambitious goals" --cycles 10 --loadout hunter' 2>&1 | head -200
+
+
+見えたのは　ＬＬＭ　の出力の傾向　これはそのままスフィアノードにすることを
+期待できない　ならば　レイヤー化して　エージェント日記スフィアとするべき
+何事も混ぜるのが良いわけではない　評価をスフィアに還元するのは早めに別切り出しで
+スフィア内に戻せて良かった、モデル別の傾向もわかったからこれで
+内部専門エージェント（スコアラー系　内部環境整備系）と外部専門エージェント
+gemma のような高速かつナラティブタイプにわけられる
+
+すると評価自体を　する　しない　と分離が出来る
+
+あとは出力は　ナラティブなのか　数値なのか　スフィア内データなのか　
+探索中にソケット発信できるべきか　などインターフェース側の関心が出る　これも気をつけてレイヤー化するべきだ
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
