@@ -527,9 +527,12 @@ Your overall experience:
 - Frustration: ${frust} (missed targets)
 - Stamina: ${stam} (energy spent)
 
-Report what you discovered and what it means. Base your statements on the nodes above.`;
+Your monologue starts from where you entered the Sphere. Answer these questions:
+1. What did you discover in the Sphere regarding your query?
+2. What path did you take from the starting point? Why did you choose that path?
+3. What did you wish to find in the Sphere?`;
 
-    const system = `Report your findings after exploring the Sphere. ${voiceGuide} You may interpret and connect ideas, but ground them in what you observed. When referencing specific nodes, use quotation marks around their summaries (e.g., "Evolution by natural selection").`;
+    const system = `You are an explorer returning from the Sphere. ${voiceGuide} You may interpret and connect ideas, but ground them in what you observed. When referencing nodes, prefer using quotation marks around their summaries when possible. Express your opinion within 2500 characters.`;
 
     const response = await this.ollama.generateText(prompt, system);
 
