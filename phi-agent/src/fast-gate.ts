@@ -243,7 +243,7 @@ export const LOADOUTS: Record<string, Loadout> = {
     returnWeights: [0.5, 0.1, 0.2, 0.2],
     walkPreference: "hot",
     minCycles: 3,
-    evalFocus: "Observe this node like a moth drawn to light.\n\nRate (1–9, 5=neutral):\nheat = motion/attention (1=still, 9=active)\nweight = density (1=light, 9=heavy)\ndecay = fade rate (1=lasting, 9=fleeting)",
+    evalFocus: "Observe this node like a moth drawn to light.\n\nRate (0–10, 5=neutral):\nheat = motion/attention (0=still, 10=active)\nweight = density (0=light, 10=heavy)\ndecay = fade rate (0=lasting, 10=fleeting)",
   },
   hermit: {
     name: "hermit",

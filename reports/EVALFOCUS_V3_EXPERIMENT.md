@@ -566,3 +566,146 @@ temperature: 0.4  // 0.2 → 0.4
 2. **temperature はバイアス調整器** — 0.4 で moth の h=8 bias を解消
 3. **1.2B でもクエリ理解可能** — 3.8B に匹敵する意味理解
 4. **測定 ≠ 推論** — gemma2:2b は推論は優秀だが測定は不能
+
+---
+
+## 0-10 スケール検証実験 (2026-02-10)
+
+**背景**: moth を 1-9 スケールで実験していたが、Sphere API の仕様を確認したところ **0-10 スケールが標準** と判明。
+
+```typescript
+// docker_compose_sphere_v1/services/periphery/src/types/capsule.ts:155-157
+export interface NodeEvaluation {
+  h: number;   // Heat evaluation (0-10, neutral=5)
+  w: number;   // Weight evaluation (0-10, neutral=5)
+  d: number;   // Decay evaluation (0-10, neutral=5)
+}
+```
+
+**目的**: 0-10 スケールで測定能力が維持されるか検証
+**方法**: moth を 0-10 に戻し、hermit/balanced と比較 (各 2 tests)
+
+---
+
+### 実験結果
+
+**設定**:
+- temperature: 0.4
+- 3 種族: moth (0-10 に変更), hermit (0-10 維持), balanced (0-10 維持)
+- queries: weight 重視 ("established authoritative knowledge") + heat 重視 ("trending viral discussions")
+
+**統計** (3 species, 6 tests, 23 evaluations):
+
+| 種族 | h range | h mean | w range | w mean | d range | d mean | JSON | Bus |
+|------|---------|--------|---------|--------|---------|--------|------|-----|
+| **moth** | 3pt (5-8) | 6.88 | 3pt (6-9) | 6.75 | **6pt (3-9)** | 6.38 | 100% (8/8) | 50% (4/8) |
+| **hermit** | **4pt (5-9)** | 7.13 | 3pt (6-9) | 7.25 | **7pt (2-9)** | 4.88 | 100% (8/8) | 38% (3/8) |
+| **balanced** | 3pt (5-8) | 7.57 | 3pt (6-9) | 6.43 | 5pt (4-9) | 7.71 | 100% (7/7) | 71% (5/7) |
+
+**moth (1-9 vs 0-10) 比較**:
+
+| Scale | h range | w range | d range | JSON | 判定 |
+|-------|---------|---------|---------|------|------|
+| 1-9 (v3 baseline) | 3pt (5-8) | 2pt (6-8) | 5pt (2-7) | 100% (10/10) | 測定器 |
+| **0-10 (API 準拠)** | 3pt (5-8) | **3pt (6-9)** | **6pt (3-9)** | 100% (8/8) | **測定器+拡大** |
+
+---
+
+### 核心的発見
+
+1. **0-10 スケールで測定能力維持・向上**
+   - ✅ h range 維持 (3pt)
+   - ✅ w range 拡大 (2pt → 3pt)
+   - ✅ **d range 拡大** (5pt → 6pt)
+   - ✅ JSON 100% 安定
+
+2. **スケール上限まで測定可能**
+   - **w=9 出現** — moth(1回), hermit(2回), balanced(2回)
+   - **h=9 出現** — hermit(1回)
+   - 0-10 スケールの利点: Sphere API の全範囲を使用可能
+
+3. **種族差の保持**
+   - hermit: h range 最大 (4pt, 5-9), w mean 最高 (7.25)
+   - moth: d range 最大 (6pt, 3-9)
+   - balanced: Bus 最多 (71%), h 安定傾向
+   - **0-10 スケールでも種族性が明確に分離**
+
+4. **クエリ応答性の確認**
+   - weight 重視 → w=8-9 出現
+   - heat 重視 → h 分散 (5-8)
+   - 1-9 スケール時と同じクエリ理解パターン
+
+---
+
+### 結論
+
+**✅ 0-10 スケール = 正解**
+
+**理由**:
+1. **Sphere API 仕様準拠** — NodeEvaluation interface が 0-10 を期待
+2. **測定能力向上** — d range 拡大 (5pt→6pt), w range 拡大 (2pt→3pt)
+3. **全範囲使用可能** — w=9, h=9 など上限まで測定
+4. **種族性維持** — 0-10 でも種族差が明確
+5. **JSON 安定性** — 100% success
+
+**推奨アクション**:
+- ✅ moth を 0-10 スケールに変更完了
+- 🔄 他 8 種族も 0-10 スケールに統一すべき
+- 📝 v3 パターン確定版:
+  ```typescript
+  evalFocus: "Observe this node [as species perspective].\n\n
+  Rate (0–10, 5=neutral):\n
+  heat = motion/attention (0=still, 10=active)\n
+  weight = density (0=light, 10=heavy)\n
+  decay = fade rate (0=lasting, 10=fleeting)"
+  ```
+
+---
+
+## 最終的なプロンプト作法 (2026-02-10 確定)
+
+### 確定パターン
+
+**スケール**: 0-10 (Sphere API 準拠)
+**形式**: シンボリック記法 + 種族修飾
+
+```typescript
+// 全種族共通フォーマット
+evalFocus: "Observe this node [species-specific perspective].\n\n
+Rate (0–10, 5=neutral):\n
+heat = motion/attention (0=still, 10=active)\n
+weight = density (0=light, 10=heavy)\n
+decay = fade rate (0=lasting, 10=fleeting)"
+```
+
+**種族修飾例**:
+- moth: "like a moth drawn to light"
+- hermit: "quietly, like a hermit in isolation"
+- balanced: "as a neutral explorer"
+
+### 鉄則 (最終版)
+
+1. **0-10 スケール必須** — Sphere API 仕様準拠
+2. **5=neutral 明示** — 中立点を明確化
+3. **シンボリック記法** — heat = motion/attention (簡潔で token 効率)
+4. **種族差は Observe の修飾** — Rate 定義は全種族統一
+5. **SYSTEM_PROMPT にスケール定義なし** — evalFocus に一元化 (プロンプト競合防止)
+
+### anti-patterns (再確認)
+
+- ❌ 1-9 スケール — API 仕様と不一致
+- ❌ 排他指示 ("Only X")
+- ❌ 否定指示 ("Ignore Y")
+- ❌ 注釈 ("X as Y")
+- ❌ Describe 形式 — 測定を破壊
+
+---
+
+## 教訓 (更新)
+
+1. **API 仕様を確認せよ** — プロンプトより前に interface を読む
+2. **クエリが測定を活性化する** — weight/heat 重視クエリで次元変化
+3. **temperature はバイアス調整器** — 0.4 で種族 bias を緩和
+4. **1.2B でもクエリ理解可能** — 軽量モデルでも意味理解
+5. **測定 ≠ 推論** — gemma2:2b は推論優秀だが測定不能
+6. **スケールは測定範囲を決める** — 0-10 で上限まで測定可能
