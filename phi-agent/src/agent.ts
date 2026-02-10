@@ -20,6 +20,19 @@ import type { Loadout, LoadoutName, SpeciesMemoryBias } from "./fast-gate.js";
 import { appendEvalLog, loadSpeciesProfile } from "./eval-log.js";
 import type { EvalLogEntry } from "./eval-log.js";
 
+/** Species-specific voice guidance for return responses */
+const SPECIES_VOICE: Record<string, string> = {
+  moth: "Use energetic, discovery-focused language. Express excitement about insights.",
+  hermit: "Use calm, contemplative language. Prefer quiet observation over excitement.",
+  scholar: "Use analytical, precise language. Focus on theoretical connections.",
+  hunter: "Use direct, results-focused language. Emphasize high-value findings.",
+  scout: "Use exploratory, novelty-seeking language. Highlight fresh discoveries.",
+  archivist: "Use preservation-focused language. Emphasize stability and lasting value.",
+  balanced: "Use neutral, balanced language. Avoid extremes.",
+  wanderer: "Use open, unbiased language. Report without strong preferences.",
+  sniper: "Use precise, targeted language. Focus on exact matches.",
+};
+
 /** Decoded bus hint from another agent */
 interface BusHint {
   nodeId: string;
@@ -82,6 +95,9 @@ export class PhiAgent {
     w: number;
     d: number;
   }> = [];
+
+  /** Session start time for duration tracking */
+  private sessionStart = Date.now();
 
   constructor(
     ollama: OllamaClient,
@@ -484,29 +500,55 @@ export class PhiAgent {
 
     const encounterList = this.encounters
       .map((e, i) =>
-        `${i + 1}. [${e.tags.join(", ")}] "${e.summary}" (heat:${e.h} weight:${e.w} decay:${e.d})`
+        `${i + 1}. Tags: ${e.tags.join(", ")}\n   Summary: ${e.summary}\n   Your rating: h=${e.h}, w=${e.w}, d=${e.d}`
       )
-      .join("\n");
+      .join("\n\n");
 
     const energyRatio = this.initialEnergy > 0
       ? this.sphere.currentEnergy / this.initialEnergy
       : 1.0;
 
-    const prompt = `You explored the Sphere with the query: "${this.config.query}"
-You are a ${this.gate.loadoutName}.
-You examined ${this.encounters.length} nodes during your exploration.
+    // Get feelings from FastGate
+    const qp = this.gate.memory.qualityProfile;
+    const loadout = LOADOUTS[this.gate.loadoutName] ?? LOADOUTS.balanced;
+    const qv = loadout.qualityVector;
+    const sat = (qp[0] * qv[0] + qp[1] * qv[1] + qp[2] * qv[2] + qp[3] * qv[3]).toFixed(2);
+    const frust = this.gate.memory.frustration.toFixed(2);
+    const stam = (1 - energyRatio).toFixed(2);
 
-Nodes you encountered:
+    const voiceGuide = SPECIES_VOICE[this.gate.loadoutName] ?? SPECIES_VOICE.balanced;
+
+    const prompt = `You explored "${this.config.query}" and encountered these nodes:
+
 ${encounterList}
 
-Energy remaining: ${(energyRatio * 100).toFixed(0)}%
+Your overall experience:
+- Satisfaction: ${sat} (quality × relevance)
+- Frustration: ${frust} (missed targets)
+- Stamina: ${stam} (energy spent)
 
-Based on what you actually encountered, respond to your original query "${this.config.query}".
-What did you find? What patterns or themes emerged? Be specific about the content.`;
+Report what you discovered and what it means. Base your statements on the nodes above.`;
 
-    const system = "You are a Sphere explorer returning from an expedition. Report your findings concisely based on what you actually encountered. Do not fabricate. 2-4 sentences.";
+    const system = `Report your findings after exploring the Sphere. ${voiceGuide} You may interpret and connect ideas, but ground them in what you observed. When referencing specific nodes, use quotation marks around their summaries (e.g., "Evolution by natural selection").`;
 
-    return this.ollama.generateText(prompt, system);
+    const response = await this.ollama.generateText(prompt, system);
+
+    // Add signature: — {species} ({nodeCount} nodes, {duration})
+    const duration = this.formatDuration(Date.now() - this.sessionStart);
+    const signature = `\n\n— ${this.gate.loadoutName} (${this.encounters.length} nodes, ${duration})`;
+
+    return response + signature;
+  }
+
+  /** Format milliseconds as human-readable duration */
+  private formatDuration(ms: number): string {
+    const seconds = Math.floor(ms / 1000);
+    const minutes = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    if (minutes > 0) {
+      return `${minutes}m ${secs}s`;
+    }
+    return `${secs}s`;
   }
 
   private log(msg: string): void {
