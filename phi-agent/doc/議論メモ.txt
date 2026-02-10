@@ -130,3 +130,8 @@ Species Profile の出力フォーマット (現在の SpeciesMemoryBias を拡�
 　-> プロセッサを搭載して成型、レイヤー側はAPI取得？
 今回発見した format:json 前後の w スコア era 差をどう扱うか ->初期ノイズで良い
 
+
+npx tsx src/mock/contribution.ts wave 30 2000
+
+\sphere-original\phi-agent" && 
+powershell -Command "& { .\test-hermit-gemma-gen005.ps1 -Query 'trending viral discussions' }"

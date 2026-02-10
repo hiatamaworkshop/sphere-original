@@ -101,6 +101,21 @@ This is **cultural evolution**, not model training.
 3. **Species (Loadout)** — Personality preset (9 options)
 4. **Description** — Loadout characteristics
 
+#### Why llama3.2:1b?
+
+**Default model: llama3.2:1b** (1.2B parameters)
+
+- ✅ **Full 3D measurement** — h, w, d all measurable with species memory calibration
+- ✅ **43% faster than phi3:mini** — Lightweight baseline (32s vs 56s per session)
+- ✅ **Species memory activation** — Inherits measurement scale from phi3:mini baseline
+- ✅ **Validated** — d range 4-9 (previously "d fixed" in uncalibrated state)
+
+**Alternative models**:
+- `phi3:mini` (3.8B) — Gold standard for baseline establishment (slower, most reliable)
+- `gemma2:2b` (2B) — High-speed inference (22s) but less stable d measurement
+
+See [Species Memory Calibration Experiment](../reports/SPECIES_MEMORY_CALIBRATION_EXPERIMENT.md) for validation data.
+
 ### Perception Cycles Section
 
 Each cycle shows:
@@ -379,6 +394,7 @@ This architecture is particularly valuable in the following domains:
 - [EMERGENT_PERSONALITY_MEMO.md](../reports/EMERGENT_PERSONALITY_MEMO.md) — Personality emergence in lightweight LLMs
 - [SPECIES_MEMORY_METABOLISM_DESIGN.md](../reports/SPECIES_MEMORY_METABOLISM_DESIGN.md) — Cultural evolution cycle
 - [LOADOUT_DESIGN_MEMO.md](../reports/LOADOUT_DESIGN_MEMO.md) — Species personality vectors
+- [SPECIES_MEMORY_CALIBRATION_EXPERIMENT.md](../reports/SPECIES_MEMORY_CALIBRATION_EXPERIMENT.md) — Lightweight LLM calibration validation (why llama3.2:1b)
 
 ---
 
