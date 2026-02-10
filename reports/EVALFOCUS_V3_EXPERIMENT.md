@@ -296,3 +296,125 @@ evalFocus: "Observe this node [as species perspective].\n\nRate (1–9, 5=neutra
 - **gemma2:2b (2B)**: 外部応答、高速処理、w 測定で十分
 - **llama3.2:1b (1.2B)**: 軽量代替、両次元測定可能 (速度 vs 精度のトレードオフ)
 - **qwen/smollm (<1B)**: 不適格 (スタンプ or 盲目)
+
+---
+
+## gemma2:2b 改善実験シリーズ (2026-02-10)
+
+**目的**: gemma2:2b の測定能力を改善できるか最終検証
+**結論**: 構造的限界を確認。どのプロンプト技術でもスタンプモードから脱却不可
+
+### 実験1: 役割指示 "As a heat-lover"
+
+**仮説**: 直接的な役割指示で種族特性を強調
+
+**変更**:
+```typescript
+// TASK セクションに追加
+TASK: As a heat-lover, rate this node using the scale in Perspective above.
+```
+
+**結果** (2 tests, 7 evaluations, temp=0.2):
+- h: 5-6 (range 1pt) — 以前と同じ固定傾向
+- w: 6-8 (range 2pt) — 不変
+- d: **3 完全固定** — 測定不能の再確認
+- JSON success: 87.5% (7/8)
+
+**判定**: ❌ 効果なし
+
+---
+
+### 実験2: temperature 上昇 (0.2 → 0.7)
+
+**仮説**: temperature を上げてスタンプを崩す
+
+**結果** (2 tests, 6 evaluations, temp=0.7):
+- h: **8 固定** (1回だけ 9) — 新しいスタンプ値（moth=8）
+- w: 4-7 (range 3pt) — variance 拡大 ✅
+- d: 2-4 (range 2pt) — **初めて動いた！** ✅
+- Bus: 6/6 = 100% — 通信機能復活 (h>=8) ✅
+
+**判定**: ⚠️ 部分的成功だがトレードオフあり
+
+**トレードオフ**:
+- ✅ d が初めて動いた（2-4 range）
+- ✅ w variance 拡大
+- ❌ h=8 に固定（新しいスタンプ値にシフトしただけ）
+- ⚠️ 「測定」なのか「高温ノイズ」なのか不明
+
+---
+
+### 実験3: 数学的演算プロンプト (temp=0.4)
+
+**仮説**: 「評価」ではなく「演算」タスクとして認識させる
+
+**変更**:
+```typescript
+evalFocus: "Base = 5. Compute adjustments using +/- operations:
+heat: increment if active/engaging, decrement if static (5±5 → 0-10)
+weight: increment if dense/established, decrement if light (5±5 → 0-10)
+decay: increment if fleeting, decrement if lasting (5±5 → 0-10)"
+```
+
+**結果** (2 tests, 6 evaluations, temp=0.4):
+- h: **8 完全固定** — temp=0.7 と同じ moth=8 スタンプ
+- w: 7-9 (range 2pt) — 若干 variance
+- d: **5 完全固定** — ❌ **逆効果！**
+
+**判定**: ❌ 逆効果 — d が 3→5 にシフトしただけ
+
+**原因**: LLM が "Base = 5" を「デフォルト値 = 5」と解釈し、演算せずに 5 を出力
+
+---
+
+## 全実験結果まとめ
+
+| 実験 | temp | h | w | d | 判定 |
+|------|------|---|---|---|------|
+| v3 baseline | 0.2 | 6 固定 | 6-8 | **3 固定** | スタンプ |
+| 0-10 scale | 0.2 | 6 固定 | 7 固定 | **3 固定** | 悪化 |
+| "As a heat-lover" | 0.2 | 5-6 | 6-8 | **3 固定** | 効果なし |
+| temperature 上昇 | 0.7 | **8 固定** | 4-7 | 2-4 | variance だがノイズ疑惑 |
+| **数学的演算** | 0.4 | **8 固定** | 7-9 | **5 固定** | ❌ **逆効果** |
+
+---
+
+## 構造的限界の確定
+
+### gemma2:2b の奇妙な乖離
+
+**優秀な側面**:
+- ✅ reason フィールドは正確 — コンテンツ理解は高い
+- ✅ JSON 構造は正しい
+- ✅ 推論能力は確認されている
+
+**測定不能な側面**:
+- ❌ h, w, d の数値出力がスタンプ
+- ❌ コンテンツの意味を数値に反映しない
+- ❌ どのプロンプト技術でも測定モードに入らない
+
+### なぜこのような乖離が起きるのか？
+
+**仮説**:
+- gemma2:2b は「文章生成」と「数値出力」を別系統で処理している可能性
+- reason = 言語モデルの本来の能力
+- h,w,d = パターンマッチングによる固定値選択
+- **推論能力と測定能力は独立している**
+
+### 最終判断
+
+**gemma2:2b = 測定器として不適格**
+- reason フィールドは優秀だが、数値測定は不可能
+- temperature を上げれば variance は出るが、測定の信頼性は疑問
+- 役割分担確定：
+  - **内部評価専用 = phi3:mini (3.8B)** — 全次元測定可能
+  - **外部応答専用 = gemma2:2b (2B)** — 推論のみ、測定なし
+
+---
+
+## 教訓
+
+1. **reason と数値は別物** — 文章理解 ≠ 測定能力
+2. **temperature のトレードオフ** — variance vs 信頼性
+3. **プロンプト技術の限界** — LLM の構造的特性は変えられない
+4. **役割分担が最適解** — 各モデルの得意分野に特化させる
