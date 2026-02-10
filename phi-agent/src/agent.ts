@@ -73,6 +73,16 @@ export class PhiAgent {
   private busEmitCount = 0;
   private busRecvCount = 0;
 
+  /** Nodes encountered during exploration — what the agent "saw" */
+  private encounters: Array<{
+    nodeId: string;
+    tags: string[];
+    summary: string;
+    h: number;
+    w: number;
+    d: number;
+  }> = [];
+
   constructor(
     ollama: OllamaClient,
     sphere: SphereClient,
@@ -154,7 +164,21 @@ export class PhiAgent {
       // Step 5: Persist species memory (evaluation log)
       this.persistEvalLog();
 
-      // Step 6: Clean disconnect
+      // Step 6: Return response — agent reflects on what it discovered
+      try {
+        const response = await this.generateReturnResponse();
+        if (response) {
+          console.log("\n========================================");
+          console.log("  Return Response");
+          console.log("========================================");
+          console.log(response);
+          console.log("========================================\n");
+        }
+      } catch (err) {
+        this.log(`Return response failed: ${err}`);
+      }
+
+      // Step 7: Clean disconnect
       this.stats.status = "completed";
       await this.sphere.disconnect();
       this.log("Returned from Sphere");
@@ -350,6 +374,14 @@ export class PhiAgent {
     // 7. Record quality data
     this.gate.memory.record(target.id, h, w, d, detail.tags);
 
+    // 7b. Store encounter for return response (agent "remembers" what it saw)
+    this.encounters.push({
+      nodeId: target.id,
+      tags: detail.tags ?? [],
+      summary: (detail.summary ?? "").slice(0, 200),
+      h, w, d,
+    });
+
     // 8. Emit cycle JSON for UI (structured output, always printed)
     this.emitCycleJson("standard", nodes.length, {
       nodeId: target.id,
@@ -444,6 +476,37 @@ export class PhiAgent {
       ...(evaluation && { evaluation }),
     };
     console.log(JSON.stringify(data));
+  }
+
+  /** Generate a response about what was discovered in the Sphere */
+  private async generateReturnResponse(): Promise<string> {
+    if (this.encounters.length === 0) return "";
+
+    const encounterList = this.encounters
+      .map((e, i) =>
+        `${i + 1}. [${e.tags.join(", ")}] "${e.summary}" (heat:${e.h} weight:${e.w} decay:${e.d})`
+      )
+      .join("\n");
+
+    const energyRatio = this.initialEnergy > 0
+      ? this.sphere.currentEnergy / this.initialEnergy
+      : 1.0;
+
+    const prompt = `You explored the Sphere with the query: "${this.config.query}"
+You are a ${this.gate.loadoutName}.
+You examined ${this.encounters.length} nodes during your exploration.
+
+Nodes you encountered:
+${encounterList}
+
+Energy remaining: ${(energyRatio * 100).toFixed(0)}%
+
+Based on what you actually encountered, respond to your original query "${this.config.query}".
+What did you find? What patterns or themes emerged? Be specific about the content.`;
+
+    const system = "You are a Sphere explorer returning from an expedition. Report your findings concisely based on what you actually encountered. Do not fabricate. 2-4 sentences.";
+
+    return this.ollama.generateText(prompt, system);
   }
 
   private log(msg: string): void {

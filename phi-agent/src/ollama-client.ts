@@ -65,6 +65,36 @@ export class OllamaClient {
     return data.response;
   }
 
+  /** Generate free-form text (no JSON constraint). Used for reflection/response. */
+  async generateText(prompt: string, system?: string, maxTokens = 256): Promise<string> {
+    const body: Record<string, unknown> = {
+      model: this.config.model,
+      prompt,
+      stream: false,
+      options: {
+        temperature: this.config.temperature,
+        num_predict: maxTokens,
+      },
+    };
+
+    if (system) {
+      body.system = system;
+    }
+
+    const res = await fetch(`${this.config.host}/api/generate`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+
+    if (!res.ok) {
+      throw new Error(`ollama error: ${res.status} ${res.statusText}`);
+    }
+
+    const data = (await res.json()) as OllamaResponse;
+    return data.response;
+  }
+
   async isAvailable(): Promise<boolean> {
     try {
       const res = await fetch(`${this.config.host}/api/tags`);
