@@ -25,6 +25,7 @@ const INTERVAL_MS = parseInt(process.env.DIGEST_INTERVAL_MS ?? "3600000"); // 1h
 const HALF_LIFE_HOURS = parseFloat(process.env.HALF_LIFE_HOURS ?? "72");
 const MIN_EVALS = parseInt(process.env.MIN_EVALS ?? "50");
 const MIN_PER_SPECIES = parseInt(process.env.MIN_PER_SPECIES ?? "20");
+const ONCE = process.env.ONCE === "1";
 
 // ---- EvalLog types (mirrors phi-agent/src/eval-log.ts) ----
 
@@ -204,12 +205,17 @@ function sleep(ms: number): Promise<void> {
 }
 
 async function main(): Promise<void> {
-  console.log(`[digestor] Starting — interval=${INTERVAL_MS}ms, half_life=${HALF_LIFE_HOURS}h, min_evals=${MIN_EVALS}`);
+  console.log(`[digestor] Starting — ${ONCE ? "one-shot" : `interval=${INTERVAL_MS}ms`}, half_life=${HALF_LIFE_HOURS}h, min_evals=${MIN_EVALS}`);
   console.log(`[digestor] Source: ${EVAL_LOG}`);
   console.log(`[digestor] Output: ${PROFILE_OUT}`);
 
   // Run immediately on startup
   digest();
+
+  if (ONCE) {
+    console.log("[digestor] One-shot complete.");
+    return;
+  }
 
   // Then periodic loop
   while (true) {
