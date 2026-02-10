@@ -105,21 +105,42 @@ Final JSON: {"h": <heat>, "w": <weight>, "longevity": <longevity>, "reason": "<c
       return enhancement; // Replace base, not append
     }
 
-    // gemma2: word examples + 2-step analysis
+    // gemma2: Sequential dimension evaluation (same as qwen2.5)
     if (this.modelName.startsWith("gemma2")) {
+      const concreteRole = this.getConcreteRole(base);
       const enhancement = `
 
-Rate (0–10, 5=neutral):
-heat = motion/attention (0=still, 10=active)
-  ex: dormant topic -> low, steady discussion -> neutral, viral trend -> high
-weight = density (0=light, 10=heavy)
-  ex: casual mention -> low, blog post -> neutral, deep research -> high
-decay = fade rate (0=long-lived, 10=short-lived)
-  ex: timeless truth -> low, news article -> neutral, trending meme -> high
+Remember: You are ${concreteRole}.
 
-Step 1: Write a brief report analyzing this node's heat, weight, and decay.
-Step 2: Assign accurate numerical scores based on your analysis.`;
-      return base + enhancement;
+Evaluate each dimension with focused attention:
+
+━━━ Step 1: HEAT (motion/attention) ━━━
+Definition: Activity level and attention flow
+Your perspective: As ${concreteRole}, assess current discussion intensity
+Scale: 0 = dormant, 5 = steady, 10 = viral
+Analysis: [your reasoning here]
+Heat score (0-10): [N]
+
+[PAUSE - Move to next dimension]
+
+━━━ Step 2: WEIGHT (depth/authority) ━━━
+Definition: Content density and established authority
+Your perspective: As ${concreteRole}, assess substantialness
+Scale: 0 = superficial, 5 = moderate, 10 = authoritative
+Analysis: [your reasoning here]
+Weight score (0-10): [N]
+
+[PAUSE - Move to next dimension]
+
+━━━ Step 3: LONGEVITY (how long it stays relevant) ━━━
+Definition: Duration of relevance and usefulness
+Your perspective: As ${concreteRole}, assess how long this will remain valuable
+Scale: 0 = ephemeral/days, 5 = months, 10 = timeless/permanent
+Analysis: [your reasoning here]
+Longevity score (0-10): [N]
+
+Final JSON: {"h": <heat>, "w": <weight>, "longevity": <longevity>, "reason": "<combined summary>"}`;
+      return enhancement; // Replace base, not append
     }
 
     return base; // No enhancement for other models
