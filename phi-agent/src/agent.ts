@@ -210,11 +210,9 @@ export class PhiAgent {
         try {
           const response = await this.generateReturnResponse();
           if (response) {
-            console.log("\n========================================");
-            console.log("  Return Response");
-            console.log("========================================");
+            console.log("\n== NARRATIVE START ==");
             console.log(response);
-            console.log("========================================\n");
+            console.log("== NARRATIVE END ==\n");
 
             // Persist narrative to Digestor
             const loadoutName = typeof this.config.loadout === "string"

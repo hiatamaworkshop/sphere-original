@@ -13,7 +13,7 @@ import os
 import json
 from pathlib import Path
 from executor import execute_phi_agent
-from parser import parse_cycles, format_cycle_output, format_summary
+from parser import parse_cycles, format_cycle_output, format_summary, format_combined_output, extract_narrative
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
@@ -176,17 +176,17 @@ def launch_agent(species, query, sphere_url, ollama_host, model="llama3.2:1b"):
         model: LLM model to use
 
     Yields:
-        (status_text, cycle_output, summary_text)
+        (status_text, narrative_output, combined_output)
     """
     if not query.strip():
-        yield ("❌ Error: Query cannot be empty", "", "")
+        yield ("❌ Error: Query cannot be empty", "*No narrative*", "")
         return
 
     if not sphere_url.strip() or not ollama_host.strip():
-        yield ("❌ Error: Sphere URL and Ollama Host must be set", "", "")
+        yield ("❌ Error: Sphere URL and Ollama Host must be set", "*No narrative*", "")
         return
 
-    yield (f"🚀 Launching {species} agent...", "", "")
+    yield (f"🚀 Launching {species} agent...", "*Agent is exploring... (may take ~1 minute depending on model)*", "")
 
     try:
         # Execute phi-agent
@@ -198,7 +198,7 @@ def launch_agent(species, query, sphere_url, ollama_host, model="llama3.2:1b"):
             model=model
         )
 
-        yield (f"✅ Execution complete", "", "Parsing output...")
+        yield (f"✅ Execution complete", "*Parsing output...*", "Parsing output...")
 
         # Parse cycles
         cycles = parse_cycles(stdout)
@@ -206,25 +206,33 @@ def launch_agent(species, query, sphere_url, ollama_host, model="llama3.2:1b"):
         if not cycles:
             yield (
                 "⚠️ No cycles parsed from output",
-                stdout[-2000:] if len(stdout) > 2000 else stdout,  # Last 2000 chars
-                "No structured data found. See raw output above."
+                "*No narrative generated*",
+                stdout[-2000:] if len(stdout) > 2000 else stdout  # Last 2000 chars
             )
             return
 
-        # Format cycle output
-        cycle_text = format_cycle_output(cycles)
+        # Format combined output first (display immediately)
+        combined = format_combined_output(cycles, species)
 
-        # Generate summary
-        summary_text = format_summary(cycles, species)
-
+        # Show cycle data immediately while narrative is being extracted
         yield (
             f"✅ {species} completed {len(cycles)} cycles",
-            cycle_text,
-            summary_text
+            "*Generating narrative...*",
+            combined
+        )
+
+        # Extract narrative (may take time)
+        narrative = extract_narrative(stdout)
+
+        # Update with final narrative
+        yield (
+            f"✅ {species} completed {len(cycles)} cycles",
+            narrative,
+            combined
         )
 
     except Exception as e:
-        yield (f"❌ Error: {str(e)}", "", "")
+        yield (f"❌ Error: {str(e)}", "*Error occurred*", "")
 
 
 def create_ui():
@@ -319,19 +327,18 @@ def create_ui():
                         )
 
                     with gr.Column(scale=2):
-                        gr.Markdown("## Perception Cycles")
+                        gr.Markdown("## Agent Experience")
 
-                        cycle_output = gr.Textbox(
-                            label="Cycle-by-Cycle Output",
-                            interactive=False,
-                            lines=20,
-                            max_lines=30
+                        narrative_output = gr.Markdown(
+                            label="Return Narrative",
+                            value="*Agent will narrate its experience after return...*",
                         )
 
-                        summary_output = gr.Textbox(
-                            label="Summary",
+                        combined_output = gr.Textbox(
+                            label="Cycle & Statistics",
                             interactive=False,
-                            lines=8
+                            lines=20,
+                            max_lines=20
                         )
 
                 # Update species description when dropdown changes
@@ -351,7 +358,7 @@ def create_ui():
                         ollama_host_input,
                         model_input
                     ],
-                    outputs=[status_text, cycle_output, summary_output]
+                    outputs=[status_text, narrative_output, combined_output]
                 )
 
                 gr.Markdown("""

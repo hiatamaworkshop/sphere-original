@@ -209,3 +209,51 @@ def format_summary(cycles: List[Dict[str, Any]], species: str) -> str:
         lines.append(f"**Return Reason**: {last_cycle['returnReason']}")
 
     return "\n".join(lines)
+
+
+def format_combined_output(cycles: List[Dict[str, Any]], species: str) -> str:
+    """
+    Combine summary and cycle details into one output.
+
+    Args:
+        cycles: List of cycle dictionaries
+        species: Species name
+
+    Returns:
+        Combined text (summary + separator + cycles)
+    """
+    summary = format_summary(cycles, species)
+    cycles_text = format_cycle_output(cycles)
+
+    separator = "─" * 50
+
+    return f"{summary}\n\n{separator}\n\n{cycles_text}"
+
+
+def extract_narrative(stdout: str) -> str:
+    """
+    Extract narrative from phi-agent stdout.
+
+    Expected markers:
+      == NARRATIVE START ==
+      {narrative text}
+      == NARRATIVE END ==
+
+    Args:
+        stdout: phi-agent stdout text
+
+    Returns:
+        Extracted narrative or fallback message
+    """
+    start_marker = "== NARRATIVE START =="
+    end_marker = "== NARRATIVE END =="
+
+    start_idx = stdout.find(start_marker)
+    end_idx = stdout.find(end_marker)
+
+    if start_idx == -1 or end_idx == -1:
+        return "*No narrative generated (RESPONSE=false)*"
+
+    narrative = stdout[start_idx + len(start_marker):end_idx].strip()
+
+    return narrative if narrative else "*Narrative is empty*"

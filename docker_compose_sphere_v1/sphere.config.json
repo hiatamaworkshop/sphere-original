@@ -17,8 +17,8 @@
     "_comment": "知覚の物理法則: M = T / (a × D)",
     "targetTotalOps": 100000,
     "_formula": "sampleSize = targetTotalOps / (agentCount × dimension)",
-    "basePerceptionRadius": 0.8,
-    "maxSenseResults": 15
+    "basePerceptionRadius": 0.3,
+    "maxSenseResults": 8
   },
 
   "field": {

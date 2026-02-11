@@ -51,6 +51,7 @@ def execute_phi_agent(
         "-e", f"OLLAMA_HOST={ollama_host}",
         "-e", f"OLLAMA_MODEL={model}",
         "-e", "DAEMON=false",
+        "-e", "RESPONSE=true",  # Enable narrative generation
         "phi-agent:latest"
     ]
 

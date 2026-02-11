@@ -172,6 +172,7 @@ services:
   # Phi Agent - Autonomous Sphere explorer (phi via ollama)
   # Scalable: docker compose --profile agent up --scale phi-agent=3
   phi-agent:
+    image: phi-agent:latest
     build:
       context: ../phi-agent
       dockerfile: Dockerfile
