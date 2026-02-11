@@ -10,6 +10,9 @@
 //
 // Endpoints:
 //   POST /evaluations            — eval 受付 (phi-agent → eval-log.jsonl)
+//   POST /narratives             — narrative 受付 (phi-agent → narrative-log.jsonl)
+//   GET  /narratives             — narrative 一覧 (?limit=N&loadout=X&type=return|stream)
+//   GET  /narratives/:id         — 単一 narrative
 //   GET  /species/:name/profile  — 種族プロファイル
 //   GET  /species                — 全種族プロファイル
 //   GET  /generations            — 世代一覧
@@ -20,10 +23,12 @@
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { readFileSync, appendFileSync, existsSync, readdirSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
+import { randomUUID } from "node:crypto";
 
 export interface GatewayConfig {
   dataDir: string;
   evalLog: string;
+  narrativeLog: string;
   profileOut: string;
   genDir: string;
 }
@@ -45,7 +50,7 @@ function json(res: ServerResponse, status: number, data: unknown): void {
 }
 
 export function startServer(port: number, config: GatewayConfig): void {
-  const { evalLog, profileOut, genDir } = config;
+  const { evalLog, narrativeLog, profileOut, genDir } = config;
 
   const server = createServer(async (req: IncomingMessage, res: ServerResponse) => {
     // CORS
@@ -84,6 +89,87 @@ export function startServer(port: number, config: GatewayConfig): void {
         json(res, 202, { status: "accepted", evaluations: entry.evaluations.length });
       } catch {
         json(res, 400, { error: "Invalid JSON" });
+      }
+      return;
+    }
+
+    // POST /narratives — accept narrative entries (return response or stream fragment)
+    if (req.method === "POST" && parts[0] === "narratives") {
+      try {
+        const body = await readBody(req);
+        const entry = JSON.parse(body);
+        // Minimal validation: must have type and loadout
+        if (!entry.type || !entry.loadout) {
+          json(res, 400, { error: "Missing type or loadout" });
+          return;
+        }
+        // Assign id + timestamp if not present
+        if (!entry.id) entry.id = randomUUID();
+        if (!entry.timestamp) entry.timestamp = Date.now();
+        const dir = join(narrativeLog, "..");
+        if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
+        appendFileSync(narrativeLog, JSON.stringify(entry) + "\n", "utf-8");
+        json(res, 202, { status: "accepted", id: entry.id });
+      } catch {
+        json(res, 400, { error: "Invalid JSON" });
+      }
+      return;
+    }
+
+    // GET /narratives — list narratives (newest first, optional ?limit=N&loadout=X)
+    if (req.method === "GET" && parts[0] === "narratives" && parts.length === 1) {
+      if (!existsSync(narrativeLog)) {
+        json(res, 200, { narratives: [] });
+        return;
+      }
+      try {
+        const url = new URL(req.url ?? "/", "http://localhost");
+        const limit = parseInt(url.searchParams.get("limit") ?? "50");
+        const filterLoadout = url.searchParams.get("loadout");
+        const filterType = url.searchParams.get("type");
+
+        const raw = readFileSync(narrativeLog, "utf-8");
+        const all: unknown[] = [];
+        for (const line of raw.split("\n")) {
+          if (!line.trim()) continue;
+          try {
+            const entry = JSON.parse(line);
+            if (filterLoadout && entry.loadout !== filterLoadout) continue;
+            if (filterType && entry.type !== filterType) continue;
+            all.push(entry);
+          } catch { /* skip */ }
+        }
+        // Newest first, apply limit
+        all.reverse();
+        json(res, 200, { narratives: all.slice(0, limit), total: all.length });
+      } catch {
+        json(res, 500, { error: "Failed to read narrative-log" });
+      }
+      return;
+    }
+
+    // GET /narratives/:id — single narrative by id
+    if (req.method === "GET" && parts[0] === "narratives" && parts[1]) {
+      if (!existsSync(narrativeLog)) {
+        json(res, 404, { error: "Not found" });
+        return;
+      }
+      try {
+        const targetId = decodeURIComponent(parts[1]);
+        const raw = readFileSync(narrativeLog, "utf-8");
+        for (const line of raw.split("\n")) {
+          if (!line.trim()) continue;
+          try {
+            const entry = JSON.parse(line);
+            if (entry.id === targetId) {
+              json(res, 200, entry);
+              return;
+            }
+          } catch { /* skip */ }
+        }
+        json(res, 404, { error: `Narrative '${targetId}' not found` });
+      } catch {
+        json(res, 500, { error: "Failed to read narrative-log" });
       }
       return;
     }
@@ -207,6 +293,9 @@ export function startServer(port: number, config: GatewayConfig): void {
   server.listen(port, () => {
     console.log(`[io-gateway] Listening on http://localhost:${port}`);
     console.log(`[io-gateway] POST /evaluations       — accept evaluations`);
+    console.log(`[io-gateway] POST /narratives        — accept narratives`);
+    console.log(`[io-gateway] GET  /narratives        — list narratives`);
+    console.log(`[io-gateway] GET  /narratives/:id    — single narrative`);
     console.log(`[io-gateway] GET  /species            — all species profiles`);
     console.log(`[io-gateway] GET  /species/:name/profile — single species`);
     console.log(`[io-gateway] GET  /generations        — generation archive`);

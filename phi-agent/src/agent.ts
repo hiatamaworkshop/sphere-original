@@ -25,8 +25,8 @@ import type { WalkMode, BusMessage } from "./sphere-client.js";
 import { PromptBuilder, parseAction } from "./prompt-builder.js";
 import { FastGate, LOADOUTS } from "./fast-gate.js";
 import type { Loadout, LoadoutName } from "./fast-gate.js";
-import { appendEvalLog, loadSpeciesProfile } from "./eval-log.js";
-import type { EvalLogEntry } from "./eval-log.js";
+import { appendEvalLog, appendNarrative, loadSpeciesProfile } from "./eval-log.js";
+import type { EvalLogEntry, NarrativeEntry } from "./eval-log.js";
 
 /** Species-specific voice guidance for return responses */
 const SPECIES_VOICE: Record<string, string> = {
@@ -215,6 +215,11 @@ export class PhiAgent {
             console.log("========================================");
             console.log(response);
             console.log("========================================\n");
+
+            // Persist narrative to Digestor
+            const loadoutName = typeof this.config.loadout === "string"
+              ? this.config.loadout : this.config.loadout.name;
+            await this.persistNarrative(loadoutName, response);
           }
         } catch (err) {
           this.log(`Return response failed: ${err}`);
@@ -540,6 +545,44 @@ export class PhiAgent {
       this.log(`Species memory: persisted ${evals.length} evaluations (${this.gate.loadoutName}), bus: ${this.busEmitCount} emits / ${this.busRecvCount} recvs`);
     } catch (err) {
       this.log(`Species memory write failed: ${err}`);
+    }
+  }
+
+  // ===== Narrative Persistence =====
+
+  /** Persist return narrative to Digestor (or local file) */
+  private async persistNarrative(loadoutName: string, narrative: string): Promise<void> {
+    try {
+      const energyRatio = this.initialEnergy > 0
+        ? this.sphere.currentEnergy / this.initialEnergy
+        : 1.0;
+
+      // Build feelings snapshot
+      const qp = this.gate.memory.qualityProfile;
+      const loadout = LOADOUTS[this.gate.loadoutName] ?? LOADOUTS.balanced;
+      const qv = loadout.qualityVector;
+      const satisfaction = qp[0] * qv[0] + qp[1] * qv[1] + qp[2] * qv[2] + qp[3] * qv[3];
+
+      const entry: NarrativeEntry = {
+        type: "return",
+        loadout: loadoutName,
+        model: this.ollama.modelName,
+        query: this.config.query,
+        timestamp: Date.now(),
+        duration: Date.now() - this.sessionStart,
+        narrative,
+        encounters: this.encounters,
+        feelings: {
+          satisfaction: parseFloat(satisfaction.toFixed(3)),
+          frustration: parseFloat(this.gate.memory.frustration.toFixed(3)),
+          stamina: parseFloat((1 - energyRatio).toFixed(3)),
+        },
+      };
+
+      await appendNarrative(entry);
+      this.log(`Narrative persisted: ${narrative.length} chars (${loadoutName})`);
+    } catch (err) {
+      this.log(`Narrative persist failed: ${err}`);
     }
   }
 

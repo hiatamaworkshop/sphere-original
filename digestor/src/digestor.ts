@@ -20,6 +20,7 @@ import { startServer } from "./server.js";
 
 export const DATA_DIR = process.env.DATA_DIR ?? "/app/data";
 export const EVAL_LOG = join(DATA_DIR, "eval-log.jsonl");
+export const NARRATIVE_LOG = join(DATA_DIR, "narrative-log.jsonl");
 export const PROFILE_OUT = join(DATA_DIR, "species-profile.json");
 export const GEN_DIR = join(DATA_DIR, "generations");
 const GATEWAY_PORT = parseInt(process.env.GATEWAY_PORT ?? "5000");
@@ -213,7 +214,7 @@ async function main(): Promise<void> {
 
   // Start IO Gateway (HTTP server)
   if (!ONCE) {
-    startServer(GATEWAY_PORT, { dataDir: DATA_DIR, evalLog: EVAL_LOG, profileOut: PROFILE_OUT, genDir: GEN_DIR });
+    startServer(GATEWAY_PORT, { dataDir: DATA_DIR, evalLog: EVAL_LOG, narrativeLog: NARRATIVE_LOG, profileOut: PROFILE_OUT, genDir: GEN_DIR });
   }
 
   // Run immediately on startup

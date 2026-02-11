@@ -90,6 +90,74 @@ export async function appendEvalLog(entry: EvalLogEntry): Promise<void> {
 }
 
 // ============================================================
+// Narrative Log — agent monologue persistence
+// ============================================================
+
+const NARRATIVE_FILE = join(DATA_DIR, "narrative-log.jsonl");
+
+export interface NarrativeEntry {
+  /** "return" (session-end narrative) or "stream" (real-time fragment) */
+  type: "return" | "stream";
+  /** Loadout name */
+  loadout: string;
+  /** LLM model used */
+  model?: string;
+  /** Search query */
+  query: string;
+  /** Assigned by server (or locally for file mode) */
+  id?: string;
+  /** Epoch ms */
+  timestamp: number;
+  /** Session duration in ms (return type only) */
+  duration?: number;
+  /** LLM-generated narrative text */
+  narrative: string;
+  /** Nodes encountered during session */
+  encounters?: Array<{
+    nodeId: string;
+    tags: string[];
+    summary: string;
+    h: number;
+    w: number;
+    d: number;
+  }>;
+  /** Agent feelings at return time */
+  feelings?: {
+    satisfaction: number;
+    frustration: number;
+    stamina: number;
+  };
+}
+
+/**
+ * Persist a narrative entry.
+ * HTTP mode (DIGESTOR_URL): POST to IO Gateway.
+ * File mode (fallback): direct append to narrative-log.jsonl.
+ */
+export async function appendNarrative(entry: NarrativeEntry): Promise<void> {
+  if (!entry.narrative) return;
+
+  if (DIGESTOR_URL) {
+    const res = await fetch(`${DIGESTOR_URL}/narratives`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(entry),
+    });
+    if (!res.ok) {
+      throw new Error(`IO Gateway POST /narratives failed: ${res.status} ${await res.text()}`);
+    }
+    return;
+  }
+
+  // File mode (legacy)
+  if (!existsSync(DATA_DIR)) {
+    mkdirSync(DATA_DIR, { recursive: true });
+  }
+  if (!entry.id) entry.id = `${entry.timestamp}-${entry.loadout}`;
+  appendFileSync(NARRATIVE_FILE, JSON.stringify(entry) + "\n", "utf-8");
+}
+
+// ============================================================
 // Read — Species memory queries
 // ============================================================
 

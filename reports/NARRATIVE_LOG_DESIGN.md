@@ -117,11 +117,10 @@ narrative → POST /narratives → narrative-log.jsonl (Digestor 内)
 **利点**: ナラティブ固有の粒度・形式を保てる。Sphere を汚さない
 **欠点**: 評価パイプラインを別途構築する必要がある (ただし Digestor の既存コードは再利用可能)
 
-### 判断保留
+### 判断: B案で開始 (2026-02-11 実装済み)
 
-どちらが正しいかはまだ分からない。
-実装が近いのは B案 (IO Gateway + JSONL + Digestor)。
-A案は conceptually elegant だが、ノードの粒度問題を解決してから。
+B案を採用。IO Gateway に narrative endpoints を追加し、phi-agent から配線済み。
+A案 (Sphere マッピング) は将来オプションとして保留。
 
 ---
 
@@ -180,13 +179,35 @@ eval-log で「評価者 = 被評価者」だった構造と区別するため�
 
 ---
 
+## Observatory 接続方針 (2026-02-11)
+
+Observatory は IO Gateway の **polling consumer** として接続する。
+
+- **方式**: HTTP polling (定時 GET)。WebSocket / SSE は不採用 (過剰)
+- **間隔**: 30秒〜1分。ナラティブに秒単位のリアルタイム性は不要
+- **エンドポイント**: `GET /narratives?limit=20&type=return`
+- **フィルタ**: loadout, type (return/stream) でクエリ可能
+- **将来**: scoring endpoint 経由で人間が評価を付け、代謝に寄与
+
+```
+Observatory (polling, 30-60s interval)
+  │
+  ├── GET /narratives?limit=20      ← 最新ナラティブ取得
+  ├── GET /species                  ← 種族プロファイル (文脈表示用)
+  ├── GET /generations              ← 世代進化 (トレンド表示用)
+  └── POST /narratives/:id/score    ← 人間からの評価 (将来)
+```
+
+---
+
 ## 未決事項
 
 1. **評価者**: 常駐 agent? 人間? 両方? — 最初は人間評価 (Observatory) だけで十分かもしれない
-2. **A案 vs B案**: Sphere マッピング vs 独立ストレージ — B案で開始、必要なら A案に昇格
+2. ~~**A案 vs B案**~~: B案で実装済み (2026-02-11)
 3. **リアルタイム独白の生成方法**: stream=true 時に何を吐くか — evalFocus の応答の一部? 別途 prompt?
 4. **代謝パラメータ**: narrative の halfLife は eval-log と同じ 72h か? もっと長い?
 5. **容量見積もり**: 1 narrative ≈ 2KB (テキスト + メタデータ)。100 sessions/day × 2KB = 200KB/day。年間 73MB。eval-log より遥かに大きい
+6. **Observatory UI**: Gradio? 専用 Web app? Explorers に統合?
 
 ---
 
@@ -199,4 +220,31 @@ eval-log で「評価者 = 被評価者」だった構造と区別するため�
 
 ---
 
-**結論**: ナラティブは Sphere の中の Sphere。情報は生まれ、評価され、淘汰され、生き残ったものだけが外の世界に語られる。代謝の原理は既に手元にある。あとは配線するだけだ。
+## 実装ログ (2026-02-11)
+
+### Phase 1: IO Gateway narrative endpoints
+
+- `digestor/src/server.ts`: POST /narratives, GET /narratives, GET /narratives/:id 追加
+  - POST: type + loadout 必須、id 自動採番 (UUID)、narrative-log.jsonl に追記
+  - GET: ?limit=N&loadout=X&type=return|stream でフィルタ、newest first
+  - GET /:id: UUID で単一取得
+- `digestor/src/digestor.ts`: NARRATIVE_LOG 定数追加、GatewayConfig に narrativeLog 追加
+
+### Phase 2: phi-agent narrative POST
+
+- `phi-agent/src/eval-log.ts`: NarrativeEntry 型 + appendNarrative() 追加 (HTTP/file dual mode)
+- `phi-agent/src/agent.ts`: persistNarrative() メソッド追加、run() で generateReturnResponse() 後に呼び出し
+  - payload: type, loadout, model, query, timestamp, duration, narrative, encounters[], feelings{}
+
+### 配線
+
+```
+phi-agent (response=true)
+  → generateReturnResponse() → LLM narrative
+  → persistNarrative() → appendNarrative()
+    → DIGESTOR_URL ? POST /narratives : narrative-log.jsonl (file)
+```
+
+---
+
+**結論**: ナラティブは Sphere の中の Sphere。情報は生まれ、評価され、淘汰され、生き残ったものだけが外の世界に語られる。代謝の原理は既に手元にある。蓄積の配線は完了。次は代謝と Observatory。
