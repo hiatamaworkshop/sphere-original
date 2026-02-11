@@ -82,7 +82,7 @@ function createExternalServiceGuard(
 
 export class PeripheryServer {
   private app = express();
-  private ticketIssuer = new TicketIssuer(DEFAULT_TICKET_CONFIG);
+  private ticketIssuer!: TicketIssuer;
   private questStore: QuestStore;
   private gatewayServer: GatewayServer | null = null;
   private nodeForge: NodeForge;
@@ -117,6 +117,12 @@ export class PeripheryServer {
     private globalFieldLayer?: GlobalFieldLayer,
     private activeBusLayer?: ActiveBusLayer
   ) {
+    // Initialize TicketIssuer with session TTL from config
+    const ticketConfig = {
+      ...DEFAULT_TICKET_CONFIG,
+      sessionTtl: config.session?.ttlSeconds ?? DEFAULT_TICKET_CONFIG.sessionTtl,
+    };
+    this.ticketIssuer = new TicketIssuer(ticketConfig);
     // Initialize QuestStore with config
     this.questStore = new QuestStore(config.questStore);
     // Initialize NodeForge with config (if available)

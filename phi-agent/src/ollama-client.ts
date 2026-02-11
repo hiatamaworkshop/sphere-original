@@ -66,7 +66,7 @@ export class OllamaClient {
   }
 
   /** Generate free-form text (no JSON constraint). Used for reflection/response. */
-  async generateText(prompt: string, system?: string, maxTokens = 440): Promise<string> {
+  async generateText(prompt: string, system?: string, maxTokens = 300): Promise<string> {
     const body: Record<string, unknown> = {
       model: this.config.model,
       prompt,

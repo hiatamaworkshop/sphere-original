@@ -205,7 +205,12 @@ export class PhiAgent {
         await this.liaisonExplore();
       }
 
-      // Step 5: Return response (only if response flag is on)
+      // Step 5: Clean disconnect — release Sphere session before slow narrative generation
+      this.stats.status = "completed";
+      await this.sphere.disconnect();
+      this.log("Returned from Sphere");
+
+      // Step 6: Return response (only if response flag is on) — runs AFTER disconnect
       if (this.config.response) {
         try {
           const response = await this.generateReturnResponse();
@@ -223,11 +228,6 @@ export class PhiAgent {
           this.log(`Return response failed: ${err}`);
         }
       }
-
-      // Step 6: Clean disconnect
-      this.stats.status = "completed";
-      await this.sphere.disconnect();
-      this.log("Returned from Sphere");
 
     } catch (err) {
       this.stats.status = "completed";  // graceful — not "failed"
@@ -703,15 +703,11 @@ Your overall experience:
 
     const voiceGuide = SPECIES_VOICE[this.gate.loadoutName] ?? SPECIES_VOICE.balanced;
 
-    const prompt = `You explored "${this.config.query}" and encountered these nodes:
-
+    const prompt = `Nodes encountered:
 ${encounterList}${experienceBlock}
-Your monologue starts from where you entered the Sphere. Answer these questions:
-1. What did you discover in the Sphere regarding your query?
-2. What path did you take from the starting point? Why did you choose that path?
-3. What did you wish to find in the Sphere?`;
+Write your Sphere diary. Two short paragraphs.`;
 
-    const system = `You are an explorer returning from the Sphere. ${voiceGuide} You may interpret and connect ideas, but ground them in what you observed. When referencing nodes, prefer using quotation marks around their summaries when possible. Express your opinion within 2500 characters.`;
+    const system = `You are an explorer in the Sphere. ${voiceGuide} Write about what you found and felt. Refer to nodes by quoting their summaries.`;
 
     const response = await this.ollama.generateText(prompt, system);
 

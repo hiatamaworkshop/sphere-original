@@ -35,6 +35,9 @@ docker compose --profile agent down
 docker compose up -d
 
 
+後できちんとconfig で統一しよう
+
+
 
 カップリングレイヤー孝
 

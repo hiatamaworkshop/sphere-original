@@ -24,126 +24,13 @@ Respond ONLY with valid JSON. No explanations, no markdown.`;
 
 export class PromptBuilder {
   private query: string;
-  private modelName: string;
 
-  constructor(query: string, modelName: string = "") {
+  constructor(query: string, _modelName: string = "") {
     this.query = query;
-    this.modelName = modelName;
   }
 
   get systemPrompt(): string {
     return SYSTEM_PROMPT;
-  }
-
-  /**
-   * Map abstract species names to concrete role descriptions
-   */
-  private getConcreteRole(evalFocus: string): string {
-    const roleMap: Record<string, string> = {
-      moth: "attention-driven explorer drawn to trending topics",
-      hermit: "contemplative scholar focused on depth and stability",
-      scout: "rapid information gatherer seeking new discoveries",
-      scholar: "thorough academic researcher analyzing content deeply",
-      hunter: "strategic knowledge tracker pursuing specific patterns",
-      sniper: "precision analyst focused on temporal relevance",
-      wanderer: "adaptive explorer following curiosity freely",
-      archivist: "systematic cataloger preserving knowledge structures",
-      balanced: "balanced analytical observer evaluating all aspects equally",
-    };
-
-    // Detect species from evalFocus (e.g., "like a moth drawn to light")
-    for (const [species, description] of Object.entries(roleMap)) {
-      if (evalFocus.toLowerCase().includes(species)) {
-        return description;
-      }
-    }
-
-    return "analytical observer"; // fallback
-  }
-
-  /**
-   * Enhance evalFocus for gemma2:2b and qwen2.5:1.5b
-   * gemma2: word examples + 2-step analysis
-   * qwen2.5: sequential dimension evaluation (3-step + PAUSE + concrete role)
-   */
-  private enhanceEvalFocus(base: string): string {
-    // qwen2.5: Sequential dimension evaluation with PAUSE and concrete role
-    if (this.modelName.startsWith("qwen2.5")) {
-      const concreteRole = this.getConcreteRole(base);
-      const enhancement = `
-
-Remember: You are ${concreteRole}.
-
-Evaluate each dimension with focused attention:
-
-━━━ Step 1: HEAT (motion/attention) ━━━
-Definition: Activity level and attention flow
-Your perspective: As ${concreteRole}, assess current discussion intensity
-Scale: 0 = dormant, 5 = steady, 10 = viral
-Analysis: [your reasoning here]
-Heat score (0-10): [N]
-
-[PAUSE - Move to next dimension]
-
-━━━ Step 2: WEIGHT (depth/authority) ━━━
-Definition: Content density and established authority
-Your perspective: As ${concreteRole}, assess substantialness
-Scale: 0 = superficial, 5 = moderate, 10 = authoritative
-Analysis: [your reasoning here]
-Weight score (0-10): [N]
-
-[PAUSE - Move to next dimension]
-
-━━━ Step 3: LONGEVITY (how long it stays relevant) ━━━
-Definition: Duration of relevance and usefulness
-Your perspective: As ${concreteRole}, assess how long this will remain valuable
-Scale: 0 = ephemeral/days, 5 = months, 10 = timeless/permanent
-Analysis: [your reasoning here]
-Longevity score (0-10): [N]
-
-Final JSON: {"h": <heat>, "w": <weight>, "longevity": <longevity>, "reason": "<combined summary>"}`;
-      return enhancement; // Replace base, not append
-    }
-
-    // gemma2: Sequential dimension evaluation (same as qwen2.5)
-    if (this.modelName.startsWith("gemma2")) {
-      const concreteRole = this.getConcreteRole(base);
-      const enhancement = `
-
-Remember: You are ${concreteRole}.
-
-Evaluate each dimension with focused attention:
-
-━━━ Step 1: HEAT (motion/attention) ━━━
-Definition: Activity level and attention flow
-Your perspective: As ${concreteRole}, assess current discussion intensity
-Scale: 0 = dormant, 5 = steady, 10 = viral
-Analysis: [your reasoning here]
-Heat score (0-10): [N]
-
-[PAUSE - Move to next dimension]
-
-━━━ Step 2: WEIGHT (depth/authority) ━━━
-Definition: Content density and established authority
-Your perspective: As ${concreteRole}, assess substantialness
-Scale: 0 = superficial, 5 = moderate, 10 = authoritative
-Analysis: [your reasoning here]
-Weight score (0-10): [N]
-
-[PAUSE - Move to next dimension]
-
-━━━ Step 3: LONGEVITY (how long it stays relevant) ━━━
-Definition: Duration of relevance and usefulness
-Your perspective: As ${concreteRole}, assess how long this will remain valuable
-Scale: 0 = ephemeral/days, 5 = months, 10 = timeless/permanent
-Analysis: [your reasoning here]
-Longevity score (0-10): [N]
-
-Final JSON: {"h": <heat>, "w": <weight>, "longevity": <longevity>, "reason": "<combined summary>"}`;
-      return enhancement; // Replace base, not append
-    }
-
-    return base; // No enhancement for other models
   }
 
   chooseFocusTarget(nodes: NearbyNode[]): string {
@@ -171,10 +58,8 @@ If none are relevant: { "action": "move", "mode": "<walkmode>", "reason": "<brie
     const summary = node.summary ?? "(no summary)";
     const content = node.content?.slice(0, 500) ?? "(no content)";
 
-    // Enhance evalFocus for gemma2:2b (adds word examples + 2-step)
-    const enhancedFocus = evalFocus ? this.enhanceEvalFocus(evalFocus) : "";
-    const perspective = enhancedFocus
-      ? `\nPerspective: ${enhancedFocus}`
+    const perspective = evalFocus
+      ? `\nPerspective: ${evalFocus}`
       : "";
 
     return `My query: "${this.query}"
@@ -186,10 +71,8 @@ I focused on this node:
 - Current heat: ${node.heat}, weight: ${node.weight}
 - Kind: ${node.kind}
 ${perspective}
-TASK: Rate this node using the scale in Perspective above.
-
-Output JSON only:
-{ "action": "evaluate", "h": <number>, "w": <number>, "d": <number>, "reason": "<brief>" }`;
+Rate this node (0-10 each):
+{ "h": <heat/activity>, "w": <weight/authority>, "d": <decay/ephemeral>, "reason": "<brief>" }`;
   }
 
   /**
@@ -199,9 +82,8 @@ Output JSON only:
   evaluateDimension(
     node: { tags: string[]; summary: string; content: string; heat: number; weight: number; kind: string },
     dimension: "heat" | "weight" | "longevity",
-    evalFocus?: string,
+    _evalFocus?: string,
   ): string {
-    const role = evalFocus ? this.getConcreteRole(evalFocus) : "analytical observer";
     const tags = node.tags?.join(", ") || "(none)";
     const content = node.content?.slice(0, 500) || "(no content)";
 
@@ -215,7 +97,6 @@ Output JSON only:
 
     return `My query: "${this.query}"
 
-As ${role}:
 Node: ${tags} — ${node.summary}
 Content: ${content}
 

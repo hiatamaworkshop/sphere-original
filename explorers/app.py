@@ -43,6 +43,9 @@ SPECIES_DESC = {
     "sniper": "Selective evaluator — harsh scorer, high standards"
 }
 
+# Models capable of real measurement (not stamps)
+MEASUREMENT_MODELS = {"phi3:mini", "llama3.2:1b"}
+
 
 def load_generations(max_gens=10):
     """
@@ -164,7 +167,7 @@ def visualize_generations():
     return info_text, fig_species, timeline_plot
 
 
-def launch_agent(species, query, sphere_url, ollama_host, model="llama3.2:1b"):
+def launch_agent(species, query, sphere_url, ollama_host, model="llama3.2:1b", evaluate=True):
     """
     Launch phi-agent Docker container and stream results.
 
@@ -174,6 +177,7 @@ def launch_agent(species, query, sphere_url, ollama_host, model="llama3.2:1b"):
         sphere_url: Sphere API endpoint (e.g., https://sphere-api.render.com)
         ollama_host: Ollama host (e.g., http://host.docker.internal:11434)
         model: LLM model to use
+        evaluate: Whether to evaluate nodes (write back to Sphere)
 
     Yields:
         (status_text, narrative_output, combined_output)
@@ -186,7 +190,8 @@ def launch_agent(species, query, sphere_url, ollama_host, model="llama3.2:1b"):
         yield ("❌ Error: Sphere URL and Ollama Host must be set", "*No narrative*", "")
         return
 
-    yield (f"🚀 Launching {species} agent...", "*Agent is exploring... (may take ~1 minute depending on model)*", "")
+    eval_label = "evaluate ON" if evaluate else "observe only"
+    yield (f"🚀 Launching {species} agent ({eval_label})...", "*Agent is exploring... (may take 2-4 minutes on CPU)*", "")
 
     try:
         # Execute phi-agent
@@ -195,7 +200,8 @@ def launch_agent(species, query, sphere_url, ollama_host, model="llama3.2:1b"):
             query=query,
             sphere_url=sphere_url,
             ollama_host=ollama_host,
-            model=model
+            model=model,
+            evaluate=evaluate
         )
 
         yield (f"✅ Execution complete", "*Parsing output...*", "Parsing output...")
@@ -273,8 +279,8 @@ def create_ui():
 
                         query_input = gr.Textbox(
                             label="Query",
-                            placeholder="e.g., knowledge, AI safety, metabolism",
-                            value="knowledge exploration",
+                            placeholder="e.g., journey",
+                            value="journey",
                             lines=2,
                             max_lines=4,
                             max_length=500
@@ -301,6 +307,12 @@ def create_ui():
                             lines=2
                         )
 
+                        evaluate_checkbox = gr.Checkbox(
+                            value=True,
+                            label="Evaluate nodes",
+                            info="Write evaluations to Sphere. OFF = observe + narrative only (faster, no data contamination)"
+                        )
+
                         with gr.Accordion("Advanced Settings", open=False):
                             sphere_url_input = gr.Textbox(
                                 label="Sphere API URL",
@@ -318,7 +330,7 @@ def create_ui():
 
                         execute_btn = gr.Button("🚀 Launch Agent", variant="primary", size="lg")
 
-                        gr.Markdown("*⏱️ Execution takes ~1 minute (sense/focus/evaluate cycles)*")
+                        gr.Markdown("*⏱️ Execution takes 2-4 minutes on CPU (sense/focus/evaluate + narrative)*")
 
                         status_text = gr.Textbox(
                             label="Status",
@@ -348,6 +360,13 @@ def create_ui():
                     outputs=species_info
                 )
 
+                # Auto-toggle evaluate based on model capability
+                model_input.change(
+                    fn=lambda m: m in MEASUREMENT_MODELS,
+                    inputs=model_input,
+                    outputs=evaluate_checkbox
+                )
+
                 # Execute button click
                 execute_btn.click(
                     fn=launch_agent,
@@ -356,7 +375,8 @@ def create_ui():
                         query_input,
                         sphere_url_input,
                         ollama_host_input,
-                        model_input
+                        model_input,
+                        evaluate_checkbox
                     ],
                     outputs=[status_text, narrative_output, combined_output]
                 )

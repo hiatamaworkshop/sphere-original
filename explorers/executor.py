@@ -15,6 +15,7 @@ def execute_phi_agent(
     sphere_url: str,
     ollama_host: str,
     model: str = "llama3.2:1b",
+    evaluate: bool = True,
     timeout: int = 300
 ) -> str:
     """
@@ -52,6 +53,7 @@ def execute_phi_agent(
         "-e", f"OLLAMA_MODEL={model}",
         "-e", "DAEMON=false",
         "-e", "RESPONSE=true",  # Enable narrative generation
+        "-e", f"EVALUATE={'true' if evaluate else 'false'}",
         "phi-agent:latest"
     ]
 
