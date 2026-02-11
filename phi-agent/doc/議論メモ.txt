@@ -170,9 +170,22 @@ agentによるnarrative-log が蓄積されれば、エージェントが何を�
 
 
 
+世代システムの
+完全な代謝サイクル (Digest-Archive-Truncate)
 
-
-
+eval-log.jsonl (50 sessions, 165 evals)
+  ↓
+[1] Score → balanced_qv × time_decay
+  ↓
+[2] Prune → survival lottery (hunger 依存)
+  ↓
+[3] Build profile → aggregate + environmental blend (0.7×自種族 + 0.3×全種族)
+  ↓
+[4] species-profile.json ← 上書き（エージェント用）
+  ↓
+[5] generations/gen-003.json ← 世代スナップショット追加
+  ↓
+[6] eval-log.jsonl ← 生存者のみに書き戻し（atomic: tmp→rename）
 
 
 
