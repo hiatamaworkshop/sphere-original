@@ -331,6 +331,13 @@ export class PhiAgent {
 
     // 3. FastGate picks target (local, 0ms) — with ActiveBus hints
     const targetIndex = this.gate.pickFocusTarget(nodes, (id) => this.getBusBonus(id));
+    if (targetIndex < 0) {
+      this.log("No valid targets (all visited) — moving to explore");
+      if (this.canAfford("move")) {
+        await this.sphere.move(this.config.moveStep, "explore");
+      }
+      return;
+    }
     const target = nodes[targetIndex];
     this.log(`FastGate pick: [${targetIndex}] ${target.summary.slice(0, 60)} (flags: 0x${target.flags.toString(16).padStart(4, "0")})`);
 

@@ -649,7 +649,7 @@ export class FastGate {
       }
     }
 
-    return bestIndex;
+    return bestScore === -Infinity ? -1 : bestIndex;
   }
 
   // --- Action selection: feelings → next cycle behavior ---
