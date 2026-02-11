@@ -1,0 +1,130 @@
+{
+  "_comment": "Daemon Test Batch Protocol - Wave Injection Data (Phase 2)",
+  "_usage": "curl -X POST http://localhost:3001/sphere/contribute -H 'Content-Type: application/json' -d @wave-injection.json",
+
+  "source": "test-wave",
+  "batch": true,
+  "capsules": [
+
+    {
+      "_group": "A: Trending (TemporalShort → decay×1.3, moth flagBias 1.5)",
+      "schemaVersion": 4,
+      "topTier": [
+        {
+          "tags": ["trending", "viral", "2026", "AI"],
+          "summary": "AI breakthrough 2026: emergent reasoning discovered in compact language models",
+          "content": "Researchers have found that models under 4B parameters can exhibit emergent reasoning when exposed to structured environmental feedback, challenging the assumption that scale alone drives intelligence.",
+          "flags": 0
+        },
+        {
+          "tags": ["breaking", "new", "quantum", "2026"],
+          "summary": "Room-temperature quantum computing milestone shatters previous records",
+          "content": "A team at MIT demonstrated stable qubit coherence at 20°C for over 100 microseconds, opening the door to practical quantum devices without cryogenic cooling.",
+          "flags": 0
+        }
+      ],
+      "normalNodes": [
+        {
+          "tags": ["viral", "trending", "fresh", "social-media"],
+          "summary": "Global dance challenge sparks unexpected mental health awareness movement",
+          "content": "What started as a TikTok trend became a platform for sharing personal stories, with over 50 million participants discussing coping mechanisms through movement.",
+          "flags": 0
+        },
+        {
+          "tags": ["hot", "current", "controversial", "debate"],
+          "summary": "Hot debate erupts over AI-generated art in museum exhibitions worldwide",
+          "content": "Major galleries in Tokyo, London, and New York are split on whether AI-generated works deserve exhibition space alongside human-created art.",
+          "flags": 0
+        },
+        {
+          "tags": ["latest", "new", "update", "fresh"],
+          "summary": "Latest framework release introduces zero-config distributed computing for web apps",
+          "content": "The new release automatically distributes computation across edge nodes, requiring no configuration changes from developers.",
+          "flags": 0
+        }
+      ],
+      "ghostNodes": [],
+      "evaluations": [],
+      "timestamp": 1739270400000
+    },
+
+    {
+      "_group": "B: Academic (Authority→decay×0.95 + Dense→weight×1.2 + TemporalLong→ttl_decay×0.7, scholar flagBias authority 1.8)",
+      "schemaVersion": 4,
+      "topTier": [],
+      "normalNodes": [
+        {
+          "tags": ["academic", "peer-reviewed", "research", "linguistics"],
+          "summary": "Sapir-Whorf hypothesis revisited: language as cognitive architecture for thought",
+          "content": "New cross-linguistic studies with fMRI imaging confirm that grammatical structures systematically shape spatial reasoning and temporal perception.",
+          "flags": 0
+        },
+        {
+          "tags": ["theory", "fundamental", "mathematics", "formal"],
+          "summary": "Information entropy and the thermodynamics of knowledge: a unified framework",
+          "content": "This paper bridges Shannon entropy with Boltzmann statistics, proposing that knowledge systems obey thermodynamic-like laws of creation, preservation, and decay.",
+          "flags": 0
+        },
+        {
+          "tags": ["reference", "standard", "theory", "rigorous"],
+          "summary": "Category theory unifies programming paradigms: functors and monads as universal patterns",
+          "content": "A comprehensive survey showing how category-theoretic abstractions capture the essence of imperative, functional, and logic programming under one mathematical framework.",
+          "flags": 0
+        },
+        {
+          "tags": ["academic", "research", "stable", "timeless"],
+          "summary": "Stability of complex adaptive systems: convergent lessons from ecology and economics",
+          "content": "Meta-analysis of 200+ studies reveals that resilient systems share three properties: redundancy, modularity, and controlled feedback loops.",
+          "flags": 0
+        },
+        {
+          "tags": ["peer-reviewed", "research", "official", "comprehensive"],
+          "summary": "Distributed consensus algorithms: a peer-reviewed meta-analysis of Byzantine fault tolerance",
+          "content": "Systematic review of 15 years of BFT research, establishing definitive performance bounds and identifying the trade-off frontier between throughput and finality.",
+          "flags": 0
+        }
+      ],
+      "ghostNodes": [],
+      "evaluations": [],
+      "timestamp": 1739270400000
+    },
+
+    {
+      "_group": "C: Ephemeral (Sparse, ghostNodes tier → TTL 5min, normalNodes → TTL 24h but low density)",
+      "schemaVersion": 4,
+      "topTier": [],
+      "normalNodes": [
+        {
+          "tags": ["note", "casual", "thought"],
+          "summary": "Quick thought on whether attention mechanisms could be replaced by simple averaging",
+          "flags": 0
+        },
+        {
+          "tags": ["memo", "brief", "overview"],
+          "summary": "Brief comparison of three caching strategies for real-time data pipelines",
+          "flags": 0
+        }
+      ],
+      "ghostNodes": [
+        {
+          "tags": ["note", "simple", "short"],
+          "summary": "Short sketch of a possible event-driven architecture for sensor networks",
+          "flags": 0
+        },
+        {
+          "tags": ["casual", "light", "anecdotal"],
+          "summary": "Anecdotal observation about users preferring dark mode in evening hours",
+          "flags": 0
+        },
+        {
+          "tags": ["memo", "thought", "intro"],
+          "summary": "Initial musings on the relationship between randomness and creativity",
+          "flags": 0
+        }
+      ],
+      "evaluations": [],
+      "timestamp": 1739270400000
+    }
+
+  ]
+}
