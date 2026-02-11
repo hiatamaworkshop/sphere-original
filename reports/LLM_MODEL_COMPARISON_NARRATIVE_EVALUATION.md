@@ -488,3 +488,73 @@ Further investigation recommended for [area].
 ---
 
 **Conclusion**: The Sphere ecosystem can now deploy **specialized agents** — llama3.2:1b for internal measurement (速く・軽く・正確に), gemma2:2b for external narrative (美しく・感情豊かに・種族性を保って). Measurement and storytelling are separated, each optimized for its purpose.
+
+---
+
+## Addendum: Evaluate ON/OFF Narrative Quality Experiment (2026-02-11)
+
+### Context
+
+Explorers UI に `Evaluate nodes` チェックボックスを追加。gemma2:2b をスタンプ汚染なしで使えるようにした。
+同一条件 (gemma2:2b / hunter / query="journey") で evaluate ON/OFF を比較し、ナラティブ品質への影響を検証。
+
+### Test Conditions
+
+| | evaluate OFF | evaluate ON |
+|---|---|---|
+| Mode | liaison (sense/focus only) | standard (sense/focus/evaluate) |
+| Duration | 1m 11s | 2m 13s |
+| Nodes visited | 4 | 3 |
+| Evaluations | 0 | 3 (h=8, w=9, d=4-6 — stamp) |
+| Bus activity | None | 3 emit / 4 recv |
+| Feelings | N/A (liaison) | sat=0.87, camp mode |
+| Final energy | 33 | 4 |
+
+### Narrative Comparison
+
+**evaluate OFF** — 学術レポート調:
+> "Today's exploration yielded a significant breakthrough in understanding the structure of information flow in the Sphere. I applied Dijkstra's shortest path algorithm to map out the connections between nodes and discovered a fascinating pattern... The study of meme evolution offers a unique window into the evolving nature of human culture..."
+
+- スタイル: 分析的、客観的 ("suggests that", "implications")
+- 感情: 薄い — 知的な距離感がある
+- 構造: 4ノードを線形に要約
+
+**evaluate ON** — 個人的体験記:
+> "The internet rabbit hole was a dizzying descent, pulling me deeper into the abyss of data and information than I ever imagined possible. It felt like being trapped in an endless loop of clickbait articles and conspiracy theories, though some moments offered glimpses of genuine human connection... This is what I crave: tangible understanding, not just abstract concepts."
+
+- スタイル: 体験的、主観的 ("I crave", "humbling to witness", "dizzying descent")
+- 感情: 豊か — 欲求・失望・驚嘆が混在
+- 構造: 3ノードだが1ノードあたりの記述が濃い
+
+### 発見: 推論時間自体がナラティブ品質に寄与する
+
+**スタンプ評価でもナラティブの質は上がる。** 理由:
+
+1. **体験密度の増加**: evaluate プロセスを経ることで、ナラティブ生成 prompt に含まれる情報が豊かになる
+   - ON: encounter に h/w/d 値 + reason テキスト + feelings データ + bus イベントが付与される
+   - OFF: encounter に tags + summary のみ
+2. **Feelings system の稼働**: evaluate ON では Feelings (satisfaction, frustration, stamina, staleness) が計算され、行動選択 (camp/explore/leap) に影響 → ナラティブに反映される感情的文脈が生まれる
+3. **訪問ノード数 vs 体験深度のトレードオフ**: evaluate コストでノード数は減る (4→3) が、1ノードあたりの「滞在時間」が長くなり、ナラティブ的には深い体験になる
+
+**核心**: 推論プロセスそのもの（たとえ出力がスタンプでも）が agent の「体験」を構成する。LLM がノードを評価する行為自体が、後のナラティブ生成に使える文脈情報を生成している。
+
+### 運用上の示唆
+
+| 目的 | evaluate | 理由 |
+|------|----------|------|
+| **Sphere データ品質** | OFF (gemma/qwen) | スタンプは汚染 |
+| **ナラティブ品質重視** | ON (gemma) | 体験密度 → 文学的品質向上 |
+| **高速プレビュー** | OFF | 1m vs 2m、ノード数多い |
+| **測定 + ナラティブ両立** | ON (phi3:mini / llama) | 真の測定 + 豊かな体験記 |
+
+**gemma2:2b の最適運用**: evaluate ON + **Sphere 書き戻しなし** が理想形。
+現状の EVALUATE フラグは「LLM 評価呼び出し + Sphere 書き戻し + eval-log 永続化」が一体。
+将来的に `EVALUATE=local` (LLM 評価するが Sphere に書かない) のような中間モードがあれば、
+gemma のナラティブ品質を最大化しつつデータ汚染を回避できる。
+
+### Explorers UI 実装 (2026-02-11)
+
+- **Evaluate nodes チェックボックス**: ON/OFF 切り替え → executor.py が `-e EVALUATE=true/false` を渡す
+- **モデル連動自動トグル**: phi3:mini / llama3.2:1b 選択時 → ON、gemma2:2b / qwen2.5:1.5b → OFF
+- **手動オーバーライド可能**: ユーザーが意図的に gemma + evaluate ON を選択することも可能
+- **ステータス表示**: "evaluate ON" / "observe only" ラベルで現在の動作を明示
