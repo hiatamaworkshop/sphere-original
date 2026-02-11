@@ -2,6 +2,21 @@
 
 Sphere Project - 座標モデル実装
 
+> ---
+> **⚠️ Tagger の責務が再定義された (2026-02-11)**
+>
+> 本文書は Tagger を「tags → 座標ベクトル変換」＋「キーワード → 16bit フラグ付与」として記述している。
+> この実装は正しいが、**Tagger の本質的役割** が Gate Type Architecture (2026-02-11) で明確化された:
+>
+> **Tagger = Domain Adapter (ドメインアダプター)**
+> - 単なる regex マッチャーではなく、**生データを情報物理空間 (16bit flags + h,w,d) に投射する変換器**
+> - テキスト用 Tagger (NLP/regex) は gate type の一つにすぎない
+> - 将来: numeric (統計分析), signal (FFT), graph (トポロジー), vision (画像特徴) の各 Tagger に差し替え可能
+> - FastGate scoring pipeline は Tagger が何であるかを知らない — ビット × 係数の汎用演算
+>
+> 詳細: `reports/FLAG_SYSTEM_REDESIGN.md` > "Gate Type Architecture" セクション
+> ---
+
 ---
 
 ## 1. 責務の明確化

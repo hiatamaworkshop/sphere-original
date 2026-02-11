@@ -456,4 +456,271 @@ periphery:     ✅ npx tsc --noEmit (0 errors)
 
 ---
 
-**Conclusion**: Flags are not semantic labels — they are **physical constants** that modulate node behavior in Sphere's physics engine. The new 3-layer structure (Temporal / Density / Cognitive) provides **orthogonal dimensions** for agent Loadouts to interpret, while avoiding the pitfalls of tracking-based (Connectivity) or statistics-based (AgentAffinity) flags.
+## Data Type Flags — Special 層の再定義 (2026-02-11)
+
+### 背景
+
+Sphere は現在テキストのみを扱っているが、将来的にあらゆるデータ形式 (画像, 音声, 構造化データ, コード) を包含する可能性がある。h, w, d は情報の物理的振る舞いを記述し、形式に依存しない。しかしエージェントが **どのセンサー (LLM) でノードを知覚すべきか** を判断するためには、形式のヒントが必要。
+
+Compressed (0x4000) と Candidate (0x8000) は設計書で「state フィールドに移動予定」と明記済み。この 2 ビットをデータタイプフラグに再割当てする。
+
+### Special 層 (bits 12-15) — 更新後
+
+| Flag | Bit | 意味 | 物理効果 | 用途 |
+|------|-----|------|---------|------|
+| **UserMarked** | 0x1000 | ユーザーブックマーク | decay 免除 | 変更なし |
+| **SystemCore** | 0x2000 | インフラ (Relic) | 代謝凍結 | 変更なし |
+| **Structured** | 0x4000 | 構造化データ | weight x 1.1 | コード, 表, JSON, 数式, API response |
+| **Multimodal** | 0x8000 | 非テキスト要素含む | 知覚コスト +1 (専用センサー必要) | 画像, 音声, 動画, 図表付き文書 |
+
+旧 Compressed / Candidate → `ReferenceRecord.kind` or 別の state フィールドに移行。
+
+### 組み合わせパターン (2 bit = 4 states)
+
+```
+0x0000 (フラグなし)       = テキスト (デフォルト、現行データ全て)
+0x4000 (Structured)       = 構造化テキスト (コード, 表, JSON, 数式)
+0x8000 (Multimodal)       = 非テキスト (画像, 音声, 動画)
+0xC000 (Structured+Multi) = 構造化 + 非テキスト (図表付き論文, annotated image)
+```
+
+### 設計判断
+
+**なぜ形式の詳細 (image/audio/video) をフラグで区別しないか**
+
+フラグは物理定数であり、「画像」「音声」の区別は Sphere の物理に影響しない。影響するのは:
+1. **エージェントが知覚できるか** (text LLM vs multimodal LLM) → Multimodal フラグ
+2. **解析モードが異なるか** (読む vs 解析する) → Structured フラグ
+
+形式の詳細はノードの metadata (tags, content-type 等) に格納すれば十分。
+
+**なぜ Structured に weight x 1.1 の物理効果を与えるか**
+
+構造化データは情報密度が高い傾向がある (Dense フラグとは別の軸)。コードや数式は同じ文字数でもテキストより多くの情報を圧縮している。Dense = 内容が濃い、Structured = 形式が構造的。直交する概念。
+
+**0x0008 (Temporal 層の空き) を温存する理由**
+
+Temporal 層は情報の時間的振る舞いを記述する最も基本的な層。将来 TemporalEvent (一回性のイベント — 地震速報, 決算発表) のような時間特性が必要になった場合に備え、同層内に予備を残す。
+
+### Agent への影響
+
+| フラグ | Agent の行動変化 |
+|--------|-----------------|
+| Structured | コード特化 LLM (code model) での知覚が有利。Loadout に `structuredBias` を追加可能 (将来) |
+| Multimodal | text-only agent はこのノードの content を知覚できない (tags + summary のみ)。multimodal agent は完全知覚可能 |
+
+現行の text-only agent (phi3:mini, llama3.2:1b, gemma2:2b) は Multimodal ノードに対して L1+L2 (tags + summary) までしかアクセスできない。L3 (content) は multimodal sensor 搭載時のみ。これは既存の Access Level 階層と自然に整合する。
+
+### 実装優先度
+
+- **今すぐ**: 設計のみ確定。enum に追加してもコードパスは変更不要 (フラグ 0 = text、既存動作に影響なし)
+- **Pool-service 対応時**: 投入パイプラインで content-type を検出し、Structured/Multimodal フラグを自動付与
+- **Agent 対応時**: FastGate に `structuredBias`, `multimodalBias` を追加 (Loadout 拡張)
+
+---
+
+## Gate Type Architecture — 汎用化のための構造分離 (2026-02-11)
+
+### 発見
+
+FastGate は現在テキストデータを前提に設計されているが、その scoring pipeline は **データ形式を知らない**。
+`if (flags & bit) score *= bias` — ビット演算と乗算の連鎖にすぎない。
+
+この発見から、FastGate System を **複数のデータドメインに対応可能な汎用エンジン** として位置づける設計が導かれた。
+
+---
+
+### 3 層のドメイン依存性
+
+| 層 | bits | ドメイン依存性 | 理由 |
+|----|------|---------------|------|
+| **Temporal** | 0-3 | **ユニバーサル** | あらゆるデータに時間性がある |
+| **Density** | 4-7 | **ユニバーサル** | あらゆるデータに密度・権威性がある |
+| **Cognitive** | 8-11 | **ドメイン固有** | 知覚反応はデータ形式により異なる |
+| **Special** | 12-15 | **ユニバーサル** | システムメタデータ・形式フラグ |
+
+**12 bits がユニバーサル、4 bits のみがドメイン固有。** これが汎用化の鍵。
+
+---
+
+### ユニバーサル層 — 全ドメイン共通の物理定数
+
+#### Temporal (bits 0-3): 「この情報はいつ意味を持つか？」
+
+| Flag | Bit | テキスト | 数値/時系列 | 信号 | グラフ | 画像 |
+|------|-----|---------|------------|------|--------|------|
+| **TemporalShort** | 0x0001 | 速報, トレンド | 高頻度変動, リアルタイム値 | 短パルス, バースト | 一時的リンク | 瞬間的場面 |
+| **TemporalLong** | 0x0002 | 古典, 定理 | 物理定数, 長期平均 | 定常波, 搬送波 | 恒久的構造 | 不変の特徴 |
+| **TemporalCyclic** | 0x0004 | 季節記事, 年次報告 | 周期変動, 季節性 | 振動, 変調 | 周期的パターン | 繰り返し構図 |
+| _(reserved)_ | 0x0008 | — | — | — | — | — |
+
+**ユニバーサルな理由**: 時間に対する振る舞い (短命・永続・周期) はデータ形式と無関係に存在する。株価もテキストも画像も、すべてに temporal lifespan がある。
+
+#### Density (bits 4-7): 「この情報はどれだけ圧縮されているか？」
+
+| Flag | Bit | テキスト | 数値/時系列 | 信号 | グラフ | 画像 |
+|------|-----|---------|------------|------|--------|------|
+| **Dense** | 0x0010 | 理論, 数式 | 高次元特徴量, 圧縮表現 | 広帯域, 高情報量 | 高接続密度 | テクスチャ密 |
+| **Sparse** | 0x0020 | 雑談, 逸話 | 欠損多, 低頻度サンプル | 狭帯域, 単調 | 疎結合 | 余白多 |
+| **Composite** | 0x0040 | 融合概念 | 多変量合成指標 | 多重変調 | 異種ネットワーク | コラージュ |
+| **Authority** | 0x0080 | 査読済, 公式 | 校正済, 標準値 | 基準信号, 較正 | 公的レジストリ | 参照画像 |
+
+**ユニバーサルな理由**: 情報密度と信頼性はデータ形式を問わない普遍的属性。査読論文もキャリブレーション信号も「信頼度の高い参照」という同じ物理的意味を持つ。
+
+#### Special (bits 12-15): 「システムはこの情報をどう扱うか？」
+
+| Flag | Bit | 意味 | ドメイン依存性 |
+|------|-----|------|--------------|
+| **UserMarked** | 0x1000 | ユーザー保護 | 全ドメイン共通 |
+| **SystemCore** | 0x2000 | インフラ凍結 | 全ドメイン共通 |
+| **Structured** | 0x4000 | 構造化データ | 全ドメイン共通 (形式記述) |
+| **Multimodal** | 0x8000 | 非テキスト要素 | 全ドメイン共通 (形式記述) |
+
+---
+
+### ドメイン固有層 — Cognitive (bits 8-11)
+
+**現在 (text gate)**:
+
+| Flag | Bit | 意味 | 検出方法 |
+|------|-----|------|---------|
+| **Insightful** | 0x0100 | 洞察を生む | NLP / regex |
+| **Confusing** | 0x0200 | 曖昧、混乱 | NLP / regex |
+| **Provoking** | 0x0400 | 前提を揺さぶる | NLP / regex |
+| **Soothing** | 0x0800 | 安定、安心 | NLP / regex |
+
+**将来の gate type ごとの Cognitive 層再定義案**:
+
+| Gate Type | 0x0100 | 0x0200 | 0x0400 | 0x0800 |
+|-----------|--------|--------|--------|--------|
+| **text** | Insightful | Confusing | Provoking | Soothing |
+| **numeric** | Anomalous | Noisy | Trending | Stable |
+| **signal** | Resonant | Distorted | Impulsive | Harmonic |
+| **graph** | Bridge | Isolated | Hub | Cluster |
+| **vision** | Salient | Occluded | Dynamic | Textured |
+
+**ビット位置は同一、意味テーブルが変わる。** FastGate の `flagBias.insightful` は numeric gate では `flagBias.anomalous` と読み替えられるが、コード上は同じ `if (flags & 0x0100) score *= bias` のまま。
+
+---
+
+### のせかえの構造 — 何を交換し、何を残すか
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                  Gate Type Architecture                   │
+│                                                          │
+│  ┌──────────────┐     ┌──────────────┐     ┌──────────┐ │
+│  │   Tagger      │     │  16bit Flags  │     │ FastGate │ │
+│  │  (入口)       │────►│  (物理定数)   │────►│ (演算)   │ │
+│  │              │     │              │     │          │ │
+│  │  ★交換対象   │     │ bits 0-7  固定│     │  固定    │ │
+│  │              │     │ bits 8-11 交換│     │          │ │
+│  │              │     │ bits 12-15 固定│     │          │ │
+│  └──────────────┘     └──────────────┘     └──────────┘ │
+│                                                          │
+│  交換 = Tagger 実装 + Cognitive 意味テーブル              │
+│  固定 = Temporal + Density + Special + FastGate pipeline  │
+└─────────────────────────────────────────────────────────┘
+```
+
+| 要素 | 交換するか | 理由 |
+|------|-----------|------|
+| **Tagger 実装** | **YES** | 生データ → flags への変換器。NLP, 統計分析, FFT, 画像特徴量 — ドメインごとに異なる |
+| **Cognitive 意味テーブル (bits 8-11)** | **YES** | 4bit の「知覚反応ラベル」をドメインに合わせて再定義 |
+| **Weapon preset** | **追加** | ドメイン特化の種族バイアスセット (既存 preset に加えて新規追加) |
+| **Temporal/Density/Special (12 bits)** | **NO** | 情報物理学の普遍的定数。データ形式を問わない |
+| **FastGate scoring pipeline** | **NO** | `base × flagGate × stateGate × ratioMod` — 汎用演算。ビットと係数しか知らない |
+| **h, w, d 物理** | **NO** | 解釈は変わるが処理は同一 (temporal energy, mass, entropy) |
+
+---
+
+### Tagger の責務 — ドメインアダプターとしての再定義
+
+Tagger は単なる「regex パターンマッチャー」ではなく、**生データを情報物理空間に投射する変換器** である。
+
+```
+Tagger = Domain Adapter
+  入力: 生データ (テキスト, 数値, 信号, グラフ, 画像)
+  出力: 16bit flags + h, w, d 初期値
+  責務: ドメイン固有の特徴を、ドメイン非依存の物理定数に変換する
+```
+
+| Gate Type | Tagger が何をするか | h の意味 | w の意味 | d の意味 |
+|-----------|-------------------|---------|---------|---------|
+| **text** | NLP 分析, regex | 注目度 (話題性) | 情報密度 (重さ) | 永続性 (寿命) |
+| **numeric** | 統計分析 (分散, トレンド, 異常値検出) | 変動強度 | データ量 | 安定性 |
+| **signal** | 周波数解析 (FFT, 帯域幅, SNR) | 振幅 (エネルギー) | 帯域密度 | 信号寿命 |
+| **graph** | トポロジー分析 (次数, クラスタ係数) | 活動度 (通過量) | 接続密度 | 構造安定性 |
+| **vision** | 画像特徴量 (顕著性, テクスチャ, 動き) | 視覚的注目度 | 情報密度 | 時間的持続性 |
+
+**Tagger が変わっても、Sphere の物理法則は変わらない。** decay は decay、weight は weight。
+解釈の意味が変わるだけで、RenalCore の `tick()` 処理は同一コードで動く。
+
+---
+
+### 実装指針
+
+#### Phase 1 (現在): Text Gate のみ — 設計確定
+
+- Cognitive 層は text 用定義 (Insightful / Confusing / Provoking / Soothing)
+- Tagger は regex + (将来) LLM-based
+- FastGate scoring pipeline は汎用性を意識して設計済み
+
+#### Phase 2 (将来): Gate Type Config 化
+
+```typescript
+// gate-config.ts (将来)
+interface GateTypeConfig {
+  name: string;                              // "text" | "numeric" | "signal" | ...
+  cognitiveLabels: [string, string, string, string];  // bits 8-11 の意味ラベル
+  tagger: Tagger;                            // ドメイン固有の変換器
+  weaponPresets?: Record<string, Weapon>;     // ドメイン特化の種族バイアス
+}
+
+const TEXT_GATE: GateTypeConfig = {
+  name: "text",
+  cognitiveLabels: ["Insightful", "Confusing", "Provoking", "Soothing"],
+  tagger: new TextTagger(),        // NLP / regex
+};
+
+const NUMERIC_GATE: GateTypeConfig = {
+  name: "numeric",
+  cognitiveLabels: ["Anomalous", "Noisy", "Trending", "Stable"],
+  tagger: new NumericTagger(),     // 統計分析
+};
+```
+
+FastGate は `GateTypeConfig` を受け取るが、scoring pipeline は変わらない。
+`flagBias.insightful` の **名前** が `anomalous` に変わるだけで、演算は `if (flags & 0x0100) score *= bias`。
+
+#### Phase 3 (将来): 異種 Gate 混在 Sphere
+
+Sphere 内にテキストノードと数値ノードが共存する場合:
+- 各ノードの `Multimodal` / `Structured` フラグ (Special 層) で形式を識別
+- 同一 FastGate pipeline で scoring — Cognitive 層のバイアスは gate type に応じて解釈
+- Agent は自身の搭載センサーで知覚可能なノードのみ L3 アクセス
+
+---
+
+### 結論: 16bit Flag System の汎用性
+
+```
+16bit = 12 bits (ユニバーサル物理定数) + 4 bits (ドメイン固有知覚)
+
+のせかえの正体:
+  ① Tagger (入口の変換器) を差し替える
+  ② Cognitive 4bit (知覚反応ラベル) の意味テーブルを差し替える
+  ③ Weapon preset (種族バイアス) をドメイン用に追加する
+
+触らないもの:
+  ① FastGate scoring pipeline (汎用演算エンジン)
+  ② Temporal + Density + Special (情報物理学の普遍的定数)
+  ③ h, w, d の物理処理 (RenalCore tick)
+  ④ Digestor / Species Memory (評価の代謝は形式非依存)
+```
+
+Tagger は「regex マッチャー」ではなく **ドメインアダプター** — 生データを情報物理空間に投射する変換器である。この認識が、16bit Flag System を text-only から **あらゆるデータ形式に対応する汎用物理エンジン** へと拡張する鍵となる。
+
+---
+
+**Conclusion**: Flags are not semantic labels — they are **physical constants** that modulate node behavior in Sphere's physics engine. The 3-layer structure (Temporal / Density / Cognitive) + Special layer now covers **4 orthogonal dimensions**: time, density, perception, and format — providing agent Loadouts with complete routing information for any data type.

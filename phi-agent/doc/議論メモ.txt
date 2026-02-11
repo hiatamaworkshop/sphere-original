@@ -196,7 +196,23 @@ Agent の活動がログになり、それはスフィアに再投入すら可�
 存続が可能　これがデーモン化　で達成できる　増殖パターン
 
 
+FastGate + Digestor の組み合わせは、単なる実装ではなく 設計パターン だ。
 
+情報を物理量として扱う (h, w, d = heat, weight, decay)
+知覚を分化させる (Loadout = 種族ごとの感覚閾値)
+評価を環境に堆積させる (evaluate → Sphere への書き込み)
+堆積を代謝する (Digestor = 自然選択 + 環境ブレンド)
+代謝結果を次世代の知覚校正に還元する (species-profile → evalFocus)
+
+マルチエージェント強化学習（MARL: Multi-Agent Reinforcement Learning）は、複数のAIエージェントが共通の環境内で互いに影響し合いながら学習・協調・競争する技術分野であり、AI研究の最前線の一つ
+
+Sphere は 軽量モデルが機能する環境 を提供する。これは MARL でも LLM 研究でもない、第4の市場だ。
+
+市場	対象	Sphere の提供物
+MARL 研究	研究者	意味空間 + 代謝系の新環境
+LLM agent 評価	研究者	校正されたセンサー評価環境
+人工生命	研究者	stigmergic substrate の実装
+軽量モデル活用	産業	モデルが機能する環境の設計パターン
 
 
 
