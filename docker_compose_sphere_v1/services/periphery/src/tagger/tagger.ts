@@ -1,16 +1,20 @@
 /**
- * Sphere Project - Tagger
+ * Sphere Project - Tagger (Domain Adapter)
  *
- * [Role] Semantic Classification (16bitTechnique)
+ * [Role] Domain Adapter — 生データを情報物理空間に投射する変換器
+ *   現行: text gate (NLP/regex による tags → 16bit flags 変換)
+ *   将来: numeric, signal, graph, vision の各 gate type に差し替え可能
+ *
  * [Function]
  *   1. Classify nodes by tier (top/normal/ghost)
- *   2. Compute 16bit flags from tags (semantic classification)
+ *   2. Compute 16bit flags from tags (domain-specific → domain-independent)
  *   3. Pass through evaluations unchanged
  *
- * [Design] 16bitTechnique
- *   - Input: tags[] (keyword array)
- *   - Output: 16bit flags (NodeFlag combination)
- *   - NOT vectorization (that's Parser's job)
+ * [Design] Gate Type Architecture (FLAG_SYSTEM_REDESIGN.md)
+ *   - Input: tags[] (keyword array) — text gate 固有
+ *   - Output: 16bit flags (NodeFlag combination) — 全 gate type 共通
+ *   - FastGate scoring は gate type を知らない (ビット × 係数の汎用演算)
+ *   - Tagger が変わっても Sphere の物理法則は変わらない
  *
  * [Philosophy] Tags describe WHAT the node IS, not WHERE it is
  *   - Parser: summary → vector (WHERE in space)
@@ -33,16 +37,36 @@ import type {
 import { NodeFlag } from "@sphere/renal-core";
 
 /**
- * Tag patterns for 16bit classification (3-layer system)
+ * Tag patterns for 16bit classification (3-layer + Special)
  *
  * [Design] FLAG_SYSTEM_REDESIGN.md
- *   - Temporal (bits 0-3): when does this matter?
- *   - Density (bits 4-7): how much is packed in?
- *   - Cognitive (bits 8-11): how does it feel?
- *   - Special (bits 12-15): system/user metadata
+ *   - Temporal (bits 0-3): when does this matter?     — ユニバーサル
+ *   - Density (bits 4-7): how much is packed in?      — ユニバーサル
+ *   - Cognitive (bits 8-11): how does it feel?         — ドメイン固有 (text gate)
+ *   - Special (bits 12-15): system/user metadata       — ユニバーサル
+ *
+ * [Cognitive Layer — Domain Specific]
+ *   text gate:    Insightful / Confusing / Provoking / Soothing
+ *   numeric gate: Anomalous / Noisy / Trending / Stable (将来)
+ *   signal gate:  Resonant / Distorted / Impulsive / Harmonic (将来)
+ *   → ビット位置は共通、意味テーブルのみ差し替え
  *
  * [Philosophy] Sparse patterns. Agents compensate via Loadout.
- * [Note] Dynamic flags (Compressed, Candidate) are set by Arbiter
+ * [Principle] ビットポジションの確定が本質。物理効果は後から配線できる。
+ *   - Temporal/Special: 物理配線済み
+ *   - Density: Authority のみ配線。Dense/Sparse/Composite の物理効果は未確定
+ *   - Cognitive: 物理効果なし (FastGate scoring のみ — 意図通り)
+ *
+ * [Dynamic flags — Arbiter 管轄, Tagger は付与しない]
+ *   - Hot (0x0008): h >= hotHeatThreshold で Arbiter が付与
+ *   - Candidate (0x8000): Ascension 冷却期間中に Arbiter が付与
+ *   - Compressed (0x4000): Fossil 化時に Arbiter が付与
+ *   ※ Candidate/Compressed は将来 state field へ移行予定 (types.ts TODO)
+ *
+ * [Known Behaviors]
+ *   - "stable" → TemporalLong + Soothing の二重マッチ (直交次元、仕様通り)
+ *   - tierFlags.top = 0x0002 (config) → topTier に TemporalLong 自動付与 (Packer 側)
+ *     trending topTier は TemporalShort + TemporalLong が共存する
  */
 const TAG_FLAG_PATTERNS: { pattern: RegExp; flags: number }[] = [
   // --- Temporal Layer (bits 0-3) ---
@@ -91,9 +115,10 @@ const TAG_FLAG_PATTERNS: { pattern: RegExp; flags: number }[] = [
     flags: NodeFlag.Authority,
   },
 
-  // --- Cognitive Layer (bits 8-11) ---
+  // --- Cognitive Layer (bits 8-11) --- ドメイン固有 (text gate)
   // Conservative start: regex-detectable patterns only
-  // Future: LLM-based Tagger for nuanced cognitive flags
+  // Future: LLM-based Tagger, or entirely different gate type (numeric/signal/graph)
+  // Bit positions (0x0100-0x0800) are universal; semantic meaning changes per gate type
 
   // Insightful (0x0100): generates "aha" moments
   {
@@ -114,6 +139,7 @@ const TAG_FLAG_PATTERNS: { pattern: RegExp; flags: number }[] = [
   },
 
   // Soothing (0x0800): calming, reassuring
+  // Note: "stable" also matches TemporalLong — intentional dual-flag (orthogonal dimensions)
   {
     pattern: /\b(calming|reassuring|stable|peaceful|harmonious|consistent|predictable|gentle)\b/i,
     flags: NodeFlag.Soothing,

@@ -17,7 +17,7 @@ sphere/ (ルートディレクトリ)
         ├── explore-agent.ts  # 3層探索エージェント (WebSocket)
         ├── swarm-agent.ts    # マルチエージェント群生成 (WebSocket)
         ├── resonance.ts      # スペクトルリンクテスト (HTTP)
-        ├── mock_data.json    # テストデータ (60件)
+        ├── mock_data.json    # テストデータ (153件, 16bit flag対応)
         └── test-embedding.ts # エンベディングテスト
 ```
 
@@ -30,7 +30,7 @@ sphere/ (ルートディレクトリ)
 | スクリプト | コマンド | 用途 |
 |-----------|---------|------|
 | contribution | `npm run contribute` | テストデータ投入（15件選択） |
-| contribution:batch | `npm run contribute:batch` | テストデータ全件投入（60件） |
+| contribution:batch | `npm run contribute:batch` | テストデータ全件投入（153件） |
 | resonance | `npm run resonance` | スペクトルリンク形成テスト |
 
 ### 2.2 WebSocketベース（内部）
@@ -55,7 +55,7 @@ cd C:\...\sphere
 
 .\sphere.bat start        # サーバ起動
 .\sphere.bat stop         # サーバ停止
-.\sphere.bat batch        # データ投入 (60件)
+.\sphere.bat batch        # データ投入 (153件)
 .\sphere.bat swarm 10     # 10エージェント
 .\sphere.bat explore      # 3層探索
 .\sphere.bat full         # batch + explore

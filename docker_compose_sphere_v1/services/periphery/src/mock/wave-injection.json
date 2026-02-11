@@ -1,46 +1,52 @@
 {
   "_comment": "Daemon Test Batch Protocol - Wave Injection Data (Phase 2)",
   "_usage": "curl -X POST http://localhost:3001/sphere/contribute -H 'Content-Type: application/json' -d @wave-injection.json",
+  "_design": "各ノード = ドメインタグ2 + メタ/品質タグ1-2。Tagger は tags から物理定数を抽出する。",
 
   "source": "test-wave",
   "batch": true,
   "capsules": [
 
     {
-      "_group": "A: Trending (TemporalShort → decay×1.3, moth flagBias 1.5)",
+      "_group": "A: Trending (TemporalShort基調, 一部 Insightful/Provoking クロスレイヤー)",
       "schemaVersion": 4,
       "topTier": [
         {
-          "tags": ["trending", "viral", "2026", "AI"],
+          "tags": ["AI", "reasoning", "breakthrough", "2026"],
           "summary": "AI breakthrough 2026: emergent reasoning discovered in compact language models",
           "content": "Researchers have found that models under 4B parameters can exhibit emergent reasoning when exposed to structured environmental feedback, challenging the assumption that scale alone drives intelligence.",
-          "flags": 0
+          "flags": 0,
+          "_expect": "0x0101 TemporalShort(2026) + Insightful(breakthrough)"
         },
         {
-          "tags": ["breaking", "new", "quantum", "2026"],
+          "tags": ["quantum-computing", "physics", "breaking", "2026"],
           "summary": "Room-temperature quantum computing milestone shatters previous records",
           "content": "A team at MIT demonstrated stable qubit coherence at 20°C for over 100 microseconds, opening the door to practical quantum devices without cryogenic cooling.",
-          "flags": 0
+          "flags": 0,
+          "_expect": "0x0001 TemporalShort(breaking, 2026)"
         }
       ],
       "normalNodes": [
         {
-          "tags": ["viral", "trending", "fresh", "social-media"],
+          "tags": ["mental-health", "social-media", "viral", "trending"],
           "summary": "Global dance challenge sparks unexpected mental health awareness movement",
           "content": "What started as a TikTok trend became a platform for sharing personal stories, with over 50 million participants discussing coping mechanisms through movement.",
-          "flags": 0
+          "flags": 0,
+          "_expect": "0x0001 TemporalShort(viral, trending)"
         },
         {
-          "tags": ["hot", "current", "controversial", "debate"],
+          "tags": ["AI-art", "museum", "controversial", "current"],
           "summary": "Hot debate erupts over AI-generated art in museum exhibitions worldwide",
           "content": "Major galleries in Tokyo, London, and New York are split on whether AI-generated works deserve exhibition space alongside human-created art.",
-          "flags": 0
+          "flags": 0,
+          "_expect": "0x0401 TemporalShort(current) + Provoking(controversial)"
         },
         {
-          "tags": ["latest", "new", "update", "fresh"],
+          "tags": ["distributed-computing", "edge-network", "latest", "update"],
           "summary": "Latest framework release introduces zero-config distributed computing for web apps",
           "content": "The new release automatically distributes computation across edge nodes, requiring no configuration changes from developers.",
-          "flags": 0
+          "flags": 0,
+          "_expect": "0x0001 TemporalShort(latest, update)"
         }
       ],
       "ghostNodes": [],
@@ -49,39 +55,44 @@
     },
 
     {
-      "_group": "B: Academic (Authority→decay×0.95 + Dense→weight×1.2 + TemporalLong→ttl_decay×0.7, scholar flagBias authority 1.8)",
+      "_group": "B: Academic (Authority/Dense/TemporalLong 混合, ノードごとに組み合わせが異なる)",
       "schemaVersion": 4,
       "topTier": [],
       "normalNodes": [
         {
-          "tags": ["academic", "peer-reviewed", "research", "linguistics"],
+          "tags": ["linguistics", "cognitive-science", "peer-reviewed", "technical"],
           "summary": "Sapir-Whorf hypothesis revisited: language as cognitive architecture for thought",
           "content": "New cross-linguistic studies with fMRI imaging confirm that grammatical structures systematically shape spatial reasoning and temporal perception.",
-          "flags": 0
+          "flags": 0,
+          "_expect": "0x0090 Authority(peer-reviewed) + Dense(technical)"
         },
         {
-          "tags": ["theory", "fundamental", "mathematics", "formal"],
+          "tags": ["information-theory", "thermodynamics", "theory", "fundamental"],
           "summary": "Information entropy and the thermodynamics of knowledge: a unified framework",
           "content": "This paper bridges Shannon entropy with Boltzmann statistics, proposing that knowledge systems obey thermodynamic-like laws of creation, preservation, and decay.",
-          "flags": 0
+          "flags": 0,
+          "_expect": "0x0012 Dense(theory) + TemporalLong(fundamental)"
         },
         {
-          "tags": ["reference", "standard", "theory", "rigorous"],
+          "tags": ["category-theory", "programming", "reference", "standard"],
           "summary": "Category theory unifies programming paradigms: functors and monads as universal patterns",
           "content": "A comprehensive survey showing how category-theoretic abstractions capture the essence of imperative, functional, and logic programming under one mathematical framework.",
-          "flags": 0
+          "flags": 0,
+          "_expect": "0x0090 Authority(reference, standard) + Dense(theory in compound tag)"
         },
         {
-          "tags": ["academic", "research", "stable", "timeless"],
+          "tags": ["ecology", "economics", "peer-reviewed", "stable"],
           "summary": "Stability of complex adaptive systems: convergent lessons from ecology and economics",
           "content": "Meta-analysis of 200+ studies reveals that resilient systems share three properties: redundancy, modularity, and controlled feedback loops.",
-          "flags": 0
+          "flags": 0,
+          "_expect": "0x0882 Authority(peer-reviewed) + TemporalLong(stable) + Soothing(stable dual-match)"
         },
         {
-          "tags": ["peer-reviewed", "research", "official", "comprehensive"],
+          "tags": ["distributed-systems", "consensus", "peer-reviewed", "comprehensive"],
           "summary": "Distributed consensus algorithms: a peer-reviewed meta-analysis of Byzantine fault tolerance",
           "content": "Systematic review of 15 years of BFT research, establishing definitive performance bounds and identifying the trade-off frontier between throughput and finality.",
-          "flags": 0
+          "flags": 0,
+          "_expect": "0x0090 Authority(peer-reviewed) + Dense(comprehensive)"
         }
       ],
       "ghostNodes": [],
@@ -90,36 +101,41 @@
     },
 
     {
-      "_group": "C: Ephemeral (Sparse, ghostNodes tier → TTL 5min, normalNodes → TTL 24h but low density)",
+      "_group": "C: Ephemeral (Sparse基調, ドメインタグで内容を示す)",
       "schemaVersion": 4,
       "topTier": [],
       "normalNodes": [
         {
-          "tags": ["note", "casual", "thought"],
+          "tags": ["attention-mechanism", "neural-network", "note", "casual"],
           "summary": "Quick thought on whether attention mechanisms could be replaced by simple averaging",
-          "flags": 0
+          "flags": 0,
+          "_expect": "0x0020 Sparse(note, casual)"
         },
         {
-          "tags": ["memo", "brief", "overview"],
+          "tags": ["caching", "data-pipeline", "memo", "brief"],
           "summary": "Brief comparison of three caching strategies for real-time data pipelines",
-          "flags": 0
+          "flags": 0,
+          "_expect": "0x0020 Sparse(memo, brief)"
         }
       ],
       "ghostNodes": [
         {
-          "tags": ["note", "simple", "short"],
+          "tags": ["event-driven", "sensor-network", "note", "short"],
           "summary": "Short sketch of a possible event-driven architecture for sensor networks",
-          "flags": 0
+          "flags": 0,
+          "_expect": "0x0020 Sparse(note, short)"
         },
         {
-          "tags": ["casual", "light", "anecdotal"],
+          "tags": ["UI-design", "dark-mode", "casual", "anecdotal"],
           "summary": "Anecdotal observation about users preferring dark mode in evening hours",
-          "flags": 0
+          "flags": 0,
+          "_expect": "0x0020 Sparse(casual, anecdotal)"
         },
         {
-          "tags": ["memo", "thought", "intro"],
+          "tags": ["creativity", "randomness", "memo", "intro"],
           "summary": "Initial musings on the relationship between randomness and creativity",
-          "flags": 0
+          "flags": 0,
+          "_expect": "0x0020 Sparse(memo, intro)"
         }
       ],
       "evaluations": [],

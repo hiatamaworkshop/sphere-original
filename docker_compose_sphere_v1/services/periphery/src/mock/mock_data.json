@@ -26,7 +26,8 @@
     "tags": [
       "food",
       "timing",
-      "daily-life"
+      "daily-life",
+      "casual"
     ],
     "payload": "Avocados are rock hard for days, then suddenly perfect for about 15 minutes before turning brown.",
     "flags": 0,
@@ -48,7 +49,8 @@
     "tags": [
       "nature",
       "chemistry",
-      "sensation"
+      "sensation",
+      "calming"
     ],
     "payload": "Rain hitting dry soil releases plant oils and geosmin, producing the nostalgic scent called petrichor.",
     "flags": 0,
@@ -147,7 +149,8 @@
     "tags": [
       "work",
       "time",
-      "energy"
+      "energy",
+      "casual"
     ],
     "payload": "After 3PM on Fridays, most tasks degrade into 'let's revisit this Monday.'",
     "flags": 0,
@@ -158,7 +161,8 @@
     "tags": [
       "habit",
       "philosophy",
-      "hunger"
+      "hunger",
+      "casual"
     ],
     "payload": "Opening the refrigerator while bored, hoping for a new reality to appear inside.",
     "flags": 0,
@@ -169,7 +173,8 @@
     "tags": [
       "books",
       "sensory",
-      "nostalgia"
+      "nostalgia",
+      "calming"
     ],
     "payload": "Paper and ink release a calming aroma before the first page is even read.",
     "flags": 0,
@@ -180,40 +185,20 @@
     "tags": [
       "food",
       "chemistry",
-      "childhood"
+      "childhood",
+      "casual"
     ],
     "payload": "Milk left after cereal is disproportionately better due to dissolved sugar and crumbs.",
     "flags": 0,
     "importance": 0.21
   },
   {
-    "summary": "Bystander effect",
-    "tags": [
-      "psychology",
-      "social",
-      "behavior"
-    ],
-    "payload": "The more witnesses there are, the less likely anyone is to intervene.",
-    "flags": 0,
-    "importance": 0.77
-  },
-  {
-    "summary": "Chinese Room argument",
-    "tags": [
-      "philosophy",
-      "AI",
-      "mind"
-    ],
-    "payload": "Symbol manipulation alone may not constitute understanding.",
-    "flags": 0,
-    "importance": 0.82
-  },
-  {
     "summary": "The 'Dad sneeze' volume mystery",
     "tags": [
       "biology",
       "family",
-      "acoustics"
+      "acoustics",
+      "casual"
     ],
     "payload": "Biological necessity for fathers to sneeze at decibel levels that rattle window panes.",
     "flags": 0,
@@ -235,7 +220,8 @@
     "tags": [
       "physics",
       "tech",
-      "frustration"
+      "frustration",
+      "casual"
     ],
     "payload": "USB connectors often exist in a quantum state requiring at least three attempts to plug in correctly.",
     "flags": 0,
@@ -257,7 +243,8 @@
     "tags": [
       "game-theory",
       "social",
-      "behavior"
+      "behavior",
+      "casual"
     ],
     "payload": "Intense mental competition to choose the fastest checkout lane and finish before a 'rival' in another line.",
     "flags": 0,
@@ -279,7 +266,8 @@
     "tags": [
       "chaos",
       "household",
-      "anomaly"
+      "anomaly",
+      "casual"
     ],
     "payload": "Statistical phenomenon where socks enter the laundry in pairs but exit as lonely individuals.",
     "flags": 0,
@@ -389,7 +377,8 @@
     "tags": [
       "cryptography",
       "security",
-      "mathematics"
+      "mathematics",
+      "proven"
     ],
     "payload": "Asymmetric encryption based on prime factorization difficulty. Public key encrypts, private key decrypts.",
     "flags": 0,
@@ -400,7 +389,8 @@
     "tags": [
       "networking",
       "TCP",
-      "protocol"
+      "protocol",
+      "standard"
     ],
     "payload": "Reno, Cubic, BBR adapt sending rate to avoid network saturation. Slow start, congestion avoidance, fast retransmit.",
     "flags": 0,
@@ -411,7 +401,8 @@
     "tags": [
       "database",
       "data-structure",
-      "algorithm"
+      "algorithm",
+      "standard"
     ],
     "payload": "Self-balancing tree optimized for disk I/O. Keeps data sorted, allows logarithmic search, insert, delete.",
     "flags": 0,
@@ -422,7 +413,7 @@
     "tags": [
       "memory",
       "gc",
-      "runtime"
+      "garbage-collection"
     ],
     "payload": "Two-phase algorithm: mark reachable objects from roots, then sweep unmarked objects as garbage.",
     "flags": 0,
@@ -444,7 +435,8 @@
     "tags": [
       "information",
       "mathematics",
-      "theory"
+      "theory",
+      "fundamental"
     ],
     "payload": "Entropy quantifies information content. Channel capacity defines maximum reliable transmission rate.",
     "flags": 0,
@@ -477,7 +469,8 @@
     "tags": [
       "neuroscience",
       "brain",
-      "cognition"
+      "cognition",
+      "research"
     ],
     "payload": "Brain rewires synaptic connections through experience. Hebbian learning: neurons that fire together wire together.",
     "flags": 0,
@@ -488,7 +481,8 @@
     "tags": [
       "mathematics",
       "number-theory",
-      "millennium"
+      "millennium",
+      "fundamental"
     ],
     "payload": "All non-trivial zeros of zeta function have real part 1/2. Implications for prime distribution.",
     "flags": 0,
@@ -499,7 +493,8 @@
     "tags": [
       "logic",
       "mathematics",
-      "philosophy"
+      "philosophy",
+      "fundamental"
     ],
     "payload": "Encode logical statements as numbers. Enables self-referential statements within formal systems.",
     "flags": 0,
@@ -532,7 +527,8 @@
     "tags": [
       "mathematics",
       "signal",
-      "analysis"
+      "analysis",
+      "fundamental"
     ],
     "payload": "Decompose signals into constituent frequencies. Time domain to frequency domain conversion.",
     "flags": 0,
@@ -620,7 +616,7 @@
     "tags": [
       "networking",
       "DNS",
-      "infrastructure"
+      "internet"
     ],
     "payload": "Distributed database maps domains to IPs. Root servers, TLD servers, authoritative nameservers.",
     "flags": 0,
@@ -631,7 +627,8 @@
     "tags": [
       "security",
       "authentication",
-      "web"
+      "web",
+      "standard"
     ],
     "payload": "Delegate access without sharing credentials. Authorization code, implicit, client credentials grants.",
     "flags": 0,
@@ -752,7 +749,7 @@
     "tags": [
       "concurrency",
       "distributed",
-      "model"
+      "messaging"
     ],
     "payload": "Actors communicate via asynchronous messages. No shared state, location transparency. Erlang, Akka.",
     "flags": 0,
@@ -774,7 +771,8 @@
     "tags": [
       "physics",
       "quantum",
-      "theory"
+      "theory",
+      "fundamental"
     ],
     "payload": "Cannot simultaneously know exact position and momentum. Δx·Δp ≥ ℏ/2. Fundamental quantum limit.",
     "flags": 0,
@@ -785,7 +783,8 @@
     "tags": [
       "physics",
       "relativity",
-      "spacetime"
+      "spacetime",
+      "proven"
     ],
     "payload": "Moving clocks tick slower. t' = t/√(1-v²/c²). GPS satellites must correct for relativistic effects.",
     "flags": 0,
@@ -807,7 +806,8 @@
     "tags": [
       "biology",
       "genetics",
-      "structure"
+      "structure",
+      "fundamental"
     ],
     "payload": "Adenine pairs with thymine, guanine with cytosine. Complementary strands enable replication.",
     "flags": 0,
@@ -829,7 +829,8 @@
     "tags": [
       "biology",
       "evolution",
-      "theory"
+      "theory",
+      "fundamental"
     ],
     "payload": "Heritable variation, differential survival, reproductive success. Adaptation to environment over generations.",
     "flags": 0,
@@ -895,7 +896,8 @@
     "tags": [
       "mathematics",
       "probability",
-      "counterintuitive"
+      "counterintuitive",
+      "paradox"
     ],
     "payload": "23 people give 50% chance of shared birthday. Collision probability grows quadratically with group size.",
     "flags": 0,
@@ -961,7 +963,8 @@
     "tags": [
       "philosophy",
       "identity",
-      "metaphysics"
+      "metaphysics",
+      "paradox"
     ],
     "payload": "Replace all parts gradually. Is it the same ship? Continuity vs material constitution.",
     "flags": 0,
@@ -972,7 +975,8 @@
     "tags": [
       "philosophy",
       "AI",
-      "mind"
+      "mind",
+      "debate"
     ],
     "payload": "Searle's thought experiment: syntax doesn't imply semantics. Symbol manipulation vs understanding.",
     "flags": 0,
@@ -983,7 +987,8 @@
     "tags": [
       "philosophy",
       "ethics",
-      "thought-experiment"
+      "thought-experiment",
+      "debate"
     ],
     "payload": "Utilitarian vs deontological ethics. Kill one to save five? Action vs omission distinction.",
     "flags": 0,
@@ -1016,7 +1021,8 @@
     "tags": [
       "physics",
       "astronomy",
-      "relativity"
+      "relativity",
+      "proven"
     ],
     "payload": "Accelerating masses create curvature waves. LIGO detected merging black holes 2015. Confirmed Einstein.",
     "flags": 0,
@@ -1038,7 +1044,8 @@
     "tags": [
       "psychology",
       "social",
-      "behavior"
+      "behavior",
+      "research"
     ],
     "payload": "More witnesses, less likely to help. Assume others will act. Kitty Genovese case study.",
     "flags": 0,
@@ -1049,7 +1056,8 @@
     "tags": [
       "psychology",
       "social",
-      "ethics"
+      "ethics",
+      "research"
     ],
     "payload": "Role assignment induced abusive behavior. Situational power over personality. Methodologically controversial.",
     "flags": 0,
@@ -1150,7 +1158,7 @@
   {
     "summary": "Event sourcing and CQRS",
     "tags": [
-      "architecture",
+      "design-pattern",
       "event-sourcing",
       "CQRS"
     ],
@@ -1331,7 +1339,8 @@
     "tags": [
       "art",
       "philosophy",
-      "Japanese"
+      "Japanese",
+      "peaceful"
     ],
     "payload": "Beauty in imperfection, impermanence, incompleteness. Celebrates cracks in pottery, rust on metal, the passage of time.",
     "flags": 0,
@@ -1364,7 +1373,8 @@
     "tags": [
       "biology",
       "optimization",
-      "emergence"
+      "emergence",
+      "discovery"
     ],
     "payload": "Brainless organism solves shortest-path problems. Physarum recreated Tokyo rail network optimally using nutrient gradients.",
     "flags": 0,
@@ -1396,7 +1406,7 @@
     "summary": "Gaia hypothesis self-regulation",
     "tags": [
       "ecology",
-      "system",
+      "ecosystem",
       "earth"
     ],
     "payload": "Earth functions as single self-regulating organism. Biosphere maintains conditions hospitable for life through feedback loops.",
@@ -1507,7 +1517,8 @@
     "tags": [
       "philosophy",
       "physics",
-      "simulation"
+      "simulation",
+      "provocative"
     ],
     "payload": "The proposal that all of reality is an artificial simulation, possibly run by a higher intelligence. Supported by the mathematical nature of physical laws.",
     "flags": 0,
@@ -1540,7 +1551,8 @@
     "tags": [
       "cellular-automata",
       "math",
-      "emergence"
+      "emergence",
+      "discovery"
     ],
     "payload": "A zero-player game where simple rules create complex, unpredictable patterns. Demonstrates how life-like behavior emerges from basic logic.",
     "flags": 0,
@@ -1616,7 +1628,8 @@
     "tags": [
       "internet",
       "conspiracy",
-      "AI"
+      "AI",
+      "provocative"
     ],
     "payload": "The belief that most of the internet is now populated by bots and AI-generated content, with real human interaction becoming a rarity.",
     "flags": 0,

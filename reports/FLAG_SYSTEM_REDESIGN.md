@@ -110,10 +110,16 @@ bits 12-15 Special:     system/user metadata
 
 | Flag | Bit | Meaning | Physics Effect |
 |------|-----|---------|----------------|
-| **Dense** | 0x0010 | High information density (theory, formulas) | `weight × 1.2` |
-| **Sparse** | 0x0020 | Low density (casual, anecdotal) | `weight × 0.9` |
-| **Composite** | 0x0040 | Multi-concept fusion | `weight × 1.1`, attracts synthesis |
+| **Dense** | 0x0010 | High information density (theory, formulas) | `weight × 1.2` (設計値) |
+| **Sparse** | 0x0020 | Low density (casual, anecdotal) | `weight × 0.9` (設計値) |
+| **Composite** | 0x0040 | Multi-concept fusion | `weight × 1.1` (設計値) |
 | **Authority** | 0x0080 | Compressed trust (peer-reviewed, official) | `decay_rate × 0.95` |
+
+> **Physics Wiring Status (2026-02-12 確認)**
+> - **Authority**: decay_rate 配線済み (bit_math.ts) ✅
+> - **Dense/Sparse/Composite**: weight 物理効果は **未配線**。ビットポジション確定が本質的成果。
+>   物理効果の意味 (「重い情報は遅く減る」が正しいか) の追求が配線に先行する。
+> - physics.ts の `computePhysicsModifiers()` に Dense×1.2 のハードコードあり (dead code — 呼び出し元なし)
 
 **Agent behavior**:
 - Scholar: attracted to Dense + Authority
@@ -352,6 +358,7 @@ Proposal:
 - [x] **physics.ts レガシーフラグ衝突修正** — 2026-02-10 実装 (下記ログ参照)
 - [ ] Generate test data with new flags (add "timeless", "dense", etc. to tags)
 - [ ] mock_data.json のフラグ値を新体系に更新
+- [ ] Density 層の物理効果を追求し、必要なら bit_math.ts に配線 (Dense/Sparse/Composite)
 
 ---
 
