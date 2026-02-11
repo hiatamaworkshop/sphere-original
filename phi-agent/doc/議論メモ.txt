@@ -144,6 +144,7 @@ npx tsx src/mock/contribution.ts wave 30 2000
 
 cd "c:\Users\kazuh\Desktop\Various\programming\DockerFiles\sphere-original\phi-agent" && bash -c 'OLLAMA_MODEL=gemma2:2b SPHERE_WS=ws://localhost:3001 npx tsx src/index.ts "pursuing ambitious goals" --cycles 10 --loadout hunter' 2>&1 | head -200
 
+
 pool service の謎　外部投入用としていつの間にか過剰設計で作られていた
 たぶんＤＢ初期化とかウィザード構想のせいで作られた
 
@@ -152,18 +153,25 @@ pool service の謎　外部投入用としていつの間にか過剰設計で�
 チューニング禁止
 
 ＡＰＩが必要なのは　クラスタがあるからこそ　そのクラスタ内にはわりこめない
-だからクラスタをまとめて　ＡＰＩ化するのだ
-
+だからクラスタをまとめてＡＰＩ化する　別にＨＴＴＰだろうがＯＫ　作法の問題
 
 Observatory　はあくまで外部サービスとしての立ち位置　これはつまり
 誰でもラジオ局を持てる、という示唆にする　つまり　蓄積されるデータを
 解釈し、ナラティブ化し　ＵＤＰデータを可視化し　ＳＮＳで垂れ流し、とするのは自由
 Observatory はその先駆者なだけ　極力特権を持たない　古風で　堅い感じで良い　そういうＵＩにする
 
+LLMをセンサーとして配置したら高速になるのか？ならばその筋肉は何になる？
+ＬＬＭの出力はどこにある？それを繋ぐのは？　正直これは意味がなさそうだ
+　すでに革命を起こしている
+Loadout (装備) が LLM の外に出た → モデル交換しても性格は保存される
+FastGate (判断) が LLM の外に出た → 0ms の意思決定、LLM は測定だけ
+Species Memory が LLM の外に出た → 文化の蓄積がモデルに依存しない
+Feelings が LLM の外に出た → 感情が環境から計算される、LLM が「感じる」必要がない　-> Digestor が feelings pool
 
+いみじくも放置中のObservatory はその「覗く」ための窓。
+agentによるnarrative-log が蓄積されれば、エージェントが何を見て何を思ったかを人間の言葉で読める。配信しようが加工しようが思う通りだ
 
-
-
+育てるという表現が良い。Sphere は設計するものではなく育てるものだ。設計は既にほぼ終わっている。あとは時間と蓄積の問題。
 
 
 
