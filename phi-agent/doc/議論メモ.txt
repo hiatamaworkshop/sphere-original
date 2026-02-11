@@ -188,6 +188,10 @@ eval-log.jsonl (50 sessions, 165 evals)
 [6] eval-log.jsonl ← 生存者のみに書き戻し（atomic: tmp→rename）
 
 
+Daemon agent はサービスじゃない。細胞。
+Agent の活動がログになり、それはスフィアに再投入すら可能　それは別スフィアとして
+存続が可能　これがデーモン化　で達成できる　増殖パターン
+
 
 
 
