@@ -40,6 +40,9 @@ export function computeScore(
 }
 
 // ---- Hunger ----
+// Tuned for 3h digest interval (default).
+// 3 agents × 30s sleep × 3h ≈ 360-450 evals → hunger 0.4-0.5 (ideal).
+// 1h → ~120 evals → 0.2 (no pruning). 6h → ~900 evals → 0.9+ (aggressive).
 
 export function computeHunger(totalEvalCount: number): number {
   if (totalEvalCount < 200) return 0.2;

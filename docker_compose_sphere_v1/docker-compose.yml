@@ -212,7 +212,7 @@ services:
     container_name: sphere-digestor
     environment:
       DATA_DIR: /app/data
-      DIGEST_INTERVAL_MS: "${DIGEST_INTERVAL_MS:-3600000}"
+      DIGEST_INTERVAL_MS: "${DIGEST_INTERVAL_MS:-10800000}"
       HALF_LIFE_HOURS: "${HALF_LIFE_HOURS:-72}"
       MIN_EVALS: "50"
       MIN_PER_SPECIES: "20"
