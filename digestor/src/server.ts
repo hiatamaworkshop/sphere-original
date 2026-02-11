@@ -64,7 +64,9 @@ export function startServer(port: number, config: GatewayConfig): void {
       return;
     }
 
-    const parts = (req.url ?? "/").split("/").filter(Boolean);
+    const rawUrl = req.url ?? "/";
+    const pathname = rawUrl.split("?")[0];
+    const parts = pathname.split("/").filter(Boolean);
 
     // GET /health
     if (req.method === "GET" && parts[0] === "health") {

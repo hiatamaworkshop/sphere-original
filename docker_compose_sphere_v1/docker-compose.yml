@@ -161,7 +161,7 @@ services:
         reservations:
           memory: 4G
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
+      test: ["CMD-SHELL", "ollama list || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 10
@@ -183,6 +183,7 @@ services:
       LOADOUT: random
       DAEMON: "true"
       DAEMON_SLEEP_MS: "30000"
+      RESPONSE: "true"
       DIGESTOR_URL: http://digestor:5000
     volumes:
       - phi-agent-data:/app/data
