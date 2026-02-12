@@ -63,7 +63,7 @@ export class PeripheryServer {
     globalFieldLayer;
     activeBusLayer;
     app = express();
-    ticketIssuer = new TicketIssuer(DEFAULT_TICKET_CONFIG);
+    ticketIssuer;
     questStore;
     gatewayServer = null;
     nodeForge;
@@ -94,6 +94,12 @@ export class PeripheryServer {
         this.coreAdapter = coreAdapter;
         this.globalFieldLayer = globalFieldLayer;
         this.activeBusLayer = activeBusLayer;
+        // Initialize TicketIssuer with session TTL from config
+        const ticketConfig = {
+            ...DEFAULT_TICKET_CONFIG,
+            sessionTtl: config.session?.ttlSeconds ?? DEFAULT_TICKET_CONFIG.sessionTtl,
+        };
+        this.ticketIssuer = new TicketIssuer(ticketConfig);
         // Initialize QuestStore with config
         this.questStore = new QuestStore(config.questStore);
         // Initialize NodeForge with config (if available)

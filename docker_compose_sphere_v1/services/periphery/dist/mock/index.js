@@ -15,7 +15,7 @@
  *   npm run explore          # 3-layer exploration test
  *
  * [Data]
- *   mock_data.json - 60 test items
+ *   mock_data.json - 153 test items (16bit flag coverage)
  */
 // Core Tools
 export { ExploreAgent } from "./explore-agent.js";
