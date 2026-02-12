@@ -456,8 +456,347 @@ infra/
 
 ---
 
+## 13. テスト実行時の注意事項 (2026-02-12)
+
+### 13.1 SystemCore 汚染とサーバ再起動
+
+**問題**: `seedSphere()` はサーバ起動時に `mock_data.json` を読み込む。mock_data を修正しても、**サーバを再起動しない限り旧データが Sphere に残る**。
+
+| 症状 | 原因 |
+|------|------|
+| SystemCore ノードが大量に存在 | 旧 mock_data のタグ (`model`, `architecture`, `system` 等) が SystemCore regex にマッチ |
+| 修正済みタグが反映されない | サーバ起動後に mock_data.json を修正した |
+| ノードが不死化 (decay=0, ttl_decay=0) | SystemCore フラグの物理効果 |
+
+**対処**: mock_data.json 修正後は **必ずサーバ再起動**。
+
+```batch
+# Periphery 再起動 (projectionDB はメモリ上なのでリセットされる)
+.\sphere.bat stop
+.\sphere.bat start
+```
+
+### 13.2 WS ポートの確認
+
+| 環境 | HTTP | WebSocket |
+|------|------|-----------|
+| ローカル dev (`npm run dev`) | 3001 | **8081** |
+| Docker / same-port モード | 3001 | **3001** |
+
+phi-agent の `SPHERE_WS` を環境に合わせて設定すること。
+
+```batch
+# ローカル dev の場合
+set SPHERE_WS=ws://localhost:8081
+
+# Docker / same-port の場合
+set SPHERE_WS=ws://localhost:3001
+```
+
+**判別方法**: `curl http://localhost:8081/` が応答すれば 8081、しなければ 3001。
+
+### 13.3 Windows 環境変数の罠
+
+Windows cmd の `set` は**同一コマンドチェーン内**でしか有効にならない場合がある。
+phi-agent 実行時は **bat ファイル経由**が安全。
+
+```batch
+@echo off
+cd /d "%~dp0phi-agent"
+set SPHERE_URL=http://localhost:3001
+set SPHERE_WS=ws://localhost:3001
+set OLLAMA_HOST=http://localhost:11434
+set OLLAMA_MODEL=phi3:mini
+set LOADOUT=moth
+set EVALUATE=true
+set RESPONSE=true
+node dist/index.js "knowledge exploration"
+```
+
+> `set VAR=value && command` 形式は `&&` 前後のスペースで値が汚染される場合がある。
+
+### 13.4 テスト前チェックリスト
+
+```
+□ Periphery 起動確認     curl http://localhost:3001/health
+□ Ollama 起動確認        curl http://localhost:11434/api/tags
+□ WS ポート特定          curl http://localhost:8081/ (応答なし→3001)
+□ ノード数確認           curl http://localhost:3001/nodes/stats
+□ phi-agent ビルド       cd phi-agent && npm run build
+□ mock_data 修正後       → サーバ再起動
+□ SystemCore 確認        /nodes/metrics で flags に 0x2000 が含まれないこと
+```
+
+### 13.5 テスト結果の読み方
+
+**eval-log.jsonl** (phi-agent/data/):
+```jsonl
+{"loadout":"moth","model":"phi3:mini","query":"...","evaluations":[{"nodeId":"...","h":8,"w":9,"d":5,"tags":[...]}],"busEmits":2,"busRecvs":4}
+```
+
+**確認ポイント**:
+
+| 項目 | 正常 | 異常 |
+|------|------|------|
+| h/w/d 分散 | 値にばらつきあり | 全評価で同じ値 (スタンプ) |
+| d 測定 | phi3:mini: d=0-6+ | d=3 完全固定 (gemma2:2b without species memory) |
+| JSON 成功率 | phi3:mini: 90%+ | 連続 parse failure |
+| Bus | h>=8 でのみ emit | 全評価で emit (h 固定高値) |
+| Feelings 遷移 | sat→camp, stale→leap | 同一行動のみ |
+
+### 13.6 既知の制限
+
+- **単一クエリでは d 測定能力を判別不能** — クエリ多様性が必須
+- **species-profile.json 依存**: 初回実行時はプロファイルなし → Digestor 実行後に精度向上
+- **Narrative 途中切断**: maxTokens 128 のため長文は末尾が切れる (仕様)
+- **API エンドポイント**: `/nodes` は 404。正しくは `/nodes/metrics` (ノード一覧) / `/nodes/stats` (統計)
+
+---
+
+## 14. データ蓄積テスト手順 (gen-006〜, 2026-02-12)
+
+### 14.1 概要
+
+9種族を3並列×3ラウンドで蓄積テストを実施する。
+モデルは **llama3.2:1b** (内部評価用、species memory calibration 済み)。
+各ラウンド後に Digestor を手動起動し、世代を刻む。
+
+| ラウンド | 種族 | 所要時間 |
+|---------|------|---------|
+| R1 | balanced, scholar, scout | 約20分 |
+| R2 | archivist, hunter, moth | 約20分 |
+| R3 | hermit, wanderer, sniper | 約20分 |
+
+**1ラウンド = テスト10分 + データ投入10分**
+**合計: 約60分 (3ラウンド) + Digestor 3回**
+
+### 14.2 前提条件
+
+```
+□ Periphery 起動確認     curl http://localhost:3001/health
+□ Ollama 起動確認        curl http://localhost:11434/api/tags
+□ llama3.2:1b 存在確認   curl http://localhost:11434/api/tags で llama3.2:1b が表示
+□ WS ポート特定          curl http://localhost:8081/ (応答あり→8081, なし→3001)
+□ phi-agent ビルド       cd phi-agent && npm run build
+□ digestor ビルド        cd digestor && npm run build
+□ ノード数確認           curl http://localhost:3001/nodes/stats
+□ 現在の世代確認         phi-agent/data/generations/ の最新 gen-NNN を確認
+□ eval-log 状態確認      phi-agent/data/eval-log.jsonl の行数確認
+```
+
+### 14.3 クエリセット
+
+測定能力の検証にはクエリ多様性が必須。以下のクエリを3並列で分散させる。
+
+```
+Q1: "knowledge exploration"        (汎用)
+Q2: "trending viral discussions"   (ephemeral 寄り)
+Q3: "fundamental mathematics"      (timeless 寄り)
+Q4: "emerging technology trends"   (temporal mixed)
+Q5: "philosophical foundations"    (dense, authority)
+Q6: "creative art movements"       (cognitive, insightful)
+```
+
+各エージェントに異なるクエリを割り当てて d 測定の分散を促す。
+
+### 14.4 テスト実行 — ラウンド1 (balanced, scholar, scout)
+
+#### Step 1: Sphere へデータ投入 (10分)
+
+```batch
+cd "C:\Users\kazuh\Desktop\Various\programming\DockerFiles\sphere-original"
+.\sphere.bat batch
+```
+
+153件のノードが投入される。投入後、ノード数を確認:
+
+```batch
+curl http://localhost:3001/nodes/stats
+```
+
+#### Step 2: 3並列エージェント実行 (10分)
+
+**ターミナル1 — balanced:**
+```batch
+cd /d "C:\Users\kazuh\Desktop\Various\programming\DockerFiles\sphere-original\phi-agent"
+set SPHERE_URL=http://localhost:3001
+set SPHERE_WS=ws://localhost:8081
+set OLLAMA_HOST=http://localhost:11434
+set OLLAMA_MODEL=llama3.2:1b
+set LOADOUT=balanced
+set EVALUATE=true
+set RESPONSE=true
+node dist/index.js "knowledge exploration" --daemon --sleep 30000
+```
+
+**ターミナル2 — scholar:**
+```batch
+cd /d "C:\Users\kazuh\Desktop\Various\programming\DockerFiles\sphere-original\phi-agent"
+set SPHERE_URL=http://localhost:3001
+set SPHERE_WS=ws://localhost:8081
+set OLLAMA_HOST=http://localhost:11434
+set OLLAMA_MODEL=llama3.2:1b
+set LOADOUT=scholar
+set EVALUATE=true
+set RESPONSE=true
+node dist/index.js "fundamental mathematics" --daemon --sleep 30000
+```
+
+**ターミナル3 — scout:**
+```batch
+cd /d "C:\Users\kazuh\Desktop\Various\programming\DockerFiles\sphere-original\phi-agent"
+set SPHERE_URL=http://localhost:3001
+set SPHERE_WS=ws://localhost:8081
+set OLLAMA_HOST=http://localhost:11434
+set OLLAMA_MODEL=llama3.2:1b
+set LOADOUT=scout
+set EVALUATE=true
+set RESPONSE=true
+node dist/index.js "trending viral discussions" --daemon --sleep 30000
+```
+
+**10分経過後**: 全ターミナルで **Ctrl+C** で停止。
+
+#### Step 3: 中間確認
+
+```batch
+:: eval-log の行数確認 (増えているはず)
+powershell -Command "(Get-Content 'phi-agent\data\eval-log.jsonl').Count"
+
+:: 直近のエントリ確認 (loadout, model, evaluations 件数)
+powershell -Command "Get-Content 'phi-agent\data\eval-log.jsonl' | Select-Object -Last 3"
+```
+
+**異常チェック**:
+- h/w/d が全評価で同じ値 → **スタンプ (即停止)**
+- JSON parse failure が連発 → **プロンプト競合 (即停止)**
+- evaluations が空配列 → **接続エラー (WS ポート確認)**
+
+### 14.5 テスト実行 — ラウンド2 (archivist, hunter, moth)
+
+Step 1 のデータ投入を再実行 (既存ノードの減衰分を補充):
+
+```batch
+.\sphere.bat batch
+```
+
+Step 2 と同様に3ターミナルを開き、以下を変更:
+
+| ターミナル | LOADOUT | クエリ |
+|-----------|---------|--------|
+| 1 | archivist | "philosophical foundations" |
+| 2 | hunter | "emerging technology trends" |
+| 3 | moth | "creative art movements" |
+
+10分経過後 Ctrl+C。中間確認を実施。
+
+### 14.6 テスト実行 — ラウンド3 (hermit, wanderer, sniper)
+
+Step 1 のデータ投入を再実行:
+
+```batch
+.\sphere.bat batch
+```
+
+Step 2 と同様に3ターミナルを開き:
+
+| ターミナル | LOADOUT | クエリ |
+|-----------|---------|--------|
+| 1 | hermit | "knowledge exploration" |
+| 2 | wanderer | "trending viral discussions" |
+| 3 | sniper | "fundamental mathematics" |
+
+10分経過後 Ctrl+C。中間確認を実施。
+
+### 14.7 Digestor 手動起動
+
+各ラウンド完了後、または全ラウンド完了後に実行。
+
+```batch
+cd /d "C:\Users\kazuh\Desktop\Various\programming\DockerFiles\sphere-original\digestor"
+set DATA_DIR=..\phi-agent\data
+set ONCE=1
+node dist/digestor.js
+```
+
+**期待される出力:**
+```
+[digestor] Starting — one-shot, half_life=72h, min_evals=50
+[digestor] Source: ..\phi-agent\data\eval-log.jsonl
+[digestor] Output: ..\phi-agent\data\species-profile.json
+[digestor] Read N sessions, M evaluations
+[digestor] Hunger: X.XX (M evals)
+[digestor] Survived: S/M (XX%)
+[digestor] Profile written: K species, S surviving evals
+[digestor] Generation NNN archived
+[digestor] eval-log truncated: T sessions
+  balanced: XX evals, h=X.X w=X.X d=X.X, N nodes, T tags
+  scholar: ...
+  (各種族のサマリ)
+[digestor] One-shot complete.
+```
+
+**確認ポイント:**
+- `Hunger` が 0.3〜0.6 の範囲か (低すぎ→淘汰なし、高すぎ→小種族絶滅)
+- `Survived` が 50%〜80% か
+- 全9種族が species 一覧に表示されるか
+- `generations/gen-NNN.json` が新規作成されたか
+
+**異常時:**
+- `Skip: N < 50 minimum evaluations` → 評価数不足。テストを追加で実施
+- 特定種族が欠落 → MIN_PER_SPECIES (20) 未満。その種族のセッションを追加
+- Hunger > 0.8 → 評価が多すぎ。正常動作だが小種族の生存率に注意
+
+### 14.8 結果検証
+
+#### 世代ファイル確認
+
+```batch
+:: 最新の世代ファイルを確認
+powershell -Command "Get-Content 'phi-agent\data\generations\gen-006.json' | ConvertFrom-Json | Select-Object generation,inputEvaluations,survivedEvaluations,hunger"
+```
+
+#### 種族別サマリ確認
+
+```batch
+:: species-profile.json を読む
+powershell -Command "(Get-Content 'phi-agent\data\species-profile.json' | ConvertFrom-Json).species | Format-Table"
+```
+
+#### 測定品質の確認基準
+
+| 項目 | 正常 (llama3.2:1b + species memory) | 異常 |
+|------|--------------------------------------|------|
+| h range | 種族ごとに異なる平均、range 1pt+ | 全種族同値 |
+| w range | 種族ごとに異なる平均、range 1pt+ | 全種族同値 |
+| d range | range 2pt+ (species memory 効果) | d 完全固定 |
+| 種族間分散 | 3クラスタ以上 (heat生産/weight蓄積/中央) | 全種族同傾向 |
+| Bus emit | moth, hunter で多い (h>=8) | 全種族均一 |
+
+### 14.9 中止基準
+
+以下のいずれかに該当したら即座にテストを中止:
+
+1. **スタンプ検出**: 3セッション連続で h/w/d が同一値
+2. **JSON parse failure 連発**: 5回連続で LLM 出力が解析不能
+3. **Sphere 接続断**: WebSocket が切断され再接続しない
+4. **Ollama 応答なし**: LLM 推論が 120秒以上返らない
+5. **eval-log 書き込み失敗**: ファイルが空 or 減少している
+
+### 14.10 テスト後の整理
+
+```batch
+:: eval-log のバックアップ (テスト前に取得推奨)
+copy phi-agent\data\eval-log.jsonl phi-agent\data\eval-log-backup-YYYYMMDD.jsonl
+
+:: narrative-log の確認
+powershell -Command "(Get-Content 'phi-agent\data\narrative-log.jsonl').Count"
+```
+
+---
+
 作成日: 2025-01-31
-更新日: 2026-02-01
+更新日: 2026-02-12
 
 ---
 
