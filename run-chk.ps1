@@ -14,7 +14,7 @@ if (Test-Path $mainLog) {
     Move-Item -Path $mainLog -Destination $tempLog -Force
 }
 
-$testModel = "llama3.2:1b"
+$testModel = "gemma2:2b"
 Write-Host "[Start] Launching $testModel with ENGLISH-CONCISE loadout..." -ForegroundColor Yellow
 
 # 2. 内部コマンドの組み立て（バッククォートでのエスケープを最小限に）
