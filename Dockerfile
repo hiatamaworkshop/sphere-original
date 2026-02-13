@@ -8,7 +8,7 @@
 FROM node:20-slim AS phi-build
 WORKDIR /build
 COPY phi-agent/package*.json ./
-RUN npm ci --omit=dev
+RUN npm ci
 COPY phi-agent/tsconfig.json ./
 COPY phi-agent/src/ ./src/
 RUN npx tsc
