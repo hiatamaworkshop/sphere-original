@@ -57,7 +57,7 @@ export interface EvalLogRecord {
   w: number;
   d: number;
   tags: string[];
-  signal?: string;
+  expression?: number[];
 }
 
 // ============================================================

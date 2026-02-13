@@ -46,7 +46,7 @@ interface BusHint {
   nodeId: string;
   h: number;
   w: number;
-  signal?: string;
+  expression?: number[];
   receivedAt: number;
 }
 
@@ -380,7 +380,7 @@ export class PhiAgent {
     const h = evalAction.h ?? 5;
     const w = evalAction.w ?? 5;
     const d = evalAction.d ?? 5;
-    const signal = evalAction.signal;
+    const expression = evalAction.expression;
 
     // 6. Submit evaluation to Sphere
     if (this.canAfford("evaluate")) {
@@ -388,13 +388,13 @@ export class PhiAgent {
       if (success) {
         this.stats.evaluations++;
         this.stats.totalHeatDelta += (h - 5);
-        // 6b. Broadcast notable discovery to other agents (signal rides the bus)
-        await this.tryEmitBus(target.id, h, w, signal);
+        // 6b. Broadcast notable discovery to other agents (expression rides the bus)
+        await this.tryEmitBus(target.id, h, w, expression);
       }
     }
 
     // 7. Record quality data
-    this.gate.memory.record(target.id, h, w, d, detail.tags, signal);
+    this.gate.memory.record(target.id, h, w, d, detail.tags, expression);
 
     // 7b. Store encounter for return response (agent "remembers" what it saw)
     this.encounters.push({
@@ -550,7 +550,7 @@ export class PhiAgent {
         w: e.w,
         d: e.d,
         tags: e.tags,
-        ...(e.signal && { signal: e.signal }),
+        ...(e.expression && { expression: e.expression }),
       })),
       busEmits: this.busEmitCount,
       busRecvs: this.busRecvCount,
@@ -611,55 +611,54 @@ export class PhiAgent {
     const w = msg.payload[1];
     const rest = msg.payload.slice(2);
 
-    // Split on null byte: [nodeId_utf8, 0x00, signal_utf8]
-    const nullIdx = rest.indexOf(0);
+    // Layout: [h, w, nodeId_utf8, e0, e1, e2, e3] — last 4 bytes are expression
+    // Detect format: if payload is long enough and has expression suffix
     let nodeId: string;
-    let signal: string | undefined;
-    if (nullIdx >= 0) {
-      nodeId = new TextDecoder().decode(rest.slice(0, nullIdx));
-      const sigPart = rest.slice(nullIdx + 1);
-      signal = sigPart.length > 0 ? new TextDecoder().decode(sigPart) : undefined;
+    let expression: number[] | undefined;
+    if (rest.length > 4) {
+      // Last 4 bytes = expression, rest = nodeId
+      const idPart = rest.slice(0, rest.length - 4);
+      nodeId = new TextDecoder().decode(idPart);
+      expression = [rest[rest.length - 4], rest[rest.length - 3], rest[rest.length - 2], rest[rest.length - 1]];
     } else {
-      nodeId = new TextDecoder().decode(rest); // backward compat (no signal)
+      nodeId = new TextDecoder().decode(rest); // backward compat (no expression)
     }
     if (!nodeId) return;
 
-    this.busHints.set(nodeId, { nodeId, h, w, signal, receivedAt: Date.now() });
+    this.busHints.set(nodeId, { nodeId, h, w, expression, receivedAt: Date.now() });
     this.busRecvCount++;
-    const sigPreview = signal ? ` sig="${signal.slice(0, 16)}"` : "";
-    this.log(`Bus recv: node=${nodeId.slice(0, 8)} h=${h} w=${w}${sigPreview} from=${msg.senderId.slice(0, 8)}`);
+    const exprPreview = expression ? ` expr=[${expression.join(",")}]` : "";
+    this.log(`Bus recv: node=${nodeId.slice(0, 8)} h=${h} w=${w}${exprPreview} from=${msg.senderId.slice(0, 8)}`);
   }
 
   /** Involuntary emit — strong reaction leaks into the air.
    *  First emit per session is free ("birth cry").
-   *  Signal rides the bus as free-form LLM fragment after nodeId. */
-  private async tryEmitBus(nodeId: string, h: number, w: number, signal?: string): Promise<void> {
+   *  Expression rides the bus as 4 bytes after nodeId. */
+  private async tryEmitBus(nodeId: string, h: number, w: number, expression?: number[]): Promise<void> {
     // Reflex threshold: only strong reactions leak
     if (h < 8) return;
 
     const free = this.busEmitCount === 0;
 
-    // Encode: [h, w, nodeId_utf8, 0x00, signal_utf8] — max 64 bytes
+    // Encode: [h, w, nodeId_utf8, e0, e1, e2, e3] — max 64 bytes
     const idBytes = new TextEncoder().encode(nodeId);
-    const sigBytes = signal ? new TextEncoder().encode(signal) : new Uint8Array(0);
-    const maxId = Math.min(idBytes.length, 60);
-    const remaining = 62 - maxId - 1; // -1 for null separator
-    const maxSig = Math.max(0, Math.min(sigBytes.length, remaining));
-    const payloadLen = 2 + maxId + (maxSig > 0 ? 1 + maxSig : 0);
-    const payload = new Uint8Array(payloadLen);
+    const maxId = Math.min(idBytes.length, 58); // reserve 4 bytes for expression + 2 for h,w
+    const expr = expression ?? [0, 0, 0, 0];
+    const payload = new Uint8Array(2 + maxId + 4);
     payload[0] = h;
     payload[1] = w;
     payload.set(idBytes.slice(0, maxId), 2);
-    if (maxSig > 0) {
-      payload[2 + maxId] = 0; // null separator
-      payload.set(sigBytes.slice(0, maxSig), 2 + maxId + 1);
-    }
+    // Append expression as 4 fixed bytes
+    payload[2 + maxId] = expr[0] & 0xFF;
+    payload[2 + maxId + 1] = expr[1] & 0xFF;
+    payload[2 + maxId + 2] = expr[2] & 0xFF;
+    payload[2 + maxId + 3] = expr[3] & 0xFF;
 
     const success = await this.sphere.emitBus(payload, free);
     if (success) {
       this.busEmitCount++;
-      const sigPreview = signal ? ` sig="${signal.slice(0, 16)}"` : "";
-      this.log(`Bus emit: node=${nodeId.slice(0, 8)} h=${h} w=${w}${sigPreview} free=${free} (energy: ${this.sphere.currentEnergy})`);
+      const exprPreview = expression ? ` expr=[${expression.join(",")}]` : "";
+      this.log(`Bus emit: node=${nodeId.slice(0, 8)} h=${h} w=${w}${exprPreview} free=${free} (energy: ${this.sphere.currentEnergy})`);
     }
   }
 

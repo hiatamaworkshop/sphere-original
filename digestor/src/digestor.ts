@@ -45,7 +45,7 @@ interface EvalLogEntry {
     w: number;
     d: number;
     tags: string[];
-    signal?: string;
+    expression?: number[];
   }>;
 }
 
@@ -74,7 +74,7 @@ function flatten(entries: EvalLogEntry[]): FlatEval[] {
         w: ev.w,
         d: ev.d,
         tags: ev.tags,
-        signal: ev.signal,
+        expression: ev.expression,
         loadout: entry.loadout,
         model: entry.model,
         timestamp: entry.timestamp,
@@ -211,7 +211,7 @@ function rebuildEntries(survived: ScoredEval[]): EvalLogEntry[] {
       timestamp: g.timestamp,
       evaluations: g.evals.map(e => ({
         nodeId: e.nodeId, h: e.h, w: e.w, d: e.d, tags: e.tags,
-        ...(e.signal && { signal: e.signal }),
+        ...(e.expression && { expression: e.expression }),
       })),
     });
   }

@@ -72,7 +72,7 @@ I focused on this node:
 - Kind: ${node.kind}
 ${perspective}
 Rate this node (0-10 each):
-{ "h": <heat/activity>, "w": <weight/authority>, "d": <decay/ephemeral>, "signal": "", "reason": "<brief>" }`;
+{ "h": <heat/activity>, "w": <weight/authority>, "d": <decay/ephemeral>, "expression": "____", "reason": "<brief>" }`;
   }
 
   /**
@@ -129,7 +129,7 @@ export interface AgentAction {
   h?: number;
   w?: number;
   d?: number;
-  signal?: string;
+  expression?: number[];
   mode?: WalkMode;
   reason?: string;
 }
@@ -183,17 +183,15 @@ export function parseAction(response: string): AgentAction {
         } else {
           parsed.d = typeof d === "number" ? d : undefined;
         }
-        parsed.signal = typeof raw.signal === "string" ? raw.signal.slice(0, 64) : undefined;
+        parsed.expression = extractExpression(raw.expression);
         parsed.reason = (raw.reason as string) ?? "Inferred from keyless JSON";
       }
     }
 
-    // Extract signal from any evaluate response (including those with explicit "action" key)
-    if (parsed.action === "evaluate" && !parsed.signal) {
+    // Extract expression from any evaluate response (including those with explicit "action" key)
+    if (parsed.action === "evaluate" && !parsed.expression) {
       const raw = parsed as unknown as Record<string, unknown>;
-      if (typeof raw.signal === "string") {
-        parsed.signal = raw.signal.slice(0, 64);
-      }
+      parsed.expression = extractExpression(raw.expression);
     }
 
     // Validate action type
@@ -224,6 +222,26 @@ export function parseAction(response: string): AgentAction {
 
 function clamp(v: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, Math.round(v)));
+}
+
+/** Extract expression: hex string "a3f1" → [10,3,15,1], or numeric array fallback */
+function extractExpression(raw: unknown): number[] | undefined {
+  // Hex string mode: "a3f1" → [10, 3, 15, 1]
+  if (typeof raw === "string") {
+    const hexChars = raw.replace(/[^0-9a-fA-F]/g, "").slice(0, 4);
+    if (hexChars.length === 0) return undefined;
+    const nums = [...hexChars].map(c => parseInt(c, 16));
+    while (nums.length < 4) nums.push(0);
+    return nums;
+  }
+  // Numeric array fallback (backward compat): [5,3,8,1] → clamped 0-15
+  if (Array.isArray(raw)) {
+    const nums = raw.filter((v): v is number => typeof v === "number").slice(0, 4);
+    if (nums.length === 0) return undefined;
+    while (nums.length < 4) nums.push(0);
+    return nums.map(n => Math.max(0, Math.min(15, Math.round(n))));
+  }
+  return undefined;
 }
 
 /**

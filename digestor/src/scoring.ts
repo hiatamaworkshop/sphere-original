@@ -19,7 +19,7 @@ export interface FlatEval {
   w: number;
   d: number;
   tags: string[];
-  signal?: string;
+  expression?: number[];
   loadout: string;
   model?: string;
   timestamp: number;
