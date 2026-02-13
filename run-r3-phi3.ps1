@@ -1,5 +1,13 @@
 # ============================================================
-# Round 3: hunter, wanderer, sniper (phi3:mini, 15min total)
+# DEPRECATED (2026-02-13): R1+R2 が 4x2 構成に統合済み
+# 全8種族は R1 (scout,hunter,archivist,sniper) + R2 (moth,balanced,scholar,wanderer) でカバー
+# このスクリプトは使用しないこと
+# ============================================================
+Write-Host "[ERROR] run-r3-phi3.ps1 is DEPRECATED. Use run-r1-phi3.ps1 + run-r2-phi3.ps1 instead." -ForegroundColor Red
+exit 1
+<#
+# ============================================================
+# (Archive) Round 3: hunter, wanderer, sniper (phi3:mini, 15min total)
 # Replacement: hermit -> hunter (to boost hunter's dataset)
 # ============================================================
 
@@ -16,11 +24,10 @@ Write-Host "========================================`n" -ForegroundColor Cyan
 # ===== Phase 1: 5 minutes with existing nodes =====
 Write-Host "[Phase 1] Starting 3 agents for $phase1Duration seconds..." -ForegroundColor Green
 
-# Agent commands
-# Hunter: Targeted at software architecture for better hit rate
-$cmd1 = "cd '$baseDir'; `$env:SPHERE_URL='http://localhost:3001'; `$env:SPHERE_WS='ws://localhost:3001'; `$env:OLLAMA_HOST='http://localhost:11434'; `$env:OLLAMA_MODEL='phi3:mini'; `$env:LOADOUT='hunter'; `$env:EVALUATE='true'; `$env:RESPONSE='false'; node dist/index.js 'advanced software architecture' --daemon --sleep 30000"
-$cmd2 = "cd '$baseDir'; `$env:SPHERE_URL='http://localhost:3001'; `$env:SPHERE_WS='ws://localhost:3001'; `$env:OLLAMA_HOST='http://localhost:11434'; `$env:OLLAMA_MODEL='phi3:mini'; `$env:LOADOUT='wanderer'; `$env:EVALUATE='true'; `$env:RESPONSE='false'; node dist/index.js 'knowledge exploration' --daemon --sleep 30000"
-$cmd3 = "cd '$baseDir'; `$env:SPHERE_URL='http://localhost:3001'; `$env:SPHERE_WS='ws://localhost:3001'; `$env:OLLAMA_HOST='http://localhost:11434'; `$env:OLLAMA_MODEL='phi3:mini'; `$env:LOADOUT='sniper'; `$env:EVALUATE='true'; `$env:RESPONSE='false'; node dist/index.js 'fundamental mathematics' --daemon --sleep 30000"
+# Agent commands — no explicit query → daemon rotates from QUERY_POOL each session
+$cmd1 = "cd '$baseDir'; `$env:SPHERE_URL='http://localhost:3001'; `$env:SPHERE_WS='ws://localhost:3001'; `$env:OLLAMA_HOST='http://localhost:11434'; `$env:OLLAMA_MODEL='phi3:mini'; `$env:LOADOUT='hunter'; `$env:EVALUATE='true'; `$env:RESPONSE='false'; node dist/index.js --daemon --sleep 30000"
+$cmd2 = "cd '$baseDir'; `$env:SPHERE_URL='http://localhost:3001'; `$env:SPHERE_WS='ws://localhost:3001'; `$env:OLLAMA_HOST='http://localhost:11434'; `$env:OLLAMA_MODEL='phi3:mini'; `$env:LOADOUT='wanderer'; `$env:EVALUATE='true'; `$env:RESPONSE='false'; node dist/index.js --daemon --sleep 30000"
+$cmd3 = "cd '$baseDir'; `$env:SPHERE_URL='http://localhost:3001'; `$env:SPHERE_WS='ws://localhost:3001'; `$env:OLLAMA_HOST='http://localhost:11434'; `$env:OLLAMA_MODEL='phi3:mini'; `$env:LOADOUT='sniper'; `$env:EVALUATE='true'; `$env:RESPONSE='false'; node dist/index.js --daemon --sleep 30000"
 
 # Start agents
 $p1 = Start-Process powershell -ArgumentList "-NoExit", "-Command", $cmd1 -PassThru -WindowStyle Normal
@@ -84,3 +91,4 @@ Write-Host "  Round 3 Complete! (Hunter Revived)" -ForegroundColor Green
 Write-Host "========================================" -ForegroundColor Green
 Write-Host "Phase 1: +$(($phase1End - $phase1Start)) | Phase 3: +$(($phase3End - $phase3Start))" -ForegroundColor White
 Write-Host "Final eval-log total: $phase3End" -ForegroundColor Yellow
+#>

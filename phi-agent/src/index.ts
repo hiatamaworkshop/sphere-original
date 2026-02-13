@@ -28,8 +28,39 @@ import { getSpeciesSummary } from "./eval-log.js";
 
 const VALID_LOADOUTS = Object.keys(LOADOUTS) as LoadoutName[];
 
+// Diverse query pool for daemon mode rotation
+// Covers all mock_data categories: academic, CS, psychology, menial, trending
+const QUERY_POOL = [
+  // Academic / Theory
+  "fundamental mathematics",
+  "quantum physics concepts",
+  "formal logic and proofs",
+  // CS / Tech
+  "algorithm design patterns",
+  "distributed systems",
+  "cryptography and security",
+  // Psychology / Social
+  "cognitive biases and perception",
+  "social behavior patterns",
+  // Trending / Current
+  "trending viral discussions",
+  "emerging technology shifts",
+  // Menial / Everyday
+  "everyday curious observations",
+  "random trivia and fun facts",
+  "life's small mysteries",
+  "kitchen science and food",
+  "pet behavior and animal quirks",
+  // General / Cross-domain
+  "knowledge exploration",
+  "cross-disciplinary connections",
+  "philosophical foundations",
+  "cultural phenomena and traditions",
+];
+
 interface ParsedArgs {
   query: string;
+  queryExplicit: boolean;
   cycles: number;
   loadout: LoadoutName;
   evaluate: boolean;
@@ -44,6 +75,7 @@ interface ParsedArgs {
 function parseArgs(): ParsedArgs {
   const args = process.argv.slice(2);
   let query = "knowledge exploration";
+  let queryExplicit = false;
   let cycles = 10;
   let loadout: LoadoutName | "random" = "balanced";
   let evaluate = true;
@@ -80,11 +112,15 @@ function parseArgs(): ParsedArgs {
       debug = false;
     } else if (!args[i].startsWith("--")) {
       query = args[i];
+      queryExplicit = true;
     }
   }
 
   // Env var fallbacks (CLI > env > defaults)
-  if (process.env.QUERY && query === "knowledge exploration") query = process.env.QUERY;
+  if (process.env.QUERY && !queryExplicit) {
+    query = process.env.QUERY;
+    queryExplicit = true;
+  }
   if (process.env.CYCLES) cycles = parseInt(process.env.CYCLES, 10) || cycles;
   if (process.env.LOADOUT) {
     const envL = process.env.LOADOUT;
@@ -104,7 +140,7 @@ function parseArgs(): ParsedArgs {
     ? VALID_LOADOUTS[Math.floor(Math.random() * VALID_LOADOUTS.length)]
     : loadout;
 
-  return { query, cycles, loadout: resolvedLoadout, evaluate, response, stream, debug, daemon, daemonSleepMs };
+  return { query, queryExplicit, cycles, loadout: resolvedLoadout, evaluate, response, stream, debug, daemon, daemonSleepMs };
 }
 
 async function runOnce(config: ParsedArgs): Promise<number> {
@@ -202,9 +238,16 @@ async function main(): Promise<void> {
 
   // Daemon mode: run → sleep → repeat
   console.log(`[phi-agent] Daemon mode — will run indefinitely (sleep ${config.daemonSleepMs}ms between runs)`);
+  if (!config.queryExplicit) {
+    console.log(`[phi-agent] Query rotation enabled (${QUERY_POOL.length} queries in pool)`);
+  }
   let session = 0;
   while (true) {
     session++;
+    // Rotate query each session if not explicitly set
+    if (!config.queryExplicit) {
+      config.query = QUERY_POOL[Math.floor(Math.random() * QUERY_POOL.length)];
+    }
     console.log(`\n[phi-agent] === Session ${session} ===`);
     try {
       await runOnce(config);

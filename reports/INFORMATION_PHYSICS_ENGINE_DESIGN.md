@@ -231,9 +231,36 @@ Digestor gen-NNN 処理時:
 
 ---
 
-## 5. 思想の整理
+## 5. 活用形態と種族進化の方向性
 
-### 5.1 Sphere の真価
+### 5.1 スタンドアロン常駐型
+
+主要な活用形態: **1エージェントがスタンドアロン機器に常駐**。
+
+- ユーザーが探索モード（種族）を設定し、情報の傾向を調整
+- 種族選択 = 情報フィルタの個性化
+- 機器ごとに異なる種族 = 異なる情報環境の提供
+
+### 5.2 最適解モード
+
+種族の中の1つは**最適解のみを高速出力するタイプ**。
+
+- 人間がデフォルトで便利に使える = 最も好まれる
+- これは「便利だから」という事情であり、Sphere の本質ではない
+- しかし実用上は意識しておくべき進化方向
+
+### 5.3 種族進化の方向性
+
+種族の進化は以下を意識:
+- **実用性**: 最適解高速出力モード (人間のデフォルト需要)
+- **多様性**: 異なる情報傾向を提供する複数種族の共存
+- **測定精度**: センサーとしての品質向上 (experience_score)
+
+---
+
+## 6. 思想の整理
+
+### 6.1 Sphere の真価
 
 > スフィア体験の一連を経ることでモデルが自然とそのようにふるまえるという環境の提示
 
@@ -269,21 +296,114 @@ Digestor が「自然選択」だけでなく「環境の自己認識」も担�
 
 ---
 
-## 6. 実装優先度
+## 7. データソースインベントリ (2026-02-13 調査)
 
-| 優先度 | 項目 | 工数 | 効果 |
-|--------|------|------|------|
-| **P0** | sphere_hash を gen-NNN.json に追加 | 小 | 実験再現性の基盤 |
-| **P1** | セッションログ構造の定義 | 小 | action trace の標準化 |
-| **P2** | evaluation_consistency 指標の実装 | 中 | 探索品質の定量化 |
-| **P3** | learned_δ の Digestor 統合 | 中 | FastGate 重みの自動調整 |
-| **P4** | sphere-state.json の導出 | 小 | 環境状態の外部公開 |
+### 7.1 初期投入・wave 投入ソース
 
-P0 は Digestor に数行追加するだけ。P3 が本丸。
+| ファイル | 場所 | 件数 | 役割 |
+|---------|------|------|------|
+| **mock_data.json** | `periphery/src/mock/` | 80件 | 初期投入 + wave 投入の共通ソース |
+| **wave-injection.json** | `periphery/src/mock/` | ~15件 | 16bit フラグテスト用 (期待フラグ `_expect` 付き) |
+
+### 7.2 mock_data.json の構成
+
+```
+contribution.ts が mock_data.json を読み込み → importance で分類:
+  importance >= 0.85 → topTier (max 2)
+  importance >= 0.50 → normalNodes (max 5)
+  importance <  0.50 → ghostNodes (max 3)
+```
+
+| カテゴリ | 件数 | importance 帯 | 代表例 |
+|---------|------|-------------|--------|
+| **日常・雑学 (menial)** | ~25件 | 0.09-0.45 | アボカドの窓, 靴下消失, Dad sneeze, USB量子状態 |
+| **心理・社会** | ~15件 | 0.27-0.80 | 認知的不協和, 傍観者効果, パレイドリア, Dunbar数 |
+| **CS・アルゴリズム** | ~20件 | 0.70-0.92 | RSA, B-tree, MapReduce, CRDT, Bloom filter |
+| **物理・数学** | ~15件 | 0.77-0.91 | リーマン予想, 量子トンネリング, 重力波, 不確定性原理 |
+| **哲学・文化・謎** | ~5件 | 0.40-0.82 | 侘び寂び, パノプティコン, Voynich写本, Backrooms |
+
+**フィールド**: `summary`, `tags[]`, `payload` (= content), `flags`, `importance`
+⚠️ mock_data.json は `payload`、wave-injection.json は `content` — フィールド名が異なる
+
+### 7.3 wave-injection.json の構成
+
+16bit フラグシステムの検証用データ。ExperienceCapsule 形式。
+
+| グループ | フラグ基調 | 内容 |
+|---------|----------|------|
+| **A: Trending** | TemporalShort + Insightful/Provoking | AI breakthrough, 量子コンピュータ, バイラルダンス |
+| **B: Academic** | Authority + Dense + TemporalLong | Sapir-Whorf, 情報エントロピー, 圏論 |
+
+各ノードに `_expect` フィールドで期待されるフラグ値を記載（テスト照合用）。
+
+### 7.4 投入パイプライン
+
+```
+mock_data.json / wave-injection.json
+      ↓
+contribution.ts (CLI: single / batch / wave モード)
+      ↓
+POST /sphere/contribute
+      ↓
+IncarnationPipeline.ingest()
+  → Membrane (validate)
+  → Gatekeeper (rulebook)
+  → IncarnationParser (summary → vector[384])
+  → Tagger (tags → 16bit flags)
+  → Packer (build SphereNode)
+  → Bookkeeper (RefDB + ProjDB write)
+```
+
+CLI:
+```bash
+npx tsx src/mock/contribution.ts           # 単発 10件
+npx tsx src/mock/contribution.ts 50        # 単発 50件
+npx tsx src/mock/contribution.ts wave      # wave 50件 (10件×5波, 3秒間隔)
+npx tsx src/mock/contribution.ts wave 100 5000  # wave 100件, 5秒間隔
+```
+
+### 7.5 データ品質評価
+
+**現状で十分に機能する。** 理由:
+
+- importance 0.09 (靴下消失) ～ 0.95 (進化論) の広い分布
+- menial 系 → ghostNodes、学術系 → topTier に自然分類
+- 「アボカドの熟れ頃」と「リーマン予想」が共存 = 測定能力の試金石
+- gen-008 テストで gemma2:2b が query "cats" との関連性で h=1 を出した (Baader-Meinhof) — データの多様性が測定を活性化
+
+**不足領域**: 時事ネタ (TemporalShort 系) は mock_data.json にない → wave-injection.json が補完
 
 ---
 
-## 7. 未決事項
+## 8. 実装優先度 (2026-02-13 確定)
+
+### 即時実装
+
+| 項目 | 工数 | 理由 |
+|------|------|------|
+| **sphere_hash を gen-NNN.json に追加** | 小 | 実験再現性の基盤。Digestor に数行追加 |
+| **Sphere 内データ品質の確保** | 継続 | あらゆる実験の前提条件 |
+
+### 段階的アプローチ (効果を見ながら)
+
+| 項目 | 工数 | 備考 |
+|------|------|------|
+| セッションログ構造の定義 | 小 | action trace の標準化 |
+| evaluation_consistency 指標 | 中 | 探索品質の定量化 |
+| learned_δ の Digestor 統合 | 中 | **効果が未知 — 慎重に段階的** |
+| sphere-state.json の導出 | 小 | 環境状態の外部公開 |
+| フラグ重み学習 | 大 | **最も効果未知 — 実験データ蓄積後に判断** |
+
+### 現時点の最優先: データ品質
+
+> 今はスフィアに設置するデータの品質を意識するべき。あらゆる実験に備えて。
+
+learned_δ もベクトル連続化も、**良質なデータがなければ検証すらできない**。
+スナップショットの実装 + データ品質確保が全ての実験の前提条件。
+
+---
+
+## 8. 未決事項
 
 - [ ] sphere_hash に含める要素の最終確定
 - [ ] experience_score の具体的な算出式
@@ -292,6 +412,7 @@ P0 は Digestor に数行追加するだけ。P3 が本丸。
 - [ ] 全種族共通の learned_δ vs 種族別 learned_δ
 - [ ] sphere-state.json のスキーマ定義
 - [ ] Explorers での learned_δ 可視化
+- [ ] 最適解高速出力モード (sniper 発展型?) のスペック定義
 
 ---
 
