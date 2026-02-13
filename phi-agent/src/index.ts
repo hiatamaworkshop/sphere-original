@@ -19,12 +19,22 @@
 //   RESPONSE       true/false (default: false)
 //   STREAM         true/false (default: false, future)
 
+import type { LlmClient } from "./llm-client.js";
 import { OllamaClient } from "./ollama-client.js";
+import { HfInferenceClient } from "./hf-client.js";
 import { SphereClient } from "./sphere-client.js";
 import { PhiAgent } from "./agent.js";
 import { LOADOUTS } from "./fast-gate.js";
 import type { LoadoutName } from "./fast-gate.js";
 import { getSpeciesSummary } from "./eval-log.js";
+
+function createLlmClient(): LlmClient {
+  const backend = process.env.LLM_BACKEND || "ollama";
+  if (backend === "huggingface") {
+    return new HfInferenceClient();
+  }
+  return new OllamaClient();
+}
 
 const VALID_LOADOUTS = Object.keys(LOADOUTS) as LoadoutName[];
 
@@ -167,7 +177,11 @@ async function runOnce(config: ParsedArgs): Promise<number> {
   if (config.daemon) console.log(`Daemon:  sleep ${config.daemonSleepMs}ms between runs`);
   console.log();
 
-  const ollama = new OllamaClient();
+  const ollama = createLlmClient();
+  // Ollama-specific: auto-pull model if not present
+  if (ollama instanceof OllamaClient) {
+    await ollama.ensureModel();
+  }
   const sphere = new SphereClient();
 
   // Event logging

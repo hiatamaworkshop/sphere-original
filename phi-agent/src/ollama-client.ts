@@ -7,6 +7,8 @@
 //
 // In Docker: http://ollama:11434 (service name resolution)
 
+import type { LlmClient } from "./llm-client.js";
+
 export interface OllamaConfig {
   host: string;
   model: string;
@@ -28,7 +30,7 @@ const DEFAULT_CONFIG: OllamaConfig = {
   maxTokens: 128,  // JSON-only response — increased for experiment stability
 };
 
-export class OllamaClient {
+export class OllamaClient implements LlmClient {
   private config: OllamaConfig;
 
   constructor(config: Partial<OllamaConfig> = {}) {

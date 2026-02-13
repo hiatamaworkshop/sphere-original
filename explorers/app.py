@@ -1,18 +1,19 @@
 """
-Explorers — Gradio MVP
+Explorers — Gradio UI (HF Spaces Edition)
 
-Minimal UI to launch phi-agent containers and observe their perception cycles.
-Displays: species selector, execute button, real-time cycle viewer.
+Demo site for external users to send agents into Sphere and experience
+the generation system. Single-run only, no daemon.
 
 Architecture:
-  UI (Gradio) → executor.py (Docker) → phi-agent → Sphere API
+  UI (Gradio) → executor_subprocess.py (Node.js) → phi-agent → Sphere API (Render)
 """
 
 import gradio as gr
 import os
 import json
+import requests
 from pathlib import Path
-from executor import execute_phi_agent
+from executor_subprocess import execute_phi_agent, check_node_available, check_phi_agent_built
 from parser import parse_cycles, format_cycle_output, format_summary, format_combined_output, extract_narrative
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
@@ -32,32 +33,53 @@ SPECIES = [
 
 # Species descriptions (brief)
 SPECIES_DESC = {
-    "balanced": "Generalist — even weights, explore mode",
-    "scholar": "Deep reader — high weight sensitivity, deep mode",
-    "scout": "Quick surveyor — fast return, explore mode",
-    "archivist": "Preservationist — loves Amber (frozen) nodes",
-    "hunter": "Heat seeker — chases high-heat areas",
-    "moth": "Heat generator — evaluates everything as hot",
-    "hermit": "Stability seeker — avoids crowds, deep mode",
-    "wanderer": "Exhaustive explorer — never returns until energy is gone",
-    "sniper": "Selective evaluator — harsh scorer, high standards"
+    "balanced": "Generalist -- even weights, explore mode",
+    "scholar": "Deep reader -- high weight sensitivity, deep mode",
+    "scout": "Quick surveyor -- fast return, explore mode",
+    "archivist": "Preservationist -- loves Amber (frozen) nodes",
+    "hunter": "Heat seeker -- chases high-heat areas",
+    "moth": "Heat generator -- evaluates everything as hot",
+    "hermit": "Stability seeker -- avoids crowds, deep mode",
+    "wanderer": "Exhaustive explorer -- never returns until energy is gone",
+    "sniper": "Selective evaluator -- harsh scorer, high standards"
 }
 
-# Models capable of real measurement (not stamps)
-MEASUREMENT_MODELS = {"phi3:mini", "llama3.2:1b"}
+# HF Inference API models
+HF_MODELS = [
+    "google/gemma-2-2b-it",
+    "meta-llama/Llama-3.2-1B-Instruct",
+]
+
+SPHERE_URL = os.getenv("SPHERE_URL", "http://localhost:3001")
+
+
+def wake_sphere(sphere_url: str) -> str:
+    """
+    Ping Sphere to wake it from Render cold start.
+    Render free tier sleeps after 15min inactivity; first request takes 30-60s.
+    """
+    try:
+        res = requests.get(f"{sphere_url}/health", timeout=90)
+        if res.ok:
+            return "Sphere is awake and ready."
+        return f"Sphere responded with status {res.status_code}."
+    except requests.exceptions.Timeout:
+        return "Sphere is starting up (cold start). Please try again in 30 seconds."
+    except requests.exceptions.ConnectionError:
+        return "Cannot connect to Sphere. Check SPHERE_URL."
+    except Exception as e:
+        return f"Wake-up error: {str(e)}"
 
 
 def load_generations(max_gens=10):
     """
-    Load latest N generations from shared volume.
-
-    Args:
-        max_gens: Maximum number of generations to load
+    Load latest N generations from bundled data.
 
     Returns:
         List of generation dictionaries (sorted newest first)
     """
-    gen_dir = Path("/app/data/generations")
+    phi_agent_dir = os.environ.get("PHI_AGENT_DIR", "/app/phi-agent")
+    gen_dir = Path(phi_agent_dir) / "data" / "generations"
     if not gen_dir.exists():
         return []
 
@@ -84,7 +106,7 @@ def visualize_generations():
     gens = load_generations()
 
     if not gens:
-        return "No generation data yet. Run agents to accumulate evaluations, then wait for Digestor to run.", None, None
+        return "No generation data found. Bundled gen-data may not be present.", None, None
 
     latest = gens[0]
 
@@ -92,7 +114,7 @@ def visualize_generations():
     info_text = f"""### Generation {latest['generation']}
 **Timestamp**: {latest['timestamp']}
 **Hunger**: {latest['hunger']:.2f}
-**Evaluations**: {latest['inputEvaluations']} → {latest['survivedEvaluations']} survived ({latest['survivedEvaluations']/latest['inputEvaluations']*100:.1f}%)
+**Evaluations**: {latest['inputEvaluations']} -> {latest['survivedEvaluations']} survived ({latest['survivedEvaluations']/latest['inputEvaluations']*100:.1f}%)
 """
 
     # Create species comparison plot (latest generation)
@@ -143,7 +165,7 @@ def visualize_generations():
 
         fig_timeline = go.Figure()
 
-        # Plot avgH/avgW/avgD for each species over generations
+        # Plot avgH for each species over generations
         for species in species_names:
             gen_nums = [g['generation'] for g in gens_sorted]
             avgH = [g['species'][species]['avgH'] for g in gens_sorted if species in g['species']]
@@ -167,78 +189,79 @@ def visualize_generations():
     return info_text, fig_species, timeline_plot
 
 
-def launch_agent(species, query, sphere_url, ollama_host, model="llama3.2:1b", evaluate=True):
+def launch_agent(species, query, model, sphere_url, evaluate=True):
     """
-    Launch phi-agent Docker container and stream results.
+    Launch phi-agent subprocess and stream results.
 
     Args:
         species: Loadout name (e.g., "wanderer")
         query: Search query
-        sphere_url: Sphere API endpoint (e.g., https://sphere-api.render.com)
-        ollama_host: Ollama host (e.g., http://host.docker.internal:11434)
-        model: LLM model to use
+        model: HF model ID
+        sphere_url: Sphere API endpoint
         evaluate: Whether to evaluate nodes (write back to Sphere)
 
     Yields:
         (status_text, narrative_output, combined_output)
     """
     if not query.strip():
-        yield ("❌ Error: Query cannot be empty", "*No narrative*", "")
+        yield ("Error: Query cannot be empty", "*No narrative*", "")
         return
 
-    if not sphere_url.strip() or not ollama_host.strip():
-        yield ("❌ Error: Sphere URL and Ollama Host must be set", "*No narrative*", "")
+    if not sphere_url.strip():
+        yield ("Error: Sphere URL must be set", "*No narrative*", "")
         return
 
     eval_label = "evaluate ON" if evaluate else "observe only"
-    yield (f"🚀 Launching {species} agent ({eval_label})...", "*Agent is exploring... (may take 2-4 minutes on CPU)*", "")
+    yield (f"Waking up Sphere (Render cold start may take 30-60s)...", "*Waiting for Sphere...*", "")
+
+    # Wake Sphere first
+    wake_result = wake_sphere(sphere_url)
+    if "Cannot connect" in wake_result or "error" in wake_result.lower():
+        yield (f"Sphere unavailable: {wake_result}", "*Cannot proceed without Sphere*", "")
+        return
+
+    yield (f"Launching {species} agent ({eval_label})...", f"*{wake_result} Agent is exploring... (may take 2-4 minutes)*", "")
 
     try:
-        # Execute phi-agent
         stdout = execute_phi_agent(
             loadout=species,
             query=query,
             sphere_url=sphere_url,
-            ollama_host=ollama_host,
             model=model,
             evaluate=evaluate
         )
 
-        yield (f"✅ Execution complete", "*Parsing output...*", "Parsing output...")
+        yield ("Execution complete", "*Parsing output...*", "Parsing output...")
 
         # Parse cycles
         cycles = parse_cycles(stdout)
 
         if not cycles:
             yield (
-                "⚠️ No cycles parsed from output",
+                "No cycles parsed from output",
                 "*No narrative generated*",
-                stdout[-2000:] if len(stdout) > 2000 else stdout  # Last 2000 chars
+                stdout[-2000:] if len(stdout) > 2000 else stdout
             )
             return
 
-        # Format combined output first (display immediately)
         combined = format_combined_output(cycles, species)
 
-        # Show cycle data immediately while narrative is being extracted
         yield (
-            f"✅ {species} completed {len(cycles)} cycles",
+            f"{species} completed {len(cycles)} cycles",
             "*Generating narrative...*",
             combined
         )
 
-        # Extract narrative (may take time)
         narrative = extract_narrative(stdout)
 
-        # Update with final narrative
         yield (
-            f"✅ {species} completed {len(cycles)} cycles",
+            f"{species} completed {len(cycles)} cycles",
             narrative,
             combined
         )
 
     except Exception as e:
-        yield (f"❌ Error: {str(e)}", "*Error occurred*", "")
+        yield (f"Error: {str(e)}", "*Error occurred*", "")
 
 
 def create_ui():
@@ -254,20 +277,18 @@ def create_ui():
     .gradio-container {
         max-width: 1200px !important;
     }
-    .species-card {
-        border: 1px solid #e0e0e0;
-        padding: 12px;
-        border-radius: 4px;
-        background: #ffffff;
-    }
     """
 
-    with gr.Blocks(title="Explorers — Sphere") as app:
+    with gr.Blocks(title="Explorers -- Sphere") as app:
 
         gr.Markdown("""
-        # Explorers — Sphere
+        # Explorers -- Sphere
 
-        Launch phi-agent with different Loadouts (personality presets) and observe their perception cycles. Each species has different weights, quality vectors, and return behaviors — producing distinct exploration patterns. The agent's personality emerges from: Loadout (vectors) × Physics (Sphere) × Sensor (LLM).
+        Send agents with different personalities (Loadouts) into a living information ecosystem.
+        Each species perceives and evaluates information differently -- personality emerges from:
+        **Loadout (vectors) x Physics (Sphere) x Sensor (LLM)**.
+
+        *First request may take 30-60s as Sphere wakes up from sleep.*
         """)
 
         with gr.Tabs():
@@ -279,18 +300,18 @@ def create_ui():
 
                         query_input = gr.Textbox(
                             label="Query",
-                            placeholder="e.g., journey",
-                            value="journey",
+                            placeholder="e.g., journey, quantum physics, cultural traditions",
+                            value="knowledge exploration",
                             lines=2,
                             max_lines=4,
                             max_length=500
                         )
 
                         model_input = gr.Dropdown(
-                            choices=["llama3.2:1b", "qwen2.5:1.5b", "gemma2:2b", "phi3:mini"],
-                            value="llama3.2:1b",
+                            choices=HF_MODELS,
+                            value=HF_MODELS[0],
                             label="Model",
-                            info="Ollama model name"
+                            info="HuggingFace Inference API model"
                         )
 
                         species_dropdown = gr.Dropdown(
@@ -310,27 +331,20 @@ def create_ui():
                         evaluate_checkbox = gr.Checkbox(
                             value=True,
                             label="Evaluate nodes",
-                            info="Write evaluations to Sphere. OFF = observe + narrative only (faster, no data contamination)"
+                            info="Write evaluations to Sphere. OFF = observe + narrative only (faster)"
                         )
 
                         with gr.Accordion("Advanced Settings", open=False):
                             sphere_url_input = gr.Textbox(
                                 label="Sphere API URL",
-                                value=os.getenv("SPHERE_URL", "http://localhost:3001"),
-                                info="Sphere periphery endpoint",
+                                value=SPHERE_URL,
+                                info="Sphere backend (Render)",
                                 max_length=200
                             )
 
-                            ollama_host_input = gr.Textbox(
-                                label="Ollama Host",
-                                value=os.getenv("OLLAMA_HOST", "http://host.docker.internal:11434"),
-                                info="Ollama API endpoint accessible from Docker",
-                                max_length=200
-                            )
+                        execute_btn = gr.Button("Launch Agent", variant="primary", size="lg")
 
-                        execute_btn = gr.Button("🚀 Launch Agent", variant="primary", size="lg")
-
-                        gr.Markdown("*⏱️ Execution takes 2-4 minutes on CPU (sense/focus/evaluate + narrative)*")
+                        gr.Markdown("*Execution takes 2-4 minutes (sense/focus/evaluate + narrative)*")
 
                         status_text = gr.Textbox(
                             label="Status",
@@ -360,22 +374,14 @@ def create_ui():
                     outputs=species_info
                 )
 
-                # Auto-toggle evaluate based on model capability
-                model_input.change(
-                    fn=lambda m: m in MEASUREMENT_MODELS,
-                    inputs=model_input,
-                    outputs=evaluate_checkbox
-                )
-
                 # Execute button click
                 execute_btn.click(
                     fn=launch_agent,
                     inputs=[
                         species_dropdown,
                         query_input,
-                        sphere_url_input,
-                        ollama_host_input,
                         model_input,
+                        sphere_url_input,
                         evaluate_checkbox
                     ],
                     outputs=[status_text, narrative_output, combined_output]
@@ -387,12 +393,14 @@ def create_ui():
 
                 1. **Select Species**: Each loadout has different personality vectors
                 2. **Enter Query**: Agent uses this as its search intent
-                3. **Launch**: UI spawns phi-agent to Sphere
-                4. **Observe**: Real-time display of sense/focus/evaluate cycles
+                3. **Launch**: Spawns phi-agent into the Sphere ecosystem
+                4. **Observe**: Sense/focus/evaluate cycles and return narrative
 
-                **Architecture**: `UI → phi-agent (Docker) → Sphere API`
+                **Architecture**: `UI -> phi-agent (subprocess) -> Sphere API (Render)`
 
-                **Data Access**: L1+2 (tags + summary) and evaluations by the agent are retrieved to improve the Loadout in future generation in Digestor system.
+                The agent's personality is NOT in the LLM -- it emerges from the Loadout
+                (measurement instrument) interacting with Sphere's physics. Like ants: simple
+                brains + pheromone trails = complex collective behavior.
                 """)
 
             # Generations Tab
@@ -400,11 +408,11 @@ def create_ui():
                 gr.Markdown("""
                 ## Species Memory Evolution
 
-                Visualize how species profiles evolve over generations through Digestor's metabolic cycle.
-                Each generation represents a digest cycle where evaluations are scored, pruned, and blended.
+                Visualize how species profiles evolved through the Digestor's metabolic cycle.
+                Each generation shows evaluation scores, survival rates, and species divergence.
                 """)
 
-                refresh_btn = gr.Button("🔄 Refresh Data", variant="secondary")
+                refresh_btn = gr.Button("Refresh Data", variant="secondary")
 
                 gen_info = gr.Markdown()
 

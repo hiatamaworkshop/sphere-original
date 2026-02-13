@@ -1,5 +1,5 @@
-# Sphere Standalone Dockerfile
-# For Render / Hugging Face Spaces deployment (no PostgreSQL/Redis needed)
+# Sphere Standalone Dockerfile — Render deployment
+# Sphere Core (renalCore + periphery + UI) — no PostgreSQL/Redis needed
 #
 # Build context: repository root
 #   docker build -f Dockerfile.standalone -t sphere-standalone .
@@ -42,9 +42,9 @@ COPY sphere-ui/public/ ./public/
 ENV NODE_ENV=production
 ENV SPHERE_CONFIG=./config/sphere.config.json
 ENV STATIC_DIR=./public
-ENV PORT=7860
+# Render assigns PORT dynamically; default 3001 for local testing
+ENV PORT=3001
 
-# HF Spaces uses port 7860, Render uses $PORT env var
-EXPOSE 7860
+EXPOSE 3001
 
 CMD ["node", "dist/index.js"]

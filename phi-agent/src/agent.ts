@@ -20,7 +20,7 @@
 // phi is the amber generator. FastGate is the decision maker.
 
 import { createHash } from "node:crypto";
-import { OllamaClient } from "./ollama-client.js";
+import type { LlmClient } from "./llm-client.js";
 import { SphereClient } from "./sphere-client.js";
 import type { WalkMode, BusMessage } from "./sphere-client.js";
 import { PromptBuilder, parseAction } from "./prompt-builder.js";
@@ -92,7 +92,7 @@ const DEFAULT_AGENT_CONFIG: AgentConfig = {
 };
 
 export class PhiAgent {
-  private ollama: OllamaClient;
+  private ollama: LlmClient;
   private sphere: SphereClient;
   private prompt: PromptBuilder;
   private gate: FastGate;
@@ -118,7 +118,7 @@ export class PhiAgent {
   private sessionStart = Date.now();
 
   constructor(
-    ollama: OllamaClient,
+    ollama: LlmClient,
     sphere: SphereClient,
     config: Partial<AgentConfig> = {},
   ) {
@@ -165,13 +165,12 @@ export class PhiAgent {
     }
 
     try {
-      // Step 1: Verify ollama is ready
-      this.log("Checking ollama...");
+      // Step 1: Verify LLM is ready
+      this.log("Checking LLM...");
       const available = await this.ollama.isAvailable();
       if (!available) {
-        throw new Error("ollama is not available");
+        throw new Error("LLM backend is not available");
       }
-      await this.ollama.ensureModel();
       this.log(`Using model: ${this.ollama.modelName}`);
 
       // Step 2: Connect to Sphere
