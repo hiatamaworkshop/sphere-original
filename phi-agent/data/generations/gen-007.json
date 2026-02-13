@@ -1,45 +1,44 @@
 {
-  "generated": "2026-02-12T10:45:52.705Z",
-  "totalEvaluations": 343,
-  "survivedEvaluations": 330,
+  "generation": 7,
+  "timestamp": "2026-02-12T09:56:48.132Z",
+  "inputEvaluations": 311,
+  "survivedEvaluations": 302,
+  "hunger": 0.3332,
+  "halfLifeHours": 72,
   "species": {
     "balanced": {
-      "evaluations": 50,
-      "avgH": 7.029636363636364,
-      "avgW": 7.599636363636363,
-      "avgD": 4.197272727272727,
+      "evaluations": 51,
+      "avgH": 7.006953642384105,
+      "avgW": 7.498006752369822,
+      "avgD": 4.254837034151409,
       "hotNodes": [
         {
           "nodeId": "4569bf8de2d69dcb",
-          "count": 24.9
+          "count": 21.5
         },
         {
           "nodeId": "ca6109987efa813d",
-          "count": 13.499999999999998
+          "count": 12.899999999999999
         },
         {
           "nodeId": "6ea9c76ac873e070",
-          "count": 12
-        },
-        {
-          "nodeId": "49dcf8ad122f38ce",
-          "count": 8.7
+          "count": 10.2
         },
         {
           "nodeId": "72a277371ac3f7df",
-          "count": 7.6
+          "count": 8.2
+        },
+        {
+          "nodeId": "49dcf8ad122f38ce",
+          "count": 8.1
+        },
+        {
+          "nodeId": "c35c26738ab461a1",
+          "count": 7.5
         },
         {
           "nodeId": "87d78df12cb2f4ab",
           "count": 6.8999999999999995
-        },
-        {
-          "nodeId": "c35c26738ab461a1",
-          "count": 6.8999999999999995
-        },
-        {
-          "nodeId": "ae5bb240b17e3fde",
-          "count": 5.8
         },
         {
           "nodeId": "a741f365b82313a2",
@@ -48,6 +47,10 @@
         {
           "nodeId": "20656d56030fa8a0",
           "count": 4.5
+        },
+        {
+          "nodeId": "d06531c64bfa0a8d",
+          "count": 3
         }
       ],
       "commonTags": [
@@ -55,60 +58,60 @@
         "vector-db",
         "embedding",
         "search",
+        "cognition",
+        "RLHF",
+        "alignment",
         "event-sourcing",
         "CQRS",
         "architecture",
-        "RLHF",
-        "alignment",
+        "biology",
         "cryptography",
         "privacy",
         "blockchain",
-        "biology",
-        "neuroscience",
-        "brain"
+        "neuroscience"
       ]
     },
     "scout": {
-      "evaluations": 39,
-      "avgH": 7.546200466200466,
-      "avgW": 6.836456876456876,
-      "avgD": 4.7734265734265735,
+      "evaluations": 37,
+      "avgH": 7.423169858600322,
+      "avgW": 6.637381421156255,
+      "avgD": 4.901789869339538,
       "hotNodes": [
         {
           "nodeId": "72a277371ac3f7df",
-          "count": 16
-        },
-        {
-          "nodeId": "4569bf8de2d69dcb",
-          "count": 13.7
+          "count": 17.299999999999997
         },
         {
           "nodeId": "a741f365b82313a2",
           "count": 11.399999999999999
         },
         {
-          "nodeId": "49dcf8ad122f38ce",
-          "count": 8.7
+          "nodeId": "d06531c64bfa0a8d",
+          "count": 10
         },
         {
-          "nodeId": "6ea9c76ac873e070",
-          "count": 7.8
+          "nodeId": "4569bf8de2d69dcb",
+          "count": 9.6
+        },
+        {
+          "nodeId": "49dcf8ad122f38ce",
+          "count": 8.1
+        },
+        {
+          "nodeId": "c35c26738ab461a1",
+          "count": 7.5
         },
         {
           "nodeId": "87d78df12cb2f4ab",
           "count": 6.8999999999999995
         },
         {
-          "nodeId": "c35c26738ab461a1",
-          "count": 6.8999999999999995
-        },
-        {
-          "nodeId": "d06531c64bfa0a8d",
-          "count": 6.3
+          "nodeId": "6ea9c76ac873e070",
+          "count": 6
         },
         {
           "nodeId": "ca6109987efa813d",
-          "count": 5.8
+          "count": 4.5
         },
         {
           "nodeId": "20656d56030fa8a0",
@@ -122,249 +125,245 @@
         "AI",
         "culture",
         "evolution",
-        "vector-db",
-        "embedding",
-        "internet",
         "philosophy",
         "mind",
         "debate",
+        "internet",
         "anthropology",
         "methodology",
-        "research"
+        "research",
+        "biology",
+        "network"
       ]
     },
     "scholar": {
-      "evaluations": 38,
-      "avgH": 6.7120574162679425,
-      "avgW": 7.326267942583732,
-      "avgD": 4.514114832535885,
+      "evaluations": 35,
+      "avgH": 6.566953642384105,
+      "avgW": 7.13251655629139,
+      "avgD": 4.5450331125827805,
       "hotNodes": [
         {
-          "nodeId": "49dcf8ad122f38ce",
-          "count": 16.4
+          "nodeId": "87d78df12cb2f4ab",
+          "count": 16
         },
         {
-          "nodeId": "87d78df12cb2f4ab",
-          "count": 14.599999999999998
+          "nodeId": "49dcf8ad122f38ce",
+          "count": 15.799999999999999
         },
         {
           "nodeId": "4569bf8de2d69dcb",
-          "count": 14.399999999999999
-        },
-        {
-          "nodeId": "6ea9c76ac873e070",
-          "count": 7.8
+          "count": 9.6
         },
         {
           "nodeId": "c35c26738ab461a1",
-          "count": 7.6
+          "count": 8.2
         },
         {
           "nodeId": "72a277371ac3f7df",
-          "count": 6.8999999999999995
+          "count": 7.5
         },
         {
-          "nodeId": "ca6109987efa813d",
-          "count": 5.1
+          "nodeId": "6ea9c76ac873e070",
+          "count": 6
         },
         {
           "nodeId": "a741f365b82313a2",
           "count": 5.1
         },
         {
+          "nodeId": "ca6109987efa813d",
+          "count": 4.5
+        },
+        {
           "nodeId": "20656d56030fa8a0",
           "count": 4.5
         },
         {
-          "nodeId": "ae5bb240b17e3fde",
-          "count": 3.7
+          "nodeId": "d06531c64bfa0a8d",
+          "count": 3
         }
       ],
       "commonTags": [
         "theory",
+        "music",
+        "culture",
         "computation",
         "mathematics",
-        "culture",
         "AI",
-        "vector-db",
-        "embedding",
-        "music",
+        "future",
         "philosophy",
         "identity",
         "metaphysics",
         "paradox",
         "space",
         "aliens",
-        "science"
+        "science",
+        "functional"
       ]
     },
     "moth": {
-      "evaluations": 51,
-      "avgH": 7.524028520499108,
-      "avgW": 7.15108734402852,
-      "avgD": 4.552762923351159,
+      "evaluations": 49,
+      "avgH": 7.392667928098391,
+      "avgW": 6.9153736991485335,
+      "avgD": 4.616461684011352,
       "hotNodes": [
         {
-          "nodeId": "4569bf8de2d69dcb",
-          "count": 15.099999999999998
+          "nodeId": "c35c26738ab461a1",
+          "count": 14.5
         },
         {
           "nodeId": "20656d56030fa8a0",
           "count": 14.299999999999999
         },
         {
-          "nodeId": "c35c26738ab461a1",
-          "count": 12.5
-        },
-        {
           "nodeId": "a741f365b82313a2",
           "count": 10.7
         },
         {
-          "nodeId": "49dcf8ad122f38ce",
-          "count": 8.7
+          "nodeId": "4569bf8de2d69dcb",
+          "count": 10.299999999999999
         },
         {
-          "nodeId": "6ea9c76ac873e070",
-          "count": 7.8
+          "nodeId": "49dcf8ad122f38ce",
+          "count": 8.1
         },
         {
           "nodeId": "72a277371ac3f7df",
-          "count": 6.8999999999999995
+          "count": 7.5
         },
         {
           "nodeId": "87d78df12cb2f4ab",
           "count": 6.8999999999999995
         },
         {
-          "nodeId": "ca6109987efa813d",
-          "count": 5.1
+          "nodeId": "6ea9c76ac873e070",
+          "count": 6
         },
         {
-          "nodeId": "ae5bb240b17e3fde",
+          "nodeId": "ca6109987efa813d",
+          "count": 4.5
+        },
+        {
+          "nodeId": "d06531c64bfa0a8d",
           "count": 3
         }
       ],
       "commonTags": [
         "evolution",
-        "AI",
-        "culture",
-        "vector-db",
-        "embedding",
-        "search",
-        "psychology",
         "cognition",
+        "AI",
+        "future",
+        "culture",
+        "theory",
+        "psychology",
         "bias",
         "internet",
-        "future",
         "biology",
         "brain",
         "programming",
-        "functional"
+        "functional",
+        "control-flow",
+        "fundamental"
       ]
     },
     "hunter": {
-      "evaluations": 50,
-      "avgH": 7.743636363636363,
-      "avgW": 7.921636363636364,
-      "avgD": 4.0992727272727265,
+      "evaluations": 42,
+      "avgH": 7.640286975717439,
+      "avgW": 7.789183222958057,
+      "avgD": 4.111699779249448,
       "hotNodes": [
         {
           "nodeId": "6ea9c76ac873e070",
-          "count": 18.3
-        },
-        {
-          "nodeId": "4569bf8de2d69dcb",
-          "count": 12.299999999999999
-        },
-        {
-          "nodeId": "c35c26738ab461a1",
-          "count": 9.7
+          "count": 14.399999999999999
         },
         {
           "nodeId": "72a277371ac3f7df",
-          "count": 9.7
+          "count": 11
+        },
+        {
+          "nodeId": "c35c26738ab461a1",
+          "count": 10.3
+        },
+        {
+          "nodeId": "4569bf8de2d69dcb",
+          "count": 9.6
         },
         {
           "nodeId": "49dcf8ad122f38ce",
-          "count": 8.7
+          "count": 8.1
         },
         {
           "nodeId": "87d78df12cb2f4ab",
           "count": 6.8999999999999995
-        },
-        {
-          "nodeId": "46569176a105f032",
-          "count": 6.3
         },
         {
           "nodeId": "20656d56030fa8a0",
           "count": 5.2
         },
         {
-          "nodeId": "ca6109987efa813d",
+          "nodeId": "a741f365b82313a2",
           "count": 5.1
         },
         {
-          "nodeId": "a741f365b82313a2",
-          "count": 5.1
+          "nodeId": "ca6109987efa813d",
+          "count": 4.5
+        },
+        {
+          "nodeId": "46569176a105f032",
+          "count": 4.199999999999999
         }
       ],
       "commonTags": [
-        "event-sourcing",
-        "CQRS",
-        "architecture",
-        "AI",
-        "evolution",
         "web",
         "curiosity",
         "time",
+        "AI",
+        "future",
+        "evolution",
+        "event-sourcing",
+        "CQRS",
+        "architecture",
         "observability",
         "eBPF",
         "linux",
         "kafka",
         "stream",
-        "realtime",
-        "future"
+        "realtime"
       ]
     },
     "archivist": {
       "evaluations": 41,
-      "avgH": 6.360709534368071,
-      "avgW": 7.3797339246119735,
-      "avgD": 4.537028824833703,
+      "avgH": 6.238660959457277,
+      "avgW": 7.294467775803586,
+      "avgD": 4.537716039412049,
       "hotNodes": [
         {
           "nodeId": "4569bf8de2d69dcb",
-          "count": 18.599999999999998
+          "count": 16.6
         },
         {
           "nodeId": "49dcf8ad122f38ce",
-          "count": 15.7
+          "count": 15.1
         },
         {
           "nodeId": "c35c26738ab461a1",
-          "count": 9
-        },
-        {
-          "nodeId": "6ea9c76ac873e070",
-          "count": 7.8
+          "count": 9.6
         },
         {
           "nodeId": "72a277371ac3f7df",
-          "count": 6.8999999999999995
+          "count": 7.5
         },
         {
           "nodeId": "87d78df12cb2f4ab",
           "count": 6.8999999999999995
         },
         {
-          "nodeId": "ae5bb240b17e3fde",
-          "count": 5.8
+          "nodeId": "6ea9c76ac873e070",
+          "count": 6
         },
         {
           "nodeId": "ca6109987efa813d",
-          "count": 5.8
+          "count": 5.2
         },
         {
           "nodeId": "a741f365b82313a2",
@@ -373,6 +372,10 @@
         {
           "nodeId": "20656d56030fa8a0",
           "count": 4.5
+        },
+        {
+          "nodeId": "d06531c64bfa0a8d",
+          "count": 3
         }
       ],
       "commonTags": [
@@ -383,114 +386,114 @@
         "vector-db",
         "embedding",
         "search",
+        "future",
         "evolution",
         "distributed",
         "blockchain",
         "CAP",
         "database",
         "cryptography",
-        "privacy",
-        "future"
+        "privacy"
       ]
     },
     "sniper": {
-      "evaluations": 32,
-      "avgH": 6.737386363636364,
-      "avgW": 7.342386363636363,
-      "avgD": 4.389772727272727,
+      "evaluations": 24,
+      "avgH": 6.5111203090507725,
+      "avgW": 7.130849889624724,
+      "avgD": 4.495033112582782,
       "hotNodes": [
         {
           "nodeId": "87d78df12cb2f4ab",
-          "count": 15.299999999999997
+          "count": 13.899999999999999
         },
         {
           "nodeId": "49dcf8ad122f38ce",
-          "count": 13.599999999999998
-        },
-        {
-          "nodeId": "4569bf8de2d69dcb",
-          "count": 12.299999999999999
+          "count": 11.6
         },
         {
           "nodeId": "c35c26738ab461a1",
-          "count": 9.7
+          "count": 10.3
         },
         {
-          "nodeId": "6ea9c76ac873e070",
-          "count": 7.8
+          "nodeId": "4569bf8de2d69dcb",
+          "count": 9.6
         },
         {
           "nodeId": "72a277371ac3f7df",
-          "count": 6.8999999999999995
+          "count": 7.5
         },
         {
-          "nodeId": "ca6109987efa813d",
-          "count": 5.1
+          "nodeId": "6ea9c76ac873e070",
+          "count": 6
         },
         {
           "nodeId": "a741f365b82313a2",
           "count": 5.1
         },
         {
+          "nodeId": "ca6109987efa813d",
+          "count": 4.5
+        },
+        {
           "nodeId": "20656d56030fa8a0",
           "count": 4.5
         },
         {
-          "nodeId": "ae5bb240b17e3fde",
-          "count": 3.7
+          "nodeId": "d06531c64bfa0a8d",
+          "count": 3
         }
       ],
       "commonTags": [
         "theory",
+        "music",
         "culture",
         "mathematics",
         "computation",
         "AI",
-        "evolution",
-        "music",
         "future",
+        "evolution",
+        "cryptography",
+        "privacy",
+        "blockchain",
         "information",
         "fundamental",
-        "cryptography",
-        "proven",
-        "physics",
-        "privacy",
-        "blockchain"
+        "philosophy",
+        "identity"
       ]
     },
     "wanderer": {
-      "evaluations": 29,
-      "avgH": 7.2367398119122255,
-      "avgW": 7.678808777429467,
-      "avgD": 4.441065830721003,
+      "evaluations": 23,
+      "avgH": 7.128692772818888,
+      "avgW": 7.529038295421826,
+      "avgD": 4.510250503887129,
       "hotNodes": [
         {
           "nodeId": "4569bf8de2d69dcb",
-          "count": 15.799999999999999
-        },
-        {
-          "nodeId": "6ea9c76ac873e070",
-          "count": 10.6
+          "count": 12.399999999999999
         },
         {
           "nodeId": "72a277371ac3f7df",
-          "count": 10.399999999999999
+          "count": 11
         },
         {
           "nodeId": "c35c26738ab461a1",
-          "count": 9
+          "count": 9.6
         },
         {
           "nodeId": "49dcf8ad122f38ce",
-          "count": 8.7
+          "count": 8.1
         },
         {
-          "nodeId": "ca6109987efa813d",
-          "count": 7.199999999999999
+          "nodeId": "6ea9c76ac873e070",
+          "count": 7.4
         },
         {
           "nodeId": "87d78df12cb2f4ab",
           "count": 6.8999999999999995
+        },
+        {
+          "nodeId": "ca6109987efa813d",
+          "count": 5.9
         },
         {
           "nodeId": "a741f365b82313a2",
@@ -501,13 +504,12 @@
           "count": 4.5
         },
         {
-          "nodeId": "ae5bb240b17e3fde",
+          "nodeId": "d06531c64bfa0a8d",
           "count": 3
         }
       ],
       "commonTags": [
         "AI",
-        "theory",
         "web",
         "curiosity",
         "time",
@@ -515,59 +517,60 @@
         "embedding",
         "search",
         "evolution",
-        "architecture",
-        "event-sourcing",
-        "CQRS",
+        "theory",
+        "future",
         "mathematics",
         "fundamental",
-        "RLHF"
+        "RLHF",
+        "alignment",
+        "biology"
       ]
     }
   },
   "global": {
-    "evaluations": 330,
-    "avgH": 7.1454545454545455,
-    "avgW": 7.412121212121212,
-    "avgD": 4.424242424242424,
+    "evaluations": 302,
+    "avgH": 7.02317880794702,
+    "avgW": 7.241721854304636,
+    "avgD": 4.483443708609271,
     "hotNodes": [
       {
         "nodeId": "4569bf8de2d69dcb",
-        "count": 41
+        "count": 32
       },
       {
         "nodeId": "49dcf8ad122f38ce",
-        "count": 29
-      },
-      {
-        "nodeId": "6ea9c76ac873e070",
-        "count": 26
+        "count": 27
       },
       {
         "nodeId": "72a277371ac3f7df",
-        "count": 23
+        "count": 25
+      },
+      {
+        "nodeId": "c35c26738ab461a1",
+        "count": 25
       },
       {
         "nodeId": "87d78df12cb2f4ab",
         "count": 23
       },
       {
-        "nodeId": "c35c26738ab461a1",
-        "count": 23
-      },
-      {
-        "nodeId": "ca6109987efa813d",
-        "count": 17
+        "nodeId": "6ea9c76ac873e070",
+        "count": 20
       },
       {
         "nodeId": "a741f365b82313a2",
         "count": 17
       },
       {
+        "nodeId": "ca6109987efa813d",
+        "count": 15
+      },
+      {
         "nodeId": "20656d56030fa8a0",
         "count": 15
       },
       {
-        "nodeId": "ae5bb240b17e3fde",
+        "nodeId": "d06531c64bfa0a8d",
         "count": 10
       }
     ],
@@ -575,18 +578,18 @@
       "AI",
       "theory",
       "evolution",
+      "culture",
+      "mathematics",
       "vector-db",
       "embedding",
       "search",
-      "culture",
-      "mathematics",
       "computation",
-      "event-sourcing",
-      "CQRS",
-      "architecture",
       "web",
       "curiosity",
-      "time"
+      "time",
+      "future",
+      "music",
+      "cognition"
     ]
   }
 }

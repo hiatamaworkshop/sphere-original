@@ -570,6 +570,39 @@ node dist/index.js "knowledge exploration"
 **1ラウンド = テスト10分 + データ投入10分**
 **合計: 約60分 (3ラウンド) + Digestor 3回**
 
+### 14.1.5 テスト前清掃手順 (CRITICAL)
+
+**新しいテストを開始する前に必ず実行**
+
+```batch
+:: Step 1: 全 node プロセスを停止
+powershell -Command "Stop-Process -Name node -Force -ErrorAction SilentlyContinue"
+
+:: Step 2: Periphery 再ビルド (設定変更があれば)
+cd /d "C:\Users\kazuh\Desktop\Various\programming\DockerFiles\sphere-original\docker_compose_sphere_v1\services\periphery"
+npm run build
+
+:: Step 3: Periphery 起動 (新しいウィンドウ)
+powershell -Command "Start-Process powershell -ArgumentList '-NoExit', '-Command', 'cd \"C:\Users\kazuh\Desktop\Various\programming\DockerFiles\sphere-original\docker_compose_sphere_v1\services\periphery\"; npm run dev' -WindowStyle Normal"
+
+:: Step 4: 10秒待機後、確認
+timeout /t 10 /nobreak
+curl http://localhost:3001/health
+curl http://localhost:3001/dive/stats
+```
+
+**期待される出力:**
+```
+{"status":"ok","service":"periphery"}
+{"activeTickets":0,"activeSessions":0}
+```
+
+**activeSessions が 0 でない場合**: Periphery を再起動 (Step 1-3 を再実行)
+
+**理由**: 前回テストの session が解放されず、rate limit (maxConcurrent) に引っかかる可能性がある。
+
+---
+
 ### 14.2 前提条件
 
 ```
@@ -792,6 +825,26 @@ copy phi-agent\data\eval-log.jsonl phi-agent\data\eval-log-backup-YYYYMMDD.jsonl
 :: narrative-log の確認
 powershell -Command "(Get-Content 'phi-agent\data\narrative-log.jsonl').Count"
 ```
+
+2/12
+開発者による手動テストのログ
+これを確認せよ
+"C:\Users\kazuh\Desktop\Various\programming\DockerFiles\sphere-original\run-chk.ps1"
+GEN008　までは　手動テストの後Digestor によりデータを更新してある
+その後、下位モデルの挙動を確認するために run-chk を作成、実施
+データの汚染を防ぐため、保存場所を回避してある、以降のテストでは
+Digest 対象は所定の場所へ、仮チェックは同様に退避させてからテストする
+
+そして　テストの結果、なんと以前はスタンプ傾向があった
+Gemma の方が GEN008には適切に対応している様子が観察された、
+一度 CLAUDE も作動させ、確認せよ。
+だからと言って、Gemma > llama3.2:1b　と結論するわけではないが、多角的に挙動を把握する必要がある、ナラティブ面では相変わらず
+gemma が優秀なようだ
+
+ねんのため、Digestor の最新データプールも確認し、
+手動テストの結果を把握した上で議論せよ
+
+推論時の評価出力文字数　も　128程度が良いらしいが、これもチェックしてみてくれ　速度と関係するかを確認すべきだ
 
 ---
 

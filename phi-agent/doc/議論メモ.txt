@@ -216,5 +216,166 @@ LLM agent 評価	研究者	校正されたセンサー評価環境
 
 
 
+////////////////////// 2/12 自力テストをした
+TESTING_MEMO.md を読ませ、テストについて議論する
+GEN-008までテストが進んだ。
+
+"C:\Users\kazuh\Desktop\Various\programming\DockerFiles\sphere-original\run-chk.ps1"　を確認せよ
+
+ Gemma がやや冗長に毎回の評価感想を推論しているので
+num_predict による出力制限（最も効果的）
+Ollamaの設定（options）で、モデルが生成する最大トークン数を制限できます。Gemmaが長々と丁寧な理由（Reason）を書くのを防ぎ、結論だけをサッと出させる設定です。
+
+
+/////////////////　スフィアの将来　を意識して純粋設計箇所を修正する
+情報物理実験
+
+ログ構造はこうなる：
+t0:
+  Sphere snapshot hash
+  Gate params
+  Heat distribution
+  Digestor state
+
+Agent:
+  species
+  loadout
+  energy
+
+Action trace:
+  nodes visited
+  scores
+  decisions
+  return vector
+
+
+これで：
+再現可能
+比較可能
+分岐点が見える
+
+完全に実験系になる。
+
+① Sphere version hash
+Digestor 走った後は必ず更新
+
+② Agent config hash
+species + loadout + bias
+
+③ timestamp
+
+これ3つ。
+これあるだけで：「あ、この時世界こうだったんだ」って戻れる。
+
+FastGate の if 文を書いてるだけ　を脱却し「最初の情報物理エンジン」になる
+ ifElse は 1/0 の世界　これを if -> *1.2　とか重み付けとして解釈　すでにしている
+だから確率が上がる　それをベクトルで内積を取ると　それなりの結果が出る
+
+どれくらいそのモードが強いか　と表現
+structuredness ∈ [0,1]
+modality_cost ∈ [0,1]
+temporal_density ∈ [0,1]
+
+みたいな連続値。
+
+今は：bit立ってる？ yes/no
+これを：
+どれくらい構造的か
+どれくらいマルチモーダルか
+にする。
+
+全てベクトルだ　もしかしてもう実現しているか？
+目指す脱却とは：
+Agent が「この特徴は効いた」と統計的に発見すること。
+つまり：
+Gate parameter を学習対象にする
+FastGate を：
+score = Σ feature[i] * gate_weight[i]
+にしてgate_weight を Digestor 側で更新。
+つまり探索スコアか　その装備はどうだったか、モードはどうだったか、と？
+メタスコア的な発想　それにより FastGate や 16bitFlagSystem の Weight値を調整
+experience_score　を出す。
+if Explorer + Structured + Authority で満足度↑
+→ Structured.weight += ε
+今の　if(flag & X) score *= 1.1
+将来：
+score *= learned_weight[X]
+探索の質の測定　を概念に入れる
+
+Agentは：感覚器官
+種族
+loadout
+交換可能部品。
+
+主体は Sphere。
+
+Ａの発展のためにＢを育てる
+A = エージェント
+B = Sphere
+ではない。
+
+実際は：
+A = 認知の流れ
+B = 環境の物理
+
+Agent はその間を流れる「粒子」みたいなもの。
+ここが直感に反する。
+Agent
+  ↓
+Sphere physics
+  ↓
+Agent behavior
+  ↓
+Sphere update
+  ↓
+next Agent behavior
+
+エージェント＋装備ではない！
+Loadout = Sphere 側の観測テンプレート。
+Agent はただのセンサー。
+スフィアと　エージェント自体は一切混ざらない
+カップリングレイヤーは　スフィア側であって、エージェント側ではない、という認知
+
+Agent は主役じゃない。
+Sphere が物理で、Agent はセンサー。
+Loadout も性格も Sphere 側の環境条件。
+人間が RPG に見てただけ。
+徹底してスフィア中心の設計で行く　そのためのスナップショット機能を議論する
+外部データ連携のための作法だ
+
+
+では Explorers は大丈夫か？
+スフィアでは　エージェントの評価もデータの一つ？　しかしそれはDigestor として
+格納しなければややこしい　
+ただし、これはエージェントに属するわけではない　カップリングレイヤーが所持するものだ　ならば phi-agent だけは外にいる　外で生成され　スフィアに入ろうとする　その時に　Digestor + Loadout + Weapons の恩恵を受ける　という発想だ　ならば Sphere Periphery の一部のはずだが、これを解釈しきれていなかった。
+Peripheryへの別玄関としているからまだ大丈夫か
+
+少なくとも　あらゆる外部エージェントが　Loadout + Weapons の恩恵を受けられる
+というのが正式だな　これを今は外部からの問い合わせ窓口として解釈しているだけだ
+現実的にはこれで良いが　思想だけは綺麗にしておきたい
+
+なぜなら、Digestor Pool は その時点のSphere に付随する知識だからだ
+
+エージェントの学習はよその研究者がやればよい、ＧＰＵを使えば良い。
+スフィアで目指すのは　スフィア体験の一連を経ることでモデルが自然とそのように
+ふるまえるという環境の提示だ　環境の理解とコントロール　スナップショットの蓄積にこそスフィアの真価が存在する　これをマネージするための作法を考えていく
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 

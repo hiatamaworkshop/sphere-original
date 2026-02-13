@@ -1,0 +1,595 @@
+{
+  "generation": 6,
+  "timestamp": "2026-02-12T03:11:19.443Z",
+  "inputEvaluations": 142,
+  "survivedEvaluations": 138,
+  "hunger": 0.2,
+  "halfLifeHours": 72,
+  "species": {
+    "balanced": {
+      "evaluations": 42,
+      "avgH": 6.943478260869565,
+      "avgW": 7.274637681159421,
+      "avgD": 4.33768115942029,
+      "hotNodes": [
+        {
+          "nodeId": "4569bf8de2d69dcb",
+          "count": 15.2
+        },
+        {
+          "nodeId": "ca6109987efa813d",
+          "count": 10
+        },
+        {
+          "nodeId": "72a277371ac3f7df",
+          "count": 7.1
+        },
+        {
+          "nodeId": "6ea9c76ac873e070",
+          "count": 5.3
+        },
+        {
+          "nodeId": "49dcf8ad122f38ce",
+          "count": 4.9
+        },
+        {
+          "nodeId": "87d78df12cb2f4ab",
+          "count": 4.5
+        },
+        {
+          "nodeId": "ebd810081fe8cc2e",
+          "count": 3.3
+        },
+        {
+          "nodeId": "d06531c64bfa0a8d",
+          "count": 3
+        },
+        {
+          "nodeId": "a741f365b82313a2",
+          "count": 2.6999999999999997
+        },
+        {
+          "nodeId": "30ed0f398a345601",
+          "count": 1.4
+        }
+      ],
+      "commonTags": [
+        "AI",
+        "vector-db",
+        "embedding",
+        "search",
+        "theory",
+        "evolution",
+        "web",
+        "curiosity",
+        "time",
+        "RLHF",
+        "alignment",
+        "biology",
+        "architecture",
+        "event-sourcing",
+        "CQRS"
+      ]
+    },
+    "scout": {
+      "evaluations": 38,
+      "avgH": 7.348741418764302,
+      "avgW": 6.443935926773456,
+      "avgD": 4.959610983981693,
+      "hotNodes": [
+        {
+          "nodeId": "72a277371ac3f7df",
+          "count": 16.2
+        },
+        {
+          "nodeId": "d06531c64bfa0a8d",
+          "count": 10
+        },
+        {
+          "nodeId": "a741f365b82313a2",
+          "count": 9
+        },
+        {
+          "nodeId": "4569bf8de2d69dcb",
+          "count": 5.3999999999999995
+        },
+        {
+          "nodeId": "87d78df12cb2f4ab",
+          "count": 4.5
+        },
+        {
+          "nodeId": "49dcf8ad122f38ce",
+          "count": 4.2
+        },
+        {
+          "nodeId": "ca6109987efa813d",
+          "count": 3
+        },
+        {
+          "nodeId": "904b2c1f6ce3b0fb",
+          "count": 2.0999999999999996
+        },
+        {
+          "nodeId": "6ea9c76ac873e070",
+          "count": 1.7999999999999998
+        },
+        {
+          "nodeId": "ebd810081fe8cc2e",
+          "count": 1.2
+        }
+      ],
+      "commonTags": [
+        "web",
+        "curiosity",
+        "time",
+        "philosophy",
+        "AI",
+        "internet",
+        "culture",
+        "evolution",
+        "mind",
+        "debate",
+        "anthropology",
+        "methodology",
+        "research",
+        "biology",
+        "network"
+      ]
+    },
+    "scholar": {
+      "evaluations": 35,
+      "avgH": 6.503478260869564,
+      "avgW": 7.0013043478260855,
+      "avgD": 4.604347826086956,
+      "hotNodes": [
+        {
+          "nodeId": "87d78df12cb2f4ab",
+          "count": 13.6
+        },
+        {
+          "nodeId": "49dcf8ad122f38ce",
+          "count": 11.899999999999999
+        },
+        {
+          "nodeId": "72a277371ac3f7df",
+          "count": 5.7
+        },
+        {
+          "nodeId": "4569bf8de2d69dcb",
+          "count": 5.3999999999999995
+        },
+        {
+          "nodeId": "ca6109987efa813d",
+          "count": 3
+        },
+        {
+          "nodeId": "d06531c64bfa0a8d",
+          "count": 3
+        },
+        {
+          "nodeId": "00732ed27d63868e",
+          "count": 2.8
+        },
+        {
+          "nodeId": "a741f365b82313a2",
+          "count": 2.6999999999999997
+        },
+        {
+          "nodeId": "c36ce6de1b480cd9",
+          "count": 2.0999999999999996
+        },
+        {
+          "nodeId": "c35c26738ab461a1",
+          "count": 1.9
+        }
+      ],
+      "commonTags": [
+        "theory",
+        "music",
+        "culture",
+        "computation",
+        "mathematics",
+        "philosophy",
+        "AI",
+        "identity",
+        "metaphysics",
+        "paradox",
+        "space",
+        "aliens",
+        "science",
+        "functional",
+        "future"
+      ]
+    },
+    "archivist": {
+      "evaluations": 7,
+      "avgH": 5.143478260869565,
+      "avgW": 6.7413043478260875,
+      "avgD": 5.004347826086956,
+      "hotNodes": [
+        {
+          "nodeId": "4569bf8de2d69dcb",
+          "count": 8.2
+        },
+        {
+          "nodeId": "72a277371ac3f7df",
+          "count": 5.7
+        },
+        {
+          "nodeId": "49dcf8ad122f38ce",
+          "count": 5.6
+        },
+        {
+          "nodeId": "87d78df12cb2f4ab",
+          "count": 4.5
+        },
+        {
+          "nodeId": "ca6109987efa813d",
+          "count": 3
+        },
+        {
+          "nodeId": "d06531c64bfa0a8d",
+          "count": 3
+        },
+        {
+          "nodeId": "a741f365b82313a2",
+          "count": 2.6999999999999997
+        },
+        {
+          "nodeId": "6ea9c76ac873e070",
+          "count": 1.7999999999999998
+        },
+        {
+          "nodeId": "ebd810081fe8cc2e",
+          "count": 1.2
+        },
+        {
+          "nodeId": "c35c26738ab461a1",
+          "count": 1.2
+        }
+      ],
+      "commonTags": [
+        "vector-db",
+        "embedding",
+        "search",
+        "AI",
+        "theory",
+        "computation",
+        "mathematics",
+        "internet",
+        "networking",
+        "DNS",
+        "culture",
+        "web",
+        "curiosity",
+        "time",
+        "evolution"
+      ]
+    },
+    "moth": {
+      "evaluations": 9,
+      "avgH": 7.09903381642512,
+      "avgW": 6.3968599033816425,
+      "avgD": 4.43768115942029,
+      "hotNodes": [
+        {
+          "nodeId": "72a277371ac3f7df",
+          "count": 5.7
+        },
+        {
+          "nodeId": "4569bf8de2d69dcb",
+          "count": 5.3999999999999995
+        },
+        {
+          "nodeId": "87d78df12cb2f4ab",
+          "count": 4.5
+        },
+        {
+          "nodeId": "49dcf8ad122f38ce",
+          "count": 4.2
+        },
+        {
+          "nodeId": "ca6109987efa813d",
+          "count": 3
+        },
+        {
+          "nodeId": "d06531c64bfa0a8d",
+          "count": 3
+        },
+        {
+          "nodeId": "a741f365b82313a2",
+          "count": 2.6999999999999997
+        },
+        {
+          "nodeId": "c35c26738ab461a1",
+          "count": 2.5999999999999996
+        },
+        {
+          "nodeId": "20656d56030fa8a0",
+          "count": 2.0999999999999996
+        },
+        {
+          "nodeId": "ebd810081fe8cc2e",
+          "count": 1.9
+        }
+      ],
+      "commonTags": [
+        "evolution",
+        "AI",
+        "internet",
+        "theory",
+        "psychology",
+        "cognition",
+        "bias",
+        "future",
+        "programming",
+        "functional",
+        "control-flow",
+        "ui-ux",
+        "biology",
+        "fundamental",
+        "culture"
+      ]
+    },
+    "hunter": {
+      "evaluations": 3,
+      "avgH": 7.176811594202897,
+      "avgW": 7.4079710144927535,
+      "avgD": 4.2043478260869565,
+      "hotNodes": [
+        {
+          "nodeId": "72a277371ac3f7df",
+          "count": 5.7
+        },
+        {
+          "nodeId": "4569bf8de2d69dcb",
+          "count": 5.3999999999999995
+        },
+        {
+          "nodeId": "87d78df12cb2f4ab",
+          "count": 4.5
+        },
+        {
+          "nodeId": "49dcf8ad122f38ce",
+          "count": 4.2
+        },
+        {
+          "nodeId": "ca6109987efa813d",
+          "count": 3
+        },
+        {
+          "nodeId": "d06531c64bfa0a8d",
+          "count": 3
+        },
+        {
+          "nodeId": "a741f365b82313a2",
+          "count": 2.6999999999999997
+        },
+        {
+          "nodeId": "6ea9c76ac873e070",
+          "count": 2.5
+        },
+        {
+          "nodeId": "c35c26738ab461a1",
+          "count": 1.9
+        },
+        {
+          "nodeId": "ebd810081fe8cc2e",
+          "count": 1.2
+        }
+      ],
+      "commonTags": [
+        "AI",
+        "evolution",
+        "future",
+        "design-pattern",
+        "event-sourcing",
+        "CQRS",
+        "eBPF",
+        "linux",
+        "observability",
+        "theory",
+        "culture",
+        "web",
+        "curiosity",
+        "time",
+        "vector-db"
+      ]
+    },
+    "sniper": {
+      "evaluations": 2,
+      "avgH": 4.143478260869564,
+      "avgW": 3.4413043478260867,
+      "avgD": 6.654347826086957,
+      "hotNodes": [
+        {
+          "nodeId": "87d78df12cb2f4ab",
+          "count": 5.9
+        },
+        {
+          "nodeId": "72a277371ac3f7df",
+          "count": 5.7
+        },
+        {
+          "nodeId": "4569bf8de2d69dcb",
+          "count": 5.3999999999999995
+        },
+        {
+          "nodeId": "49dcf8ad122f38ce",
+          "count": 4.2
+        },
+        {
+          "nodeId": "ca6109987efa813d",
+          "count": 3
+        },
+        {
+          "nodeId": "d06531c64bfa0a8d",
+          "count": 3
+        },
+        {
+          "nodeId": "a741f365b82313a2",
+          "count": 2.6999999999999997
+        },
+        {
+          "nodeId": "6ea9c76ac873e070",
+          "count": 1.7999999999999998
+        },
+        {
+          "nodeId": "ebd810081fe8cc2e",
+          "count": 1.2
+        },
+        {
+          "nodeId": "c35c26738ab461a1",
+          "count": 1.2
+        }
+      ],
+      "commonTags": [
+        "music",
+        "theory",
+        "culture",
+        "AI",
+        "web",
+        "curiosity",
+        "time",
+        "vector-db",
+        "embedding",
+        "search",
+        "evolution",
+        "computation",
+        "mathematics",
+        "philosophy",
+        "internet"
+      ]
+    },
+    "wanderer": {
+      "evaluations": 2,
+      "avgH": 5.893478260869564,
+      "avgW": 4.841304347826087,
+      "avgD": 6.654347826086957,
+      "hotNodes": [
+        {
+          "nodeId": "72a277371ac3f7df",
+          "count": 7.1
+        },
+        {
+          "nodeId": "4569bf8de2d69dcb",
+          "count": 5.3999999999999995
+        },
+        {
+          "nodeId": "87d78df12cb2f4ab",
+          "count": 4.5
+        },
+        {
+          "nodeId": "49dcf8ad122f38ce",
+          "count": 4.2
+        },
+        {
+          "nodeId": "ca6109987efa813d",
+          "count": 3
+        },
+        {
+          "nodeId": "d06531c64bfa0a8d",
+          "count": 3
+        },
+        {
+          "nodeId": "a741f365b82313a2",
+          "count": 2.6999999999999997
+        },
+        {
+          "nodeId": "6ea9c76ac873e070",
+          "count": 1.7999999999999998
+        },
+        {
+          "nodeId": "ebd810081fe8cc2e",
+          "count": 1.2
+        },
+        {
+          "nodeId": "c35c26738ab461a1",
+          "count": 1.2
+        }
+      ],
+      "commonTags": [
+        "web",
+        "curiosity",
+        "time",
+        "AI",
+        "theory",
+        "culture",
+        "vector-db",
+        "embedding",
+        "search",
+        "evolution",
+        "computation",
+        "mathematics",
+        "music",
+        "philosophy",
+        "internet"
+      ]
+    }
+  },
+  "global": {
+    "evaluations": 138,
+    "avgH": 6.811594202898551,
+    "avgW": 6.804347826086956,
+    "avgD": 4.681159420289855,
+    "hotNodes": [
+      {
+        "nodeId": "72a277371ac3f7df",
+        "count": 19
+      },
+      {
+        "nodeId": "4569bf8de2d69dcb",
+        "count": 18
+      },
+      {
+        "nodeId": "87d78df12cb2f4ab",
+        "count": 15
+      },
+      {
+        "nodeId": "49dcf8ad122f38ce",
+        "count": 14
+      },
+      {
+        "nodeId": "ca6109987efa813d",
+        "count": 10
+      },
+      {
+        "nodeId": "d06531c64bfa0a8d",
+        "count": 10
+      },
+      {
+        "nodeId": "a741f365b82313a2",
+        "count": 9
+      },
+      {
+        "nodeId": "6ea9c76ac873e070",
+        "count": 6
+      },
+      {
+        "nodeId": "ebd810081fe8cc2e",
+        "count": 4
+      },
+      {
+        "nodeId": "c35c26738ab461a1",
+        "count": 4
+      }
+    ],
+    "commonTags": [
+      "AI",
+      "theory",
+      "culture",
+      "web",
+      "curiosity",
+      "time",
+      "vector-db",
+      "embedding",
+      "search",
+      "evolution",
+      "computation",
+      "mathematics",
+      "music",
+      "philosophy",
+      "internet"
+    ]
+  }
+}
