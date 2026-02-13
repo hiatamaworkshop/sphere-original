@@ -44,10 +44,9 @@ SPECIES_DESC = {
     "sniper": "Selective evaluator -- harsh scorer, high standards"
 }
 
-# HF Inference API models
+# HF Inference API models (free tier only)
 HF_MODELS = [
-    "google/gemma-2-2b-it",
-    "meta-llama/Llama-3.2-1B-Instruct",
+    "HuggingFaceTB/SmolLM3-3B",  # 3B, free tier, 0.11s latency, tools support
 ]
 
 SPHERE_URL = os.getenv("SPHERE_URL", "http://localhost:3001")
