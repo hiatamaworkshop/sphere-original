@@ -26,7 +26,7 @@ const DEFAULT_CONFIG: HfConfig = {
   maxTokens: 128,
 };
 
-const API_BASE = "https://router.huggingface.co/models";
+const API_BASE = "https://router.huggingface.co/v1/chat/completions";
 
 export class HfInferenceClient implements LlmClient {
   private config: HfConfig;
@@ -69,7 +69,7 @@ export class HfInferenceClient implements LlmClient {
   }
 
   private async callApi(input: string, maxTokens: number): Promise<string> {
-    const url = `${API_BASE}/${this.config.model}`;
+    const url = API_BASE;
 
     const res = await fetch(url, {
       method: "POST",
@@ -78,12 +78,10 @@ export class HfInferenceClient implements LlmClient {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        inputs: input,
-        parameters: {
-          max_new_tokens: maxTokens,
-          temperature: this.config.temperature,
-          return_full_text: false,
-        },
+        model: this.config.model,
+        messages: [{ role: "user", content: input }],
+        max_tokens: maxTokens,
+        temperature: this.config.temperature,
       }),
     });
 
@@ -96,11 +94,11 @@ export class HfInferenceClient implements LlmClient {
       throw new Error(`hf-client error: ${res.status} ${res.statusText} — ${body}`);
     }
 
-    const data = (await res.json()) as Array<{ generated_text: string }>;
-    if (!Array.isArray(data) || data.length === 0) {
+    const data = (await res.json()) as { choices: Array<{ message: { content: string } }> };
+    if (!data.choices || data.choices.length === 0) {
       throw new Error("hf-client: empty response");
     }
 
-    return data[0].generated_text;
+    return data.choices[0].message.content;
   }
 }
