@@ -343,7 +343,8 @@ config, entryBuffer, // For GatewayServer (EntryRequest vectorization via buffer
 projectionDB, bookkeeper, // For NodeForge integration
 coreAdapter, // For real node access in SphereContext
 globalFieldLayer, // For magnetic field influence on agent movement
-activeBusLayer // For AI-to-AI volatile broadcast communication
+activeBusLayer, // For AI-to-AI volatile broadcast communication
+spatialFields // For /sphere/snapshot fertility data
 );
 server.start();
 // Connect agent count changes to RenalCore Dormancy and SphereCoreAdapter dynamic sampling
