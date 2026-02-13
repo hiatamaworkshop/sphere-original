@@ -11,6 +11,7 @@
 
 import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync, renameSync } from "node:fs";
 import { join } from "node:path";
+import { createHash } from "node:crypto";
 import { computeScore, computeHunger, prune } from "./scoring.js";
 import type { FlatEval, ScoredEval } from "./scoring.js";
 import { buildProfile } from "./profiler.js";
@@ -29,6 +30,7 @@ const HALF_LIFE_HOURS = parseFloat(process.env.HALF_LIFE_HOURS ?? "72");
 const MIN_EVALS = parseInt(process.env.MIN_EVALS ?? "50");
 const MIN_PER_SPECIES = parseInt(process.env.MIN_PER_SPECIES ?? "20");
 const ONCE = process.env.ONCE === "1";
+const SPHERE_URL = process.env.SPHERE_URL ?? "http://localhost:3001";
 
 // ---- EvalLog types (mirrors phi-agent/src/eval-log.ts) ----
 
@@ -89,6 +91,47 @@ function scoreAll(flat: FlatEval[]): ScoredEval[] {
   }));
 }
 
+// ---- Sphere Snapshot ----
+
+interface SphereSnapshot {
+  timestamp: string;
+  nodeCount: Record<string, number>;
+  heatDistribution: { mean: number; std: number; min: number; max: number };
+  weightDistribution: { mean: number; std: number; min: number; max: number };
+  flagDistribution: Record<number, number>;
+  fertility: { total: number };
+  field: { intensity: number; dominantFlags: number; volatility: number } | null;
+}
+
+async function fetchSphereSnapshot(): Promise<SphereSnapshot | null> {
+  try {
+    const res = await fetch(`${SPHERE_URL}/sphere/snapshot`);
+    if (!res.ok) {
+      console.warn(`[digestor] Snapshot fetch failed: ${res.status} ${res.statusText}`);
+      return null;
+    }
+    return await res.json() as SphereSnapshot;
+  } catch (err) {
+    console.warn(`[digestor] Snapshot fetch error (Sphere may be offline):`, (err as Error).message);
+    return null;
+  }
+}
+
+function computeSphereHash(snapshot: SphereSnapshot, generation: number): string {
+  const hashInput = {
+    nodeCount: snapshot.nodeCount,
+    heatDistribution: snapshot.heatDistribution,
+    weightDistribution: snapshot.weightDistribution,
+    flagDistribution: snapshot.flagDistribution,
+    fertility: snapshot.fertility,
+    generation,
+  };
+  return createHash("sha256")
+    .update(JSON.stringify(hashInput))
+    .digest("hex")
+    .slice(0, 16); // Short hash (64-bit) — sufficient for identification
+}
+
 // ---- Generation archive ----
 
 function nextGeneration(): number {
@@ -104,21 +147,43 @@ function saveGeneration(
   profile: ReturnType<typeof buildProfile>,
   inputEvals: number,
   hunger: number,
+  sphereSnapshot: SphereSnapshot | null,
 ): void {
   if (!existsSync(GEN_DIR)) mkdirSync(GEN_DIR, { recursive: true });
   const padded = String(gen).padStart(3, "0");
+
+  const sphereHash = sphereSnapshot
+    ? computeSphereHash(sphereSnapshot, gen)
+    : null;
+
   const data = {
     generation: gen,
     timestamp: new Date().toISOString(),
+    sphereHash,
     inputEvaluations: inputEvals,
     survivedEvaluations: profile.survivedEvaluations,
     hunger,
     halfLifeHours: HALF_LIFE_HOURS,
+    ...(sphereSnapshot && {
+      sphereSnapshot: {
+        nodeCount: sphereSnapshot.nodeCount,
+        heatDistribution: sphereSnapshot.heatDistribution,
+        weightDistribution: sphereSnapshot.weightDistribution,
+        flagDistribution: sphereSnapshot.flagDistribution,
+        fertility: sphereSnapshot.fertility,
+        field: sphereSnapshot.field,
+      },
+    }),
     species: profile.species,
     global: profile.global,
   };
   writeFileSync(join(GEN_DIR, `gen-${padded}.json`), JSON.stringify(data, null, 2), "utf-8");
-  console.log(`[digestor] Generation ${gen} archived`);
+
+  if (sphereHash) {
+    console.log(`[digestor] Generation ${gen} archived (sphere_hash: ${sphereHash})`);
+  } else {
+    console.log(`[digestor] Generation ${gen} archived (no sphere snapshot)`);
+  }
 }
 
 // ---- Truncate eval-log to survived entries ----
@@ -161,7 +226,7 @@ function truncateLog(survived: ScoredEval[]): void {
 
 // ---- Main digest cycle ----
 
-function digest(): void {
+async function digest(): Promise<void> {
   const entries = readLog();
   const flat = flatten(entries);
 
@@ -170,6 +235,12 @@ function digest(): void {
   if (flat.length < MIN_EVALS) {
     console.log(`[digestor] Skip: ${flat.length} < ${MIN_EVALS} minimum evaluations`);
     return;
+  }
+
+  // Step 0: Fetch Sphere snapshot (non-blocking — continues without if Sphere is offline)
+  const sphereSnapshot = await fetchSphereSnapshot();
+  if (sphereSnapshot) {
+    console.log(`[digestor] Sphere snapshot: ${sphereSnapshot.nodeCount.total} nodes, fertility=${sphereSnapshot.fertility.total}`);
   }
 
   // Step 1: Score neutrally (balanced_qv × time_decay)
@@ -188,9 +259,9 @@ function digest(): void {
   writeFileSync(PROFILE_OUT, JSON.stringify(profile, null, 2), "utf-8");
   console.log(`[digestor] Profile written: ${Object.keys(profile.species).length} species, ${profile.survivedEvaluations} surviving evals`);
 
-  // Step 5: Archive generation snapshot
+  // Step 5: Archive generation snapshot (with sphere_hash if available)
   const gen = nextGeneration();
-  saveGeneration(gen, profile, flat.length, hunger);
+  saveGeneration(gen, profile, flat.length, hunger, sphereSnapshot);
 
   // Step 6: Truncate eval-log to survived entries only
   truncateLog(survived);
@@ -211,6 +282,7 @@ async function main(): Promise<void> {
   console.log(`[digestor] Starting — ${ONCE ? "one-shot" : `interval=${INTERVAL_MS}ms`}, half_life=${HALF_LIFE_HOURS}h, min_evals=${MIN_EVALS}`);
   console.log(`[digestor] Source: ${EVAL_LOG}`);
   console.log(`[digestor] Output: ${PROFILE_OUT}`);
+  console.log(`[digestor] Sphere: ${SPHERE_URL} (for snapshot)`);
 
   // Start IO Gateway (HTTP server)
   if (!ONCE) {
@@ -218,7 +290,7 @@ async function main(): Promise<void> {
   }
 
   // Run immediately on startup
-  digest();
+  await digest();
 
   if (ONCE) {
     console.log("[digestor] One-shot complete.");
@@ -228,7 +300,7 @@ async function main(): Promise<void> {
   // Then periodic loop
   while (true) {
     await sleep(INTERVAL_MS);
-    digest();
+    await digest();
   }
 }
 
