@@ -100,9 +100,9 @@ def visualize_generations():
     species_data = [latest['species'][name] for name in species_names]
 
     fig_species = make_subplots(
-        rows=2, cols=1,
-        subplot_titles=("Average Scores (h/w/d)", "Evaluation Counts"),
-        vertical_spacing=0.15
+        rows=3, cols=1,
+        subplot_titles=("Average Scores (h/w/d)", "Evaluation Consistency", "Evaluation Counts"),
+        vertical_spacing=0.1
     )
 
     # Row 1: Scores
@@ -119,21 +119,44 @@ def visualize_generations():
         row=1, col=1
     )
 
-    # Row 2: Evaluation counts
+    # Row 2: Evaluation consistency
+    consistency_scores = [
+        d.get('evaluationConsistency', {}).get('score', 0) for d in species_data
+    ]
+    consistency_nodes = [
+        d.get('evaluationConsistency', {}).get('nodes', 0) for d in species_data
+    ]
+    consistency_text = [
+        f"{s:.2f} ({n} nodes)" for s, n in zip(consistency_scores, consistency_nodes)
+    ]
     fig_species.add_trace(
-        go.Bar(name='Evaluations', x=species_names, y=[d['evaluations'] for d in species_data], marker_color='lightblue'),
+        go.Bar(
+            name='Consistency',
+            x=species_names,
+            y=consistency_scores,
+            text=consistency_text,
+            textposition='outside',
+            marker_color=['#2ecc71' if s >= 0.85 else '#f39c12' if s >= 0.7 else '#e74c3c' for s in consistency_scores]
+        ),
         row=2, col=1
     )
 
+    # Row 3: Evaluation counts
+    fig_species.add_trace(
+        go.Bar(name='Evaluations', x=species_names, y=[d['evaluations'] for d in species_data], marker_color='lightblue'),
+        row=3, col=1
+    )
+
     fig_species.update_layout(
-        height=600,
+        height=800,
         title_text=f"Species Comparison (Generation {latest['generation']})",
         showlegend=True
     )
 
-    fig_species.update_xaxes(title_text="Species", row=2, col=1)
+    fig_species.update_xaxes(title_text="Species", row=3, col=1)
     fig_species.update_yaxes(title_text="Score", row=1, col=1)
-    fig_species.update_yaxes(title_text="Count", row=2, col=1)
+    fig_species.update_yaxes(title_text="Consistency", range=[0, 1], row=2, col=1)
+    fig_species.update_yaxes(title_text="Count", row=3, col=1)
 
     # Create timeline plot (if multiple generations exist)
     timeline_plot = None
@@ -141,11 +164,15 @@ def visualize_generations():
         # Sort chronologically
         gens_sorted = sorted(gens, key=lambda g: g['generation'])
 
-        fig_timeline = go.Figure()
+        fig_timeline = make_subplots(
+            rows=2, cols=1,
+            subplot_titles=("avgH Evolution", "Consistency Evolution"),
+            vertical_spacing=0.15
+        )
 
-        # Plot avgH/avgW/avgD for each species over generations
+        # Row 1: avgH per species over generations
         for species in species_names:
-            gen_nums = [g['generation'] for g in gens_sorted]
+            gen_nums = [g['generation'] for g in gens_sorted if species in g['species']]
             avgH = [g['species'][species]['avgH'] for g in gens_sorted if species in g['species']]
 
             fig_timeline.add_trace(go.Scatter(
@@ -153,14 +180,30 @@ def visualize_generations():
                 y=avgH,
                 mode='lines+markers',
                 name=f"{species} (H)"
-            ))
+            ), row=1, col=1)
 
-        fig_timeline.update_layout(
-            title="Species avgH Evolution Over Generations",
-            xaxis_title="Generation",
-            yaxis_title="avgH",
-            height=400
-        )
+        # Row 2: consistency per species over generations
+        for species in species_names:
+            gen_nums = [g['generation'] for g in gens_sorted if species in g.get('species', {})]
+            cons = [
+                g['species'][species].get('evaluationConsistency', {}).get('score', None)
+                for g in gens_sorted if species in g.get('species', {})
+            ]
+            # Filter out None (generations before consistency was implemented)
+            valid = [(gn, c) for gn, c in zip(gen_nums, cons) if c is not None]
+            if valid:
+                fig_timeline.add_trace(go.Scatter(
+                    x=[v[0] for v in valid],
+                    y=[v[1] for v in valid],
+                    mode='lines+markers',
+                    name=f"{species} (C)",
+                    showlegend=False
+                ), row=2, col=1)
+
+        fig_timeline.update_layout(height=600)
+        fig_timeline.update_xaxes(title_text="Generation", row=2, col=1)
+        fig_timeline.update_yaxes(title_text="avgH", row=1, col=1)
+        fig_timeline.update_yaxes(title_text="Consistency", range=[0, 1], row=2, col=1)
 
         timeline_plot = fig_timeline
 
