@@ -347,11 +347,5 @@ Loadout も性格も Sphere 側の環境条件。
 ふるまえるという環境の提示だ　環境の理解とコントロール　スナップショットの蓄積にこそスフィアの真価が存在する　これをマネージするための作法を考えていく
 
 
-テストの手順はここに記載しておけ。
-"C:\Users\kazuh\Desktop\Various\programming\DockerFiles\sphere-original\docker_compose_sphere_v1\services\periphery\src\mock\TESTING_MEMO.md"
-テスト終了時には必ずプロセスキルをして
-実行時にはスフィアをクリーンスタートをするのだ
-ポートの注意点も記載すること　デプロイ時に複数ポートを使えない環境だから
-混乱が起こっているのだ　ローカルでは関係がない
 
 
