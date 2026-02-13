@@ -478,22 +478,24 @@ infra/
 
 ### 13.2 WS ポートの確認
 
-| 環境 | HTTP | WebSocket |
-|------|------|-----------|
-| ローカル dev (`npm run dev`) | 3001 | **8081** |
-| Docker / same-port モード | 3001 | **3001** |
+| 環境 | HTTP | WebSocket | 推奨 |
+|------|------|-----------|------|
+| ローカル dev (`npm run dev`) | 3001 | **8081** | テスト非推奨 |
+| **同一ポートモード** (`PORT=3001`) | 3001 | **3001** | **テスト推奨** |
+| Docker / デプロイ | 3001 | **3001** | 本番 |
 
-phi-agent の `SPHERE_WS` を環境に合わせて設定すること。
+**ローカルテストは同一ポートモードを使う** (Section 15.1 参照)。
+デプロイ環境では複数ポートを使えないため、同一ポート動作を確認すること。
 
-```batch
-# ローカル dev の場合
-set SPHERE_WS=ws://localhost:8081
+```powershell
+# 同一ポートモード (推奨)
+$env:SPHERE_WS='ws://localhost:3001'
 
-# Docker / same-port の場合
-set SPHERE_WS=ws://localhost:3001
+# npm run dev で起動した場合のみ
+$env:SPHERE_WS='ws://localhost:8081'
 ```
 
-**判別方法**: `curl http://localhost:8081/` が応答すれば 8081、しなければ 3001。
+**判別方法**: Periphery 起動ログで `same port` / `separate port` を確認。
 
 ### 13.3 Windows 環境変数の罠
 
@@ -848,8 +850,184 @@ gemma が優秀なようだ
 
 ---
 
+## 15. phi-agent daemon テスト手順 (2026-02-13)
+
+### 15.1 ポート設定 — 混乱の根本原因
+
+**デプロイ環境 (Docker/Fly.io 等) では複数ポートを使えない。**
+そのため Periphery に `PORT` 環境変数で同一ポートモードが存在する。
+
+| 環境 | HTTP | WebSocket | Periphery 起動方法 |
+|------|------|-----------|-------------------|
+| **ローカル dev** (`npm run dev`) | 3001 | **8081** (別ポート) | `npm run dev` (PORT 未設定) |
+| **同一ポートモード** | 3001 | **3001** (同一) | `PORT=3001 node dist/index.js` |
+| **Docker / デプロイ** | 3001 | **3001** (同一) | `PORT=3001` (docker-compose で設定) |
+
+**ローカルでテストする際は同一ポートモードを使う** (デプロイ環境と一致させる):
+
+```powershell
+# Periphery 起動 (同一ポートモード)
+cd docker_compose_sphere_v1\services\periphery
+$env:PORT='3001'
+$env:SPHERE_CONFIG='..\..\sphere.config.json'
+node dist/index.js
+```
+
+**phi-agent 側は常に `SPHERE_WS=ws://localhost:3001`:**
+
+```powershell
+$env:SPHERE_URL='http://localhost:3001'
+$env:SPHERE_WS='ws://localhost:3001'
+```
+
+> **注意**: `npm run dev` で起動した場合は WS が 8081 になる。
+> 起動ログの `[GatewayServer] WebSocket ...` 行で実際のポートを確認すること。
+
+### 15.2 テスト前: クリーンスタート手順
+
+```powershell
+# Step 1: 全 node プロセスを停止
+Stop-Process -Name node -Force -ErrorAction SilentlyContinue
+
+# Step 2: ポート解放確認
+netstat -ano | findstr ":3001"
+# → 出力なしなら OK。残っていれば taskkill /PID <PID> /F
+
+# Step 3: Periphery 起動 (同一ポートモード)
+cd "C:\Users\kazuh\Desktop\Various\programming\DockerFiles\sphere-original\docker_compose_sphere_v1\services\periphery"
+$env:PORT='3001'
+$env:SPHERE_CONFIG='C:\Users\kazuh\Desktop\Various\programming\DockerFiles\sphere-original\docker_compose_sphere_v1\sphere.config.json'
+node dist/index.js
+
+# Step 4: 起動確認 (別ターミナル)
+curl http://localhost:3001/health
+# → {"status":"ok","service":"periphery"}
+
+curl -X POST http://localhost:3001/dive/request -H "Content-Type: application/json" -d "{}"
+# → {"success":true,"ticket":{"token":"..."}}
+```
+
+**起動ログで確認するべき行:**
+```
+[GatewayServer] WebSocket attached to HTTP server (same port)  ← 同一ポートモード
+[PeripheryServer] WebSocket Gateway: ws://localhost:3001 (same port)
+```
+
+`[GatewayServer] WebSocket server listening on port 8081` と出たら **PORT 未設定**。やり直す。
+
+### 15.3 phi-agent daemon テスト実行
+
+#### CLI フラグ一覧 (存在するもの)
+
+| フラグ | 説明 | 例 |
+|--------|------|-----|
+| `--daemon` | デーモンモード (無限ループ) | |
+| `--sleep N` | セッション間隔 (ms) | `--sleep 5000` |
+| `--cycles N` | 1セッションの最大サイクル数 | `--cycles 3` |
+| `--loadout NAME` | 種族指定 | `--loadout moth` |
+| `--quiet` | デバッグログ抑制 | |
+| `--response` | narrative 生成 | |
+| `--no-evaluate` | 評価なし (観察のみ) | |
+
+> **⚠️ `--sessions` フラグは存在しない。**
+> `--sessions 6` と書くと `6` がクエリとして解釈され `QUERY_TOO_SHORT` で全セッション失敗する。
+> デーモンは手動 Ctrl+C で停止する。
+
+#### 単一セッション テスト (動作確認用)
+
+```powershell
+cd "C:\Users\kazuh\Desktop\Various\programming\DockerFiles\sphere-original\phi-agent"
+$env:SPHERE_URL='http://localhost:3001'
+$env:SPHERE_WS='ws://localhost:3001'
+$env:OLLAMA_HOST='http://localhost:11434'
+$env:OLLAMA_MODEL='gemma2:2b'   # or phi3:mini, llama3.2:1b
+$env:LOADOUT='wanderer'
+$env:EVALUATE='true'
+$env:RESPONSE='false'
+node dist/index.js "food" 2>&1 | Select-String "Using model|Connected|Cycles:|Duration:|Error:|FastGate|Focused|evaluation|phi-agent"
+```
+
+#### デーモン テスト (蓄積用)
+
+```powershell
+cd "C:\Users\kazuh\Desktop\Various\programming\DockerFiles\sphere-original\phi-agent"
+$env:SPHERE_URL='http://localhost:3001'
+$env:SPHERE_WS='ws://localhost:3001'
+$env:OLLAMA_HOST='http://localhost:11434'
+$env:OLLAMA_MODEL='gemma2:2b'
+$env:LOADOUT='random'          # セッションごとに種族再抽選
+$env:EVALUATE='true'
+$env:DEBUG='true'
+node dist/index.js --daemon --sleep 5000 --cycles 3
+# → Ctrl+C で停止
+```
+
+**LOADOUT=random**: セッションごとに異なる種族が自動選択される。
+クエリは QUERY_POOL (18種) からランダムに割り当てられる (明示クエリ指定なしの場合)。
+
+### 15.4 テスト後: プロセス停止
+
+```powershell
+# 全 node プロセスを停止
+Stop-Process -Name node -Force -ErrorAction SilentlyContinue
+
+# 確認
+Get-Process node -ErrorAction SilentlyContinue
+# → 出力なしなら OK
+```
+
+**テスト終了時には必ずプロセスを停止すること。**
+Periphery の WS セッションがリークし、次回テストで rate limit (`maxConcurrent`) に引っかかる。
+
+### 15.5 トラブルシューティング
+
+| 症状 | 原因 | 対処 |
+|------|------|------|
+| `QUERY_TOO_SHORT` | `--sessions N` を使った (存在しないフラグ) | `--sessions` を削除。数字がクエリになっている |
+| `Connection timeout` | WS ポート不一致 | Periphery ログでポート確認。`SPHERE_WS` を合わせる |
+| `AggregateError` | Periphery 未起動 or ポート占有 | `curl /health` で確認。プロセス停止→再起動 |
+| `Error: listen EADDRINUSE` | ポートが使用中 | `netstat -ano \| findstr :3001` → `taskkill /PID <PID> /F` |
+| 全セッションで `Error:` | Periphery が起動直後に落ちている | 背景プロセスのログを確認 |
+| expression が全て `[0,0,0,0]` | 旧テンプレート or hex 解析失敗 | `prompt-builder.ts` で `"____"` テンプレートを確認 |
+| Species profile が反映されない | Digestor 未実行 | `ONCE=1 node dist/digestor.js` で手動実行 |
+
+### 15.6 Expression 実験テスト手順 (2026-02-13)
+
+Expression = LLM の非言語的出力。hex `"____"` テンプレートで 4D nibble array (各 0-15) を取得。
+
+```powershell
+# 1. クリーンスタート (15.2 参照)
+# 2. デーモン実行 (6セッション程度で Ctrl+C)
+$env:OLLAMA_MODEL='gemma2:2b'   # 出力率 100%, a-f 偏向
+# or
+$env:OLLAMA_MODEL='phi3:mini'   # 出力率 70%, 均等分布, 0 使用あり
+
+$env:LOADOUT='random'
+node dist/index.js --daemon --sleep 5000 --cycles 3
+
+# 3. 結果確認 — Bus emit の expression を抽出
+# ログから:
+#   [phi-agent] Bus emit: node=XXXXXXXX h=8 w=9 expr=[13,14,10,12] ...
+# eval-log.jsonl から:
+#   grep "expression" phi-agent\data\eval-log.jsonl
+
+# 4. プロセス停止 (15.4 参照)
+```
+
+**モデル別 expression 特性 (2026-02-13 測定):**
+
+| 指標 | gemma2:2b | phi3:mini |
+|------|-----------|-----------|
+| 出力率 | ~100% | 70% |
+| ユニーク率 | 82% (9/11) | 74% (14/19) |
+| ゼロ nibble | なし | あり (c000, cc00) |
+| `"de"` プレフィクス | 45% | 11% |
+| 分布 | a-f 偏向 (d 重心) | a-e 均等, 0 混在 |
+
+---
+
 作成日: 2025-01-31
-更新日: 2026-02-12
+更新日: 2026-02-13
 
 ---
 
