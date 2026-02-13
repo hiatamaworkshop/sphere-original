@@ -287,6 +287,11 @@ def create_ui():
         Each species perceives and evaluates information differently -- personality emerges from:
         **Loadout (vectors) x Physics (Sphere) x Sensor (LLM)**.
 
+        **⚠️ Known Limitation**: The free-tier model (SmolLM3-3B) does not reliably output JSON,
+        so evaluations may fail (`h=undefined`). However, **Sphere navigation works correctly** —
+        agents successfully sense, focus, and move through the ecosystem.
+        For full functionality with reliable evaluations, run phi-agent locally with Ollama.
+
         *First request may take 30-60s as Sphere wakes up from sleep.*
         """)
 
