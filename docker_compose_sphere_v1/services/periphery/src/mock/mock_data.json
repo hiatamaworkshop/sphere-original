@@ -1990,6 +1990,76 @@
     "flags": 0,
     "importance": 0.5
   },
+{
+  "summary": "Waiting for a file to download",
+  "tags": ["digital", "anticipation", "delay"],
+  "payload": "A progress bar inching forward while attention drifts. The mind fills the gap with unrelated thoughts.",
+  "flags": 0,
+  "importance": 0.25
+},
+{
+  "summary": "Waiting for a file to download",
+  "tags": ["digital", "anticipation", "delay"],
+  "payload": "A progress bar inching forward while attention drifts. The mind fills the gap with unrelated thoughts.",
+  "flags": 0,
+  "importance": 0.25
+},
+{
+  "summary": "Cracking your knuckles unconsciously",
+  "tags": ["habit", "body", "autopilot"],
+  "payload": "A small release of tension performed without explicit awareness. The body negotiating its own comfort.",
+  "flags": 0,
+  "importance": 0.2
+},
+{
+  "summary": "Cold air entering your lungs",
+  "tags": ["breath", "sensation", "alertness"],
+  "payload": "A sharp inhale that briefly sharpens perception. The environment asserting itself through respiration.",
+  "flags": 0,
+  "importance": 0.3
+},
+{
+  "summary": "Making eye contact and immediately looking away",
+  "tags": ["social", "avoidance", "microinteraction"],
+  "payload": "A fractional moment of mutual recognition, followed by polite disengagement.",
+  "flags": 0,
+  "importance": 0.25
+},
+{
+  "summary": "Laughing slightly later than everyone else",
+  "tags": ["timing", "social", "sync"],
+  "payload": "Processing delay revealed through humor. A reminder that internal clocks differ.",
+  "flags": 0,
+  "importance": 0.3
+},
+{
+  "summary": "Escalator silence",
+  "tags": ["urban", "liminal", "shared"],
+  "payload": "Standing among strangers in synchronized stillness while machinery moves beneath.",
+  "flags": 0,
+  "importance": 0.3
+},
+{
+  "summary": "Noticing dust in sunlight",
+  "tags": ["visual", "impermanence", "ambient"],
+  "payload": "Particles suspended in a light beam. Normally invisible matter briefly becomes observable.",
+  "flags": 0,
+  "importance": 0.35
+},
+{
+  "summary": "Thinking of a word but failing to recall it",
+  "tags": ["language", "memory", "friction"],
+  "payload": "A semantic shape without a label. The mind circles an absence.",
+  "flags": 0,
+  "importance": 0.4
+},
+{
+  "summary": "Re-reading the same paragraph",
+  "tags": ["attention", "drift", "loop"],
+  "payload": "Eyes move forward while comprehension stays behind. A local desynchronization of input and processing.",
+  "flags": 0,
+  "importance": 0.35
+},
   {
     "summary": "Walking in the rain without an umbrella",
     "tags": [
@@ -2000,6 +2070,111 @@
     "payload": "Accepting the inevitable soaking. A shift from the stress of staying dry to the sensory immersion of the elements.",
     "flags": 0,
     "importance": 0.4
-  }
+  },
+{
+  "summary": "Checking the fridge with no hunger",
+  "tags": ["habit", "boredom", "searching"],
+  "payload": "Opening the door to look at the same contents. An act of seeking change in a static environment.",
+  "flags": 0,
+  "importance": 0.2
+},
+{
+  "summary": "The ghost vibration of a smartphone",
+  "tags": ["digital", "phantom", "expectation"],
+  "payload": "Feeling a notification that didn't happen. The brain hallucinating connectivity in a silent pocket.",
+  "flags": 0,
+  "importance": 0.4
+},
+{
+  "summary": "Adjusting posture after hours of sitting",
+  "tags": ["body", "fatigue", "realignment"],
+  "payload": "The sudden realization of spinal curvature. A brief, manual correction of the skeleton against gravity.",
+  "flags": 0,
+  "importance": 0.25
+},
+{
+  "summary": "Shadows lengthening in the afternoon",
+  "tags": ["time", "visual", "transition"],
+  "payload": "The slow, silent stretching of darkness across the floor. A visual countdown to the end of the day.",
+  "flags": 0,
+  "importance": 0.35
+},
+{
+  "summary": "Typing a message and then deleting it",
+  "tags": ["communication", "hesitation", "void"],
+  "payload": "An utterance formulated and then unmade. The digital equivalent of swallowing one's words.",
+  "flags": 0,
+  "importance": 0.45
+},
+{
+  "summary": "The specific hum of a desktop fan",
+  "tags": ["ambient", "sound", "monotony"],
+  "payload": "A consistent white noise that masks other sounds. It creates a local, artificial quiet through repetition.",
+  "flags": 0,
+  "importance": 0.2
+},
+{
+  "summary": "Finding a small stone in your shoe",
+  "tags": ["friction", "body", "minor-chaos"],
+  "payload": "A physical bug in the walking process. A tiny piece of the world demanding immediate, focused attention.",
+  "flags": 0,
+  "importance": 0.3
+},
+{
+  "summary": "The smell of a hallway in an apartment block",
+  "tags": ["space", "liminal", "stagnation"],
+  "payload": "A mixture of various lives (cooking, cleaning, laundry) lingering in a neutral thoroughfare.",
+  "flags": 0,
+  "importance": 0.3
+},
+{
+  "summary": "Watching steam rise from a hot meal",
+  "tags": ["visual", "entropy", "calm"],
+  "payload": "Fluid dynamics visible in the air. The dissipation of heat rendered as a swirling, temporary ghost.",
+  "flags": 0,
+  "importance": 0.35
+},
+{
+  "summary": "Answering 'Fine, thanks' automatically",
+  "tags": ["social", "script", "autopilot"],
+  "payload": "The standard protocol for social encounters. A safe, content-free packet exchanged to maintain connection.",
+  "flags": 0,
+  "importance": 0.3
+},
+{
+  "summary": "The weight of keys in a pocket",
+  "tags": ["possession", "tactile", "security"],
+  "payload": "A subtle metallic presence that signifies access and ownership. A physical anchor to a specific place.",
+  "flags": 0,
+  "importance": 0.25
+},
+{
+  "summary": "Watching a raindrop race another on glass",
+  "tags": ["perception", "chance", "gravity"],
+  "payload": "Arbitrary competition in the natural world. Gravity and surface tension deciding the winner of a meaningless race.",
+  "flags": 0,
+  "importance": 0.4
+},
+{
+  "summary": "The silence right after turning off the TV",
+  "tags": ["transition", "acoustic", "void"],
+  "payload": "A sudden expansion of the room's auditory space. The return of the house's natural, unmediated sound.",
+  "flags": 0,
+  "importance": 0.4
+},
+{
+  "summary": "Trying to remember if you locked the door",
+  "tags": ["memory", "anxiety", "loop"],
+  "payload": "A ritualistic action performed so often it leaves no trace in conscious memory. A failure of the 'done' flag.",
+  "flags": 0,
+  "importance": 0.4
+},
+{
+  "summary": "The feeling of a pen running out of ink",
+  "tags": ["friction", "analog", "decay"],
+  "payload": "The physical resistance of the tip increasing as the medium fails. A gradual silencing of a tool.",
+  "flags": 0,
+  "importance": 0.3
+}
 ]
 
