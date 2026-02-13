@@ -1722,5 +1722,284 @@
     "payload": "The specific acoustic quality of a home that has been recently abandoned. A heavy stillness that feels like it’s holding a secret.",
     "flags": 0,
     "importance": 0.4
+  },
+  {
+    "summary": "Stigmergy self-organization",
+    "tags": [
+      "biology",
+      "coordination",
+      "complex-systems"
+    ],
+    "payload": "Mechanism of indirect coordination through environmental traces. Ants leave pheromones, guiding others without direct communication. Simple actions lead to emergent intelligence.",
+    "flags": 0,
+    "importance": 0.7
+  },
+  {
+    "summary": "The Library of Babel",
+    "tags": [
+      "literature",
+      "infinity",
+      "philosophy",
+      "Borges"
+    ],
+    "payload": "A hypothetical library containing every possible 410-page book. Most are gibberish, but it contains every truth, every lie, and the story of your death.",
+    "flags": 0,
+    "importance": 0.4
+  },
+  {
+    "summary": "Information Hazard (Roko's Basilisk)",
+    "tags": [
+      "AI",
+      "thought-experiment",
+      "risk",
+      "provocative"
+    ],
+    "payload": "A theoretical future AI that punishes those who knew of its eventual existence but failed to help create it. A modern Pascal's Wager via superintelligence.",
+    "flags": 1,
+    "importance": 0.9
+  },
+  {
+    "summary": "The smell of rain (Petrichor)",
+    "tags": [
+      "nature",
+      "chemistry",
+      "sensation",
+      "calming"
+    ],
+    "payload": "The earthy scent produced when rain falls on dry soil. Caused by geosmin and plant oils. Evokes deep evolutionary memories of water availability.",
+    "flags": 0,
+    "importance": 0.4
+  },
+  {
+    "summary": "Mirror neurons empathy substrate",
+    "tags": [
+      "neuroscience",
+      "cognition",
+      "social"
+    ],
+    "payload": "Neurons that fire both when performing an action and when observing another perform it. Thought to be the physical basis for empathy and social learning.",
+    "flags": 0,
+    "importance": 0.7
+  },
+  {
+    "summary": "Meme evolution",
+    "tags": [
+      "internet",
+      "culture",
+      "evolution"
+    ],
+    "payload": "Ideas as replicators. Memes compete for attention, mutate, and adapt to cultural shifts. Survival of the most shareable content.",
+    "flags": 0,
+    "importance": 0.7
+  },
+  {
+    "summary": "Kessler Syndrome",
+    "tags": [
+      "space",
+      "disaster",
+      "physics"
+    ],
+    "payload": "A chain reaction of space debris collisions. One crash creates more debris, eventually making low Earth orbit unusable for generations.",
+    "flags": 0,
+    "importance": 0.7
+  },
+  {
+    "summary": "P vs NP Problem",
+    "tags": [
+      "math",
+      "computer-science",
+      "complexity"
+    ],
+    "payload": "If a solution can be quickly verified, can it be quickly found? One of the Millennium Prize Problems. Solving it would change cryptography forever.",
+    "flags": 0,
+    "importance": 0.9
+  },
+  {
+    "summary": "The Great Filter",
+    "tags": [
+      "space",
+      "aliens",
+      "evolution"
+    ],
+    "payload": "Hypothesis that some barrier makes long-lasting interstellar civilizations extremely rare. Are we past it, or is it still ahead of us?",
+    "flags": 0,
+    "importance": 0.7
+  },
+  {
+    "summary": "Rubber Duck Debugging",
+    "tags": [
+      "programming",
+      "psychology",
+      "productivity"
+    ],
+    "payload": "Explaining code to an inanimate object to find bugs. Forced verbalization triggers self-correction and clarifies logical gaps.",
+    "flags": 0,
+    "importance": 0.4
+  },
+  {
+    "summary": "The first sip of morning coffee",
+    "tags": [
+      "daily",
+      "ritual",
+      "sensation"
+    ],
+    "payload": "The specific chemical and psychological relief of the first caffeine hit. A ritualistic bridge between sleep and productivity.",
+    "flags": 0,
+    "importance": 0.4
+  },
+  {
+    "summary": "Freshly laundered sheets",
+    "tags": [
+      "home",
+      "sensory",
+      "comfort"
+    ],
+    "payload": "The smell of detergent and sun-dried fabric. Evokes a sense of safety and the end of a long day's labor.",
+    "flags": 0,
+    "importance": 0.3
+  },
+  {
+    "summary": "The urge to organize a desk",
+    "tags": [
+      "psychology",
+      "productivity",
+      "procrastination"
+    ],
+    "payload": "Cleaning physical space to manage mental clutter. Often occurs right before a major deadline as a form of productive avoidance.",
+    "flags": 0,
+    "importance": 0.4
+  },
+  {
+    "summary": "Convenience store late at night",
+    "tags": [
+      "urban",
+      "liminal",
+      "loneliness"
+    ],
+    "payload": "The hum of refrigerators and bright LED lights in a sleeping city. A transient sanctuary for night owls and shift workers.",
+    "flags": 0,
+    "importance": 0.4
+  },
+  {
+    "summary": "The mystery of missing socks",
+    "tags": [
+      "home",
+      "mystery",
+      "entropy"
+    ],
+    "payload": "The statistical anomaly of socks entering a washing machine in pairs but exiting alone. A domestic example of increasing entropy.",
+    "flags": 0,
+    "importance": 0.2
+  },
+  {
+    "summary": "Sunlight through the leaves (Komorebi)",
+    "tags": [
+      "nature",
+      "aesthetics",
+      "peace"
+    ],
+    "payload": "Dappled light filtering through trees. Creates a shifting pattern of shadows that anchors the observer to the present moment.",
+    "flags": 0,
+    "importance": 0.5
+  },
+  {
+    "summary": "The sound of distant train whistles",
+    "tags": [
+      "soundscape",
+      "nostalgia",
+      "travel"
+    ],
+    "payload": "A low-frequency sound that carries further at night. Evokes feelings of longing, nostalgia, or the desire to be elsewhere.",
+    "flags": 0,
+    "importance": 0.3
+  },
+  {
+    "summary": "Staring at a smartphone without purpose",
+    "tags": [
+      "habit",
+      "digital",
+      "boredom"
+    ],
+    "payload": "Doomscrolling or mindless checking of notifications. A modern reflex to fill micro-voids of time with low-value stimuli.",
+    "flags": 0,
+    "importance": 0.5
+  },
+  {
+    "summary": "The relief of taking off shoes",
+    "tags": [
+      "biology",
+      "comfort",
+      "home"
+    ],
+    "payload": "The physical transition from public persona to private self. Releasing the pressure of the world through the feet.",
+    "flags": 0,
+    "importance": 0.3
+  },
+  {
+    "summary": "A forgotten tab in a browser",
+    "tags": [
+      "digital",
+      "memory",
+      "unfinished"
+    ],
+    "payload": "An article opened weeks ago with the intention to read. It remains as a digital ghost of past curiosity.",
+    "flags": 0,
+    "importance": 0.3
+  },
+  {
+    "summary": "Wait time at a red light",
+    "tags": [
+      "urban",
+      "patience",
+      "liminal"
+    ],
+    "payload": "A forced pause in the flow of life. Observations of strangers in neighboring cars during a shared, temporary stillness.",
+    "flags": 0,
+    "importance": 0.2
+  },
+  {
+    "summary": "The smell of old books",
+    "tags": [
+      "history",
+      "sensory",
+      "knowledge"
+    ],
+    "payload": "Lignin breaking down into vanillin-like compounds. A scent that signals stored time and human thought.",
+    "flags": 0,
+    "importance": 0.4
+  },
+  {
+    "summary": "Eavesdropping on strangers",
+    "tags": [
+      "social",
+      "curiosity",
+      "narrative"
+    ],
+    "payload": "Hearing a snippet of a conversation in a cafe. The brain automatically tries to construct the missing context of their lives.",
+    "flags": 0,
+    "importance": 0.4
+  },
+  {
+    "summary": "The weight of a heavy blanket",
+    "tags": [
+      "comfort",
+      "psychology",
+      "safety"
+    ],
+    "payload": "Deep pressure stimulation that calms the nervous system. A tactile hug that reduces anxiety and promotes sleep.",
+    "flags": 0,
+    "importance": 0.5
+  },
+  {
+    "summary": "Walking in the rain without an umbrella",
+    "tags": [
+      "sensation",
+      "nature",
+      "rebellion"
+    ],
+    "payload": "Accepting the inevitable soaking. A shift from the stress of staying dry to the sensory immersion of the elements.",
+    "flags": 0,
+    "importance": 0.4
   }
 ]
+

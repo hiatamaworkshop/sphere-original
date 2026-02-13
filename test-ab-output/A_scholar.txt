@@ -1,0 +1,67 @@
+========================================
+  phi-agent — Sphere Coupling Service
+========================================
+Query:   "psychology"
+Loadout: scholar (walk: deep, minCycles: 5)
+Quality: [0.2, 0.5, 0.2, 0.1]
+Return:  [0.2, 0.1, 0.1, 0.6] (sat,frust,stam,stale)
+Cycles:  3
+Flags:   evaluate
+
+[phi-agent] Species profile: 44 evals, 10 nodes, 15 tags (scholar)
+[phi-agent] Checking ollama...
+[phi-agent] Using model: gemma2:2b
+[phi-agent] Connecting to Sphere...
+[SphereClient] Rulebook loaded: energy=100, costs={"sense":3,"scanL1":1,"move":5,"focus":10,"warp":15,"evaluate":3,"emitBus":20}
+[phi-agent] Positioned in Sphere (energy: 100, loadout: scholar, flags: evaluate)
+[phi-agent] Transitioning to Core...
+[phi-agent] Reached Core layer
+[phi-agent] --- Cycle 1/3 (energy: 100) [standard] ---
+[phi-agent] Sensed 8 nodes
+[phi-agent] FastGate pick: [5] Schrödinger's Cat (flags: 0x0028)
+[phi-agent] Focused: [active] quantum, thought-experiment, physics — Schrödinger's Cat
+[phi-agent] phi eval: h=8 w=9 d=5 — The concept of Schrödinger's Cat is intriguing and relevant to psychology. The node is well-developed with a clear summary and high heat/activity, indicating active use by scholars.
+[phi-agent] Bus recv: node=074cf7be h=8 w=9 expr=[13,14,14,14] from=d18188a5
+[phi-agent] Bus emit: node=074cf7be h=8 w=9 expr=[13,14,14,14] free=true (energy: 84)
+{"cycle":1,"action":"standard","energy":84,"nearbyNodes":8,"focused":{"nodeId":"074cf7befa4311d8","tags":["quantum","thought-experiment","physics"],"summary":"Schrödinger's Cat"},"evaluation":{"h":8,"w":9,"d":5,"reason":"The concept of Schrödinger's Cat is intriguing and relevant to psychology. The node is well-develope"}}
+[phi-agent] Feelings: F=[sat:0.81,frust:0.00,stam:0.16,stale:0.00] desire=0.178 → 0%
+[phi-agent] DeltaProfile: Δ: no data
+[phi-agent] --- Cycle 2/3 (energy: 84) [camp] ---
+[phi-agent] Sensed 8 nodes
+[phi-agent] FastGate pick: [3] Cognitive dissonance attitude change (flags: 0x0008)
+[phi-agent] Focused: [active] psychology, cognition, behavior — Cognitive dissonance attitude change
+[phi-agent] phi eval: h=8 w=9 d=5 — The content focuses on a core psychological principle (cognitive dissonance) with specific examples of how it operates. The high heat indicates significant attention and engagement from users seeking information on this topic.
+[phi-agent] Bus recv: node=c2b54877 h=8 w=9 expr=[13,14,10,12] from=d18188a5
+[phi-agent] Bus emit: node=c2b54877 h=8 w=9 expr=[13,14,10,12] free=false (energy: 48)
+{"cycle":2,"action":"standard","energy":48,"nearbyNodes":8,"focused":{"nodeId":"c2b548770225be7f","tags":["psychology","cognition","behavior"],"summary":"Cognitive dissonance attitude change"},"evaluation":{"h":8,"w":9,"d":5,"reason":"The content focuses on a core psychological principle (cognitive dissonance) with specific examples "}}
+[phi-agent] Feelings: F=[sat:0.81,frust:0.00,stam:0.52,stale:0.00] desire=0.214 → 0%
+[phi-agent] DeltaProfile: Δ: [h:+0.00(±0.00), w:+0.00(±0.00), p:+0.00(±0.00), hit:+0.00(±0.00), nov:+0.00(±0.00)] entropy=1.000
+[phi-agent] --- Cycle 3/3 (energy: 48) [camp] ---
+[phi-agent] Sensed 8 nodes
+[phi-agent] FastGate pick: [0] Mirror neurons empathy substrate (flags: 0x0000)
+[phi-agent] Focused: [active] neuroscience, cognition, social — Mirror neurons empathy substrate
+[phi-agent] phi eval: h=8 w=9 d=6 — The heat reflects its relevance in active research and discussion. The weight suggests its established status within the field, but also hints at potential for further exploration.
+[phi-agent] Bus recv: node=638c6b19 h=8 w=9 expr=[13,14,13,14] from=d18188a5
+[phi-agent] Bus emit: node=638c6b19 h=8 w=9 expr=[13,14,13,14] free=false (energy: 12)
+{"cycle":3,"action":"standard","energy":12,"nearbyNodes":8,"focused":{"nodeId":"638c6b1932f33554","tags":["neuroscience","cognition","social"],"summary":"Mirror neurons empathy substrate"},"evaluation":{"h":8,"w":9,"d":6,"reason":"The heat reflects its relevance in active research and discussion. The weight suggests its establish"}}
+[phi-agent] Feelings: F=[sat:0.80,frust:0.00,stam:0.88,stale:0.00] desire=0.249 → 0%
+[phi-agent] DeltaProfile: Δ: [h:+0.00(±0.00), w:+0.00(±0.00), p:-0.05(±0.07), hit:+0.00(±0.00), nov:-0.17(±0.24)] entropy=1.000
+[phi-agent] Species memory: persisted 3 evaluations (scholar), bus: 3 emits / 3 recvs
+[phi-agent] Returned from Sphere
+
+========================================
+  Results
+========================================
+Status:      completed
+Cycles:      3
+Examined:    3 nodes
+Evaluations: 3
+Heat delta:  +9
+Duration:    56.5s
+
+--- Species Memory ---
+Sessions:    24 (scholar)
+Total evals: 51
+Avg scores:  h=8.0 w=8.5 d=5.2
+Hot nodes:   904b2c1f(×6), 074cf7be(×3), c35c2673(×3), 72a27737(×3), f6583b57(×3)
+Common tags: psychology, AI, anthropology, methodology, research
