@@ -47,6 +47,8 @@ export interface EvalLogEntry {
   /** ActiveBus activity (optional — absent in older entries) */
   busEmits?: number;
   busRecvs?: number;
+  /** Agent config hash for reproducibility (loadout+model+evalFocus) */
+  configHash?: string;
 }
 
 export interface EvalLogRecord {
@@ -55,6 +57,7 @@ export interface EvalLogRecord {
   w: number;
   d: number;
   tags: string[];
+  signal?: string;
 }
 
 // ============================================================

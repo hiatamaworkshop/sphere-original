@@ -72,7 +72,7 @@ I focused on this node:
 - Kind: ${node.kind}
 ${perspective}
 Rate this node (0-10 each):
-{ "h": <heat/activity>, "w": <weight/authority>, "d": <decay/ephemeral>, "reason": "<brief>" }`;
+{ "h": <heat/activity>, "w": <weight/authority>, "d": <decay/ephemeral>, "signal": "", "reason": "<brief>" }`;
   }
 
   /**
@@ -129,6 +129,7 @@ export interface AgentAction {
   h?: number;
   w?: number;
   d?: number;
+  signal?: string;
   mode?: WalkMode;
   reason?: string;
 }
@@ -182,7 +183,16 @@ export function parseAction(response: string): AgentAction {
         } else {
           parsed.d = typeof d === "number" ? d : undefined;
         }
+        parsed.signal = typeof raw.signal === "string" ? raw.signal.slice(0, 64) : undefined;
         parsed.reason = (raw.reason as string) ?? "Inferred from keyless JSON";
+      }
+    }
+
+    // Extract signal from any evaluate response (including those with explicit "action" key)
+    if (parsed.action === "evaluate" && !parsed.signal) {
+      const raw = parsed as unknown as Record<string, unknown>;
+      if (typeof raw.signal === "string") {
+        parsed.signal = raw.signal.slice(0, 64);
       }
     }
 

@@ -22,6 +22,10 @@ export interface SpeciesEntry {
   avgD: number;
   hotNodes: NodeCount[];
   commonTags: string[];
+  /** Nodes evaluated 2+ times (re-evaluation consistency tracking) */
+  revisitedNodes?: number;
+  /** Total re-evaluation count (sum of visits - unique nodes for revisited) */
+  totalRevisits?: number;
 }
 
 export interface SpeciesProfile {
@@ -70,6 +74,16 @@ function aggregateGroup(evals: ScoredEval[]): SpeciesEntry {
     .slice(0, 15)
     .map(([tag]) => tag);
 
+  // Consistency: count nodes evaluated more than once
+  let revisitedNodes = 0;
+  let totalRevisits = 0;
+  for (const count of nodeCount.values()) {
+    if (count >= 2) {
+      revisitedNodes++;
+      totalRevisits += count;
+    }
+  }
+
   return {
     evaluations: n,
     avgH: totalH / n,
@@ -77,6 +91,8 @@ function aggregateGroup(evals: ScoredEval[]): SpeciesEntry {
     avgD: totalD / n,
     hotNodes,
     commonTags,
+    revisitedNodes,
+    totalRevisits,
   };
 }
 

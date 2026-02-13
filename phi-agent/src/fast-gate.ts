@@ -335,6 +335,7 @@ interface EvalRecord {
   w: number;
   d: number;
   tags: string[];
+  signal?: string;
 }
 
 export class SessionMemory {
@@ -353,8 +354,8 @@ export class SessionMemory {
   private _deltas: number[][] = [];
   private _prevState: number[] | null = null;
 
-  record(nodeId: string, h: number, w: number, d: number, tags: string[]): void {
-    this.evals.push({ nodeId, h, w, d, tags });
+  record(nodeId: string, h: number, w: number, d: number, tags: string[], signal?: string): void {
+    this.evals.push({ nodeId, h, w, d, tags, signal });
     this._totalH += h;
     this._totalW += w;
     this._totalD += d;

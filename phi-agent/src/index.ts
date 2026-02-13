@@ -63,6 +63,7 @@ interface ParsedArgs {
   queryExplicit: boolean;
   cycles: number;
   loadout: LoadoutName;
+  randomLoadout: boolean;
   evaluate: boolean;
   response: boolean;
   stream: boolean;
@@ -135,12 +136,13 @@ function parseArgs(): ParsedArgs {
   if (process.env.DAEMON_SLEEP_MS) daemonSleepMs = parseInt(process.env.DAEMON_SLEEP_MS, 10) || daemonSleepMs;
   if (process.env.DEBUG === "false") debug = false;
 
-  // Resolve "random" → pick a random loadout
-  const resolvedLoadout: LoadoutName = loadout === "random"
+  // Resolve "random" → pick a random loadout (remember flag for daemon re-random)
+  const isRandom = loadout === "random";
+  const resolvedLoadout: LoadoutName = isRandom
     ? VALID_LOADOUTS[Math.floor(Math.random() * VALID_LOADOUTS.length)]
     : loadout;
 
-  return { query, queryExplicit, cycles, loadout: resolvedLoadout, evaluate, response, stream, debug, daemon, daemonSleepMs };
+  return { query, queryExplicit, cycles, loadout: resolvedLoadout, randomLoadout: isRandom, evaluate, response, stream, debug, daemon, daemonSleepMs };
 }
 
 async function runOnce(config: ParsedArgs): Promise<number> {
@@ -244,11 +246,15 @@ async function main(): Promise<void> {
   let session = 0;
   while (true) {
     session++;
+    // Re-randomize loadout each session if original was "random"
+    if (config.randomLoadout) {
+      config.loadout = VALID_LOADOUTS[Math.floor(Math.random() * VALID_LOADOUTS.length)];
+    }
     // Rotate query each session if not explicitly set
     if (!config.queryExplicit) {
       config.query = QUERY_POOL[Math.floor(Math.random() * QUERY_POOL.length)];
     }
-    console.log(`\n[phi-agent] === Session ${session} ===`);
+    console.log(`\n[phi-agent] === Session ${session} (${config.loadout}) ===`);
     try {
       await runOnce(config);
     } catch (err) {

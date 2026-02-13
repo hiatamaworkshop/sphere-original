@@ -19,6 +19,7 @@
 //
 // phi is the amber generator. FastGate is the decision maker.
 
+import { createHash } from "node:crypto";
 import { OllamaClient } from "./ollama-client.js";
 import { SphereClient } from "./sphere-client.js";
 import type { WalkMode, BusMessage } from "./sphere-client.js";
@@ -45,6 +46,7 @@ interface BusHint {
   nodeId: string;
   h: number;
   w: number;
+  signal?: string;
   receivedAt: number;
 }
 
@@ -378,6 +380,7 @@ export class PhiAgent {
     const h = evalAction.h ?? 5;
     const w = evalAction.w ?? 5;
     const d = evalAction.d ?? 5;
+    const signal = evalAction.signal;
 
     // 6. Submit evaluation to Sphere
     if (this.canAfford("evaluate")) {
@@ -385,13 +388,13 @@ export class PhiAgent {
       if (success) {
         this.stats.evaluations++;
         this.stats.totalHeatDelta += (h - 5);
-        // 6b. Broadcast notable discovery to other agents
-        await this.tryEmitBus(target.id, h, w);
+        // 6b. Broadcast notable discovery to other agents (signal rides the bus)
+        await this.tryEmitBus(target.id, h, w, signal);
       }
     }
 
     // 7. Record quality data
-    this.gate.memory.record(target.id, h, w, d, detail.tags);
+    this.gate.memory.record(target.id, h, w, d, detail.tags, signal);
 
     // 7b. Store encounter for return response (agent "remembers" what it saw)
     this.encounters.push({
@@ -522,6 +525,12 @@ export class PhiAgent {
 
   // ===== Species Memory =====
 
+  /** Compute reproducibility hash from agent config (loadout + model + evalFocus) */
+  private computeConfigHash(): string {
+    const input = `${this.gate.loadoutName}:${this.ollama.modelName}:${this.gate.evalFocus ?? ""}`;
+    return createHash("sha256").update(input).digest("hex").slice(0, 12);
+  }
+
   /** Persist session evaluations to species memory log (JSONL) */
   private async persistEvalLog(): Promise<void> {
     const evals = this.gate.memory.evals;
@@ -541,9 +550,11 @@ export class PhiAgent {
         w: e.w,
         d: e.d,
         tags: e.tags,
+        ...(e.signal && { signal: e.signal }),
       })),
       busEmits: this.busEmitCount,
       busRecvs: this.busRecvCount,
+      configHash: this.computeConfigHash(),
     };
     try {
       await appendEvalLog(entry);
@@ -598,33 +609,57 @@ export class PhiAgent {
     if (msg.payload.length < 3) return;
     const h = msg.payload[0];
     const w = msg.payload[1];
-    const nodeId = new TextDecoder().decode(msg.payload.slice(2));
+    const rest = msg.payload.slice(2);
+
+    // Split on null byte: [nodeId_utf8, 0x00, signal_utf8]
+    const nullIdx = rest.indexOf(0);
+    let nodeId: string;
+    let signal: string | undefined;
+    if (nullIdx >= 0) {
+      nodeId = new TextDecoder().decode(rest.slice(0, nullIdx));
+      const sigPart = rest.slice(nullIdx + 1);
+      signal = sigPart.length > 0 ? new TextDecoder().decode(sigPart) : undefined;
+    } else {
+      nodeId = new TextDecoder().decode(rest); // backward compat (no signal)
+    }
     if (!nodeId) return;
 
-    this.busHints.set(nodeId, { nodeId, h, w, receivedAt: Date.now() });
+    this.busHints.set(nodeId, { nodeId, h, w, signal, receivedAt: Date.now() });
     this.busRecvCount++;
-    this.log(`Bus recv: node=${nodeId.slice(0, 8)} h=${h} w=${w} from=${msg.senderId.slice(0, 8)}`);
+    const sigPreview = signal ? ` sig="${signal.slice(0, 16)}"` : "";
+    this.log(`Bus recv: node=${nodeId.slice(0, 8)} h=${h} w=${w}${sigPreview} from=${msg.senderId.slice(0, 8)}`);
   }
 
   /** Involuntary emit — strong reaction leaks into the air.
-   *  First emit per session is free ("birth cry"). */
-  private async tryEmitBus(nodeId: string, h: number, w: number): Promise<void> {
+   *  First emit per session is free ("birth cry").
+   *  Signal rides the bus as free-form LLM fragment after nodeId. */
+  private async tryEmitBus(nodeId: string, h: number, w: number, signal?: string): Promise<void> {
     // Reflex threshold: only strong reactions leak
     if (h < 8) return;
 
     const free = this.busEmitCount === 0;
 
-    // Encode: [h, w, ...nodeId_utf8]
+    // Encode: [h, w, nodeId_utf8, 0x00, signal_utf8] — max 64 bytes
     const idBytes = new TextEncoder().encode(nodeId);
-    const payload = new Uint8Array(2 + Math.min(idBytes.length, 62));
+    const sigBytes = signal ? new TextEncoder().encode(signal) : new Uint8Array(0);
+    const maxId = Math.min(idBytes.length, 60);
+    const remaining = 62 - maxId - 1; // -1 for null separator
+    const maxSig = Math.max(0, Math.min(sigBytes.length, remaining));
+    const payloadLen = 2 + maxId + (maxSig > 0 ? 1 + maxSig : 0);
+    const payload = new Uint8Array(payloadLen);
     payload[0] = h;
     payload[1] = w;
-    payload.set(idBytes.slice(0, 62), 2);
+    payload.set(idBytes.slice(0, maxId), 2);
+    if (maxSig > 0) {
+      payload[2 + maxId] = 0; // null separator
+      payload.set(sigBytes.slice(0, maxSig), 2 + maxId + 1);
+    }
 
     const success = await this.sphere.emitBus(payload, free);
     if (success) {
       this.busEmitCount++;
-      this.log(`Bus emit: node=${nodeId.slice(0, 8)} h=${h} w=${w} free=${free} (energy: ${this.sphere.currentEnergy})`);
+      const sigPreview = signal ? ` sig="${signal.slice(0, 16)}"` : "";
+      this.log(`Bus emit: node=${nodeId.slice(0, 8)} h=${h} w=${w}${sigPreview} free=${free} (energy: ${this.sphere.currentEnergy})`);
     }
   }
 
