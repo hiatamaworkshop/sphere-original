@@ -26,7 +26,7 @@ const DEFAULT_CONFIG: HfConfig = {
   maxTokens: 128,
 };
 
-const API_BASE = "https://api-inference.huggingface.co/models";
+const API_BASE = "https://router.huggingface.co/models";
 
 export class HfInferenceClient implements LlmClient {
   private config: HfConfig;
