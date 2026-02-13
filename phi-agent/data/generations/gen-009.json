@@ -1,7 +1,11 @@
 {
-  "generated": "2026-02-13T07:15:46.203Z",
-  "totalEvaluations": 60,
+  "generation": 9,
+  "timestamp": "2026-02-13T07:15:46.209Z",
+  "sphereHash": null,
+  "inputEvaluations": 60,
   "survivedEvaluations": 60,
+  "hunger": 0.2,
+  "halfLifeHours": 72,
   "species": {
     "hunter": {
       "evaluations": 13,
