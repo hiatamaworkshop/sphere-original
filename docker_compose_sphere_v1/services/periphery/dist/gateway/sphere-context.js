@@ -915,10 +915,24 @@ export class SphereContextImpl {
         return true;
     }
     // ===== Return =====
+    /**
+     * Forced return for expelled sessions (energy exhaustion / TTL expiry).
+     * Bypasses checkSession() since session state is already "expired".
+     * Ensures AutoCapsule + buffered evaluations flow through the pipeline.
+     */
+    async returnOnExpelled() {
+        if (this._ended)
+            return; // already returned normally
+        console.log(`[SphereContext] returnOnExpelled() - session ${this._sessionId}`);
+        return this._processReturn();
+    }
     async return(capsule) {
         this.checkSession();
-        this._ended = true;
         console.log(`[SphereContext] return() - session ${this._sessionId}`);
+        return this._processReturn(capsule);
+    }
+    async _processReturn(capsule) {
+        this._ended = true;
         // End any current focus (with action log)
         this.endCurrentFocus();
         if (this.coreAdapter) {

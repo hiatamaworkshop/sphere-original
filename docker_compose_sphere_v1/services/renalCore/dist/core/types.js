@@ -11,22 +11,37 @@
 /**
  * 16bit Node Flags: ノードの物理的性質を表すフラグ
  * 各ビットが物理的パラメータ（減衰率、熱量ブースト等）に変換される
+ *
+ * Design: FLAG_SYSTEM_REDESIGN.md
+ * - Temporal (bits 0-3): time properties
+ * - Density (bits 4-7): structural complexity
+ * - Cognitive (bits 8-11): perceptual impact
+ * - Special (bits 12-15): system/user metadata
  */
 export var NodeFlag;
 (function (NodeFlag) {
-    NodeFlag[NodeFlag["Authority"] = 1] = "Authority";
-    NodeFlag[NodeFlag["Freshness"] = 2] = "Freshness";
-    NodeFlag[NodeFlag["Catalyst"] = 4] = "Catalyst";
-    NodeFlag[NodeFlag["Ephemeral"] = 8] = "Ephemeral";
-    NodeFlag[NodeFlag["Sticky"] = 16] = "Sticky";
-    NodeFlag[NodeFlag["Volatile"] = 32] = "Volatile";
-    NodeFlag[NodeFlag["Hot"] = 64] = "Hot";
-    NodeFlag[NodeFlag["Frozen"] = 128] = "Frozen";
-    NodeFlag[NodeFlag["Hub"] = 256] = "Hub";
-    NodeFlag[NodeFlag["Isolated"] = 512] = "Isolated";
+    // Temporal (bits 0-3)
+    NodeFlag[NodeFlag["TemporalShort"] = 1] = "TemporalShort";
+    NodeFlag[NodeFlag["TemporalLong"] = 2] = "TemporalLong";
+    NodeFlag[NodeFlag["TemporalCyclic"] = 4] = "TemporalCyclic";
+    NodeFlag[NodeFlag["Hot"] = 8] = "Hot";
+    // Density (bits 4-7)
+    NodeFlag[NodeFlag["Dense"] = 16] = "Dense";
+    NodeFlag[NodeFlag["Sparse"] = 32] = "Sparse";
+    NodeFlag[NodeFlag["Composite"] = 64] = "Composite";
+    NodeFlag[NodeFlag["Authority"] = 128] = "Authority";
+    // Cognitive (bits 8-11)
+    NodeFlag[NodeFlag["Insightful"] = 256] = "Insightful";
+    NodeFlag[NodeFlag["Confusing"] = 512] = "Confusing";
+    NodeFlag[NodeFlag["Provoking"] = 1024] = "Provoking";
+    NodeFlag[NodeFlag["Soothing"] = 2048] = "Soothing";
+    // Special (bits 12-15)
     NodeFlag[NodeFlag["UserMarked"] = 4096] = "UserMarked";
     NodeFlag[NodeFlag["SystemCore"] = 8192] = "SystemCore";
     NodeFlag[NodeFlag["Compressed"] = 16384] = "Compressed";
     NodeFlag[NodeFlag["Candidate"] = 32768] = "Candidate";
 })(NodeFlag || (NodeFlag = {}));
+// State flags (dynamic, Arbiter-assigned)
+// Frozen is represented by SystemCore (0x2000) for metabolism purposes
+export const Frozen = NodeFlag.SystemCore; // Alias for backwards compatibility
 //# sourceMappingURL=types.js.map

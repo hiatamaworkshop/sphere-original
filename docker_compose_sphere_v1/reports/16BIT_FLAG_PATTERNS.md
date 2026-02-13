@@ -3,6 +3,21 @@
 > **定義場所**: `services/periphery/src/tagger/tagger.ts`
 > **最終更新**: 2026-02-03
 
+> ---
+> **⚠️ 本文書は旧体系 (2026-02-03)。以下の設計変更により大幅に再定義済み。**
+>
+> - **`reports/FLAG_SYSTEM_REDESIGN.md`** (2026-02-10) — 16bit を 3層+Special に再構造化。
+>   Catalyst/Hub/Isolated 廃止、Temporal/Density/Cognitive/Special の 4 直交次元へ。
+> - **Gate Type Architecture** (2026-02-11, 同ファイル内) — 16bit の汎用化構想:
+>   - **12 bits (Temporal + Density + Special) はユニバーサル** — データ形式を問わない情報物理定数
+>   - **4 bits (Cognitive, bits 8-11) のみドメイン固有** — text/numeric/signal/graph/vision で意味テーブルを差し替え
+>   - **FastGate scoring pipeline は汎用演算エンジン** — `if (flags & bit) score *= bias` はデータ形式を知らない
+>   - **Tagger = ドメインアダプター** — 「regex マッチャー」ではなく、生データを情報物理空間に投射する変換器
+>   - のせかえの正体: Tagger 実装 + Cognitive 意味テーブル + Weapon preset の差し替え
+>
+> 本文書のフラグ定義・パターンは歴史的参照として残す。現行定義は FLAG_SYSTEM_REDESIGN.md を参照。
+> ---
+
 ---
 
 ## 概要

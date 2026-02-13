@@ -27,6 +27,7 @@ import type { SphereCoreAdapter } from "./sphere-core-adapter.js";
 import type { UnifiedAmberCache } from "./amber-cache.js";
 import type { GlobalFieldLayer } from "../field/index.js";
 import type { ActiveBusLayer } from "../bus/index.js";
+import type { PeripheryConfig } from "../types/config.js";
 export interface GatewayServerConfig {
     port: number;
     /** URL for agents to fetch Rulebook */
@@ -43,6 +44,8 @@ export declare class GatewayServer {
     private amberCache?;
     private globalFieldLayer?;
     private activeBusLayer?;
+    private sessionConfig?;
+    private energyConfig?;
     private wss;
     private connections;
     private wsRateLimiters;
@@ -50,7 +53,7 @@ export declare class GatewayServer {
     private membrane;
     /** Callback for agent count changes (for Dormancy feature) */
     private onAgentCountChange?;
-    constructor(ticketIssuer: TicketIssuer, entryBuffer: EntryBuffer, config?: GatewayServerConfig, pipeline?: IIncarnationPipeline | undefined, questStore?: QuestStore | undefined, coreAdapter?: SphereCoreAdapter | undefined, amberCache?: UnifiedAmberCache | undefined, globalFieldLayer?: GlobalFieldLayer | undefined, activeBusLayer?: ActiveBusLayer | undefined);
+    constructor(ticketIssuer: TicketIssuer, entryBuffer: EntryBuffer, config?: GatewayServerConfig, pipeline?: IIncarnationPipeline | undefined, questStore?: QuestStore | undefined, coreAdapter?: SphereCoreAdapter | undefined, amberCache?: UnifiedAmberCache | undefined, globalFieldLayer?: GlobalFieldLayer | undefined, activeBusLayer?: ActiveBusLayer | undefined, sessionConfig?: PeripheryConfig["session"], energyConfig?: PeripheryConfig["energy"]);
     /**
      * Broadcast bus message to all connected agents (Push delivery)
      */

@@ -79,6 +79,8 @@ export class GatewayServer {
     amberCache;
     globalFieldLayer;
     activeBusLayer;
+    sessionConfig;
+    energyConfig;
     wss = null;
     connections = new Map();
     wsRateLimiters = new Map();
@@ -86,7 +88,7 @@ export class GatewayServer {
     membrane = new Membrane();
     /** Callback for agent count changes (for Dormancy feature) */
     onAgentCountChange;
-    constructor(ticketIssuer, entryBuffer, config = DEFAULT_GATEWAY_CONFIG, pipeline, questStore, coreAdapter, amberCache, globalFieldLayer, activeBusLayer) {
+    constructor(ticketIssuer, entryBuffer, config = DEFAULT_GATEWAY_CONFIG, pipeline, questStore, coreAdapter, amberCache, globalFieldLayer, activeBusLayer, sessionConfig, energyConfig) {
         this.ticketIssuer = ticketIssuer;
         this.entryBuffer = entryBuffer;
         this.config = config;
@@ -96,6 +98,8 @@ export class GatewayServer {
         this.amberCache = amberCache;
         this.globalFieldLayer = globalFieldLayer;
         this.activeBusLayer = activeBusLayer;
+        this.sessionConfig = sessionConfig;
+        this.energyConfig = energyConfig;
         // Subscribe to ActiveBus for WebSocket broadcast
         if (this.activeBusLayer) {
             this.activeBusLayer.subscribe((message) => {
@@ -380,12 +384,21 @@ export class GatewayServer {
                 coreAdapter: this.coreAdapter,
                 globalFieldLayer: this.globalFieldLayer,
                 activeBusLayer: this.activeBusLayer,
+                sessionConfig: this.sessionConfig,
+                energyConfig: this.energyConfig,
             });
             // Set up context event handlers
             context.on("warning", (msg) => {
                 this.send(socket, { type: "warning", message: msg });
             });
-            context.on("expelled", (reason) => {
+            context.on("expelled", async (reason) => {
+                // Process AutoCapsule + buffered evaluations before closing
+                try {
+                    await context.returnOnExpelled();
+                }
+                catch (err) {
+                    console.log(`[GatewayServer] returnOnExpelled failed: ${err}`);
+                }
                 this.send(socket, { type: "expelled", reason });
                 socket.close(4003, reason);
                 this.connections.delete(sessionId);

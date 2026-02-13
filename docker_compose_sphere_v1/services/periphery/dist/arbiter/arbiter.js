@@ -81,7 +81,6 @@ export class Arbiter {
      *
      * @param projDB - Current projection database
      * @param options.isPaused - Whether Sphere is paused
-     * @param options.linkCounts - Map of nodeId → link count (for Hub/Isolated detection)
      */
     observe(projDB, options = {}) {
         const queue = {
@@ -114,7 +113,7 @@ export class Arbiter {
                 }
             }
             // 4. Dynamic Flags 更新判定
-            const flagUpdate = this.computeFlagUpdate(node, options.linkCounts);
+            const flagUpdate = this.computeFlagUpdate(node);
             if (flagUpdate) {
                 queue.flagUpdates.push(flagUpdate);
             }
@@ -307,12 +306,13 @@ export class Arbiter {
      *
      * [Dynamic Flags]
      *   - Hot: heat > hotHeatThreshold
-     *   - Hub: linkCount > hubLinkThreshold
-     *   - Isolated: linkCount <= isolatedLinkThreshold
+     *
+     * Hub/Isolated dynamic flags removed — linkCounts never supplied.
+     * Static Hub/Isolated via Tagger keyword matching is unaffected.
      *
      * @returns FlagUpdate if any changes needed, null otherwise
      */
-    computeFlagUpdate(node, linkCounts) {
+    computeFlagUpdate(node) {
         let add = 0;
         let remove = 0;
         // === Hot Flag ===
@@ -324,29 +324,6 @@ export class Arbiter {
         else if (!isHot && hasHot) {
             remove |= NodeFlag.Hot;
         }
-        // === Hub / Isolated Flags ===
-        if (linkCounts) {
-            const linkCount = linkCounts.get(node.id) ?? 0;
-            // Hub: many connections
-            const isHub = linkCount > this.config.hubLinkThreshold;
-            const hasHub = this.hasFlag(node, NodeFlag.Hub);
-            if (isHub && !hasHub) {
-                add |= NodeFlag.Hub;
-            }
-            else if (!isHub && hasHub) {
-                remove |= NodeFlag.Hub;
-            }
-            // Isolated: no connections (mutually exclusive with Hub)
-            const isIsolated = linkCount <= this.config.isolatedLinkThreshold;
-            const hasIsolated = this.hasFlag(node, NodeFlag.Isolated);
-            if (isIsolated && !isHub && !hasIsolated) {
-                add |= NodeFlag.Isolated;
-            }
-            else if ((!isIsolated || isHub) && hasIsolated) {
-                remove |= NodeFlag.Isolated;
-            }
-        }
-        // Return update only if there are changes
         if (add === 0 && remove === 0) {
             return null;
         }

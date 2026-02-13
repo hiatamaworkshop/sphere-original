@@ -20,7 +20,7 @@ export const DEFAULT_TICKET_CONFIG = {
     sessionTtl: 120, // 2 minutes inside (visit, not residence)
     rateLimit: {
         maxPerMinute: 30, // 30 tickets per minute per IP (relaxed for swarm testing)
-        maxConcurrent: 10, // 10 concurrent dives per IP (relaxed for swarm testing)
+        maxConcurrent: 30, // 30 concurrent dives per IP (increased for parallel testing)
     },
 };
 // Future: "readOnly" | "observeOnly" | "linker"

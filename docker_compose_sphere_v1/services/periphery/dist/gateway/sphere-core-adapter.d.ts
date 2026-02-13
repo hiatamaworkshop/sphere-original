@@ -9,7 +9,7 @@
  *   - Agents don't perceive: ttl, decay, exact traversal count
  *   - "sense is feeling presence, not reading the world"
  */
-import type { IProjectionRepository, IReferenceRepository } from "../repository/index.js";
+import type { IProjectionRepository, IReferenceRepository, ISpatialFieldRepository } from "../repository/index.js";
 import type { NearbyNode, FocusResult, L1ScanResult } from "../types/gateway.js";
 import type { Parser } from "../parser/parser.js";
 import type { UnifiedAmberCache } from "./amber-cache.js";
@@ -40,7 +40,14 @@ export declare class SphereCoreAdapter {
     private internalCache;
     private unifiedCache;
     private agentCount;
+    private spatialRepo;
     constructor(projectionRepo: IProjectionRepository, referenceRepo: IReferenceRepository, parser: Parser, config?: Partial<SphereCoreAdapterConfig>, unifiedCache?: UnifiedAmberCache);
+    /**
+     * Set spatial field repository for fertility-based perception bonus.
+     * [Design] Fertility = decomposed node energy. Higher fertility → wider perception.
+     * This closes the death→nutrients→perception cycle.
+     */
+    setSpatialRepo(repo: ISpatialFieldRepository): void;
     /**
      * Set unified cache (for late binding)
      */
@@ -67,6 +74,14 @@ export declare class SphereCoreAdapter {
      * Minimum 20% to ensure meaningful results
      */
     private getSampleRatio;
+    /**
+     * Get fertility-based perception bonus.
+     * [Design] Total fertility across all cells → sigmoid → 0-0.3 bonus
+     * [Cycle] decompose → fertility += h×w → decay → sense bonus → perception widens
+     * Uses planktonConversionRate concept: raw fertility → usable perception bonus
+     * Saturates at 0.3 (30% wider perception at high fertility)
+     */
+    private getFertilityBonus;
     /**
      * Get unified cache (for showcase access)
      */

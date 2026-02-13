@@ -1,0 +1,132 @@
+{
+  "generation": 5,
+  "timestamp": "2026-02-10T04:03:19.078Z",
+  "inputEvaluations": 14,
+  "survivedEvaluations": 14,
+  "hunger": 0.2,
+  "halfLifeHours": 72,
+  "species": {
+    "balanced": {
+      "evaluations": 14,
+      "avgH": 7.357142857142856,
+      "avgW": 6.714285714285714,
+      "avgD": 4.857142857142857,
+      "hotNodes": [
+        {
+          "nodeId": "ebd810081fe8cc2e",
+          "count": 2.9999999999999996
+        },
+        {
+          "nodeId": "72a277371ac3f7df",
+          "count": 2
+        },
+        {
+          "nodeId": "ad0692f4836319a4",
+          "count": 2
+        },
+        {
+          "nodeId": "49dcf8ad122f38ce",
+          "count": 2
+        },
+        {
+          "nodeId": "50140a9bbacc7841",
+          "count": 1
+        },
+        {
+          "nodeId": "a741f365b82313a2",
+          "count": 1
+        },
+        {
+          "nodeId": "84bed15fb3e8faa2",
+          "count": 1
+        },
+        {
+          "nodeId": "7dd7687aa0b1af9c",
+          "count": 1
+        },
+        {
+          "nodeId": "55ac928f18ad016c",
+          "count": 1
+        }
+      ],
+      "commonTags": [
+        "theory",
+        "evolution",
+        "biology",
+        "culture",
+        "mathematics",
+        "web",
+        "curiosity",
+        "time",
+        "linguistics",
+        "cognition",
+        "computation",
+        "chemistry",
+        "philosophy",
+        "AI",
+        "mind"
+      ]
+    }
+  },
+  "global": {
+    "evaluations": 14,
+    "avgH": 7.357142857142857,
+    "avgW": 6.714285714285714,
+    "avgD": 4.857142857142857,
+    "hotNodes": [
+      {
+        "nodeId": "ebd810081fe8cc2e",
+        "count": 3
+      },
+      {
+        "nodeId": "72a277371ac3f7df",
+        "count": 2
+      },
+      {
+        "nodeId": "ad0692f4836319a4",
+        "count": 2
+      },
+      {
+        "nodeId": "49dcf8ad122f38ce",
+        "count": 2
+      },
+      {
+        "nodeId": "50140a9bbacc7841",
+        "count": 1
+      },
+      {
+        "nodeId": "a741f365b82313a2",
+        "count": 1
+      },
+      {
+        "nodeId": "84bed15fb3e8faa2",
+        "count": 1
+      },
+      {
+        "nodeId": "7dd7687aa0b1af9c",
+        "count": 1
+      },
+      {
+        "nodeId": "55ac928f18ad016c",
+        "count": 1
+      }
+    ],
+    "commonTags": [
+      "theory",
+      "evolution",
+      "biology",
+      "culture",
+      "mathematics",
+      "web",
+      "curiosity",
+      "time",
+      "linguistics",
+      "cognition",
+      "computation",
+      "chemistry",
+      "philosophy",
+      "AI",
+      "mind"
+    ]
+  }
+}

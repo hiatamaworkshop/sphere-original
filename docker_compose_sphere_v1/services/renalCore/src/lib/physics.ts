@@ -41,8 +41,8 @@ export function computePhysicsModifiers(
   const result: FlagPhysicsModifiers = { ...DEFAULT_MODIFIERS };
   const mods = config?.physicsModifiers;
 
-  // Frozen: 代謝停止
-  if (flags & NodeFlag.Frozen) {
+  // SystemCore: 代謝停止 (Frozen metabolism for Relic)
+  if (flags & NodeFlag.SystemCore) {
     result.decay_rate_multiplier = 0;
     result.ttl_decay_multiplier = 0;
     return result;
@@ -53,29 +53,19 @@ export function computePhysicsModifiers(
     result.decay_rate_multiplier *= mods?.Authority?.decayRateMultiplier ?? 0.95;
   }
 
-  // Freshness: heat増幅
-  if (flags & NodeFlag.Freshness) {
-    result.heat_boost_multiplier *= mods?.Freshness?.heatBoostMultiplier ?? 1.2;
+  // TemporalShort: decay加速, heat増幅 (replaces Freshness/Ephemeral)
+  if (flags & NodeFlag.TemporalShort) {
+    result.decay_rate_multiplier *= mods?.TemporalShort?.decayRateMultiplier ?? 1.3;
   }
 
-  // Ephemeral: decay加速
-  if (flags & NodeFlag.Ephemeral) {
-    result.decay_rate_multiplier *= mods?.Ephemeral?.decayRateMultiplier ?? 1.5;
+  // TemporalLong: ttl減衰に抵抗
+  if (flags & NodeFlag.TemporalLong) {
+    result.ttl_decay_multiplier *= mods?.TemporalLong?.ttlDecayMultiplier ?? 0.7;
   }
 
-  // Sticky: ttl減衰に抵抗
-  if (flags & NodeFlag.Sticky) {
-    result.ttl_decay_multiplier *= mods?.Sticky?.ttlDecayMultiplier ?? 0.8;
-  }
-
-  // Volatile: 高速蒸発
-  if (flags & NodeFlag.Volatile) {
-    result.ttl_decay_multiplier *= mods?.Volatile?.ttlDecayMultiplier ?? 1.3;
-  }
-
-  // Hub: weight増加
-  if (flags & NodeFlag.Hub) {
-    result.weight_multiplier *= mods?.Hub?.weightMultiplier ?? 1.1;
+  // Dense: weight増幅
+  if (flags & NodeFlag.Dense) {
+    result.weight_multiplier *= 1.2;
   }
 
   return result;

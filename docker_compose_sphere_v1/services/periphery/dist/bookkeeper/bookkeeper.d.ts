@@ -101,7 +101,8 @@ export declare class Bookkeeper {
     applyFossilization(fossilNodes: SphereNode[]): Promise<void>;
     /**
      * Apply decomposition results from cleaner fish
-     * [Principle] Delete from ProjDB, add fertility to SpatialField
+     * [Principle] Delete from both ProjDB and RefDB, add fertility to SpatialField
+     * [Design] decompose = 完全消去 — ProjDB (body) + RefDB (soul) 両方から削除
      *
      * @param decompositions Decomposition results from cleaner fish
      */

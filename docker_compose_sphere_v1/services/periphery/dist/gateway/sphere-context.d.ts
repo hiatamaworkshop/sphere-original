@@ -187,7 +187,14 @@ export declare class SphereContextImpl implements SphereContext {
      * @returns true if emitted, false if bus disabled or invalid payload
      */
     emitBus(payload: Uint8Array): Promise<boolean>;
+    /**
+     * Forced return for expelled sessions (energy exhaustion / TTL expiry).
+     * Bypasses checkSession() since session state is already "expired".
+     * Ensures AutoCapsule + buffered evaluations flow through the pipeline.
+     */
+    returnOnExpelled(): Promise<void>;
     return(capsule?: ExperienceCapsule): Promise<void>;
+    private _processReturn;
     enterSanctuary(): Promise<void>;
     enterCore(): Promise<void>;
     on<K extends SphereContextEventType>(event: K, handler: SphereContextEventHandlers[K]): void;

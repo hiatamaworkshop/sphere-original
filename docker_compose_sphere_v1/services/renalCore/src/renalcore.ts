@@ -128,8 +128,8 @@ export class RenalCore {
   private processDecay(loadFactor: number) {
     // === Node Decay ===
     for (const node of this.projectionDB.values()) {
-      // Frozen フラグがある場合は代謝を停止（relic, environment 等）
-      if (hasFlag(node, NodeFlag.Frozen)) {
+      // SystemCore フラグがある場合は代謝を停止（relic, environment 等）
+      if (hasFlag(node, NodeFlag.SystemCore)) {
         continue;
       }
 
@@ -164,8 +164,8 @@ export class RenalCore {
     }
 
     // === Spatial Field Decay ===
-    // [Status] fertility: write-only (decompose で加算、ここで減衰、消費側は未実装)
-    // [Future] 近傍エージェントのアクション (sense/focus) に fertility ボーナスを付与
+    // [Cycle] decompose → fertility += h×w → decay here → consumed by sense() perception bonus
+    // [Consumer] SphereCoreAdapter.getFertilityBonus() → tanh(total/1000) × 0.3 → visibilityRadius boost
     for (const field of this.spatialFields.values()) {
       field.fertility *= (1 - this.config.fertilityDecayRate);
     }

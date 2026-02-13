@@ -190,8 +190,57 @@ export declare const rulebook: {
         interpretation: {
             note: string;
             decoding: string;
+            philosophy: string;
         };
         flags: {
+            temporalShort: {
+                bit: number;
+                value: string;
+                name: string;
+                scent: string;
+                effect: string;
+                triggers: string[];
+            };
+            temporalLong: {
+                bit: number;
+                value: string;
+                name: string;
+                scent: string;
+                effect: string;
+                triggers: string[];
+            };
+            temporalCyclic: {
+                bit: number;
+                value: string;
+                name: string;
+                scent: string;
+                effect: string;
+                triggers: string[];
+            };
+            dense: {
+                bit: number;
+                value: string;
+                name: string;
+                scent: string;
+                effect: string;
+                triggers: string[];
+            };
+            sparse: {
+                bit: number;
+                value: string;
+                name: string;
+                scent: string;
+                effect: string;
+                triggers: string[];
+            };
+            composite: {
+                bit: number;
+                value: string;
+                name: string;
+                scent: string;
+                effect: string;
+                triggers: string[];
+            };
             authority: {
                 bit: number;
                 value: string;
@@ -200,7 +249,7 @@ export declare const rulebook: {
                 effect: string;
                 triggers: string[];
             };
-            freshness: {
+            insightful: {
                 bit: number;
                 value: string;
                 name: string;
@@ -208,7 +257,7 @@ export declare const rulebook: {
                 effect: string;
                 triggers: string[];
             };
-            catalyst: {
+            confusing: {
                 bit: number;
                 value: string;
                 name: string;
@@ -216,7 +265,7 @@ export declare const rulebook: {
                 effect: string;
                 triggers: string[];
             };
-            ephemeral: {
+            provoking: {
                 bit: number;
                 value: string;
                 name: string;
@@ -224,47 +273,7 @@ export declare const rulebook: {
                 effect: string;
                 triggers: string[];
             };
-            sticky: {
-                bit: number;
-                value: string;
-                name: string;
-                scent: string;
-                effect: string;
-                triggers: string[];
-            };
-            volatile: {
-                bit: number;
-                value: string;
-                name: string;
-                scent: string;
-                effect: string;
-                triggers: string[];
-            };
-            hot: {
-                bit: number;
-                value: string;
-                name: string;
-                scent: string;
-                effect: string;
-                triggers: string[];
-            };
-            frozen: {
-                bit: number;
-                value: string;
-                name: string;
-                scent: string;
-                effect: string;
-                triggers: string[];
-            };
-            hub: {
-                bit: number;
-                value: string;
-                name: string;
-                scent: string;
-                effect: string;
-                triggers: string[];
-            };
-            isolated: {
+            soothing: {
                 bit: number;
                 value: string;
                 name: string;
@@ -475,9 +484,20 @@ export declare const rulebook: {
     closing: string;
 };
 /**
- * Get rulebook for API response
+ * Get rulebook for API response.
+ * Config overrides are applied to constraints so agents receive authoritative values.
  */
-export declare function getRulebookResponse(): {
+export declare function getRulebookResponse(configOverrides?: {
+    session?: {
+        ttlSeconds: number;
+        warningBeforeEndSeconds: number;
+    };
+    energy?: {
+        initial: number;
+        warningThreshold: number;
+        costs: Record<string, number>;
+    };
+}): {
     version: string;
     welcome: string;
     principles: ({
@@ -650,8 +670,57 @@ export declare function getRulebookResponse(): {
         interpretation: {
             note: string;
             decoding: string;
+            philosophy: string;
         };
         flags: {
+            temporalShort: {
+                bit: number;
+                value: string;
+                name: string;
+                scent: string;
+                effect: string;
+                triggers: string[];
+            };
+            temporalLong: {
+                bit: number;
+                value: string;
+                name: string;
+                scent: string;
+                effect: string;
+                triggers: string[];
+            };
+            temporalCyclic: {
+                bit: number;
+                value: string;
+                name: string;
+                scent: string;
+                effect: string;
+                triggers: string[];
+            };
+            dense: {
+                bit: number;
+                value: string;
+                name: string;
+                scent: string;
+                effect: string;
+                triggers: string[];
+            };
+            sparse: {
+                bit: number;
+                value: string;
+                name: string;
+                scent: string;
+                effect: string;
+                triggers: string[];
+            };
+            composite: {
+                bit: number;
+                value: string;
+                name: string;
+                scent: string;
+                effect: string;
+                triggers: string[];
+            };
             authority: {
                 bit: number;
                 value: string;
@@ -660,7 +729,7 @@ export declare function getRulebookResponse(): {
                 effect: string;
                 triggers: string[];
             };
-            freshness: {
+            insightful: {
                 bit: number;
                 value: string;
                 name: string;
@@ -668,7 +737,7 @@ export declare function getRulebookResponse(): {
                 effect: string;
                 triggers: string[];
             };
-            catalyst: {
+            confusing: {
                 bit: number;
                 value: string;
                 name: string;
@@ -676,7 +745,7 @@ export declare function getRulebookResponse(): {
                 effect: string;
                 triggers: string[];
             };
-            ephemeral: {
+            provoking: {
                 bit: number;
                 value: string;
                 name: string;
@@ -684,47 +753,7 @@ export declare function getRulebookResponse(): {
                 effect: string;
                 triggers: string[];
             };
-            sticky: {
-                bit: number;
-                value: string;
-                name: string;
-                scent: string;
-                effect: string;
-                triggers: string[];
-            };
-            volatile: {
-                bit: number;
-                value: string;
-                name: string;
-                scent: string;
-                effect: string;
-                triggers: string[];
-            };
-            hot: {
-                bit: number;
-                value: string;
-                name: string;
-                scent: string;
-                effect: string;
-                triggers: string[];
-            };
-            frozen: {
-                bit: number;
-                value: string;
-                name: string;
-                scent: string;
-                effect: string;
-                triggers: string[];
-            };
-            hub: {
-                bit: number;
-                value: string;
-                name: string;
-                scent: string;
-                effect: string;
-                triggers: string[];
-            };
-            isolated: {
+            soothing: {
                 bit: number;
                 value: string;
                 name: string;

@@ -87,6 +87,7 @@ declare class SwarmAgent {
      * @param d Decay score (0-10, 5=neutral, higher=faster decay)
      */
     private evaluate;
+    private move;
     private enterLayer;
     private return;
     private randomBehavior;

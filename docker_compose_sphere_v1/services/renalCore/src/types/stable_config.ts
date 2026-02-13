@@ -43,16 +43,18 @@ export interface FlagPhysicsModifier {
 
 /**
  * RenalCore - Flags 設定
+ * Design: FLAG_SYSTEM_REDESIGN.md
  */
 export interface RenalCoreFlagsConfig {
   physicsModifiers: {
+    // Temporal (bits 0-3)
+    TemporalShort: FlagPhysicsModifier;
+    TemporalLong: FlagPhysicsModifier;
+    // Density (bits 4-7)
+    Dense: FlagPhysicsModifier;
     Authority: FlagPhysicsModifier;
-    Freshness: FlagPhysicsModifier;
-    Ephemeral: FlagPhysicsModifier;
-    Sticky: FlagPhysicsModifier;
-    Volatile: FlagPhysicsModifier;
-    Hub: FlagPhysicsModifier;
-    Frozen: FlagPhysicsModifier;
+    // Special (bits 12-15)
+    SystemCore: FlagPhysicsModifier;  // Frozen metabolism (Relic)
   };
 }
 

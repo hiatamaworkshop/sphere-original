@@ -11,6 +11,10 @@
 import type { SphereNode } from "@sphere/renal-core";
 /**
  * CleanerFishPersonality: 掃除魚の性格
+ *
+ * [Future] 個体差の拡張候補:
+ *   - preference: "ghost" | "fossil" — 処理順序の好み (候補 > capacity 時に効く)
+ *   - hungerSensitivity: 0.8-1.2 — 個体ごとの hunger 補正 (同じ環境でも反応が異なる)
  */
 export interface CleanerFishPersonality {
     processingSpeed: number;

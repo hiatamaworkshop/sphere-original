@@ -25,15 +25,17 @@ export const decayHeat = (currentHeat, rate) => {
 };
 /**
  * デフォルトの物理修正値
+ * Design: FLAG_SYSTEM_REDESIGN.md
  */
 const DEFAULT_MODIFIERS = {
+    // Temporal (bits 0-3)
+    TemporalShort: { decayRateMultiplier: 1.3, ttlDecayMultiplier: 1.2 },
+    TemporalLong: { decayRateMultiplier: 0.8, ttlDecayMultiplier: 0.7 },
+    // Density (bits 4-7)
+    Dense: { weightMultiplier: 1.2 },
     Authority: { decayRateMultiplier: 0.95 },
-    Freshness: { heatBoostMultiplier: 1.2 },
-    Ephemeral: { decayRateMultiplier: 1.5 },
-    Sticky: { ttlDecayMultiplier: 0.8 },
-    Volatile: { ttlDecayMultiplier: 1.3 },
-    Hub: { weightMultiplier: 1.1 },
-    Frozen: { decayRateMultiplier: 0, ttlDecayMultiplier: 0 },
+    // Special (bits 12-15)
+    SystemCore: { decayRateMultiplier: 0, ttlDecayMultiplier: 0 }, // Frozen metabolism (Relic)
 };
 /**
  * フラグに基づいて実効的な減衰率を計算する
@@ -45,17 +47,20 @@ const DEFAULT_MODIFIERS = {
 export const computeEffectiveDecayRate = (baseDecayRate, flags, config) => {
     let rate = baseDecayRate;
     const mods = config?.physicsModifiers ?? DEFAULT_MODIFIERS;
-    // Frozen: 代謝停止
-    if (flags & NodeFlag.Frozen) {
+    // SystemCore: 代謝停止 (Frozen metabolism for Relic)
+    if (flags & NodeFlag.SystemCore) {
         return 0;
     }
-    // Authority: decay減速
+    // Temporal layer
+    if (flags & NodeFlag.TemporalShort) {
+        rate *= mods.TemporalShort?.decayRateMultiplier ?? 1.3;
+    }
+    if (flags & NodeFlag.TemporalLong) {
+        rate *= mods.TemporalLong?.decayRateMultiplier ?? 0.8;
+    }
+    // Density layer
     if (flags & NodeFlag.Authority) {
         rate *= mods.Authority?.decayRateMultiplier ?? 0.95;
-    }
-    // Ephemeral: decay加速
-    if (flags & NodeFlag.Ephemeral) {
-        rate *= mods.Ephemeral?.decayRateMultiplier ?? 1.5;
     }
     return rate;
 };
@@ -68,11 +73,9 @@ export const computeEffectiveDecayRate = (baseDecayRate, flags, config) => {
  */
 export const computeEffectiveHeat = (baseHeat, flags, config) => {
     let heat = baseHeat;
-    const mods = config?.physicsModifiers ?? DEFAULT_MODIFIERS;
-    // Freshness: heat増幅
-    if (flags & NodeFlag.Freshness) {
-        heat *= mods.Freshness?.heatBoostMultiplier ?? 1.2;
-    }
+    // const mods = config?.physicsModifiers ?? DEFAULT_MODIFIERS;
+    // No flag-based heat modifiers currently applied
+    // (TemporalShort affects decay, not heat)
     return heat;
 };
 /**
@@ -85,17 +88,16 @@ export const computeEffectiveHeat = (baseHeat, flags, config) => {
 export const computeEffectiveTTLDecay = (baseTTLDecay, flags, config) => {
     let decay = baseTTLDecay;
     const mods = config?.physicsModifiers ?? DEFAULT_MODIFIERS;
-    // Frozen: 代謝停止
-    if (flags & NodeFlag.Frozen) {
+    // SystemCore: 代謝停止 (Frozen metabolism for Relic)
+    if (flags & NodeFlag.SystemCore) {
         return 0;
     }
-    // Sticky: ttl減衰に抵抗
-    if (flags & NodeFlag.Sticky) {
-        decay *= mods.Sticky?.ttlDecayMultiplier ?? 0.8;
+    // Temporal layer
+    if (flags & NodeFlag.TemporalShort) {
+        decay *= mods.TemporalShort?.ttlDecayMultiplier ?? 1.2;
     }
-    // Volatile: 高速蒸発
-    if (flags & NodeFlag.Volatile) {
-        decay *= mods.Volatile?.ttlDecayMultiplier ?? 1.3;
+    if (flags & NodeFlag.TemporalLong) {
+        decay *= mods.TemporalLong?.ttlDecayMultiplier ?? 0.7;
     }
     return decay;
 };
@@ -108,11 +110,9 @@ export const computeEffectiveTTLDecay = (baseTTLDecay, flags, config) => {
  */
 export const computeEffectiveWeight = (baseWeight, flags, config) => {
     let weight = baseWeight;
-    const mods = config?.physicsModifiers ?? DEFAULT_MODIFIERS;
-    // Hub: weight増加
-    if (flags & NodeFlag.Hub) {
-        weight *= mods.Hub?.weightMultiplier ?? 1.1;
-    }
+    // const mods = config?.physicsModifiers ?? DEFAULT_MODIFIERS;
+    // No flag-based weight modifiers currently applied
+    // (Hub removed, Dense/Authority applied elsewhere)
     return weight;
 };
 /**
@@ -125,18 +125,15 @@ export const computeEffectiveWeight = (baseWeight, flags, config) => {
 export const computeEffectiveWeightDecay = (baseWeightDecay, flags, config) => {
     let decay = baseWeightDecay;
     const mods = config?.physicsModifiers ?? DEFAULT_MODIFIERS;
-    // Frozen: 代謝停止
-    if (flags & NodeFlag.Frozen) {
+    // SystemCore: 代謝停止 (Frozen metabolism for Relic)
+    if (flags & NodeFlag.SystemCore) {
         return 0;
     }
     // Authority: decay減速 (weight も保護)
     if (flags & NodeFlag.Authority) {
         decay *= mods.Authority?.decayRateMultiplier ?? 0.95;
     }
-    // Hub: weight減衰に抵抗 (安定したハブは重みを保つ)
-    if (flags & NodeFlag.Hub) {
-        decay *= 0.8; // Hub nodes resist weight decay
-    }
+    // (Hub removed - no longer used)
     return decay;
 };
 //# sourceMappingURL=bit_math.js.map

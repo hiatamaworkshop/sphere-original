@@ -113,11 +113,7 @@ const arbiterConfig = {
     pauseErosionBoost: renalConfig.pauseErosionBoost,
     // Dynamic Flags thresholds (from unified nodeFlags config)
     hotHeatThreshold: dynamicThresholds?.hotHeatThreshold
-        ?? arbiterSettings.dynamicFlags?.hotHeatThreshold ?? 80,
-    hubLinkThreshold: dynamicThresholds?.hubLinkThreshold
-        ?? arbiterSettings.dynamicFlags?.hubLinkThreshold ?? 5,
-    isolatedLinkThreshold: dynamicThresholds?.isolatedLinkThreshold
-        ?? arbiterSettings.dynamicFlags?.isolatedLinkThreshold ?? 0,
+        ?? arbiterSettings.dynamicFlags?.hotHeatThreshold ?? 150,
     // Ascension cooldown settings (evaluation freeze + composite score)
     ascensionCooldownMs: arbiterSettings.ascension?.cooldownMs ?? 600000,
     ascensionScoreThreshold: arbiterSettings.ascension?.scoreThreshold ?? 500,
@@ -329,6 +325,7 @@ const coreAdapter = new SphereCoreAdapter(projectionRepo, referenceRepo, parser,
     basePerceptionRadius: sphereConfig.perception?.basePerceptionRadius ?? config.perception?.basePerceptionRadius ?? 0.5,
     maxSenseResults: sphereConfig.perception?.maxSenseResults ?? config.perception?.maxSenseResults ?? 15,
 });
+coreAdapter.setSpatialRepo(spatialRepo);
 console.log("  ✅ Gatekeeper (schema-driven)");
 console.log("  ✅ Parser + Buffer (Agent entry)");
 console.log("  ✅ IncarnationBuffer (summary vectorization batch)");
@@ -346,7 +343,8 @@ config, entryBuffer, // For GatewayServer (EntryRequest vectorization via buffer
 projectionDB, bookkeeper, // For NodeForge integration
 coreAdapter, // For real node access in SphereContext
 globalFieldLayer, // For magnetic field influence on agent movement
-activeBusLayer // For AI-to-AI volatile broadcast communication
+activeBusLayer, // For AI-to-AI volatile broadcast communication
+spatialFields // For /sphere/snapshot fertility data
 );
 server.start();
 // Connect agent count changes to RenalCore Dormancy and SphereCoreAdapter dynamic sampling

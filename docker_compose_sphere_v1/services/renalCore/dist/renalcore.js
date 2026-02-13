@@ -77,8 +77,8 @@ export class RenalCore {
     processDecay(loadFactor) {
         // === Node Decay ===
         for (const node of this.projectionDB.values()) {
-            // Frozen フラグがある場合は代謝を停止（relic, environment 等）
-            if (hasFlag(node, NodeFlag.Frozen)) {
+            // SystemCore フラグがある場合は代謝を停止（relic, environment 等）
+            if (hasFlag(node, NodeFlag.SystemCore)) {
                 continue;
             }
             // フラグに基づいて実効的なTTL減衰率を計算
@@ -97,6 +97,8 @@ export class RenalCore {
             }
         }
         // === Spatial Field Decay ===
+        // [Cycle] decompose → fertility += h×w → decay here → consumed by sense() perception bonus
+        // [Consumer] SphereCoreAdapter.getFertilityBonus() → tanh(total/1000) × 0.3 → visibilityRadius boost
         for (const field of this.spatialFields.values()) {
             field.fertility *= (1 - this.config.fertilityDecayRate);
         }

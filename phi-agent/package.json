@@ -1,0 +1,32 @@
+{
+  "name": "@sphere/phi-agent",
+  "version": "0.1.0",
+  "description": "Sphere Agent — phi (via ollama) coupled to the Sphere ecosystem",
+  "type": "module",
+  "main": "dist/index.js",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dive": "tsx src/index.ts",
+    "test:ollama": "tsx src/ollama-client.ts"
+  },
+  "dependencies": {
+    "ws": "^8.19.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/ws": "^8.18.1",
+    "tsx": "^4.0.0",
+    "typescript": "^5.3.0"
+  },
+  "keywords": [
+    "sphere",
+    "phi",
+    "ollama",
+    "agent",
+    "coupling"
+  ],
+  "author": "Sphere Project",
+  "license": "MIT"
+}
