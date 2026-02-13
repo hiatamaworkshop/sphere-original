@@ -3,7 +3,8 @@
     "allow": [
       "Bash(npx tsx:*)",
       "Bash(docker ps:*)",
-      "Bash(docker run:*)"
+      "Bash(docker run:*)",
+      "Bash(curl:*)"
     ]
   }
 }
