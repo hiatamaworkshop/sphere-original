@@ -15,6 +15,17 @@ export interface NodeCount {
   count: number;
 }
 
+export interface EvalConsistency {
+  /** Composite consistency score (0=random, 1=perfectly consistent) */
+  score: number;
+  /** Number of nodes with 2+ evaluations (sample size) */
+  nodes: number;
+  /** Mean std per dimension (lower = more consistent) */
+  meanStdH: number;
+  meanStdW: number;
+  meanStdD: number;
+}
+
 export interface SpeciesEntry {
   evaluations: number;
   avgH: number;
@@ -26,6 +37,8 @@ export interface SpeciesEntry {
   revisitedNodes?: number;
   /** Total re-evaluation count (sum of visits - unique nodes for revisited) */
   totalRevisits?: number;
+  /** Sensor consistency: same node → same score? (not blended — species-own metric) */
+  evaluationConsistency?: EvalConsistency;
 }
 
 export interface SpeciesProfile {
@@ -41,6 +54,16 @@ export interface SpeciesProfile {
 const SELF_W = 0.7;
 const ENV_W = 0.3;
 
+// ---- Helpers ----
+
+/** Population standard deviation */
+function stddev(values: number[]): number {
+  if (values.length < 2) return 0;
+  const mean = values.reduce((s, v) => s + v, 0) / values.length;
+  const variance = values.reduce((s, v) => s + (v - mean) ** 2, 0) / values.length;
+  return Math.sqrt(variance);
+}
+
 // ---- Aggregation ----
 
 function aggregateGroup(evals: ScoredEval[]): SpeciesEntry {
@@ -51,6 +74,8 @@ function aggregateGroup(evals: ScoredEval[]): SpeciesEntry {
   let totalH = 0, totalW = 0, totalD = 0;
   const nodeCount = new Map<string, number>();
   const tagCount = new Map<string, number>();
+  // Collect per-node h/w/d arrays for consistency computation
+  const nodeEvals = new Map<string, { h: number[]; w: number[]; d: number[] }>();
 
   for (const e of evals) {
     totalH += e.h;
@@ -60,6 +85,14 @@ function aggregateGroup(evals: ScoredEval[]): SpeciesEntry {
     for (const tag of e.tags) {
       tagCount.set(tag, (tagCount.get(tag) ?? 0) + 1);
     }
+    let ne = nodeEvals.get(e.nodeId);
+    if (!ne) {
+      ne = { h: [], w: [], d: [] };
+      nodeEvals.set(e.nodeId, ne);
+    }
+    ne.h.push(e.h);
+    ne.w.push(e.w);
+    ne.d.push(e.d);
   }
 
   const n = evals.length;
@@ -84,6 +117,32 @@ function aggregateGroup(evals: ScoredEval[]): SpeciesEntry {
     }
   }
 
+  // Evaluation consistency: std of h/w/d for revisited nodes
+  // score = 1 - meanStd/4.0  (4.0 ≈ max practical std on 1-9 scale)
+  let evaluationConsistency: EvalConsistency | undefined;
+  if (revisitedNodes > 0) {
+    let sumStdH = 0, sumStdW = 0, sumStdD = 0;
+    let count = 0;
+    for (const ne of nodeEvals.values()) {
+      if (ne.h.length < 2) continue;
+      sumStdH += stddev(ne.h);
+      sumStdW += stddev(ne.w);
+      sumStdD += stddev(ne.d);
+      count++;
+    }
+    const meanStdH = sumStdH / count;
+    const meanStdW = sumStdW / count;
+    const meanStdD = sumStdD / count;
+    const meanStd = (meanStdH + meanStdW + meanStdD) / 3;
+    evaluationConsistency = {
+      score: Math.max(0, 1 - meanStd / 4.0),
+      nodes: count,
+      meanStdH: +meanStdH.toFixed(3),
+      meanStdW: +meanStdW.toFixed(3),
+      meanStdD: +meanStdD.toFixed(3),
+    };
+  }
+
   return {
     evaluations: n,
     avgH: totalH / n,
@@ -93,6 +152,7 @@ function aggregateGroup(evals: ScoredEval[]): SpeciesEntry {
     commonTags,
     revisitedNodes,
     totalRevisits,
+    evaluationConsistency,
   };
 }
 
@@ -134,6 +194,8 @@ function blendEntry(species: SpeciesEntry, global: SpeciesEntry): SpeciesEntry {
     avgD: species.avgD * SELF_W + global.avgD * ENV_W,
     hotNodes,
     commonTags,
+    // Consistency is NOT blended — it's a sensor quality metric, not environmental
+    evaluationConsistency: species.evaluationConsistency,
   };
 }
 

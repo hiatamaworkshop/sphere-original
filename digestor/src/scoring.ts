@@ -23,6 +23,7 @@ export interface FlatEval {
   loadout: string;
   model?: string;
   timestamp: number;
+  configHash?: string;
 }
 
 export interface ScoredEval extends FlatEval {

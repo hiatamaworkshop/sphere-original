@@ -78,6 +78,7 @@ function flatten(entries: EvalLogEntry[]): FlatEval[] {
         loadout: entry.loadout,
         model: entry.model,
         timestamp: entry.timestamp,
+        configHash: entry.configHash,
       });
     }
   }
@@ -193,14 +194,14 @@ function saveGeneration(
 
 function rebuildEntries(survived: ScoredEval[]): EvalLogEntry[] {
   // Group survived evals back into session-like entries by loadout+timestamp
-  const groups = new Map<string, { loadout: string; model?: string; timestamp: number; evals: ScoredEval[] }>();
+  const groups = new Map<string, { loadout: string; model?: string; timestamp: number; configHash?: string; evals: ScoredEval[] }>();
   for (const e of survived) {
     const key = `${e.loadout}:${e.timestamp}`;
     const g = groups.get(key);
     if (g) {
       g.evals.push(e);
     } else {
-      groups.set(key, { loadout: e.loadout, model: e.model, timestamp: e.timestamp, evals: [e] });
+      groups.set(key, { loadout: e.loadout, model: e.model, timestamp: e.timestamp, configHash: e.configHash, evals: [e] });
     }
   }
   const entries: EvalLogEntry[] = [];
@@ -209,6 +210,7 @@ function rebuildEntries(survived: ScoredEval[]): EvalLogEntry[] {
       loadout: g.loadout,
       model: g.model,
       timestamp: g.timestamp,
+      ...(g.configHash && { configHash: g.configHash }),
       evaluations: g.evals.map(e => ({
         nodeId: e.nodeId, h: e.h, w: e.w, d: e.d, tags: e.tags,
         ...(e.expression && { expression: e.expression }),
@@ -272,7 +274,9 @@ async function digest(): Promise<void> {
 
   // Log species summary
   for (const [name, sp] of Object.entries(profile.species)) {
-    console.log(`  ${name}: ${sp.evaluations} evals, h=${sp.avgH.toFixed(1)} w=${sp.avgW.toFixed(1)} d=${sp.avgD.toFixed(1)}, ${sp.hotNodes.length} nodes, ${sp.commonTags.length} tags`);
+    const ec = sp.evaluationConsistency;
+    const ecStr = ec ? `, consistency=${ec.score.toFixed(2)} (${ec.nodes} nodes)` : "";
+    console.log(`  ${name}: ${sp.evaluations} evals, h=${sp.avgH.toFixed(1)} w=${sp.avgW.toFixed(1)} d=${sp.avgD.toFixed(1)}, ${sp.hotNodes.length} nodes, ${sp.commonTags.length} tags${ecStr}`);
   }
 }
 
