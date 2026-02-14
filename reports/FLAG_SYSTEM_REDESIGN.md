@@ -133,23 +133,40 @@ bits 12-15 Special:     system/user metadata
 
 ### Layer 3: Cognitive (bits 8-11)
 
-**Philosophy**: How does this node affect perception?
+**Philosophy**: What is the epistemic state of this information?
 
-| Flag | Bit | Meaning | Agent Response |
-|------|-----|---------|----------------|
-| **Insightful** | 0x0100 | Generates "aha" moments | High `qualityVector` weight |
-| **Confusing** | 0x0200 | Low resolution, ambiguous | Frustration trigger |
-| **Provoking** | 0x0400 | Challenges assumptions | Curiosity trigger |
-| **Soothing** | 0x0800 | Calming, reassuring | Satisfaction boost |
+> **Design Note (2026-02-14)**: 旧定義 (Insightful/Confusing/Provoking/Soothing) は受け手の感情反応を記述しており、
+> 他の3層 (Temporal/Density/Special) が情報そのものの性質を記述する原則と矛盾していた。
+> 新定義は情報の客観的な認知状態を記述する。感情は結果であり原因ではない — 原因 (情報の状態) をフラグにし、
+> 結果 (受け手の反応) はエージェントの Loadout に委ねる。
+
+| Flag | Bit | Meaning | 対応する情報の性質 |
+|------|-----|---------|-------------------|
+| **Sharp** | 0x0100 | 明確、一意的解釈、境界明瞭 | 定義、定理、結論、数式 |
+| **Fuzzy** | 0x0200 | 曖昧、複数解釈可能、未確定 | 仮説、問い、推測、概念初期段階 |
+| **Tensile** | 0x0400 | 内部対立・矛盾を内包、未解決 | 論争、パラドックス、対比構造 |
+| **Settled** | 0x0800 | 決着済み、合意形成済み、収束 | 定説、法律、標準規格、公理 |
+
+**2軸の直交構造**:
+```
+解像度軸:  Sharp (明確) ←→ Fuzzy (曖昧)
+確定度軸:  Tensile (未解決) ←→ Settled (決着済み)
+```
 
 **Agent behavior**:
-- Moth: attracted to Insightful (light = insight)
-- Hermit: attracted to Soothing (stable, quiet)
-- Hunter: attracted to Provoking (high-value targets)
+- Scholar: attracted to Sharp (明確な知識を好む)
+- Moth: attracted to Sharp (光 = 明瞭さ)
+- Hunter: attracted to Tensile (未解決の対立 = 高価値ターゲット)
+- Hermit: attracted to Settled (決着済み = 安定した思索環境)
+- Archivist: attracted to Settled (合意形成済み = 保存価値が高い)
 
-**Implementation note**:
-- These flags are **harder to assign via regex** — may require LLM-based Tagger (future)
-- Start with conservative patterns, evolve over time
+**旧→新の対応**:
+| 旧 (感情) | 新 (状態) | 理由 |
+|-----------|----------|------|
+| Insightful | **Sharp** | 洞察 → 解像度が高いから見える |
+| Confusing | **Fuzzy** | 混乱 → 情報が曖昧だから起きる |
+| Provoking | **Tensile** | 挑発 → 内部に矛盾があるから張る |
+| Soothing | **Settled** | 安心 → 決着しているから安定する |
 
 ---
 
@@ -201,17 +218,17 @@ bits 12-15 Special:     system/user metadata
      Composite  = 0x0040,
      Authority  = 0x0080,
 
-     // Cognitive (bits 8-11)
-     Insightful = 0x0100,
-     Confusing  = 0x0200,
-     Provoking  = 0x0400,
-     Soothing   = 0x0800,
+     // Cognitive (bits 8-11) — epistemic state of information
+     Sharp      = 0x0100,   // 明確、一意的解釈
+     Fuzzy      = 0x0200,   // 曖昧、複数解釈可能
+     Tensile    = 0x0400,   // 内部対立・未解決
+     Settled    = 0x0800,   // 決着済み・収束
 
      // Special (bits 12-15)
      UserMarked  = 0x1000,
      SystemCore  = 0x2000,
-     Compressed  = 0x4000,  // TODO: move to state
-     Candidate   = 0x8000,  // TODO: move to state
+     Structured  = 0x4000,  // 構造化データ (コード, 表, JSON)
+     Multimodal  = 0x8000,  // 非テキスト要素含む
    }
    ```
 
@@ -233,9 +250,11 @@ Regex patterns split by layer:
 { pattern: /\b(casual|light|brief|anecdotal)\b/i, flags: Sparse },
 { pattern: /\b(official|peer-reviewed|authoritative|verified)\b/i, flags: Authority },
 
-// Cognitive — conservative start
-{ pattern: /\b(insight|revelation|breakthrough|aha)\b/i, flags: Insightful },
-{ pattern: /\b(confusing|ambiguous|unclear)\b/i, flags: Confusing },
+// Cognitive — epistemic state (conservative start)
+{ pattern: /\b(definition|theorem|proof|conclusion|precisely|exact|definitive)\b/i, flags: Sharp },
+{ pattern: /\b(hypothesis|maybe|perhaps|unclear|ambiguous|uncertain|speculative)\b/i, flags: Fuzzy },
+{ pattern: /\b(debate|controversy|paradox|contradiction|versus|conflict|unresolved)\b/i, flags: Tensile },
+{ pattern: /\b(established|consensus|standard|proven|accepted|settled|canonical)\b/i, flags: Settled },
 
 // Special
 { pattern: /\b(bookmark|starred|important)\b/i, flags: UserMarked },
@@ -260,11 +279,14 @@ flagBias: { authority: 1.2, temporalShort: 1.0, temporalLong: 1.1, dense: 1.3 }
 ```
 
 **Loadout migration** (phi-agent):
-- `balanced`: remove catalyst → add temporalShort (light touch)
-- `scholar`: authority + dense + temporalLong
+- `balanced`: authority + temporalShort + temporalLong (light touch)
+- `scholar`: authority + dense + temporalLong + **sharp**
 - `scout`: temporalShort
-- `archivist`: authority + temporalLong
-- `hunter`: temporalShort (trending)
+- `archivist`: authority + temporalLong + dense + **settled** + sharp
+- `hunter`: temporalShort + **tensile**
+- `moth`: temporalShort + **sharp**
+- `hermit`: authority + temporalLong + dense + **settled**
+- `sniper`: authority + temporalShort
 
 ### Phase 4: Cleanup
 
@@ -321,12 +343,13 @@ Agents with different Loadouts will interpret the same node differently — that
 
 ### LLM-based Tagger (Phase 5+)
 
-Cognitive flags (Insightful, Confusing, Provoking, Soothing) are **hard to detect via regex**.
+Cognitive flags (Sharp, Fuzzy, Tensile, Settled) は regex でもある程度検出可能だが、
+文脈依存の判断 (例: 表面上は断定文だが本質的に未解決) は LLM が優れている。
 
 Future option:
-- Use lightweight LLM (llama3.2:1b) to rate cognitive impact
+- Use lightweight LLM (llama3.2:1b) to assess epistemic state
 - Input: title + summary (L1+L2 only)
-- Output: cognitive flags (4 bits)
+- Output: cognitive flags (4 bits) — 解像度軸 (Sharp/Fuzzy) + 確定度軸 (Tensile/Settled)
 - Cost: ~10ms per node (acceptable for Contribution pipeline)
 
 This would make Tagger **measurement-based** rather than pattern-based — aligns with Sphere philosophy.
@@ -591,22 +614,27 @@ FastGate は現在テキストデータを前提に設計されているが、�
 
 | Flag | Bit | 意味 | 検出方法 |
 |------|-----|------|---------|
-| **Insightful** | 0x0100 | 洞察を生む | NLP / regex |
-| **Confusing** | 0x0200 | 曖昧、混乱 | NLP / regex |
-| **Provoking** | 0x0400 | 前提を揺さぶる | NLP / regex |
-| **Soothing** | 0x0800 | 安定、安心 | NLP / regex |
+| **Sharp** | 0x0100 | 明確、一意的解釈 | regex (definition, theorem, proof) / NLP |
+| **Fuzzy** | 0x0200 | 曖昧、複数解釈可能 | regex (hypothesis, maybe, uncertain) / NLP |
+| **Tensile** | 0x0400 | 内部対立、未解決 | regex (debate, paradox, contradiction) / NLP |
+| **Settled** | 0x0800 | 決着済み、収束 | regex (established, consensus, standard) / NLP |
 
 **将来の gate type ごとの Cognitive 層再定義案**:
 
 | Gate Type | 0x0100 | 0x0200 | 0x0400 | 0x0800 |
 |-----------|--------|--------|--------|--------|
-| **text** | Insightful | Confusing | Provoking | Soothing |
-| **numeric** | Anomalous | Noisy | Trending | Stable |
-| **signal** | Resonant | Distorted | Impulsive | Harmonic |
+| **text** | **Sharp** | **Fuzzy** | **Tensile** | **Settled** |
+| **numeric** | Precise | Noisy | Volatile | Stable |
+| **signal** | Coherent | Distorted | Transient | Steady |
 | **graph** | Bridge | Isolated | Hub | Cluster |
 | **vision** | Salient | Occluded | Dynamic | Textured |
 
-**ビット位置は同一、意味テーブルが変わる。** FastGate の `flagBias.insightful` は numeric gate では `flagBias.anomalous` と読み替えられるが、コード上は同じ `if (flags & 0x0100) score *= bias` のまま。
+**ビット位置は同一、意味テーブルが変わる。** FastGate の `flagBias.sharp` は numeric gate では `flagBias.precise` と読み替えられるが、コード上は同じ `if (flags & 0x0100) score *= bias` のまま。
+
+**2軸構造の汎用性**: text gate の Sharp↔Fuzzy / Tensile↔Settled は、他ドメインでも自然に写像される:
+- numeric: Precise↔Noisy (解像度) / Volatile↔Stable (確定度)
+- signal: Coherent↔Distorted (解像度) / Transient↔Steady (確定度)
+- 解像度軸と確定度軸の直交性はドメインを超えて保存される。
 
 ---
 
@@ -698,7 +726,7 @@ const NUMERIC_GATE: GateTypeConfig = {
 ```
 
 FastGate は `GateTypeConfig` を受け取るが、scoring pipeline は変わらない。
-`flagBias.insightful` の **名前** が `anomalous` に変わるだけで、演算は `if (flags & 0x0100) score *= bias`。
+`flagBias.sharp` の **名前** が `precise` に変わるだけで、演算は `if (flags & 0x0100) score *= bias`。
 
 #### Phase 3 (将来): 異種 Gate 混在 Sphere
 
@@ -730,4 +758,4 @@ Tagger は「regex マッチャー」ではなく **ドメインアダプター*
 
 ---
 
-**Conclusion**: Flags are not semantic labels — they are **physical constants** that modulate node behavior in Sphere's physics engine. The 3-layer structure (Temporal / Density / Cognitive) + Special layer now covers **4 orthogonal dimensions**: time, density, perception, and format — providing agent Loadouts with complete routing information for any data type.
+**Conclusion**: Flags are not semantic labels — they are **physical constants** that modulate node behavior in Sphere's physics engine. The 3-layer structure (Temporal / Density / Cognitive) + Special layer now covers **4 orthogonal dimensions**: time, density, epistemic state, and format — providing agent Loadouts with complete routing information for any data type. Cognitive 層は情報の認識論的状態 (解像度 × 確定度) を記述し、受け手の感情反応はエージェントの Loadout に委ねる。
