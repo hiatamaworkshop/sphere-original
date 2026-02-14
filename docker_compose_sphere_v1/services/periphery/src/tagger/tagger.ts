@@ -73,7 +73,7 @@ const TAG_FLAG_PATTERNS: { pattern: RegExp; flags: number }[] = [
 
   // TemporalShort (0x0001): time-sensitive, decays quickly
   {
-    pattern: /\b(new|latest|breaking|recent|fresh|trending|viral|hot|2024|2025|2026|today|now|current|update|modern|live|just-in)\b/i,
+    pattern: /\b(new|latest|breaking|recent|fresh|trending|viral|hot|today|now|current|update|modern|live|just-in)\b/i,
     flags: NodeFlag.TemporalShort,
   },
 
@@ -99,7 +99,7 @@ const TAG_FLAG_PATTERNS: { pattern: RegExp; flags: number }[] = [
 
   // Sparse (0x0020): low density
   {
-    pattern: /\b(casual|light|brief|anecdotal|simple|short|note|memo|thought|overview|intro|summary)\b/i,
+    pattern: /\b(short|minimal|low-detail|sketch|outline|brief|note|memo|overview|intro|summary|snippet|fragment)\b/i,
     flags: NodeFlag.Sparse,
   },
 
@@ -111,7 +111,7 @@ const TAG_FLAG_PATTERNS: { pattern: RegExp; flags: number }[] = [
 
   // Authority (0x0080): compressed trust
   {
-    pattern: /\b(official|authoritative|peer-reviewed|research|paper|verified|canonical|standard|specification|reference|source|doc|documentation)\b/i,
+    pattern: /\b(official|authoritative|peer-reviewed|research|paper|verified|canonical|standard|specification|reference|doc|documentation)\b/i,
     flags: NodeFlag.Authority,
   },
 
@@ -122,7 +122,7 @@ const TAG_FLAG_PATTERNS: { pattern: RegExp; flags: number }[] = [
 
   // Sharp (0x0100): 明確、一意的解釈、境界明瞭
   {
-    pattern: /\b(definition|theorem|proof|conclusion|precisely|exact|definitive|formula|axiom|law)\b/i,
+    pattern: /\b(definition|theorem|proof|conclusion|precisely|exact|formula|axiom|law)\b/i,
     flags: NodeFlag.Sharp,
   },
 
