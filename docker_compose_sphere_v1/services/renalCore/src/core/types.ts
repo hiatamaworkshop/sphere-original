@@ -32,11 +32,11 @@ export enum NodeFlag {
   Composite  = 0x0040,  // 複合: weight × 1.1 (multi-concept fusion)
   Authority  = 0x0080,  // 権威: decay_rate × 0.95 (peer-reviewed, official)
 
-  // Cognitive (bits 8-11)
-  Insightful = 0x0100,  // 洞察: generates "aha" moments
-  Confusing  = 0x0200,  // 混乱: low resolution, frustration trigger
-  Provoking  = 0x0400,  // 挑発: challenges assumptions, curiosity trigger
-  Soothing   = 0x0800,  // 安定: calming, satisfaction boost
+  // Cognitive (bits 8-11) — epistemic state of information
+  Sharp      = 0x0100,  // 明確: 一意的解釈、境界明瞭 (定義, 定理, 結論)
+  Fuzzy      = 0x0200,  // 曖昧: 複数解釈可能、未確定 (仮説, 問い, 推測)
+  Tensile    = 0x0400,  // 張力: 内部対立・矛盾を内包、未解決 (論争, パラドックス)
+  Settled    = 0x0800,  // 収束: 決着済み、合意形成済み (定説, 法律, 標準)
 
   // Special (bits 12-15)
   UserMarked  = 0x1000,  // ユーザーマーク: immune to decay

@@ -37,11 +37,11 @@ const Flag = {
   Composite:  0x0040,
   Authority:  0x0080,
 
-  // Cognitive (bits 8-11)
-  Insightful: 0x0100,
-  Confusing:  0x0200,
-  Provoking:  0x0400,
-  Soothing:   0x0800,
+  // Cognitive (bits 8-11) — epistemic state
+  Sharp:      0x0100,
+  Fuzzy:      0x0200,
+  Tensile:    0x0400,
+  Settled:    0x0800,
 
   // Special (bits 12-15)
   UserMarked:  0x1000,
@@ -98,10 +98,10 @@ export interface Weapon {
     // Density (bits 4-7)
     dense: number;
     authority: number;
-    // Cognitive (bits 8-11)
-    insightful: number;
-    provoking: number;
-    soothing: number;
+    // Cognitive (bits 8-11) — epistemic state
+    sharp: number;
+    tensile: number;
+    settled: number;
   };
   stateBias: {
     hot: number;
@@ -126,9 +126,9 @@ export const DEFAULT_WEAPON: Weapon = {
     temporalLong: 1.0,
     dense: 1.0,
     authority: 1.0,
-    insightful: 1.0,
-    provoking: 1.0,
-    soothing: 1.0,
+    sharp: 1.0,
+    tensile: 1.0,
+    settled: 1.0,
   },
   stateBias: { hot: 1.0, frozen: 0.5 },
   ratioBias: { heatDensity: 0, stability: 0 },
@@ -213,7 +213,7 @@ export const LOADOUTS: Record<string, Loadout> = {
     name: "scholar",
     weights: { metrics: { ...DEFAULT_WEIGHTS.metrics, weight: 0.5, distance: -1 } },
     weapon: {
-      flagBias: { authority: 1.8, temporalLong: 1.3, dense: 1.3, insightful: 1.2 },
+      flagBias: { authority: 1.8, temporalLong: 1.3, dense: 1.3, sharp: 1.2 },
       stateBias: { hot: 0.8, frozen: 1.3 },
       ratioBias: { stability: 0.5 },
     },
@@ -253,8 +253,8 @@ export const LOADOUTS: Record<string, Loadout> = {
         authority: 1.5,       // hermit+archivist average
         temporalLong: 1.5,
         dense: 1.3,           // hermit value
-        soothing: 1.3,        // hermit value
-        insightful: 1.1       // hermit integration: quiet insight
+        settled: 1.3,         // hermit value: seeks resolved knowledge
+        sharp: 1.1            // hermit integration: clear understanding
       },
       stateBias: {
         hot: 0.6,      // hermit+archivist average
@@ -274,7 +274,7 @@ export const LOADOUTS: Record<string, Loadout> = {
     name: "hunter",
     weights: { metrics: { ...DEFAULT_WEIGHTS.metrics, heat: 0.8 } },
     weapon: {
-      flagBias: { temporalShort: 1.3, provoking: 1.2 },
+      flagBias: { temporalShort: 1.3, tensile: 1.2 },
       stateBias: { hot: 1.8, frozen: 0.4 },
       ratioBias: { heatDensity: 0.4 },
     },
@@ -289,7 +289,7 @@ export const LOADOUTS: Record<string, Loadout> = {
     name: "moth",
     weights: { metrics: { ...DEFAULT_WEIGHTS.metrics, heat: 2.0, weight: 0, decay: 0, distance: -1 }, keywordMatch: 0 },
     weapon: {
-      flagBias: { temporalShort: 1.5, insightful: 1.5 },
+      flagBias: { temporalShort: 1.5, sharp: 1.5 },
       stateBias: { hot: 2.0, frozen: 0.3 },
       ratioBias: { heatDensity: 0.5 },
     },
@@ -626,10 +626,10 @@ export class FastGate {
       // Density (bits 4-7)
       if (n.flags & Flag.Dense)      flagGate *= wp.flagBias.dense;
       if (n.flags & Flag.Authority)  flagGate *= wp.flagBias.authority;
-      // Cognitive (bits 8-11)
-      if (n.flags & Flag.Insightful) flagGate *= wp.flagBias.insightful;
-      if (n.flags & Flag.Provoking)  flagGate *= wp.flagBias.provoking;
-      if (n.flags & Flag.Soothing)   flagGate *= wp.flagBias.soothing;
+      // Cognitive (bits 8-11) — epistemic state
+      if (n.flags & Flag.Sharp)    flagGate *= wp.flagBias.sharp;
+      if (n.flags & Flag.Tensile)  flagGate *= wp.flagBias.tensile;
+      if (n.flags & Flag.Settled)  flagGate *= wp.flagBias.settled;
 
       // --- State gate: multiplicative (dynamic flags) ---
       let stateGate = 1.0;

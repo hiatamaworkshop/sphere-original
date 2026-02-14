@@ -198,10 +198,10 @@ export interface PeripheryConfig {
   //     0x0040 = Composite      - weight ×1.1 (multi-concept)
   //     0x0080 = Authority      - decay ×0.95 (peer-reviewed, official)
   //   Cognitive (bits 8-11):
-  //     0x0100 = Insightful     - FastGate scoring only
-  //     0x0200 = Confusing      - FastGate scoring only
-  //     0x0400 = Provoking      - FastGate scoring only
-  //     0x0800 = Soothing       - FastGate scoring only
+  //     0x0100 = Sharp           - FastGate scoring only (明確、一意的解釈)
+  //     0x0200 = Fuzzy           - FastGate scoring only (曖昧、複数解釈可能)
+  //     0x0400 = Tensile         - FastGate scoring only (内部対立、未解決)
+  //     0x0800 = Settled         - FastGate scoring only (決着済み、収束)
   //   Special (bits 12-15):
   //     0x1000 = UserMarked     - immune to decay
   //     0x2000 = SystemCore     - Frozen metabolism (Relic)

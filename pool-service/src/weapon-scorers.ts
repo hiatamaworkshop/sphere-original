@@ -21,8 +21,8 @@ const Flag = {
   // Density (bits 4-7)
   Dense:      0x0010,
   Authority:  0x0080,
-  // Cognitive (bits 8-11)
-  Insightful: 0x0100,
+  // Cognitive (bits 8-11) — epistemic state
+  Sharp:      0x0100,
 } as const;
 
 // --- Pool Weapon definition ---

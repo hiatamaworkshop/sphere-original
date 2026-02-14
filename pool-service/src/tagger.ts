@@ -25,11 +25,11 @@ const Flag = {
   Composite:  0x0040,
   Authority:  0x0080,
 
-  // Cognitive (bits 8-11)
-  Insightful: 0x0100,
-  Confusing:  0x0200,
-  Provoking:  0x0400,
-  Soothing:   0x0800,
+  // Cognitive (bits 8-11) — epistemic state
+  Sharp:      0x0100,
+  Fuzzy:      0x0200,
+  Tensile:    0x0400,
+  Settled:    0x0800,
 
   // Special (bits 12-15)
   UserMarked:  0x1000,
@@ -57,10 +57,11 @@ const TAG_PATTERNS: TagPattern[] = [
   { regex: /\b(synthesis|integration|hybrid|interdisciplinary)\b/i,    flag: Flag.Composite },
   { regex: /\b(research|academic|peer.?review|journal|thesis|official|authoritative)\b/i, flag: Flag.Authority },
 
-  // Cognitive (bits 8-11)
-  { regex: /\b(insight|revelation|breakthrough|discovery)\b/i,         flag: Flag.Insightful },
-  { regex: /\b(confusing|unclear|ambiguous|paradox)\b/i,               flag: Flag.Confusing },
-  { regex: /\b(controversial|debate|provocative|radical)\b/i,          flag: Flag.Provoking },
+  // Cognitive (bits 8-11) — epistemic state
+  { regex: /\b(definition|theorem|proof|conclusion|exact|definitive)\b/i,       flag: Flag.Sharp },
+  { regex: /\b(hypothesis|maybe|uncertain|speculative|ambiguous)\b/i,           flag: Flag.Fuzzy },
+  { regex: /\b(debate|controversy|paradox|contradiction|unresolved)\b/i,        flag: Flag.Tensile },
+  { regex: /\b(established|consensus|standard|accepted|canonical)\b/i,          flag: Flag.Settled },
 ];
 
 export function assignFlags(tags: string[]): number {

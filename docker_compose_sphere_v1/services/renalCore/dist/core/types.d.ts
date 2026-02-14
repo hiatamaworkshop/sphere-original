@@ -5,7 +5,7 @@
  * 16bit Flags & Core Interfaces
  * - 物性 vs 意味: Flags は「意味」ではなく「物性」
  * - Authority フラグ → decay_rate × 0.95（物理パラメータへ変換）
- * - Freshness フラグ → heat_boost × 1.2
+ * - TemporalShort フラグ → decay × 1.3, ttl_decay × 1.2
  * - エージェントの足跡を物理定数に変換する
  */
 /**
@@ -27,10 +27,10 @@ export declare enum NodeFlag {
     Sparse = 32,// 低密度: weight × 0.9 (casual, anecdotal)
     Composite = 64,// 複合: weight × 1.1 (multi-concept fusion)
     Authority = 128,// 権威: decay_rate × 0.95 (peer-reviewed, official)
-    Insightful = 256,// 洞察: generates "aha" moments
-    Confusing = 512,// 混乱: low resolution, frustration trigger
-    Provoking = 1024,// 挑発: challenges assumptions, curiosity trigger
-    Soothing = 2048,// 安定: calming, satisfaction boost
+    Sharp = 256,// 明確: 一意的解釈、境界明瞭 (定義, 定理, 結論)
+    Fuzzy = 512,// 曖昧: 複数解釈可能、未確定 (仮説, 問い, 推測)
+    Tensile = 1024,// 張力: 内部対立・矛盾を内包、未解決 (論争, パラドックス)
+    Settled = 2048,// 収束: 決着済み、合意形成済み (定説, 法律, 標準)
     UserMarked = 4096,// ユーザーマーク: immune to decay
     SystemCore = 8192,// システムコア: Frozen metabolism (Relic)
     Compressed = 16384,// 圧縮済み: Fossil化 (TODO: move to state)
