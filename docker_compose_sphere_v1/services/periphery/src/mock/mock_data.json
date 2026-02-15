@@ -2848,6 +2848,150 @@
     "payload": "Designing robots that walk like insects or run like cheetahs. Solving movement through mechanical 'intelligence' rather than pure computation.",
     "flags": 0,
     "importance": 0.73
+  },
+
+  {
+    "summary": "Edge AI chip sales surge in 2026",
+    "tags": ["AI", "hardware", "trending", "2026"],
+    "payload": "On-device inference chips now outsell cloud GPU modules. Edge deployment is the new default for consumer AI products.",
+    "flags": 0,
+    "importance": 0.71
+  },
+  {
+    "summary": "Rust adoption hits mainstream tipping point",
+    "tags": ["rust", "programming", "emerging", "update"],
+    "payload": "Major cloud providers now mandate memory-safe languages for new infrastructure. Rust joins the short list of enterprise-approved systems languages.",
+    "flags": 0,
+    "importance": 0.68
+  },
+  {
+    "summary": "Viral math puzzle breaks social media",
+    "tags": ["mathematics", "social-media", "viral", "trending"],
+    "payload": "A deceptively simple arithmetic problem splits the internet into warring camps. Order of operations debates resurface every few years like clockwork.",
+    "flags": 0,
+    "importance": 0.42
+  },
+  {
+    "summary": "WebAssembly outside the browser gains momentum",
+    "tags": ["wasm", "infrastructure", "emerging", "latest"],
+    "payload": "Server-side WASM runtimes challenge containers for lightweight workloads. The compile-once-run-anywhere promise finds new ground beyond browsers.",
+    "flags": 0,
+    "importance": 0.65
+  },
+  {
+    "summary": "Breaking results in protein folding accuracy",
+    "tags": ["biology", "AI", "breaking", "2026"],
+    "payload": "New diffusion-based models exceed AlphaFold accuracy on disordered regions. Structural biology enters a phase of rapid experimental validation.",
+    "flags": 0,
+    "importance": 0.82
+  },
+  {
+    "summary": "Supply chain attacks on open-source registries",
+    "tags": ["security", "open-source", "current", "breaking"],
+    "payload": "Coordinated typosquatting campaigns hit npm and PyPI simultaneously. The trust model of public package registries faces its biggest stress test.",
+    "flags": 0,
+    "importance": 0.77
+  },
+
+  {
+    "summary": "Quick note on goroutine scheduling",
+    "tags": ["go", "concurrency", "note", "brief"],
+    "payload": "Go's M:N scheduler maps goroutines to OS threads. Work-stealing keeps cores busy. GOMAXPROCS controls parallelism ceiling.",
+    "flags": 0,
+    "importance": 0.38
+  },
+  {
+    "summary": "Memo on REST vs GraphQL tradeoffs",
+    "tags": ["api-design", "web", "memo"],
+    "payload": "REST is simpler for CRUD. GraphQL shines when clients need flexible queries. Neither is universally better; pick based on access patterns.",
+    "flags": 0,
+    "importance": 0.45
+  },
+  {
+    "summary": "Brief overview of consistent hashing",
+    "tags": ["distributed-systems", "algorithms", "overview", "brief"],
+    "payload": "Consistent hashing minimizes key redistribution when nodes join or leave. Virtual nodes smooth out load imbalance across the ring.",
+    "flags": 0,
+    "importance": 0.41
+  },
+  {
+    "summary": "Short sketch of actor model basics",
+    "tags": ["concurrency", "architecture", "sketch", "intro"],
+    "payload": "Actors communicate via messages, never share state. Each actor processes one message at a time. Supervision trees handle failures hierarchically.",
+    "flags": 0,
+    "importance": 0.35
+  },
+  {
+    "summary": "Fragment on the CAP theorem intuition",
+    "tags": ["distributed-systems", "networking", "fragment", "note"],
+    "payload": "During a network partition you must choose: either answer with possibly stale data (AP) or refuse to answer (CP). You cannot have both.",
+    "flags": 0,
+    "importance": 0.33
+  },
+  {
+    "summary": "Summary of common sorting complexity",
+    "tags": ["algorithms", "computer-science", "summary", "outline"],
+    "payload": "Comparison sorts are O(n log n) at best. Radix and counting sort beat this by exploiting structure. In practice, cache locality often matters more than big-O.",
+    "flags": 0,
+    "importance": 0.30
+  },
+
+  {
+    "summary": "IEEE 754 floating-point standard",
+    "tags": ["computing", "mathematics", "standard", "reference"],
+    "payload": "The universal encoding for real numbers in hardware. Sign, exponent, mantissa. 0.1 + 0.2 != 0.3 is not a bug but a consequence of binary fractions.",
+    "flags": 0,
+    "importance": 0.72
+  },
+  {
+    "summary": "RFC 2616 and the evolution of HTTP",
+    "tags": ["networking", "web", "standard", "official"],
+    "payload": "HTTP/1.1 defined the request-response model that built the web. Connection reuse, chunked transfer, and content negotiation were its key contributions.",
+    "flags": 0,
+    "importance": 0.69
+  },
+  {
+    "summary": "Peer-reviewed meta-analysis of spaced repetition",
+    "tags": ["learning", "cognitive-science", "peer-reviewed"],
+    "payload": "Systematic review across 29 studies confirms expanding intervals improve long-term retention over massed practice. Effect size is large and consistent.",
+    "flags": 0,
+    "importance": 0.74
+  },
+  {
+    "summary": "POSIX compliance and portable systems programming",
+    "tags": ["operating-systems", "unix", "standard", "reference"],
+    "payload": "POSIX defines the API contract between applications and Unix-like systems. Write to POSIX and your code runs on Linux, macOS, and BSDs without modification.",
+    "flags": 0,
+    "importance": 0.66
+  },
+  {
+    "summary": "W3C accessibility guidelines (WCAG)",
+    "tags": ["web", "accessibility", "official", "standard"],
+    "payload": "Four principles: perceivable, operable, understandable, robust. Level AA conformance is the practical target for most public-facing web applications.",
+    "flags": 0,
+    "importance": 0.63
+  },
+
+  {
+    "summary": "Ancient roots of the abacus",
+    "tags": ["mathematics", "history", "ancient", "timeless"],
+    "payload": "Counting boards predate written numerals by millennia. The abacus encodes place value physically, teaching arithmetic through muscle memory.",
+    "flags": 0,
+    "importance": 0.55
+  },
+  {
+    "summary": "Euclidean algorithm for GCD",
+    "tags": ["mathematics", "algorithms", "classic", "fundamental"],
+    "payload": "Repeatedly replace the larger number with the remainder of division. Terminates in O(log n) steps. Twenty-three centuries old and still the fastest known method.",
+    "flags": 0,
+    "importance": 0.70
+  },
+  {
+    "summary": "Principles of thermodynamic equilibrium",
+    "tags": ["physics", "thermodynamics", "fundamental", "enduring"],
+    "payload": "Isolated systems evolve toward maximum entropy. Equilibrium is not stillness but the state where all macroscopic flows have ceased. Time's arrow emerges here.",
+    "flags": 0,
+    "importance": 0.78
   }
 
 ]
