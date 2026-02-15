@@ -1,7 +1,56 @@
 {
-  "generated": "2026-02-15T13:58:18.747Z",
-  "totalEvaluations": 161,
+  "generation": 12,
+  "timestamp": "2026-02-15T13:58:18.752Z",
+  "sphereHash": "07efdfdbefdd5c57",
+  "inputEvaluations": 161,
   "survivedEvaluations": 161,
+  "hunger": 0.2,
+  "halfLifeHours": 72,
+  "sphereSnapshot": {
+    "nodeCount": {
+      "active": 6,
+      "amber": 1,
+      "ghost": 0,
+      "fossil": 146,
+      "relic": 0,
+      "environment": 0,
+      "total": 153
+    },
+    "heatDistribution": {
+      "mean": 74.38,
+      "std": 125.36,
+      "min": 0,
+      "max": 309.71
+    },
+    "weightDistribution": {
+      "mean": 34.91,
+      "std": 65.92,
+      "min": 0,
+      "max": 500
+    },
+    "flagDistribution": {
+      "1": 11,
+      "2": 6,
+      "8": 40,
+      "16": 4,
+      "32": 3,
+      "128": 6,
+      "256": 2,
+      "512": 4,
+      "1024": 7,
+      "2048": 7,
+      "8192": 147,
+      "16384": 146
+    },
+    "fertility": {
+      "total": 0
+    },
+    "field": {
+      "intensity": 0.2618969037308947,
+      "dominantFlags": 24576,
+      "volatility": 1
+    }
+  },
   "species": {
     "scout": {
       "evaluations": 19,

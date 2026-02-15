@@ -137,6 +137,20 @@ Arbiter が Hot フラグ (0x0008) を付与 → 高 heat ノードがさらに�
 
 ---
 
+## 9. Digestor 単発実行は ONCE=1
+
+**症状**: `DIGEST_INTERVAL_MS=0` で即座に無限ループ、gen ファイルが数千件生成される
+
+```bash
+# ❌ 無限ループ — gen-012, 013, 014... が秒速で生成
+DIGEST_INTERVAL_MS=0 node dist/digestor.js
+
+# ✅ 単発実行 — 1回 digest して終了
+ONCE=1 SPHERE_URL=http://localhost:3001 DATA_DIR=../phi-agent/data node dist/digestor.js
+```
+
+---
+
 ## 起動前クイックチェック
 
 ```
@@ -148,6 +162,7 @@ Arbiter が Hot フラグ (0x0008) を付与 → 高 heat ノードがさらに�
 □ LOADOUT=random を指定したか (種族分散テストの場合)
 □ --daemon フラグを付けたか (クエリローテーション必要な場合)
 □ Heat が蓄積していないか (長時間テスト後は Sphere 再起動推奨)
+□ Digestor 単発実行は ONCE=1 (DIGEST_INTERVAL_MS=0 は無限ループ)
 ```
 
 ---
