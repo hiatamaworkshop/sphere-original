@@ -447,7 +447,8 @@
     "tags": [
       "astronomy",
       "physics",
-      "cosmology"
+      "cosmology",
+      "uncertain"
     ],
     "payload": "Galaxy rotation curves, gravitational lensing indicate invisible mass. Constitutes 85% of matter.",
     "flags": 0,
@@ -482,7 +483,7 @@
       "mathematics",
       "number-theory",
       "millennium",
-      "fundamental"
+      "unresolved"
     ],
     "payload": "All non-trivial zeros of zeta function have real part 1/2. Implications for prime distribution.",
     "flags": 0,
@@ -516,7 +517,8 @@
     "tags": [
       "game-theory",
       "economics",
-      "mathematics"
+      "mathematics",
+      "theorem"
     ],
     "payload": "Strategic stability where no player benefits from unilateral deviation. Exists in all finite games.",
     "flags": 0,
@@ -528,7 +530,7 @@
       "mathematics",
       "signal",
       "analysis",
-      "fundamental"
+      "formula"
     ],
     "payload": "Decompose signals into constituent frequencies. Time domain to frequency domain conversion.",
     "flags": 0,
@@ -550,7 +552,8 @@
     "tags": [
       "linguistics",
       "cognition",
-      "culture"
+      "culture",
+      "hypothesis"
     ],
     "payload": "Language structure influences thought patterns. Weak form: language affects perception; strong form: determines thought.",
     "flags": 0,
@@ -616,7 +619,8 @@
     "tags": [
       "networking",
       "DNS",
-      "internet"
+      "internet",
+      "established"
     ],
     "payload": "Distributed database maps domains to IPs. Root servers, TLD servers, authoritative nameservers.",
     "flags": 0,
@@ -771,7 +775,7 @@
     "tags": [
       "physics",
       "quantum",
-      "theory",
+      "formula",
       "fundamental"
     ],
     "payload": "Cannot simultaneously know exact position and momentum. Δx·Δp ≥ ℏ/2. Fundamental quantum limit.",
@@ -795,7 +799,8 @@
     "tags": [
       "astronomy",
       "relativity",
-      "gravity"
+      "gravity",
+      "unresolved"
     ],
     "payload": "Point of no return where escape velocity exceeds light speed. Information paradox unresolved.",
     "flags": 0,
@@ -829,7 +834,7 @@
     "tags": [
       "biology",
       "evolution",
-      "theory",
+      "established",
       "fundamental"
     ],
     "payload": "Heritable variation, differential survival, reproductive success. Adaptation to environment over generations.",
@@ -930,7 +935,8 @@
     "tags": [
       "psychology",
       "cognition",
-      "behavior"
+      "behavior",
+      "contradiction"
     ],
     "payload": "Mental discomfort from conflicting beliefs. Rationalization, selective exposure reduce inconsistency.",
     "flags": 0,
@@ -1057,7 +1063,7 @@
       "psychology",
       "social",
       "ethics",
-      "research"
+      "disputed"
     ],
     "payload": "Role assignment induced abusive behavior. Situational power over personality. Methodologically controversial.",
     "flags": 0,
@@ -1104,7 +1110,7 @@
       "distributed",
       "CAP",
       "database",
-      "theory"
+      "theorem"
     ],
     "payload": "Impossible to simultaneously guarantee Consistency, Availability, and Partition tolerance. Systems must choose 2 of 3 under network failures.",
     "flags": 0,
@@ -1138,7 +1144,8 @@
     "tags": [
       "mathematics",
       "logic",
-      "philosophy"
+      "philosophy",
+      "theorem"
     ],
     "payload": "Any consistent formal system capable of arithmetic contains true statements that cannot be proven within the system. Limits of axiomatic reasoning.",
     "flags": 0,
@@ -1251,7 +1258,8 @@
     "tags": [
       "CS",
       "theory",
-      "Turing"
+      "Turing",
+      "proof"
     ],
     "payload": "No algorithm can determine if arbitrary programs halt. Proved by Turing via self-referential contradiction.",
     "flags": 0,
@@ -1262,7 +1270,8 @@
     "tags": [
       "complexity",
       "theory",
-      "mathematics"
+      "mathematics",
+      "unresolved"
     ],
     "payload": "Can every problem whose solution is quickly verifiable also be quickly solved? $1M prize unsolved for 50+ years.",
     "flags": 0,
@@ -1385,7 +1394,8 @@
     "tags": [
       "robotics",
       "psychology",
-      "design"
+      "design",
+      "hypothesis"
     ],
     "payload": "Human replicas elicit revulsion when almost but not quite human. Affinity drops sharply before rising again at perfect realism.",
     "flags": 0,
@@ -1407,7 +1417,8 @@
     "tags": [
       "ecology",
       "ecosystem",
-      "earth"
+      "earth",
+      "hypothesis"
     ],
     "payload": "Earth functions as single self-regulating organism. Biosphere maintains conditions hospitable for life through feedback loops.",
     "flags": 0,
@@ -1518,7 +1529,7 @@
       "philosophy",
       "physics",
       "simulation",
-      "provocative"
+      "hypothesis"
     ],
     "payload": "The proposal that all of reality is an artificial simulation, possibly run by a higher intelligence. Supported by the mathematical nature of physical laws.",
     "flags": 0,
@@ -1629,7 +1640,7 @@
       "internet",
       "conspiracy",
       "AI",
-      "provocative"
+      "speculative"
     ],
     "payload": "The belief that most of the internet is now populated by bots and AI-generated content, with real human interaction becoming a rarity.",
     "flags": 0,
@@ -1640,7 +1651,8 @@
     "tags": [
       "cosmology",
       "physics",
-      "entropy"
+      "entropy",
+      "speculative"
     ],
     "payload": "It is statistically more likely for a single brain to spontaneously form in a void with false memories than for the entire universe to have evolved.",
     "flags": 0,
@@ -1662,7 +1674,8 @@
     "tags": [
       "quantum",
       "thought-experiment",
-      "physics"
+      "physics",
+      "paradox"
     ],
     "payload": "A cat in a box is both alive and dead until observed. Highlights the 'absurdity' of Copenhagen interpretation applied to macroscopic objects.",
     "flags": 0,
@@ -1673,7 +1686,8 @@
     "tags": [
       "space",
       "aliens",
-      "science"
+      "science",
+      "paradox"
     ],
     "payload": "The contradiction between the high probability of extraterrestrial life and the total lack of evidence for it. Where is everybody?",
     "flags": 0,
@@ -1752,7 +1766,7 @@
       "AI",
       "thought-experiment",
       "risk",
-      "provocative"
+      "dilemma"
     ],
     "payload": "A theoretical future AI that punishes those who knew of its eventual existence but failed to help create it. A modern Pascal's Wager via superintelligence.",
     "flags": 1,
