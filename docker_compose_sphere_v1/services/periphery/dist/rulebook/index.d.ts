@@ -249,7 +249,7 @@ export declare const rulebook: {
                 effect: string;
                 triggers: string[];
             };
-            insightful: {
+            sharp: {
                 bit: number;
                 value: string;
                 name: string;
@@ -257,7 +257,7 @@ export declare const rulebook: {
                 effect: string;
                 triggers: string[];
             };
-            confusing: {
+            fuzzy: {
                 bit: number;
                 value: string;
                 name: string;
@@ -265,7 +265,7 @@ export declare const rulebook: {
                 effect: string;
                 triggers: string[];
             };
-            provoking: {
+            tensile: {
                 bit: number;
                 value: string;
                 name: string;
@@ -273,7 +273,7 @@ export declare const rulebook: {
                 effect: string;
                 triggers: string[];
             };
-            soothing: {
+            settled: {
                 bit: number;
                 value: string;
                 name: string;
@@ -729,7 +729,7 @@ export declare function getRulebookResponse(configOverrides?: {
                 effect: string;
                 triggers: string[];
             };
-            insightful: {
+            sharp: {
                 bit: number;
                 value: string;
                 name: string;
@@ -737,7 +737,7 @@ export declare function getRulebookResponse(configOverrides?: {
                 effect: string;
                 triggers: string[];
             };
-            confusing: {
+            fuzzy: {
                 bit: number;
                 value: string;
                 name: string;
@@ -745,7 +745,7 @@ export declare function getRulebookResponse(configOverrides?: {
                 effect: string;
                 triggers: string[];
             };
-            provoking: {
+            tensile: {
                 bit: number;
                 value: string;
                 name: string;
@@ -753,7 +753,7 @@ export declare function getRulebookResponse(configOverrides?: {
                 effect: string;
                 triggers: string[];
             };
-            soothing: {
+            settled: {
                 bit: number;
                 value: string;
                 name: string;

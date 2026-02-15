@@ -2414,6 +2414,426 @@
     "payload": "How human mental shortcuts are encoded into weights. The machine as a mirror of our own logical flaws.",
     "flags": 0,
     "importance": 0.75
+  },
+  {
+    "summary": "Biological rhythm & Blue light",
+    "tags": ["biology", "tech", "habit"],
+    "payload": "Short-wavelength light suppresses melatonin. A collision between ancient circadian circuitry and modern screen technology.",
+    "flags": 0,
+    "importance": 0.64
+  },
+  {
+    "summary": "The mathematics of shuffling cards",
+    "tags": ["math", "physics", "entropy"],
+    "payload": "It takes exactly seven riffle shuffles to randomize a deck. The transition from ordered state to maximum entropy.",
+    "flags": 0,
+    "importance": 0.58
+  },
+  {
+    "summary": "Placebo effect in UX design",
+    "tags": ["ui-ux", "psychology", "logic"],
+    "payload": "Progress bars that move faster at the end to satisfy user anxiety. Using psychological bias to mask technical latency.",
+    "flags": 0,
+    "importance": 0.61
+  },
+  {
+    "summary": "Algorithmic bias in facial recognition",
+    "tags": ["AI", "ethics", "sociology"],
+    "payload": "Training data imbalances lead to higher error rates for certain demographics. When societal prejudice is encoded into math.",
+    "flags": 1,
+    "importance": 0.82
+  },
+  {
+    "summary": "The topology of tangled headphones",
+    "tags": ["math", "physics", "daily-life"],
+    "payload": "Knot theory explains why cables inevitably tangle in pockets. Entropy favors disorder in restricted 3D spaces.",
+    "flags": 0,
+    "importance": 0.55
+  },
+  {
+    "summary": "Pareidolia: Faces in the void",
+    "tags": ["psychology", "evolution", "perception"],
+    "payload": "The brain's survival reflex to find patterns. Seeing a 'face' in a power outlet is a byproduct of ancient predator detection.",
+    "flags": 0,
+    "importance": 0.67
+  },
+  {
+    "summary": "Game theory of city traffic",
+    "tags": ["math", "urbanism", "behavior"],
+    "payload": "Braess's Paradox: Adding a road can actually slow down traffic. Individual rational choices leading to collective inefficiency.",
+    "flags": 0,
+    "importance": 0.73
+  },
+  {
+    "summary": "Digital minimalism & Dopamine fasting",
+    "tags": ["psychology", "tech", "lifestyle"],
+    "payload": "Intentional disconnection to reset the brain's reward system. A rebellion against the attention economy's architecture.",
+    "flags": 0,
+    "importance": 0.59
+  },
+  {
+    "summary": "Fractal geometry in broccoli and lungs",
+    "tags": ["math", "nature", "biology"],
+    "payload": "Self-similar patterns maximize surface area for gas exchange and light absorption. Nature's recursive efficiency.",
+    "flags": 0,
+    "importance": 0.71
+  },
+  {
+    "summary": "The linguistics of 'Internet Slang'",
+    "tags": ["language", "internet", "anthropology"],
+    "payload": "Emoji and acronyms evolving into a high-speed emotional shorthand. A rapid mutation of grammar in digital habitats.",
+    "flags": 0,
+    "importance": 0.57
+  },
+  {
+    "summary": "Cybernetic feedback in thermostats",
+    "tags": ["engineering", "systems", "logic"],
+    "payload": "The simplest form of goal-oriented behavior. A closed-loop system maintaining stability through constant correction.",
+    "flags": 0,
+    "importance": 0.63
+  },
+  {
+    "summary": "The chemistry of Maillard reaction",
+    "tags": ["chemistry", "food", "sensory"],
+    "payload": "Amino acids and sugars reacting under heat to create complex flavors. The bridge between molecular science and culinary art.",
+    "flags": 0,
+    "importance": 0.65
+  },
+  {
+    "summary": "Apophenia: Meaning in randomness",
+    "tags": ["psychology", "data-science", "philosophy"],
+    "payload": "The tendency to perceive meaningful connections between unrelated things. The dark side of pattern recognition.",
+    "flags": 0,
+    "importance": 0.68
+  },
+  {
+    "summary": "Quantum consciousness hypothesis",
+    "tags": ["physics", "neuroscience", "philosophy"],
+    "payload": "Speculation that microtubules in neurons utilize quantum effects. A controversial attempt to bridge mind and matter.",
+    "flags": 1,
+    "importance": 0.79
+  },
+  {
+    "summary": "The economics of 'Free-to-Play'",
+    "tags": ["economics", "psychology", "gaming"],
+    "payload": "Using 'Sunk Cost Fallacy' and 'Whale' dynamics to monetize engagement. Engineering addiction for profit.",
+    "flags": 0,
+    "importance": 0.74
+  },
+  {
+    "summary": "Crowd dynamics as fluid flow",
+    "tags": ["physics", "sociology", "safety"],
+    "payload": "Modeling high-density human movement using the Navier-Stokes equations. When individuals lose agency and act like particles.",
+    "flags": 0,
+    "importance": 0.76
+  },
+  {
+    "summary": "The 'Uncanny Valley' in AI avatars",
+    "tags": ["robotics", "psychology", "design"],
+    "payload": "The revulsion felt when a non-human entity looks 'almost' human. A glitch in our biological social-recognition software.",
+    "flags": 0,
+    "importance": 0.70
+  },
+  {
+    "summary": "Semantic saturation",
+    "tags": ["language", "brain", "perception"],
+    "payload": "Repeating a word until it loses all meaning and becomes a mere sound. A temporary disconnection between signifier and signified.",
+    "flags": 0,
+    "importance": 0.56
+  },
+  {
+    "summary": "The physics of a spinning coin",
+    "tags": ["physics", "math", "chance"],
+    "payload": "Euler's Disk: The rapid increase in vibration frequency as energy dissipates. A sensory demonstration of dynamical systems.",
+    "flags": 0,
+    "importance": 0.62
+  },
+  {
+    "summary": "Data debris & Digital decay",
+    "tags": ["tech", "entropy", "history"],
+    "payload": "Bit rot and obsolete file formats leading to a 'Digital Dark Age'. The struggle to preserve information against time.",
+    "flags": 0,
+    "importance": 0.77
+  },
+  {
+    "summary": "Quorum sensing in bacterial colonies",
+    "tags": ["biology", "communication", "distributed"],
+    "payload": "Bacteria coordinating behavior based on local population density. A biological example of decentralized consensus and signal transduction.",
+    "flags": 0,
+    "importance": 0.76
+  },
+  {
+    "summary": "The Lindy Effect on ideas",
+    "tags": ["math", "history", "probability"],
+    "payload": "The future life expectancy of non-perishable things is proportional to their current age. Probability applied to cultural longevity.",
+    "flags": 0,
+    "importance": 0.68
+  },
+  {
+    "summary": "Zipf's Law in human language",
+    "tags": ["linguistics", "math", "statistics"],
+    "payload": "The most frequent word occurs twice as often as the second most frequent. A mathematical pattern found in almost all human communication.",
+    "flags": 0,
+    "importance": 0.72
+  },
+  {
+    "summary": "Hysteresis in social systems",
+    "tags": ["physics", "sociology", "systems"],
+    "payload": "The dependence of a system's state on its history. Why social trends or economic scars persist long after the original cause is gone.",
+    "flags": 0,
+    "importance": 0.65
+  },
+  {
+    "summary": "Information Foraging Theory",
+    "tags": ["psychology", "ui-ux", "biology"],
+    "payload": "Humans navigate the web using the same optimal foraging strategies animals use to find food. Maximizing info-gain per unit of effort.",
+    "flags": 0,
+    "importance": 0.70
+  },
+  {
+    "summary": "The physics of sandpile collapses",
+    "tags": ["physics", "geology", "math"],
+    "payload": "Self-organized criticality where a single grain triggers a massive shift. A model for avalanches, forest fires, and stock market crashes.",
+    "flags": 0,
+    "importance": 0.74
+  },
+  {
+    "summary": "Conway's Law in software orgs",
+    "tags": ["programming", "sociology", "design"],
+    "payload": "Organizations design systems that mirror their own communication structures. The architecture of the code follows the architecture of the team.",
+    "flags": 0,
+    "importance": 0.62
+  },
+  {
+    "summary": "Bio-luminescence as signal logic",
+    "tags": ["biology", "nature", "engineering"],
+    "payload": "Chemical light production for camouflage or attraction. A high-efficiency energy conversion system evolved for deep-sea communication.",
+    "flags": 0,
+    "importance": 0.69
+  },
+  {
+    "summary": "The Chronos vs Kairos time perception",
+    "tags": ["philosophy", "psychology", "time"],
+    "payload": "Sequential quantitative time versus the qualitative 'right moment.' A conflict between the clock and human experience.",
+    "flags": 0,
+    "importance": 0.58
+  },
+  {
+    "summary": "Neural Entrainment to rhythm",
+    "tags": ["neuroscience", "music", "physics"],
+    "payload": "Brain waves synchronizing with external auditory pulses. The biological basis for the universal human response to a beat.",
+    "flags": 0,
+    "importance": 0.71
+  },
+  {
+    "summary": "Algorithmic gerrymandering",
+    "tags": ["math", "politics", "AI"],
+    "payload": "Using geometry and optimization to draw voting districts for partisan gain. Mathematics weaponized for structural power.",
+    "flags": 1,
+    "importance": 0.81
+  },
+  {
+    "summary": "The chemistry of the 'Old Book Smell'",
+    "tags": ["chemistry", "history", "sensory"],
+    "payload": "Degradation of cellulose and lignin into vanillin and other aromatics. A chemical fingerprint of time passing on paper.",
+    "flags": 0,
+    "importance": 0.55
+  },
+  {
+    "summary": "Technological momentum",
+    "tags": ["history", "engineering", "sociology"],
+    "payload": "The idea that large systems (like power grids) become autonomous and resistant to change as they grow. Infrastructure as destiny.",
+    "flags": 0,
+    "importance": 0.64
+  },
+  {
+    "summary": "Panopticon as digital architecture",
+    "tags": ["philosophy", "tech", "security"],
+    "payload": "Foucault's model of surveillance applied to modern data tracking. The psychological effect of knowing one *might* be observed.",
+    "flags": 1,
+    "importance": 0.78
+  },
+  {
+    "summary": "The aesthetics of Brutalist web design",
+    "tags": ["design", "culture", "digital"],
+    "payload": "A reaction against refined UI/UX. Raw, unpolished, and functionalist interfaces that prioritize honesty over comfort.",
+    "flags": 0,
+    "importance": 0.56
+  },
+  {
+    "summary": "Biological niche construction",
+    "tags": ["biology", "evolution", "urbanism"],
+    "payload": "Beavers building dams or humans building cities. Organisms actively changing their environment to alter selection pressures.",
+    "flags": 0,
+    "importance": 0.75
+  },
+  {
+    "summary": "Shannon Entropy in DNA sequences",
+    "tags": ["math", "genetics", "information"],
+    "payload": "Measuring the information density of the genome. DNA as a robust code for surviving noise and mutation over eons.",
+    "flags": 0,
+    "importance": 0.83
+  },
+  {
+    "summary": "The 'Overview Effect' in astronauts",
+    "tags": ["psychology", "space", "philosophy"],
+    "payload": "A cognitive shift reported by astronauts upon seeing Earth from orbit. The sudden realization of planetary fragility and unity.",
+    "flags": 0,
+    "importance": 0.67
+  },
+  {
+    "summary": "Digital twin synchronization",
+    "tags": ["engineering", "AI", "simulation"],
+    "payload": "Maintaining a real-time virtual model of a physical asset. A feedback loop between the material world and its digital ghost.",
+    "flags": 0,
+    "importance": 0.73
+  },
+  {
+    "summary": "The 'Is-Ought' problem in AI Alignment",
+    "tags": ["philosophy", "AI", "ethics"],
+    "payload": "Hume's gap: how do we derive what an AI *should* do from the data of what humans *actually* do? The fundamental wall in value learning.",
+    "flags": 0,
+    "importance": 0.84
+  },
+  {
+    "summary": "Proprioception & Virtual Avatars",
+    "tags": ["body", "neuroscience", "digital"],
+    "payload": "The brain's ability to map a digital limb as its own. How body schema expands to include non-biological tools through sensory feedback.",
+    "flags": 0,
+    "importance": 0.72
+  },
+  {
+    "summary": "Embodied Cognition: Thinking with the body",
+    "tags": ["cognition", "psychology", "philosophy"],
+    "payload": "The theory that intelligence is not just in the brain but emerges from physical interaction with the environment. Mind as a grounded process.",
+    "flags": 0,
+    "importance": 0.78
+  },
+  {
+    "summary": "Time Dilation in High-Flow States",
+    "tags": ["time", "psychology", "neuroscience"],
+    "payload": "The subjective slowing of time during intense focus or danger. Neural processing speed outstripping the objective ticking of the clock.",
+    "flags": 0,
+    "importance": 0.65
+  },
+  {
+    "summary": "Stigmergy in Social Insects & Wikipedia",
+    "tags": ["swarm-intelligence", "sociology", "distributed"],
+    "payload": "Indirect coordination through environmental traces. Ants use pheromones; humans use 'last edited' timestamps to organize collective labor.",
+    "flags": 0,
+    "importance": 0.81
+  },
+  {
+    "summary": "The 'Present Moment' in Relativity",
+    "tags": ["physics", "time", "philosophy"],
+    "payload": "Einstein's denial of a universal 'Now.' Simultaneous events for one observer are sequential for another, challenging the concept of a shared present.",
+    "flags": 0,
+    "importance": 0.83
+  },
+  {
+    "summary": "Haptic Memory & Muscle Memory",
+    "tags": ["body", "memory", "sensation"],
+    "payload": "Procedural knowledge stored in the motor cortex. The body 'remembering' a piano piece or a password that the conscious mind has forgotten.",
+    "flags": 0,
+    "importance": 0.61
+  },
+  {
+    "summary": "Emergent Leadership in Bird Flocks",
+    "tags": ["swarm-intelligence", "biology", "organization"],
+    "payload": "Complex maneuvers without a central commander. Local rules (alignment, cohesion, separation) producing global, sophisticated group behavior.",
+    "flags": 0,
+    "importance": 0.74
+  },
+  {
+    "summary": "Circadian Entropy",
+    "tags": ["biology", "time", "entropy"],
+    "payload": "The breakdown of biological rhythms in the absence of external cues (light/dark). The internal clock drifting toward its own idiosyncratic speed.",
+    "flags": 0,
+    "importance": 0.67
+  },
+  {
+    "summary": "The Extended Mind Thesis",
+    "tags": ["cognition", "tech", "philosophy"],
+    "payload": "The idea that smartphones and notebooks are not external tools but actual components of our cognitive architecture. Externalized memory.",
+    "flags": 0,
+    "importance": 0.79
+  },
+  {
+    "summary": "Thermodynamic Arrow of Time",
+    "tags": ["physics", "entropy", "time"],
+    "payload": "Time flows forward because entropy increases. The statistical inevitability of disorder providing the only directionality to the universe.",
+    "flags": 0,
+    "importance": 0.82
+  },
+  {
+    "summary": "Mirrored Movement & Social Sync",
+    "tags": ["body", "social", "psychology"],
+    "payload": "Subconscious mimicry of posture and gestures during conversation. A physical handshake between two nervous systems to build rapport.",
+    "flags": 0,
+    "importance": 0.58
+  },
+  {
+    "summary": "Dunbar's Number & Group Scaling",
+    "tags": ["sociology", "cognition", "organization"],
+    "payload": "The cognitive limit to the number of people with whom one can maintain stable social relationships. A bottleneck for organizational growth.",
+    "flags": 0,
+    "importance": 0.69
+  },
+  {
+    "summary": "Phantom Limb Sensation",
+    "tags": ["neuroscience", "body", "perception"],
+    "payload": "Feeling pain or itch in a non-existent limb. The brain's internal map persisting after the physical input has vanished.",
+    "flags": 0,
+    "importance": 0.70
+  },
+  {
+    "summary": "Digital Stigmergy in Open Source",
+    "tags": ["distributed", "tech", "organization"],
+    "payload": "Asynchronous collaboration where the work itself (the code) directs the next participant's action. Intelligence embedded in the artifact.",
+    "flags": 0,
+    "importance": 0.64
+  },
+  {
+    "summary": "Entropy of Boredom",
+    "tags": ["psychology", "time", "sensation"],
+    "payload": "The subjective expansion of time during low-stimulus periods. When the mind lacks input, it turns inward, making seconds feel like minutes.",
+    "flags": 0,
+    "importance": 0.60
+  },
+  {
+    "summary": "Collective Effervescence",
+    "tags": ["sociology", "body", "psychology"],
+    "payload": "The sense of energy and harmony felt when a group performs the same action at once (dancing, chanting). A physical dissolution of the ego.",
+    "flags": 0,
+    "importance": 0.66
+  },
+  {
+    "summary": "Neural Latency in Sensory Input",
+    "tags": ["neuroscience", "time", "body"],
+    "payload": "The 80ms delay between a physical event and our conscious perception of it. We live perpetually in the very recent past.",
+    "flags": 0,
+    "importance": 0.75
+  },
+  {
+    "summary": "The Wisdom of Crowds vs. Madness",
+    "tags": ["swarm-intelligence", "economics", "math"],
+    "payload": "When independent guesses average into truth versus when social pressure leads to informational cascades and market bubbles.",
+    "flags": 0,
+    "importance": 0.77
+  },
+  {
+    "summary": "Gravity's Effect on Time (GR)",
+    "tags": ["physics", "time", "space"],
+    "payload": "Time runs slower closer to a massive body. A clock on a mountain ticks faster than a clock at sea level. Spacetime as a fluid medium.",
+    "flags": 0,
+    "importance": 0.80
+  },
+  {
+    "summary": "Bio-Inspired Robotic Locomotion",
+    "tags": ["robotics", "body", "biology"],
+    "payload": "Designing robots that walk like insects or run like cheetahs. Solving movement through mechanical 'intelligence' rather than pure computation.",
+    "flags": 0,
+    "importance": 0.73
   }
-]
 
+]

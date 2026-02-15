@@ -116,9 +116,9 @@ Sphere 生態系が **閉じた循環** として機能することを、制御�
 
 | 種族 | 戦略 | flagBias 特徴 | 期待される反応差 |
 |------|------|--------------|-----------------|
-| **moth** | 注目追従 | temporalShort(1.5), insightful(1.5) | trending/viral に集中 |
-| **scholar** | 権威重視 | authority(1.8), temporalLong(1.3), dense(1.3) | academic に集中 |
-| **hermit** | 安定深掘り | authority(1.8), temporalLong(1.5), soothing(1.3) | academic に偏り + 短命を回避 |
+| **moth** | 注目追従 | temporalShort(1.5), sharp(1.5) | trending/viral に集中 |
+| **scholar** | 権威重視 | authority(1.8), temporalLong(1.3), dense(1.3), sharp(1.2) | academic に集中 |
+| **hermit** | 安定深掘り | authority(1.8), temporalLong(1.5), dense(1.3), settled(1.3) | academic に偏り + 短命を回避 |
 
 3種族は **直交的な戦略** を持つ。同一環境に対して異なる反応を示すことが、種族分化の証明になる。
 
@@ -169,14 +169,14 @@ curl -X POST http://localhost:3001/sphere/contribute \
 
 | # | tier | summary (先頭) | tags | 期待 flags |
 |---|------|---------------|------|-----------|
-| 1 | top | AI breakthrough 2026... | AI, reasoning, breakthrough, 2026 | 0x0101 (TemporalShort+Insightful) |
+| 1 | top | AI breakthrough 2026... | AI, reasoning, breakthrough, 2026 | 0x0101 (TemporalShort+Sharp) |
 | 2 | top | Room-temperature quantum... | quantum-computing, physics, breaking, 2026 | 0x0001 (TemporalShort) |
 | 3 | normal | Global dance challenge... | mental-health, social-media, viral, trending | 0x0001 (TemporalShort) |
-| 4 | normal | Hot debate erupts over AI... | AI-art, museum, controversial, current | 0x0401 (TemporalShort+Provoking) |
+| 4 | normal | Hot debate erupts over AI... | AI-art, museum, controversial, current | 0x0401 (TemporalShort+Tensile) |
 | 5 | normal | Latest framework release... | distributed-computing, edge-network, latest, update | 0x0001 (TemporalShort) |
 
 **物理効果**: decay×1.3 (短命方向)
-**FastGate bias**: moth TemporalShort 1.5× + Insightful 1.5× (A1 は二重ブースト), hunter TemporalShort 1.3× + Provoking 1.2× (A4)
+**FastGate bias**: moth TemporalShort 1.5× + Sharp 1.5× (A1 は二重ブースト), hunter TemporalShort 1.3× + Tensile 1.2× (A4)
 **クロスレイヤー**: A1 = Temporal+Cognitive, A4 = Temporal+Cognitive — 現実的なフラグ混合
 
 ### Group B: Academic (5 nodes) — Authority/Dense/TemporalLong 混合
@@ -188,14 +188,15 @@ curl -X POST http://localhost:3001/sphere/contribute \
 | 1 | normal | Sapir-Whorf hypothesis... | linguistics, cognitive-science, peer-reviewed, technical | 0x0090 (Authority+Dense) |
 | 2 | normal | Information entropy... | information-theory, thermodynamics, theory, fundamental | 0x0012 (TemporalLong+Dense) |
 | 3 | normal | Category theory unifies... | category-theory, programming, reference, standard | 0x0090 (Authority+Dense) |
-| 4 | normal | Stability of complex... | ecology, economics, peer-reviewed, stable | 0x0882 (Authority+TemporalLong+Soothing) |
-| 5 | normal | Distributed consensus... | distributed-systems, consensus, peer-reviewed, comprehensive | 0x0090 (Authority+Dense) |
+| 4 | normal | Stability of complex... | ecology, economics, peer-reviewed, stable | 0x0082 (Authority+TemporalLong) ※ "stable" は Settled に非マッチ |
+| 5 | normal | Distributed consensus... | distributed-systems, consensus, peer-reviewed, comprehensive | 0x0890 (Authority+Dense+Settled) |
 
 **B3 注意**: "category-theory" の "theory" が `\b` 境界により Dense をトリガーする (ハイフン = 非単語文字 → 語境界)
-**B4 注意**: "stable" が TemporalLong + Soothing の二重マッチ (直交次元, tagger.ts Known Behaviors に記載)
+**B4 注意**: "stable" が TemporalLong マッチ + "peer-reviewed" が Authority マッチ。"settled" タグがあれば Settled もマッチ (tagger.ts Known Behaviors 参照)
+**B5 注意**: "consensus" が Settled (0x0800) にマッチ → 旧期待値 0x0090 から 0x0890 に変更
 **物理効果**: decay×0.95 (Authority), decay×0.8 + ttl_decay×0.7 (TemporalLong)
 **注意**: Dense weight×1.2 は設計値だが bit_math.ts 未配線 (物理効果なし)
-**FastGate bias**: scholar authority 1.8× + dense 1.3×, hermit authority 1.8× + temporalLong 1.5× + soothing 1.3×
+**FastGate bias**: scholar authority 1.8× + dense 1.3× + sharp 1.2×, hermit authority 1.8× + temporalLong 1.5× + settled 1.3×
 
 ### Group C: Ephemeral (5 nodes) — Sparse 基調 + ドメインタグ
 
@@ -218,8 +219,8 @@ curl -X POST http://localhost:3001/sphere/contribute \
 2. Group A ノードの heat が Group B より速く減衰するか (decay×1.3 vs ×0.95)
 3. Group B ノードの weight decay が Authority (×0.95) で遅いか
 4. Group C ghost ノードが 5min 以内に消滅するか
-5. A1 に Insightful (0x0100) が付与されているか — クロスレイヤーフラグの検証
-6. B4 に Soothing (0x0800) が付与されているか — "stable" 二重マッチの検証
+5. A1 に Sharp (0x0100) が付与されているか — クロスレイヤーフラグの検証 (※ "breakthrough" は Sharp パターンに非マッチ、要 tags 調整)
+6. B5 に Settled (0x0800) が付与されているか — "consensus" マッチの検証
 
 ### tags 設計原則
 
@@ -268,10 +269,10 @@ phi3:mini の d 測定はクエリに依存する (実証済み):
 "official standard specification"       → Authority 活性化
 
 # Cognitive dimension
-"surprising insight discovery"          → Insightful 活性化
-"ambiguous contradictory confusing"     → Confusing 活性化
-"controversial debate provocative"      → Provoking 活性化
-"calm stable reliable soothing"         → Soothing 活性化
+"definition theorem proof axiom"        → Sharp 活性化
+"hypothesis uncertain speculative"      → Fuzzy 活性化
+"debate paradox contradiction"          → Tensile 活性化
+"established consensus standard"        → Settled 活性化
 
 # Mixed
 "knowledge exploration"                 → ベースライン (既存データとの比較用)
@@ -491,7 +492,7 @@ DIGEST_INTERVAL_MS=300000  # 5分 (本番は 10800000 = 3時間)
 `services/periphery/src/tagger/tagger.ts`:
 - Temporal: TemporalShort (0x0001), TemporalLong (0x0002) — パターンあり
 - Density: Dense (0x0010), Sparse (0x0020), Composite (0x0040), Authority (0x0080) — パターンあり
-- Cognitive: Insightful (0x0100), Confusing (0x0200), Provoking (0x0400), Soothing (0x0800) — パターンあり
+- Cognitive: Sharp (0x0100), Fuzzy (0x0200), Tensile (0x0400), Settled (0x0800) — パターンあり
 - Special: UserMarked (0x1000), SystemCore (0x2000) — パターンあり
 - TemporalCyclic (0x0004): コメントアウト (将来用)
 
@@ -514,10 +515,12 @@ DIGEST_INTERVAL_MS=300000  # 5分 (本番は 10800000 = 3時間)
 | `["draft", "experimental"]` | Sparse (0x0020, "simple"/"note"はSparse) | — |
 | `["theory", "formal", "rigorous"]` | Dense (0x0010) | weight×1.2 |
 | `["timeless", "fundamental"]` | TemporalLong (0x0002) | ttl_decay×0.7 |
-| `["controversial", "debate"]` | Provoking (0x0400) | FastGate scoring only |
-| `["insight", "breakthrough"]` | Insightful (0x0100) | FastGate scoring only |
+| `["debate", "paradox", "contradiction"]` | Tensile (0x0400) | FastGate scoring only |
+| `["definition", "theorem", "proof"]` | Sharp (0x0100) | FastGate scoring only |
+| `["hypothesis", "speculative"]` | Fuzzy (0x0200) | FastGate scoring only |
+| `["established", "consensus"]` | Settled (0x0800) | FastGate scoring only |
 
-**注意**: "draft", "wip" は Tagger の Sparse パターンに含まれる (`note`, `memo`, `simple`, `brief` 等)。
+**注意**: "draft", "wip" は Tagger の Sparse パターンに含まれない。Sparse は構造語のみ: `short`, `minimal`, `low-detail`, `sketch`, `outline`, `brief`, `note`, `memo`, `overview`, `intro`, `summary`, `snippet`, `fragment`。
 "experimental" は Tagger にマッチしない (パターン未登録)。
 wave injection の tags 選定時は tagger.ts のパターンを参照すること。
 
@@ -599,16 +602,16 @@ POST /sphere/contribute → {"success":true,"nodeCount":15,"processed":3}
 
 | Group | Node | 期待 flags | 実測 flags | 一致 |
 |-------|------|-----------|-----------|------|
-| A1 top | AI breakthrough | 0x0101 + tierFlags(0x02) | 0x0103 | ✅ |
+| A1 top | AI breakthrough | 0x0001 (TemporalShort) + tierFlags(0x02) | 0x0103 (旧実測, Insightful 改修前) | ⚠️ 要再検証 ("breakthrough" は Sharp に非マッチ) |
 | A2 top | Quantum computing | 0x0001 + tierFlags(0x02) | 0x0003 | ✅ |
 | A3 normal | Dance challenge | 0x0001 | 0x0001 | ✅ |
-| A4 normal | AI art debate | 0x0401 | 0x0401 | ✅ |
+| A4 normal | AI art debate | 0x0401 (TemporalShort+Tensile) | 0x0401 (旧実測, "controversial" → Provoking → 0x0400 は Tensile と同bit) | ✅ |
 | A5 normal | Framework release | 0x0001 | 0x0001 | ✅ |
 | B1 normal | Sapir-Whorf | 0x0090 | 0x0090 | ✅ |
 | B2 normal | Info entropy | 0x0012 | 0x0012 | ✅ |
 | B3 normal | Category theory | 0x0090 | 0x0090 | ✅ |
-| B4 normal | Stability | 0x0882 | 0x0882 | ✅ |
-| B5 normal | Consensus | 0x0090 | 0x0090 | ✅ |
+| B4 normal | Stability | 0x0082 (旧: 0x0882) | 0x0882 (旧実測, Soothing→Settled 改修前) | ⚠️ 要再検証 |
+| B5 normal | Consensus | 0x0890 (旧: 0x0090) | 0x0090 (旧実測, Settled 改修前) | ⚠️ 要再検証 ("consensus" → Settled) |
 | C1-C5 | Ephemeral ×5 | 0x0020 | 0x0020 | ✅ |
 
 **Arbiter 動的フラグ**: 数 tick 後に Hot (0x0008) + Candidate (0x8000) が active ノードに付与された。
@@ -622,7 +625,7 @@ sniper (authority:1.5, temporalShort:1.2) が 2 セッション (session 16-17) 
 
 | Cycle | 選択ノード | flags | eval (h,w,d) | 備考 |
 |-------|-----------|-------|-------------|------|
-| 1 | A1 AI breakthrough | 0x0103 | 9, 8, 4 | TemporalShort+Insightful → 高スコア |
+| 1 | A1 AI breakthrough | 0x0103 | 9, 8, 4 | TemporalShort+Sharp → 高スコア |
 | 2 | B1 Sapir-Whorf | 0x8098 | parse fail | JSON parse failure (phi3:mini 既知) |
 | 3 | B2 Info entropy | 0x001a | 8, 9, 4 | Dense+TemporalLong+Hot |
 | 4 | Vector databases | 0x0000 | parse fail | 旧ノード (flags なし) |
@@ -688,3 +691,110 @@ Species profile (gen-042 時点):
 ---
 
 *このテストの本質: Sphere が「動くソフトウェア」ではなく「生きている生態系」であることを、制御された実験で証明する。*
+
+---
+
+## Cognitive フラグ改修後テスト (2026-02-15)
+
+### 変更内容
+
+Cognitive 層 (bits 8-11) を主観的感情フラグから客観的認識論フラグに改修:
+
+| 旧 | 新 | 意味 |
+|----|-----|------|
+| Insightful (0x0100) | **Sharp** (0x0100) | 明確、一意的解釈、境界明瞭 |
+| Confusing (0x0200) | **Fuzzy** (0x0200) | 曖昧、複数解釈可能、未確定 |
+| Provoking (0x0400) | **Tensile** (0x0400) | 内部対立・矛盾を内包、未解決 |
+| Soothing (0x0800) | **Settled** (0x0800) | 決着済み、合意形成済み |
+
+### テスト手順と結果
+
+#### 1. ビルド確認
+
+renalCore → periphery → phi-agent の順にビルド。全成功。
+
+**注意**: periphery は renalCore の `file:` 依存を持つため、renalCore の `dist/` を先にビルドしないと TS エラーになる。
+
+#### 2. フラグ付与テスト (contribute API)
+
+Cognitive キーワードを含む tags でノードを投入し、Tagger のフラグ付与を検証:
+
+```bash
+# Sharp test
+curl -X POST http://localhost:3001/sphere/contribute \
+  -H "Content-Type: application/json" \
+  -d '{"source":"flag-test","capsule":{"schemaVersion":4,
+    "topTier":[{"tags":["theorem","proof","mathematics"],"summary":"...","flags":0}],
+    "normalNodes":[{"tags":["hypothesis","speculative","dark-matter"],"summary":"...","flags":0}],
+    "ghostNodes":[],"evaluations":[],"timestamp":...}}'
+```
+
+| ノード | tags | 期待 | 実測 | 一致 |
+|--------|------|------|------|------|
+| Godel Theorem | theorem, proof, mathematics | Sharp | 0x0102 (Sharp + TemporalLong) | ✅ |
+| Dark Matter | hypothesis, speculative | Fuzzy | 0x0208 (Fuzzy) | ✅ |
+| Ship of Theseus | paradox, debate, unresolved | Tensile | 0x040a (Tensile + TemporalLong) | ✅ |
+| TCP/IP Standard | established, consensus, standard | Settled + Authority | 0x0888 (Settled + Authority) | ✅ |
+
+topTier ノードに TemporalLong (0x0002) が付与されるのは Packer の tierFlags.top 設定による正常動作。
+
+#### 3. エージェント単発テスト
+
+```bash
+LOADOUT=moth node dist/index.js --query "emergence and self-organization" --cycles 3
+```
+
+結果: 3セッション正常完了、3ノード評価。ただし既存モックデータには Cognitive キーワードを含む tags がないため、全ノード flags=0x0008 (Hot のみ)。
+
+#### 4. デーモンテスト
+
+```bash
+LOADOUT=random node dist/index.js --daemon --cycles 3 --sleep 10000
+```
+
+13セッション完了、エラーなし。種族分布: scholar, scout×3, archivist×2, hunter×3, moth, wanderer, sniper×2。
+
+**新フラグの実戦動作確認**:
+- Session 13 (scout) で Godel ノード (flags: 0x0102 = TemporalLong + **Sharp**) を選択 → h=1 w=2 d=1 低評価 (scout は TemporalShort 志向のため Sharp/TemporalLong は相性悪い → **種族性格が出ている**)
+- 同セッションで TCP/IP (flags: 0x0880 = Authority + **Settled**) を選択
+
+### 発見した不備・注意点
+
+#### CLI 引数パース: `--sessions` は存在しない
+
+```bash
+# ❌ 誤り — "15" がクエリとして解釈される
+node dist/index.js --daemon --sessions 15 --cycles 3
+# → Query: "15" (意図しない)
+
+# ✅ 正しい — daemon は無限ループ、Ctrl+C で停止
+node dist/index.js --daemon --cycles 3
+```
+
+`--sessions` は parseArgs() に定義されていない。未知の `--xxx` フラグは無視されるが、その次の値引数 (`15`) が `!args[i].startsWith("--")` 条件にマッチし、クエリとして誤解釈される。
+
+#### LOADOUT=random を明示しないと re-random が効かない
+
+```bash
+# ❌ re-random なし — 全セッション balanced 固定
+EVALUATE=true node dist/index.js --daemon --cycles 3
+
+# ✅ re-random あり — セッションごとに種族再抽選
+LOADOUT=random EVALUATE=true node dist/index.js --daemon --cycles 3
+```
+
+`config.randomLoadout` フラグは初期値 `"random"` が渡されたときのみ true になる。LOADOUT 未指定時のデフォルトは `"balanced"` 固定。
+
+#### Sphere 再起動が必要 (ビルド後)
+
+ビルド完了後、起動中の Sphere は旧コードのまま動作する。Tagger のパターン変更を反映するには Sphere プロセスの再起動が必要。
+
+**症状**: 新 Cognitive フラグが一切付与されない (Authority 等の既存フラグは旧コードでも同一のため正常に見える)
+
+**確認方法**: Cognitive キーワードを含む tags でノードを投入し、flags に 0x0100-0x0800 が含まれるか確認。
+
+#### モックデータに Cognitive タグが不足
+
+既存 mock_data.json の tags には Cognitive キーワード (theorem, hypothesis, paradox, established 等) を含むものがない。そのため既存ノードは全て Cognitive bits = 0x0000。
+
+新フラグの実戦テストには、contribute API で Cognitive キーワードを含むノードを投入するか、mock_data.json のタグを拡充する必要がある。
