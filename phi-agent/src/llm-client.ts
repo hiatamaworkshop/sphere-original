@@ -5,8 +5,9 @@
 // Implementations:
 //   OllamaClient  — Local Ollama API (default, development)
 //   HfInferenceClient — HuggingFace Inference API (deployment)
+//   GroqClient — Groq API (deployment, JSON format supported)
 //
-// Switch via LLM_BACKEND env var: "ollama" | "huggingface"
+// Switch via LLM_BACKEND env var: "ollama" | "huggingface" | "groq"
 
 export interface LlmClient {
   /** Generate JSON-constrained response (evaluation). */

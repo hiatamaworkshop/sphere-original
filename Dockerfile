@@ -40,11 +40,12 @@ COPY --from=phi-build /build/package.json ./phi-agent/
 # Bundled generation data (fixed, read-only)
 COPY phi-agent/data/generations/gen-005.json ./phi-agent/data/generations/gen-005.json
 COPY phi-agent/data/generations/gen-011.json ./phi-agent/data/generations/gen-011.json
+COPY phi-agent/data/generations/gen-012.json ./phi-agent/data/generations/gen-012.json
 COPY phi-agent/data/species-profile.json ./phi-agent/data/species-profile.json
 
 ENV PHI_AGENT_DIR=/app/phi-agent
-ENV LLM_BACKEND=huggingface
-ENV HF_MODEL=google/gemma-2-2b-it
+ENV LLM_BACKEND=groq
+ENV GROQ_MODEL=llama-3.1-8b-instant
 
 # HF Spaces uses port 7860
 EXPOSE 7860

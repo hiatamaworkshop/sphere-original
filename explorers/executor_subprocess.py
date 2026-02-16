@@ -17,7 +17,7 @@ def execute_phi_agent(
     loadout: str,
     query: str,
     sphere_url: str,
-    model: str = "google/gemma-2-2b-it",
+    model: str = "llama-3.1-8b-instant",
     evaluate: bool = True,
     timeout: int = 300
 ) -> str:
@@ -28,7 +28,7 @@ def execute_phi_agent(
         loadout: Species name (e.g., "wanderer")
         query: Search query
         sphere_url: Sphere API endpoint
-        model: HF model ID (e.g., "google/gemma-2-2b-it")
+        model: Groq model ID (e.g., "llama-3.1-8b-instant")
         evaluate: Whether to evaluate nodes
         timeout: Max execution time in seconds
 
@@ -49,9 +49,9 @@ def execute_phi_agent(
         "EVALUATE": "true" if evaluate else "false",
         "RESPONSE": "true",
         "DAEMON": "false",
-        "LLM_BACKEND": os.environ.get("LLM_BACKEND", "huggingface"),
-        "HF_TOKEN": os.environ.get("HF_TOKEN", ""),
-        "HF_MODEL": model,
+        "LLM_BACKEND": os.environ.get("LLM_BACKEND", "groq"),
+        "GROQ_API_KEY": os.environ.get("GROQ_API_KEY", ""),
+        "GROQ_MODEL": model,
     }
 
     entry_point = os.path.join(PHI_AGENT_DIR, "dist", "index.js")

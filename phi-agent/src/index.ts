@@ -22,6 +22,7 @@
 import type { LlmClient } from "./llm-client.js";
 import { OllamaClient } from "./ollama-client.js";
 import { HfInferenceClient } from "./hf-client.js";
+import { GroqClient } from "./groq-client.js";
 import { SphereClient } from "./sphere-client.js";
 import { PhiAgent } from "./agent.js";
 import { LOADOUTS } from "./fast-gate.js";
@@ -30,6 +31,9 @@ import { getSpeciesSummary } from "./eval-log.js";
 
 function createLlmClient(): LlmClient {
   const backend = process.env.LLM_BACKEND || "ollama";
+  if (backend === "groq") {
+    return new GroqClient();
+  }
   if (backend === "huggingface") {
     return new HfInferenceClient();
   }

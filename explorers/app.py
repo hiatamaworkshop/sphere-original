@@ -44,9 +44,10 @@ SPECIES_DESC = {
     "sniper": "Selective evaluator -- harsh scorer, high standards"
 }
 
-# HF Inference API models (free tier only)
-HF_MODELS = [
-    "HuggingFaceTB/SmolLM3-3B",  # 3B, free tier, 0.11s latency, tools support
+# Groq API models (free tier, JSON format supported)
+GROQ_MODELS = [
+    "llama-3.1-8b-instant",     # 8B, fast, 14400 RPD, JSON format OK
+    "llama-3.3-70b-versatile",  # 70B, high quality, 1000 RPD
 ]
 
 SPHERE_URL = os.getenv("SPHERE_URL", "http://localhost:3001")
@@ -287,10 +288,7 @@ def create_ui():
         Each species perceives and evaluates information differently -- personality emerges from:
         **Loadout (vectors) x Physics (Sphere) x Sensor (LLM)**.
 
-        **⚠️ Known Limitation**: The free-tier model (SmolLM3-3B) does not reliably output JSON,
-        so evaluations may fail (`h=undefined`). However, **Sphere navigation works correctly** —
-        agents successfully sense, focus, and move through the ecosystem.
-        For full functionality with reliable evaluations, run phi-agent locally with Ollama.
+        Powered by Groq API (llama-3.1-8b) with structured JSON output for reliable evaluations.
 
         *First request may take 30-60s as Sphere wakes up from sleep.*
         """)
@@ -312,10 +310,10 @@ def create_ui():
                         )
 
                         model_input = gr.Dropdown(
-                            choices=HF_MODELS,
-                            value=HF_MODELS[0],
+                            choices=GROQ_MODELS,
+                            value=GROQ_MODELS[0],
                             label="Model",
-                            info="HuggingFace Inference API model"
+                            info="Groq API model (JSON format supported)"
                         )
 
                         species_dropdown = gr.Dropdown(
