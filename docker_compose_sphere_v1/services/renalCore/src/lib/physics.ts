@@ -68,5 +68,15 @@ export function computePhysicsModifiers(
     result.weight_multiplier *= 1.2;
   }
 
+  // Sparse: weight減衰
+  if (flags & NodeFlag.Sparse) {
+    result.weight_multiplier *= 0.8;
+  }
+
+  // Composite: weight微増
+  if (flags & NodeFlag.Composite) {
+    result.weight_multiplier *= 1.1;
+  }
+
   return result;
 }

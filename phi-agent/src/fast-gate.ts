@@ -97,6 +97,8 @@ export interface Weapon {
     temporalLong: number;
     // Density (bits 4-7)
     dense: number;
+    sparse: number;
+    composite: number;
     authority: number;
     // Cognitive (bits 8-11) — epistemic state
     sharp: number;
@@ -125,6 +127,8 @@ export const DEFAULT_WEAPON: Weapon = {
     temporalShort: 1.0,
     temporalLong: 1.0,
     dense: 1.0,
+    sparse: 1.0,
+    composite: 1.0,
     authority: 1.0,
     sharp: 1.0,
     tensile: 1.0,
@@ -213,7 +217,7 @@ export const LOADOUTS: Record<string, Loadout> = {
     name: "scholar",
     weights: { metrics: { ...DEFAULT_WEIGHTS.metrics, weight: 0.5, distance: -1 } },
     weapon: {
-      flagBias: { authority: 1.8, temporalLong: 1.3, dense: 1.3, sharp: 1.2 },
+      flagBias: { authority: 1.8, temporalLong: 1.3, dense: 1.3, composite: 1.2, sharp: 1.2 },
       stateBias: { hot: 0.8, frozen: 1.3 },
       ratioBias: { stability: 0.5 },
     },
@@ -227,7 +231,7 @@ export const LOADOUTS: Record<string, Loadout> = {
     name: "scout",
     weights: { metrics: { ...DEFAULT_WEIGHTS.metrics, heat: 0.8, distance: -3 } },
     weapon: {
-      flagBias: { temporalShort: 1.5 },
+      flagBias: { temporalShort: 1.5, sparse: 1.2 },
       stateBias: { hot: 1.5, frozen: 0.3 },
       ratioBias: { heatDensity: 0.3 },
     },
@@ -301,6 +305,9 @@ export const LOADOUTS: Record<string, Loadout> = {
   },
   wanderer: {
     name: "wanderer",
+    weapon: {
+      flagBias: { sparse: 1.1 },
+    },
     qualityVector: [0.25, 0.25, 0.25, 0.25],
     returnWeights: [0.0, 0.0, 1.0, 0.0],
     walkPreference: "explore",
@@ -625,6 +632,8 @@ export class FastGate {
       if (n.flags & Flag.TemporalLong)  flagGate *= wp.flagBias.temporalLong;
       // Density (bits 4-7)
       if (n.flags & Flag.Dense)      flagGate *= wp.flagBias.dense;
+      if (n.flags & Flag.Sparse)    flagGate *= wp.flagBias.sparse;
+      if (n.flags & Flag.Composite) flagGate *= wp.flagBias.composite;
       if (n.flags & Flag.Authority)  flagGate *= wp.flagBias.authority;
       // Cognitive (bits 8-11) — epistemic state
       if (n.flags & Flag.Sharp)    flagGate *= wp.flagBias.sharp;
