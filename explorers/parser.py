@@ -292,7 +292,7 @@ def extract_broadcast(stdout: str) -> list:
 
     for line in block.split('\n'):
         line = line.strip()
-        if re.match(r'^--- \d+/\d+ ---$', line):
+        if line == '---' or re.match(r'^--- \d+/\d+ ---$', line):
             if current:
                 posts.append('\n'.join(current))
                 current = []

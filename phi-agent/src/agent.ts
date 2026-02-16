@@ -230,9 +230,9 @@ export class PhiAgent {
         });
         if (posts.length > 0) {
           console.log("\n== BROADCAST START ==");
-          for (const post of posts) {
-            console.log(`--- ${post.index + 1}/${post.total} ---`);
-            console.log(post.text);
+          for (let i = 0; i < posts.length; i++) {
+            if (i > 0) console.log("---");
+            console.log(posts[i].text);
           }
           console.log("== BROADCAST END ==\n");
           broadcastPosts = posts.map(p => p.text);
