@@ -178,4 +178,96 @@ docker compose exec phi-agent node -e "
 
 ---
 
-*Archived: 2026-02-16*
+---
+
+## 追加削除ファイル (Phase 2)
+
+### ホスト直起動スクリプト (8 files)
+| ファイル | 内容 |
+|---------|------|
+| `run-r1-phi3.ps1` | Round 1 daemon: scout, hunter, archivist, sniper × phi3:mini |
+| `run-r2-phi3.ps1` | Round 2 daemon: moth, balanced, scholar, wanderer × phi3:mini |
+| `run-r3-phi3.ps1` | Round 3 (DEPRECATED — R1+R2 に統合済み) |
+| `run-r1-test.ps1` | Round 1 test: balanced, scholar, scout × llama3.2:1b |
+| `run-chk.ps1` | Lower-model verification sandbox (gemma/qwen) |
+| `inject-mock-wave.ps1` | Mock data REST API 注入 (/api/wave) |
+| `run-digestor.ps1` | Digestor daemon (ホスト直) |
+| `run-digestor-once.ps1` | Digestor one-shot (ホスト直) |
+
+### 旧ホスト直起動 CLI
+| ファイル | 内容 |
+|---------|------|
+| `sphere.sh` | 旧 Unix CLI (ホスト直起動、sphere.bat Docker Compose 版に置換) |
+
+### データファイル
+| ファイル | 内容 |
+|---------|------|
+| `test-ab-output/` (12 files) | A/B Species Memory テスト出力 |
+| `phi-agent/data/eval-log-backup-*.jsonl` (3) | eval-log バックアップ |
+| `phi-agent/data/eval-log-docker*.jsonl` (2) | Docker 版 eval-log |
+| `phi-agent/data/eval-log-experiment.jsonl` | 実験用 eval-log |
+| `phi-agent/data/eval-log-gemma2b-test.jsonl` | Gemma2B テスト |
+| `phi-agent/data/eval-log-test-*.jsonl` (2) | テスト用 eval-log |
+| `phi-agent/data/eval-log-baseline-gen2.jsonl` | Gen-2 ベースライン |
+| `phi-agent/data/species-profile*.bak` (2) | プロファイルバックアップ |
+| `phi-agent/data/test-results/` (全体) | モデル比較テスト結果 |
+| `docker_compose_sphere_v1/periphery.log` | 空ログ |
+| `docker_compose_sphere_v1/services/periphery/server.log` | 空ログ |
+
+---
+
+## 追加保存すべき方法論
+
+### 7. Round 制マルチエージェント並列テスト
+
+**元ファイル**: `run-r1-phi3.ps1`, `run-r2-phi3.ps1`
+
+**構成**:
+```
+Round 1: scout, hunter, archivist, sniper (活発2 + 静寂2)
+Round 2: moth, balanced, scholar, wanderer (活発1 + 中庸1 + 静寂2)
+→ 全8種族を 2 Round でカバー
+```
+
+**3-Phase アーキテクチャ**:
+```
+Phase 1: 4 agents × 5 min (既存ノードで探索)
+Phase 2: Wave inject (50 items 追加)
+Phase 3: 4 agents × 10 min (新ノード含めて再探索)
+→ 新旧ノード混在環境での種族行動比較
+```
+
+**モニタリング**: eval-log.jsonl の行数を 60 秒間隔で表示。
+終了後は直近 3 エントリを JSON パースして loadout/timestamp/eval数 を表示。
+
+**Docker Compose 移植案**:
+```bash
+# sphere.bat に "round" コマンドとして統合可能
+# Round 1 相当
+sphere batch                          # Phase 2 相当
+docker compose exec phi-agent sh -c "LOADOUT=scout OLLAMA_MODEL=phi3:mini node /app/dist/index.js --daemon --sleep 30000"
+```
+
+### 8. 検証用サンドボックス (EVALUATE='fake' モード)
+
+**元ファイル**: `run-chk.ps1`
+
+**特殊環境変数**:
+```
+EVALUATE='fake'           — 評価をスキップ (構造テスト用)
+SYSTEM_PROMPT='...'       — カスタムシステムプロンプト注入
+OLLAMA_OPTIONS='{"num_predict": 128, "temperature": 0.4}' — モデルパラメータ調整
+```
+
+**安全策**: テスト前に eval-log.jsonl を退避 → テスト後に復元。
+
+### 9. REST API 直接注入
+
+**元ファイル**: `inject-mock-wave.ps1`
+
+**方法**: mock_data.json を読み込み、`POST /api/wave` で 1 件ずつ注入。
+Contribution.js batch と異なり、任意の JSON ペイロードを直接注入可能。
+
+---
+
+*Archived: 2026-02-16 (Updated)*
