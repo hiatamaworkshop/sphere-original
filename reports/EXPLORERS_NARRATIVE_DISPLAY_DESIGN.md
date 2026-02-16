@@ -210,4 +210,64 @@ def extract_narrative(stdout: str) -> str:
 
 ---
 
-*Last updated: 2026-02-11*
+## 2026-02-16: BroadcastRenderer 実装 + SNS 最適化
+
+Narrative (LLM 生成) と並行して **Broadcast (決定的射影)** を出力。Phase 3 の SNS 配信の具体実装。
+
+### 設計原則
+
+- **純粋関数** — 同じ入力から常に同じ出力 (LLM 不介在、人間編集なし)
+- **因果鎖**: Sphere データ → Agent 観測 → Broadcast テキスト
+- **X/Twitter 互換** — 280 文字制限/post、スレッド形式
+
+### 最終フォーマット (v1)
+
+```
+[scholar] query: "quantum physics"
+5 cycles · 4 nodes · energy 8% · 87s
+---
+▸ Standard Model of Particle Physics
+  h:7 w:8 d:4 [physics, quantum, particles]
+▸ Schrödinger's Cat
+  h:8 w:9 d:4 [quantum, thought-experiment, physics]
+```
+
+### SNS 最適化で削除したもの
+
+| 項目 | 削除理由 |
+|------|---------|
+| nodeId | トレーサビリティだが SNS 読者には無意味 |
+| flags hex / labels | 内部データ、SNS 向けではない |
+| timestamp | X 投稿自体にタイムスタンプがある |
+| evals 数 | nodes 数と重複、冗長 |
+
+### 残したもの
+
+| 項目 | 理由 |
+|------|------|
+| loadout 名 | どの種族が探索したか (キャラクター性) |
+| query (50文字上限) | 何を探索したか |
+| cycles / nodes | 探索規模 |
+| energy % / duration | リソース消費 |
+| summary (120文字上限) | ノードの内容 |
+| h:w:d | 評価スコア |
+| tags (3つまで) | カテゴリ |
+
+### 変更ファイル
+
+| ファイル | 変更 |
+|---------|------|
+| `phi-agent/src/broadcast-renderer.ts` | 新規 — renderBroadcast() + flagsToLabels() |
+| `phi-agent/src/agent.ts` | encounters に flags 追加, broadcast 出力 (Step 5b) |
+| `phi-agent/src/eval-log.ts` | NarrativeEntry に flags?, broadcast? 追加 |
+| `explorers/parser.py` | extract_broadcast() 追加 |
+| `explorers/app.py` | Broadcast パネル追加 |
+
+### Docker Compose 同期
+
+- phi-agent, explorers, periphery イメージをリビルド済み (2026-02-16)
+- docker-compose.yml 自体の変更は不要
+
+---
+
+*Last updated: 2026-02-16*
