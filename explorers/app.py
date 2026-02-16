@@ -189,7 +189,7 @@ def visualize_generations():
     return info_text, fig_species, timeline_plot
 
 
-def launch_agent(species, query, model, sphere_url, evaluate=True):
+def launch_agent(species, query, model, evaluate=True, sphere_url=SPHERE_URL):
     """
     Launch phi-agent subprocess and stream results.
 
@@ -288,8 +288,6 @@ def create_ui():
         ([Sphere]({SPHERE_URL})).
         Each species perceives and evaluates information differently -- personality emerges from:
         **Loadout (vectors) x Physics (Sphere) x Sensor (LLM)**.
-
-        Powered by Groq API (llama-3.1-8b) with structured JSON output for reliable evaluations.
         """)
 
         with gr.Tabs():
@@ -311,8 +309,7 @@ def create_ui():
                         model_input = gr.Dropdown(
                             choices=GROQ_MODELS,
                             value=GROQ_MODELS[0],
-                            label="Model",
-                            info="Groq API model (JSON format supported)"
+                            label="Model"
                         )
 
                         species_dropdown = gr.Dropdown(
@@ -335,17 +332,9 @@ def create_ui():
                             info="Write evaluations to Sphere. OFF = observe + narrative only (faster)"
                         )
 
-                        with gr.Accordion("Advanced Settings", open=False):
-                            sphere_url_input = gr.Textbox(
-                                label="Sphere API URL",
-                                value=SPHERE_URL,
-                                info="Sphere backend (Render)",
-                                max_length=200
-                            )
-
                         execute_btn = gr.Button("Launch Agent", variant="primary", size="lg")
 
-                        gr.Markdown("*Execution takes 2-4 minutes (sense/focus/evaluate + narrative)*")
+                        gr.Markdown("*Execution may take some time*")
 
                         status_text = gr.Textbox(
                             label="Status",
@@ -382,7 +371,6 @@ def create_ui():
                         species_dropdown,
                         query_input,
                         model_input,
-                        sphere_url_input,
                         evaluate_checkbox
                     ],
                     outputs=[status_text, narrative_output, combined_output]
