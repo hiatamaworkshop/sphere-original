@@ -29,6 +29,7 @@ if "%1"=="help" goto help
 if "%1"=="-h" goto help
 if "%1"=="--help" goto help
 
+if "%1"=="reset" goto reset
 if "%1"=="up" goto up_all
 if "%1"=="core" goto up_core
 if "%1"=="down" goto down
@@ -62,6 +63,7 @@ echo   [7] explore    - Run exploration
 echo   [8] full       - batch + explore
 echo   [0] ps         - Show status
 echo   [l] logs       - Follow logs
+echo   [r] reset      - Clean start (backup + reset data)
 echo   [q] quit
 echo.
 set /p choice="Select: "
@@ -74,6 +76,8 @@ if "%choice%"=="5" goto batch
 if "%choice%"=="6" goto contribute
 if "%choice%"=="7" goto explore
 if "%choice%"=="8" goto full
+if "%choice%"=="r" goto reset
+if "%choice%"=="R" goto reset
 if "%choice%"=="0" goto ps
 if "%choice%"=="l" goto logs
 if "%choice%"=="L" goto logs
@@ -98,6 +102,7 @@ echo   ps             Show running services
 echo   logs [service] Follow logs (e.g., sphere logs phi-agent)
 echo.
 echo Data commands:
+echo   reset          Clean start: backup current data, reset to empty
 echo   batch          Inject all test data (60 items)
 echo   contribute [n] Inject n items (interactive if no count)
 echo   wave [n] [ms]  Wave inject (default: 50 items, 3000ms delay)
@@ -118,6 +123,87 @@ echo   sphere logs phi-agent  Follow phi-agent logs
 echo   sphere contribute 10   Inject 10 items
 echo   sphere build           Rebuild after code changes
 echo.
+pause
+exit /b 0
+
+:reset
+echo.
+echo ========================================
+echo   Clean Start - Generation Data Reset
+echo ========================================
+echo.
+echo This will:
+echo   1. Backup current data to phi-agent\data\archive\
+echo   2. Reset eval-log.jsonl (empty)
+echo   3. Reset species-profile.json (empty template)
+echo   4. Archive generations\ folder
+echo   5. Reset narrative-log.jsonl (empty)
+echo.
+echo Current data:
+set "DATA_DIR=%SPHERE_ROOT%phi-agent\data"
+if exist "%DATA_DIR%\eval-log.jsonl" (
+    for %%A in ("%DATA_DIR%\eval-log.jsonl") do echo   eval-log.jsonl: %%~zA bytes
+) else (
+    echo   eval-log.jsonl: not found
+)
+if exist "%DATA_DIR%\species-profile.json" (
+    for %%A in ("%DATA_DIR%\species-profile.json") do echo   species-profile.json: %%~zA bytes
+) else (
+    echo   species-profile.json: not found
+)
+echo.
+set /p confirm="Proceed with reset? [y/N]: "
+if /i not "%confirm%"=="y" (
+    echo Reset cancelled.
+    pause
+    exit /b 0
+)
+
+REM Create archive directory with timestamp
+for /f "tokens=2 delims==" %%I in ('wmic os get localdatetime /value') do set datetime=%%I
+set "ARCHIVE=%DATA_DIR%\archive\%datetime:~0,8%-%datetime:~8,6%"
+mkdir "%ARCHIVE%" 2>nul
+mkdir "%ARCHIVE%\generations" 2>nul
+
+REM Backup current files
+echo.
+echo [1/5] Backing up to %ARCHIVE%...
+if exist "%DATA_DIR%\eval-log.jsonl" copy "%DATA_DIR%\eval-log.jsonl" "%ARCHIVE%\" >nul
+if exist "%DATA_DIR%\species-profile.json" copy "%DATA_DIR%\species-profile.json" "%ARCHIVE%\" >nul
+if exist "%DATA_DIR%\narrative-log.jsonl" copy "%DATA_DIR%\narrative-log.jsonl" "%ARCHIVE%\" >nul
+
+REM Backup generations
+echo [2/5] Archiving generations...
+if exist "%DATA_DIR%\generations\gen-*.json" (
+    copy "%DATA_DIR%\generations\gen-*.json" "%ARCHIVE%\generations\" >nul
+    del "%DATA_DIR%\generations\gen-*.json"
+)
+
+REM Reset eval-log
+echo [3/5] Resetting eval-log.jsonl...
+type nul > "%DATA_DIR%\eval-log.jsonl"
+
+REM Reset species-profile
+echo [4/5] Resetting species-profile.json...
+if exist "%DATA_DIR%\species-profile-empty.json" (
+    copy "%DATA_DIR%\species-profile-empty.json" "%DATA_DIR%\species-profile.json" >nul
+) else (
+    echo {"generated":"2026-01-01T00:00:00.000Z","totalEvaluations":0,"survivedEvaluations":0,"species":{}} > "%DATA_DIR%\species-profile.json"
+)
+
+REM Reset narrative-log
+echo [5/5] Resetting narrative-log.jsonl...
+type nul > "%DATA_DIR%\narrative-log.jsonl"
+
+echo.
+echo [Done] Clean start ready.
+echo   Archive: %ARCHIVE%
+echo   eval-log.jsonl: empty
+echo   species-profile.json: empty template
+echo   generations\: cleared
+echo   narrative-log.jsonl: empty
+echo.
+echo Run 'sphere batch' to inject initial data, then 'sphere up' to start.
 pause
 exit /b 0
 
