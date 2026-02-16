@@ -281,16 +281,15 @@ def create_ui():
 
     with gr.Blocks(title="Explorers -- Sphere") as app:
 
-        gr.Markdown("""
+        gr.Markdown(f"""
         # Explorers -- Sphere
 
-        Send agents with different personalities (Loadouts) into a living information ecosystem.
+        Send agents with different personalities (Loadouts) into a living information ecosystem
+        ([Sphere]({SPHERE_URL})).
         Each species perceives and evaluates information differently -- personality emerges from:
         **Loadout (vectors) x Physics (Sphere) x Sensor (LLM)**.
 
         Powered by Groq API (llama-3.1-8b) with structured JSON output for reliable evaluations.
-
-        *First request may take 30-60s as Sphere wakes up from sleep.*
         """)
 
         with gr.Tabs():
