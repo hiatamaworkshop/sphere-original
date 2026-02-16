@@ -3,7 +3,7 @@
 **Date**: 2026-02-16
 **Goal**: デプロイ版 Explorers でエージェントの評価 (h/w/d) を正常動作させる
 **Branch**: `hf-deploy`
-**Status**: 実装完了・push 済み・動作確認待ち
+**Status**: 動作確認済み — 8B/70B 両方で h/w/d 正常、70B で測定分化確認
 
 ---
 
@@ -73,6 +73,45 @@ moth — 3 cycles, 3 evaluations, 9.0s
 | 大型モデル | `llama-3.3-70b-versatile` (70B, 1,000 RPD) |
 | 無料枠 | 永続、カード不要 |
 | Rate limit | 30 RPM — 1セッション(6 requests)は余裕 |
+
+## デプロイ動作確認結果 (2026-02-16)
+
+### 8B vs 70B 比較
+
+| 観点 | 8B (llama-3.1-8b-instant) | 70B (llama-3.3-70b-versatile) |
+|------|---------------------------|-------------------------------|
+| h/w | スタンプ (h=8, w=9 固定) | スタンプ傾向あるが w=7/8/9 と分化あり |
+| d | **スタンプ** (d=2 固定) | **測定** — コンテンツ×種族で分化 |
+| 速度 | 非常に速い | やや遅い (それでも数秒) |
+| narrative | 感想の羅列 | ノード間の理論的接続を自力発見 |
+
+### 種族×コンテンツ交互作用 (70B)
+
+| ノード | moth | scholar |
+|--------|------|---------|
+| RLHF/AI/alignment | d=6 | d=4 (学術寄り→近い) |
+| design-pattern/CQRS | d=2 | d=2 |
+
+scholar は RLHF を moth より「近い」と測定 — Loadout の性格が効いている証拠。
+
+---
+
+## 次回アップデート候補モデル
+
+現状: `llama-3.1-8b-instant` (デフォルト) + `llama-3.3-70b-versatile`
+
+| モデル | サイズ | RPD | 注目ポイント |
+|--------|-------|-----|-------------|
+| `meta-llama/llama-4-maverick-17b-128e-instruct` | 17B × 128 experts (MoE) | 1K | Llama 4 世代。MoE で実効パラメータ巨大。測定分化に最も期待 |
+| `meta-llama/llama-4-scout-17b-16e-instruct` | 17B × 16 experts (MoE) | 1K | Maverick 軽量版。TPM 30K と余裕 |
+| `qwen/qwen3-32b` | 32B | 1K | ローカルで qwen 系テスト経験あり。32B は測定精度の良いサイズ帯 |
+| `openai/gpt-oss-120b` | 120B | 1K | 最大モデル。70B 超の測定精度が期待 |
+| `openai/gpt-oss-20b` | 20B | 1K | gpt-oss 軽量版 |
+| `moonshotai/kimi-k2-instruct` | 大型 | 1K | Moonshot AI 新モデル |
+
+**除外**: `groq/compound` (RAG統合), `llama-guard-4` (安全性分類器), `allam-2-7b` (アラビア語特化)
+
+---
 
 ## トラブルシューティング
 
