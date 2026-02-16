@@ -788,7 +788,33 @@ bit_math.ts / physics.ts / FastGate のいずれも読んでいなかった (設
    - scout: `sparse: 1.2` (軽量情報優先)
    - wanderer: `sparse: 1.1` (軽い偏り)
 
-**未配線**: Fuzzy (0x0200) — Tagger が付与するが FastGate の Weapon/scoring に未配線。
+### Fuzzy の FastGate 配線完了
+
+- Weapon.flagBias に `fuzzy` を追加 (DEFAULT: 1.0)
+- scoring loop: `if (n.flags & Flag.Fuzzy) flagGate *= wp.flagBias.fuzzy`
+- bits 8-11 の4フラグ (Sharp/Fuzzy/Tensile/Settled) が全て対称に配線完了
+
+### 全種族リバランス — learned_δ 互換 + 弱点設計
+
+**設計原則**:
+- `effective = base_bias × (1 + learned_δ)` where `learned_δ ∈ [-0.3, +0.3]`
+- base_bias が極端 (1.8+) だと learned_δ が無力化される → 上限 1.5 に統一
+- 全種族に flagBias < 1.0 の「弱点」を導入 — 完璧な種族を排除
+- DEFAULT_WEAPON.frozen: 0.5→1.0 に修正 (中立をデフォルトに)
+- stateBias の過剰値を緩和 (hot max 1.8, frozen min 0.5)
+
+**変更一覧**:
+
+| 種族 | 強み (≥1.1) | 弱点 (<1.0) | stateBias | 性格 |
+|------|------------|-------------|-----------|------|
+| balanced | auth(1.2), tShort(1.1), tLong(1.1) | — | hot 1.2, frz 0.8 | 万能・やや古典嫌い |
+| scholar | auth(1.5↓), tLong(1.3), dense(1.3), comp(1.2), sharp(1.2) | **tShort(0.8)**, fuzzy(0.8) | hot 0.8, frz 1.3 | 深い研究者。トレンドと曖昧さに鈍い |
+| scout | tShort(1.5), sparse(1.2), fuzzy(1.2) | **auth(0.85)**, **settled(0.85)** | hot 1.5, frz 0.5 | 偵察兵。権威不信、確定知識に退屈 |
+| archivist | auth(1.5), tLong(1.5), dense(1.3), settled(1.3), sharp(1.1) | **tShort(0.75)**, **tensile(0.8)**, fuzzy(0.85) | hot 0.6, frz 1.4 | 知識救出者。新しいもの・未解決が苦手 |
+| hunter | tShort(1.3), tensile(1.2), fuzzy(1.15) | **auth(0.8)**, **settled(0.8)** | hot 1.5↓, frz 0.5 | 衝動的狩人。権威不信、解決済みに退屈 |
+| moth | tShort(1.5), sharp(1.5) | **settled(0.75)** | hot 1.8↓, frz 0.5 | 熱追跡者。決着済みに興味なし |
+| wanderer | sparse(1.1) | **dense(0.8)**, **auth(0.8)** | (default) | 反体制放浪者。重さと権威を避ける |
+| sniper | auth(1.5), tShort(1.2) | **composite(0.8)** | hot 1.3, frz 0.5 | 精密狙撃。複合概念を見逃す |
 
 ### "Cognitive" 層の命名について
 
