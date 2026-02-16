@@ -759,3 +759,42 @@ Tagger は「regex マッチャー」ではなく **ドメインアダプター*
 ---
 
 **Conclusion**: Flags are not semantic labels — they are **physical constants** that modulate node behavior in Sphere's physics engine. The 3-layer structure (Temporal / Density / Cognitive) + Special layer now covers **4 orthogonal dimensions**: time, density, epistemic state, and format — providing agent Loadouts with complete routing information for any data type. Cognitive 層は情報の認識論的状態 (解像度 × 確定度) を記述し、受け手の感情反応はエージェントの Loadout に委ねる。
+
+---
+
+## 配線作業ログ (2026-02-16)
+
+### Sparse / Composite の物理配線完了
+
+**背景**: Tagger が Sparse (0x0020) / Composite (0x0040) を付与していたが、
+bit_math.ts / physics.ts / FastGate のいずれも読んでいなかった (設計はあるがコードパスなし)。
+
+**変更箇所**:
+
+1. **`renalCore/src/lib/bit_math.ts`** — DEFAULT_MODIFIERS に追加
+   - `Sparse: { weightMultiplier: 0.8 }`
+   - `Composite: { weightMultiplier: 1.1 }`
+
+2. **`renalCore/src/lib/physics.ts`** — `computePhysicsModifiers()` に追加
+   - `if (flags & NodeFlag.Sparse) result.weight_multiplier *= 0.8`
+   - `if (flags & NodeFlag.Composite) result.weight_multiplier *= 1.1`
+
+3. **`phi-agent/src/fast-gate.ts`** — Weapon.flagBias に `sparse`, `composite` を追加
+   - DEFAULT_WEAPON: 両方 1.0 (中立)
+   - scoring loop: `if (n.flags & Flag.Sparse) flagGate *= wp.flagBias.sparse` 等
+
+4. **Loadout 割り当て**:
+   - scholar: `composite: 1.2` (複合概念親和)
+   - scout: `sparse: 1.2` (軽量情報優先)
+   - wanderer: `sparse: 1.1` (軽い偏り)
+
+**未配線**: Fuzzy (0x0200) — Tagger が付与するが FastGate の Weapon/scoring に未配線。
+
+### "Cognitive" 層の命名について
+
+- コード上は `// Cognitive (bits 8-11) — epistemic state` のまま
+- **Cognitive という層の固定概念は Gate Type Architecture (2026-02-11) で事実上廃止**
+  - bits 8-11 = **ドメイン固有スロット** (text: Sharp/Fuzzy/Tensile/Settled 等)
+  - ドメインが変われば意味テーブルごと差し替わる
+- コード上のリネーム (→ Epistemic 等) は行わない。コメントの `Cognitive` はそのまま残す
+- 重要なのは **名称ではなく構造**: 2軸直交 (解像度軸 × 確定度軸) がドメイン横断で保存される
