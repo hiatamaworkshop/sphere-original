@@ -433,6 +433,10 @@ def create_ui():
                     outputs=[gen_info, species_plot, timeline_plot]
                 )
 
+        # Auto-wake Sphere on page load (Render cold start takes 30-60s)
+        sphere_status = gr.Textbox(visible=False)
+        app.load(fn=lambda: wake_sphere(SPHERE_URL), outputs=sphere_status)
+
     return app, theme, css
 
 
