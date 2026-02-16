@@ -270,4 +270,43 @@ Narrative (LLM 生成) と並行して **Broadcast (決定的射影)** を出力
 
 ---
 
+## 2026-02-16: Docker Compose 統一 — レガシースクリプト廃止
+
+### 背景
+
+プロジェクト初期はホスト直起動 (node, npx tsx) で開発していたが、サービスが成熟し Docker Compose が全サービスをカバーするようになったため、ホスト直起動スクリプトは **ポート競合の原因** かつ **混乱の元** になっていた。
+
+### 変更
+
+| ファイル | Before | After |
+|---------|--------|-------|
+| `sphere.bat` | ホスト直起動 (`npm run dev`, `npx tsx`) | **Docker Compose ラッパー** |
+| `start-periphery.bat` | ホスト直 `node dist/index.js` | **削除** |
+| `start-daemon.bat` | ホスト直 phi-agent daemon | **削除** |
+| `test-single.bat` | ホスト直 phi-agent 単発テスト | **削除** |
+
+### sphere.bat 新コマンド体系
+
+| コマンド | 動作 |
+|---------|------|
+| `sphere up` | 全サービス起動 (`--profile agent`) |
+| `sphere core` | コア (periphery + infra) のみ起動 |
+| `sphere down` | 全停止 |
+| `sphere build` | 全イメージリビルド |
+| `sphere ps` | サービス状態表示 |
+| `sphere logs [svc]` | ログ追跡 |
+| `sphere batch` | テストデータ注入 (docker exec) |
+| `sphere contribute N` | N 件注入 (docker exec) |
+| `sphere wave [n] [ms]` | ウェーブ注入 |
+| `sphere explore` | 3層探索 |
+| `sphere full` | batch + explore |
+
+### 方針
+
+- **Docker Compose が唯一の起動手段** — ホスト直起動は非推奨
+- generation data は `sphere-phi-agent-data` volume で永続化
+- コード変更後は `sphere build` でイメージ更新
+
+---
+
 *Last updated: 2026-02-16*
