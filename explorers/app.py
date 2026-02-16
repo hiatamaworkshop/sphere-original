@@ -13,7 +13,7 @@ import os
 import json
 from pathlib import Path
 from executor import execute_phi_agent
-from parser import parse_cycles, format_cycle_output, format_summary, format_combined_output, extract_narrative
+from parser import parse_cycles, format_cycle_output, format_summary, format_combined_output, extract_narrative, extract_broadcast
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
@@ -223,18 +223,18 @@ def launch_agent(species, query, sphere_url, ollama_host, model="llama3.2:1b", e
         evaluate: Whether to evaluate nodes (write back to Sphere)
 
     Yields:
-        (status_text, narrative_output, combined_output)
+        (status_text, narrative_output, combined_output, broadcast_output)
     """
     if not query.strip():
-        yield ("❌ Error: Query cannot be empty", "*No narrative*", "")
+        yield ("❌ Error: Query cannot be empty", "*No narrative*", "", "")
         return
 
     if not sphere_url.strip() or not ollama_host.strip():
-        yield ("❌ Error: Sphere URL and Ollama Host must be set", "*No narrative*", "")
+        yield ("❌ Error: Sphere URL and Ollama Host must be set", "*No narrative*", "", "")
         return
 
     eval_label = "evaluate ON" if evaluate else "observe only"
-    yield (f"🚀 Launching {species} agent ({eval_label})...", "*Agent is exploring... (may take 2-4 minutes on CPU)*", "")
+    yield (f"🚀 Launching {species} agent ({eval_label})...", "*Agent is exploring...*", "", "")
 
     try:
         # Execute phi-agent
@@ -247,7 +247,7 @@ def launch_agent(species, query, sphere_url, ollama_host, model="llama3.2:1b", e
             evaluate=evaluate
         )
 
-        yield (f"✅ Execution complete", "*Parsing output...*", "Parsing output...")
+        yield (f"✅ Execution complete", "*Parsing output...*", "Parsing output...", "")
 
         # Parse cycles
         cycles = parse_cycles(stdout)
@@ -256,7 +256,8 @@ def launch_agent(species, query, sphere_url, ollama_host, model="llama3.2:1b", e
             yield (
                 "⚠️ No cycles parsed from output",
                 "*No narrative generated*",
-                stdout[-2000:] if len(stdout) > 2000 else stdout  # Last 2000 chars
+                stdout[-2000:] if len(stdout) > 2000 else stdout,
+                ""
             )
             return
 
@@ -267,21 +268,28 @@ def launch_agent(species, query, sphere_url, ollama_host, model="llama3.2:1b", e
         yield (
             f"✅ {species} completed {len(cycles)} cycles",
             "*Generating narrative...*",
-            combined
+            combined,
+            ""
         )
 
-        # Extract narrative (may take time)
+        # Extract narrative and broadcast
         narrative = extract_narrative(stdout)
+        broadcast_posts = extract_broadcast(stdout)
+        broadcast_text = "\n\n".join(
+            f"**[{i+1}/{len(broadcast_posts)}]**\n```\n{post}\n```"
+            for i, post in enumerate(broadcast_posts)
+        ) if broadcast_posts else "*No broadcast generated*"
 
-        # Update with final narrative
+        # Update with final results
         yield (
             f"✅ {species} completed {len(cycles)} cycles",
             narrative,
-            combined
+            combined,
+            broadcast_text
         )
 
     except Exception as e:
-        yield (f"❌ Error: {str(e)}", "*Error occurred*", "")
+        yield (f"❌ Error: {str(e)}", "*Error occurred*", "", "")
 
 
 def create_ui():
@@ -396,6 +404,12 @@ def create_ui():
                             max_lines=20
                         )
 
+                        gr.Markdown("## Broadcast (Observation Projection)")
+
+                        broadcast_output = gr.Markdown(
+                            value="*Deterministic broadcast will appear after exploration...*",
+                        )
+
                 # Update species description when dropdown changes
                 species_dropdown.change(
                     fn=lambda s: SPECIES_DESC.get(s, ""),
@@ -421,7 +435,7 @@ def create_ui():
                         model_input,
                         evaluate_checkbox
                     ],
-                    outputs=[status_text, narrative_output, combined_output]
+                    outputs=[status_text, narrative_output, combined_output, broadcast_output]
                 )
 
                 gr.Markdown("""

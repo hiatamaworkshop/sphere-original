@@ -257,3 +257,49 @@ def extract_narrative(stdout: str) -> str:
     narrative = stdout[start_idx + len(start_marker):end_idx].strip()
 
     return narrative if narrative else "*Narrative is empty*"
+
+
+def extract_broadcast(stdout: str) -> list:
+    """
+    Extract broadcast posts from phi-agent stdout.
+
+    Expected markers:
+      == BROADCAST START ==
+      --- 1/3 ---
+      {post text}
+      --- 2/3 ---
+      {post text}
+      == BROADCAST END ==
+
+    Args:
+        stdout: phi-agent stdout text
+
+    Returns:
+        List of post strings, or empty list if no broadcast found
+    """
+    start_marker = "== BROADCAST START =="
+    end_marker = "== BROADCAST END =="
+
+    start_idx = stdout.find(start_marker)
+    end_idx = stdout.find(end_marker)
+
+    if start_idx == -1 or end_idx == -1:
+        return []
+
+    block = stdout[start_idx + len(start_marker):end_idx].strip()
+    posts = []
+    current = []
+
+    for line in block.split('\n'):
+        line = line.strip()
+        if re.match(r'^--- \d+/\d+ ---$', line):
+            if current:
+                posts.append('\n'.join(current))
+                current = []
+        elif line:
+            current.append(line)
+
+    if current:
+        posts.append('\n'.join(current))
+
+    return posts
