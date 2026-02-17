@@ -33,12 +33,9 @@ const __dirname = path.dirname(__filename);
 interface RawData {
   summary: string;
   tags: string[];
-  payload?: string;
+  content?: string;
   flags?: number;
   importance: number; // 0.0 ~ 1.0
-  // Legacy fields (backward compatibility)
-  title?: string;
-  content?: string;
 }
 
 // ============================================================
@@ -105,8 +102,8 @@ async function contribute(count: number = 10) {
     // Heat grows from agent evaluations in subsequent sessions
     const seed: NodeSeed = {
       tags: data.tags,
-      summary: data.summary ?? data.title ?? "",
-      content: data.payload ?? data.content,
+      summary: data.summary,
+      content: data.content,
       // [REMOVED] initialHeat - determined by config.baseHeat, not agent
       flags: data.flags ?? 0,
     };

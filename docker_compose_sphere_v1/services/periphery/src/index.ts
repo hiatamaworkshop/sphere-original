@@ -471,10 +471,8 @@ server.setOnAgentCountChange((count: number) => {
 
 // ===== Seed Data (startup data injection) =====
 interface RawSeedItem {
-  title?: string;
-  summary?: string;
+  summary: string;
   content?: string;
-  payload?: string;
   tags: string[];
   importance: number;
   flags?: number;
@@ -504,8 +502,8 @@ async function seedSphere(): Promise<void> {
     for (const item of chunk) {
       const seed: NodeSeed = {
         tags: item.tags,
-        summary: item.summary ?? item.title ?? "",
-        content: item.payload ?? item.content,
+        summary: item.summary,
+        content: item.content,
         flags: item.flags ?? 0,
       };
       if (item.importance >= 0.85) topTier.push(seed);
