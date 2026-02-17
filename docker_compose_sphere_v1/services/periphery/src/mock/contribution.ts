@@ -190,8 +190,8 @@ async function contributeBatch() {
       // [Design] New nodes start with default metrics from config.baseHeat
       const seed: NodeSeed = {
         tags: data.tags,
-        summary: data.summary ?? data.title ?? "",
-        content: data.payload ?? data.content,
+        summary: data.summary,
+        content: data.content,
         // [REMOVED] initialHeat - determined by config.baseHeat, not agent
         flags: data.flags ?? 0,
       };
@@ -271,8 +271,8 @@ async function contributeWave(totalCount: number = 50, delayMs: number = 3000) {
     for (const data of chunk) {
       const seed: NodeSeed = {
         tags: data.tags,
-        summary: data.summary ?? data.title ?? "",
-        content: data.payload ?? data.content,
+        summary: data.summary,
+        content: data.content,
         flags: data.flags ?? 0,
       };
 

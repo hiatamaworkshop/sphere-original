@@ -90,6 +90,7 @@ services:
     environment:
       NODE_ENV: production
       PORT: "3001"
+      WS_URL: ws://localhost:3001
       SPHERE_CONFIG: /app/sphere.config.json
       REDIS_HOST: redis
       REDIS_PORT: 6379

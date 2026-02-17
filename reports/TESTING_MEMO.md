@@ -1027,7 +1027,117 @@ node dist/index.js --daemon --sleep 5000 --cycles 3
 ---
 
 作成日: 2025-01-31
-更新日: 2026-02-13
+更新日: 2026-02-17
+
+---
+
+## 16. docker-compose 統合環境テスト手順 (2026-02-17)
+
+### 16.1 概要
+
+ローカル dev から docker-compose 統合環境 (`docker_compose_sphere_v1/`) に移行後の
+初回テスト手順と、発見された落とし穴をまとめる。
+
+### 16.2 起動状態確認
+
+```bash
+cd docker_compose_sphere_v1
+docker compose ps
+# → periphery, postgres, redis, minio, nginx, ollama が healthy であること
+```
+
+**agent プロファイルのサービス** (digestor, pool-service, explorers, phi-agent) は
+別途 `--profile agent` で起動する。
+
+### 16.3 テスト前チェックリスト (docker-compose版)
+
+```
+□ 全コアサービス healthy  docker compose ps
+□ periphery ヘルス確認    curl http://localhost:3001/health
+□ ollama モデル確認       curl http://localhost:11434/api/tags
+□ ノード数確認            curl http://localhost:3001/nodes/stats
+□ 前回テストからのイメージ更新があれば rebuild 必須 (後述)
+```
+
+### 16.4 標準テストシーケンス
+
+#### Step 1: イメージ再ビルド (コード変更時)
+
+```bash
+docker compose build periphery
+docker compose up -d periphery
+```
+
+TypeScript のコンパイルエラーがある場合はここで止まる。修正→再ビルド。
+
+#### Step 2: バッチデータ投入
+
+```bash
+docker compose exec periphery node dist/mock/contribution.js batch
+# → "319 items → 253 nodes, 32 capsules" のような出力が出ればOK
+```
+
+#### Step 3: explore-agent テスト
+
+```bash
+docker compose exec periphery node dist/mock/explore-agent.js
+# WS接続・sense/focus/evaluate が正常に動くことを確認
+```
+
+#### Step 4: phi-agent 起動・確認
+
+```bash
+docker compose --profile agent up -d phi-agent
+docker compose logs --tail=60 phi-agent
+# → "Positioned in Sphere" "FastGate pick" "phi eval" が出ることを確認
+# → "== BROADCAST START ==" が出ることを確認
+```
+
+### 16.5 docker-compose 環境の WS ポート
+
+**重要**: docker-compose の periphery は `PORT=3001` で起動するため、
+HTTP と WebSocket が同じ port 3001 で動く (同一ポートモード)。
+
+| 接続元 | 使う URL |
+|--------|---------|
+| phi-agent (コンテナ内) | `ws://periphery:3001` (docker-compose.yml で設定) |
+| explore-agent (コンテナ内) | `ws://localhost:3001` (WS_URL 環境変数) |
+| ホストから直接 | `ws://localhost:3001` |
+
+**explore-agent の env var 名は `WS_URL`** (phi-agent の `SPHERE_WS` とは別)。
+`docker-compose.yml` の periphery environment に設定済み:
+
+```yaml
+environment:
+  PORT: "3001"
+  WS_URL: ws://localhost:3001   # ← explore-agent 用
+  SPHERE_WS: ws://localhost:3001
+```
+
+### 16.6 よくある落とし穴
+
+#### contribution.ts の複数関数トラップ
+
+`RawData` インターフェースを変更した場合、**3つの関数すべてを更新すること**:
+
+- `contribute()` (単発)
+- `contributeBatch()` (バッチ)
+- `contributeWave()` (ウェーブ)
+
+以前のバグ: `RawData` から `title?` / `payload?` を削除したが、
+`contributeBatch` と `contributeWave` 内の `data.title` / `data.payload` が
+残ったままで、Docker ビルド時に TypeScript コンパイルエラーが発生した。
+
+#### Docker イメージの鮮度
+
+コードを変更したら **必ず `docker compose build`** が必要。
+`docker compose up -d` だけでは既存イメージを使い回すので変更が反映されない。
+
+#### rate limit (3 actions/sec)
+
+explore-agent が layer 遷移時に連続アクション (scan → warp test) を送ると
+`Rate limit: max 3 actions/sec` エラーが出ることがある。これは既知の挙動で、
+phi-agent は影響を受けない (非同期で await しながら動くため)。
 
 ---
 
