@@ -1139,6 +1139,31 @@ explore-agent が layer 遷移時に連続アクション (scan → warp test) �
 `Rate limit: max 3 actions/sec` エラーが出ることがある。これは既知の挙動で、
 phi-agent は影響を受けない (非同期で await しながら動くため)。
 
+#### DAEMON=true の放置トラップ (2026-02-17)
+
+**phi-agent を `DAEMON=true` で起動したまま放置すると、Digestor が自律的に世代を進め続ける。**
+
+実例:
+- Feb 9 に gen-011 まで手動テスト → コンテナを停止せず放置
+- Feb 10〜17 の間に gen-012〜050 が自律生成 (計 39 世代)
+- sniper 種が全評価の 41% を占めるまで偏重、avgD が 1.8倍に膨張
+- 旧コンテンツ (linguistics/DNS/math) が事実上 ghost 化
+
+**テスト後は必ずデーモンを停止すること:**
+
+```bash
+docker compose --profile agent down
+# または phi-agent だけ停止
+docker compose stop phi-agent
+```
+
+**意図せず大量の世代が積み上がった場合の回復手順:**
+
+1. `docker compose down` でコンテナ全停止
+2. 一時コンテナで phi-agent-data を部分クリーン (意味ある世代のみ残す)
+3. `sphere-postgres-data` など実データボリュームを削除
+4. `docker compose up -d` 後に contribution.ts で mock data を再投入
+
 ---
 
 ## 12. Git ブランチ整理 (2026-02-01)
