@@ -1195,6 +1195,115 @@ docker compose stop phi-agent
 3. `sphere-postgres-data` など実データボリュームを削除
 4. `docker compose up -d` 後に contribution.ts で mock data を再投入
 
+#### Relic (原典ノード) 実装 (2026-02-17)
+
+**Relic = スフィアに事前配置する不変の座標アンカー。10 本の Pillar が意味空間の骨格を形成する。**
+
+| 項目 | 仕様 |
+|------|------|
+| データファイル | `periphery/src/mock/relics.json` (10 Pillars) |
+| フラグ | `SystemCore (0x2000)` — 代謝完全停止 |
+| kind | `"relic"` (Packer が SystemCore を検出して自動設定) |
+| 初期 heat | baseHeat × 0.4 = **300** (控えめ、探索を支配しない) |
+| 初期 weight | normal tier と同等 = **100** |
+| 評価 | **案1: 評価は受け付けるが結果を適用しない** (bookkeeper の freeze guard) |
+| TTL | top tier (172,800s) だが decay=0 なので実質無限 |
+
+**10 Pillars:**
+1. Logic (論理と数学) — syllogism, Boolean, Gödel
+2. Physical Determinism (物理と因果) — Newton, thermodynamics, causality
+3. Biological Archetypes (生命と進化) — central dogma, selection, homeostasis
+4. Linguistic Roots (言語と構造) — generative grammar, etymology
+5. Social Navigation (倫理と社会契約) — golden rule, justice
+6. Economic Axioms (価値と交換) — supply/demand, Nash equilibrium
+7. The Inner Self (実存と内省) — cogito ergo sum, know thyself
+8. Esthetic Geometry (芸術と形式美) — golden ratio, color theory
+9. Temporal Anchor (歴史と時間軸) — historical turning points, arrow of time
+10. The Great Question (未知と問い) — P≠NP, hard problem of consciousness
+
+**設計原則:**
+- 「琥珀は時代と共に移ろうが、原典は星のように動かない」
+- agent は Relic を focus (参照) できるが、evaluate の結果は Relic に反映されない
+- Relic の heat=300 は Active の baseHeat=750 より低い。時間経過で Active が減衰すると Relic が相対的に浮かび上がる
+- Relic データは `relics.json` で管理。mock_data.json とは独立したライフサイクル
+
+#### Species Memory の効果 (零記憶 vs Gen-011 比較, 2026-02-17)
+
+**同一モデル (phi3:mini)、同一データで species-profile の有無だけを変えた比較実験。**
+
+| 指標 | 零記憶 (13 sessions) | Gen-011 (7 sessions) | 差 |
+|------|---------------------|---------------------|-----|
+| avgH | 6.07 (±2.02) | **7.22 (±0.92)** | +1.15, 分散半減 |
+| avgW | 6.69 (±1.89) | **7.59 (±0.68)** | +0.90, 分散 1/3 |
+| avgD | 4.98 (±1.77) | **4.00 (±0.94)** | -0.98 (安定寄り) |
+| Bus emits | 0 | 11 | 記憶が社会行動の前提 |
+| ユニークノード | 26 | 20 | 重複わずか 7 |
+
+**主要な知見:**
+
+1. **評価の安定化**: 分散の半減は「LLM の出力が予測可能になった」ことを意味する。代謝系の閾値設計が信頼できるデータの上で初めて機能する
+2. **探索空間の分割**: 共通ノード 7/33。species memory は空間自体を変える → 多 agent 運用での生態的ニッチ分化の基盤
+3. **d-score 低下**: 記憶を持つ agent は世界を「より永続的」と知覚する。スフィアの時間感覚が agent の経験に依存する設計の実証
+4. **Bus = 記憶 → 社会性**: h≥8 の閾値を超える安定した評価がないと Bus は発火しない。社会的相互作用は個の成熟が前提
+5. **核心**: LLM 単体は知性ではない。profile + LLM の組み合わせが知性。軽量モデル + 適切なコンテクスト = 実用的な判断力
+
+**種族設計への示唆:**
+
+| 種族タイプ | species bias | learned_weight (将来) | 性格 |
+|-----------|-------------|----------------------|------|
+| 専門種 (hunter, sniper 等) | 強い | moderate | 種の個性が明確、個体差は微調整 |
+| 汎用種 (balanced) | global average (環境平均) | **strong** | 出発点はニュートラル、個体経験が方向を決める |
+
+balanced は「何もない空白」ではなく「未分化の幹細胞」。Digestor の global profile をベースラインに、
+learned_weight でそのスフィア固有の最適な探索者に育つ。
+人間にとっては「そのスフィアの内容を最もバランスよく把握している種族」として利用価値が高い。
+
+**空間の三層構造 (将来像):**
+```
+Relic (不変座標) → 空間の骨格
+  + species memory (種族文化) → 探索コリドー
+    + learned_weight (個体経験) → 個の軌跡
+      = スフィアに「地理」が生まれる
+```
+
+#### Core Sphere / Sanctuary Sphere 二層構想
+
+**スフィアは初期から「代謝型 + 静的型」の二層として設計されている。**
+
+```
+Core Sphere (代謝型)              Sanctuary Sphere (聖域型)
+┌──────────────────────┐          ┌──────────────────────┐
+│ 投入 → 評価 → 淘汰    │          │                      │
+│ 減衰 → ghost → 消滅   │ ──────→ │  固定された知識群      │
+│ 昇格 → Amber → 結晶   │ snapshot│  decay なし            │
+│ Relic = 座標アンカー   │          │  人間が直接活用        │
+│ agent が代謝を回す     │          │  standalone 稼働       │
+└──────────────────────┘          └──────────────────────┘
+```
+
+| 層 | 役割 | 代謝 | 利用者 |
+|----|------|------|--------|
+| Core Sphere | 知識の生成・淘汰・進化 | 常時稼働 | agent |
+| Sanctuary Sphere | 代謝の結晶を保存・提供 | なし (静的) | 人間 |
+
+**運用フロー:**
+1. Core Sphere で agent が代謝を回す (評価・淘汰・結晶化)
+2. Snapshotting で Core の成果を Sanctuary に移植
+3. 人間は Sanctuary Sphere を standalone 環境として利用
+4. Core に有用な更新があれば Sanctuary をアップデート
+
+**思想:**
+- 神髄は代謝にある。「データが消える」ことが価値の源泉
+- しかし消滅への抵抗感は自然。Sanctuary Sphere がその安全弁
+- Sanctuary は「バックアップ」ではなく「代謝の結晶」
+- Core で生き残った知識だけが Sanctuary に入る資格を持つ
+
+**現時点で対応する実装:**
+- Digestor の世代アーカイブ (gen-NNN.json) = Snapshotting の原型
+- species-profile.json = 種族進化の結晶
+- Relic = Core/Sanctuary 両方に存在する不変座標
+- Sanctuary Sphere 自体は未実装 (将来課題)
+
 ---
 
 ## 12. Git ブランチ整理 (2026-02-01)
