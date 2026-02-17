@@ -1139,6 +1139,37 @@ explore-agent が layer 遷移時に連続アクション (scan → warp test) �
 `Rate limit: max 3 actions/sec` エラーが出ることがある。これは既知の挙動で、
 phi-agent は影響を受けない (非同期で await しながら動くため)。
 
+#### Decay Preset とデプロイモードの関係 (2026-02-17)
+
+**`NODE_ENV` (環境モード) と `decay.preset` (代謝性格) は独立した軸である。**
+
+| 軸 | 意味 | 設定場所 |
+|----|------|----------|
+| `NODE_ENV=production` | 環境モード (ログ量、TTL倍率、最適化) | docker-compose.yml の environment |
+| `decay.preset` | スフィアの代謝速度・性格 | sphere.config.json の `renal_core.decay.preset` |
+
+**プリセット一覧 (2026-02-17 改訂):**
+
+| Preset | Heat半減期 | alpha | 用途 | デプロイ例 |
+|--------|-----------|-------|------|-----------|
+| archive | ~2時間 | 1.0 | 図書館型、長期保存重視 | 知識蓄積が目的の本番環境 |
+| natural | ~30分 | 3.0 | 汎用 (1〜3 agent 運用) | 標準的な本番・ステージング |
+| flow | ~5分 | 10.0 | SNS型、高速回転 | 多エージェント・高頻度投入の本番 |
+| dev | ~2分 | 30.0 | 開発用、ライフサイクル観測 | ローカル開発・CI |
+
+**フォールバック** (preset 未指定時): `development → dev`, `production → natural`
+
+**本番デプロイの選択指針:**
+- "production だから archive" ではない。スフィアの運用目的に応じて選ぶ
+- 少数 agent + 知識保存 → archive
+- 汎用運用 → natural
+- 高回転・多 agent → flow
+- minLoadFactor に注意: archive=0.05 (最低5%稼働), natural/flow=0.1, dev=1.0 (常時フル)
+
+**改訂経緯:** 旧 "balanced" プリセットは heatDecayFactor=0.01 (半減期 ~69秒) で速すぎた。
+1 agent では wave 投入なしにノード維持が不可能。
+全プリセットを半減期ベースで再設計し、"balanced" → "natural" に改名。"custom" プリセットは廃止。
+
 #### DAEMON=true の放置トラップ (2026-02-17)
 
 **phi-agent を `DAEMON=true` で起動したまま放置すると、Digestor が自律的に世代を進め続ける。**

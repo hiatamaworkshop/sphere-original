@@ -69,11 +69,10 @@ if (process.env.EPHEMERAL === "true") {
   };
 }
 
-// Resolve decay preset (archive | balanced | flow | dev | custom)
-const { resolved: decayValues, presetName } = resolveDecayPreset({
-  ...sphereConfig.renal_core.decay,
-  fertilityDecayRate: sphereConfig.renal_core.spatial.fertilityDecayRate,
-});
+// Resolve decay preset (archive | balanced | flow | dev)
+const { resolved: decayValues, presetName } = resolveDecayPreset(
+  sphereConfig.renal_core.decay,
+);
 
 // RenalCore configuration (decay values from preset, rest from sphere.config.json)
 const renalConfig = {
