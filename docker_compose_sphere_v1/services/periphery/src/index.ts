@@ -526,6 +526,36 @@ async function seedSphere(): Promise<void> {
   }
 
   console.log(`[Seed] Seeded ${totalNodes} nodes`);
+
+  // ---- Relics: immutable coordinate anchors (SystemCore flag) ----
+  const relicPath = process.env.RELIC_DATA_PATH
+    || join(__dirname, "mock/relics.json");
+  if (existsSync(relicPath)) {
+    const relicData: RawSeedItem[] = JSON.parse(readFileSync(relicPath, "utf-8"));
+    console.log(`[Seed] Loading ${relicData.length} relics from ${relicPath}`);
+    let relicCount = 0;
+
+    for (const item of relicData) {
+      const seed: NodeSeed = {
+        tags: item.tags,
+        summary: item.summary,
+        content: item.content,
+        flags: item.flags ?? 0x2000,  // SystemCore default
+      };
+      const capsule: ExperienceCapsule = {
+        schemaVersion: CAPSULE_SCHEMA_VERSION,
+        topTier: [seed],
+        normalNodes: [],
+        ghostNodes: [],
+        evaluations: [],
+        timestamp: Date.now(),
+      };
+      const result = await incarnationPipeline.ingest(capsule);
+      if (result.success) relicCount += result.nodeCount;
+    }
+
+    console.log(`[Seed] Relics planted: ${relicCount}`);
+  }
 }
 
 // Run seed (async, non-blocking — health check available immediately)

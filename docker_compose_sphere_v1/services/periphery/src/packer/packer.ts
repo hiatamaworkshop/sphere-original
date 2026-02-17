@@ -16,6 +16,7 @@
 
 import type { TaggedCapsule, TaggedNodeSeed } from "../types/capsule.js";
 import type { SphereNode } from "@sphere/renal-core";
+import { NodeFlag } from "@sphere/renal-core";
 import type { PeripheryConfig } from "../types/config.js";
 import { createHash } from "crypto";
 import { DEV_CONFIG } from "../config/env.js";
@@ -133,15 +134,20 @@ export class Packer {
       payload.ref_url = seed.ref_url;
     }
 
+    const isRelic = !!(seed.flags & NodeFlag.SystemCore);
+
     return {
       id: contentHash(seed.summary),  // [Principle 2] Hash Link
-      kind: tier === "ghost" ? "ghost" : "active",
+      kind: isRelic ? "relic" : tier === "ghost" ? "ghost" : "active",
       vector,
       payload,
       metrics: {
-        w: this.getTierWeight(tier),
+        // Relic: 控えめな存在感 (h=40%, w=normal tier) — 星は見えるが空を埋め尽くさない
+        w: isRelic ? this.getTierWeight("normal") : this.getTierWeight(tier),
         d: this.config.packer.standardDecayCoefficient,
-        h: this.config.packer.baseHeat,  // All nodes start with same baseline (agent cannot set)
+        h: isRelic
+          ? Math.round(this.config.packer.baseHeat * 0.4)
+          : this.config.packer.baseHeat,
         ttl: this.getTierTTL(tier),
         flg: this.getTierFlags(tier, seed.flags, seed.classificationFlags),
         stayTime: this.config.packer.initialMetrics.stayTime,

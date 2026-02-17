@@ -7,7 +7,7 @@
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "build": "tsc && npm run copy-assets",
-    "copy-assets": "node -e \"const fs=require('fs'); fs.cpSync('src/schema', 'dist/schema', {recursive: true, filter: (src) => src.endsWith('.json') || !src.includes('.')}); fs.cpSync('src/mock/mock_data.json', 'dist/mock/mock_data.json');\"",
+    "copy-assets": "node -e \"const fs=require('fs'); fs.cpSync('src/schema', 'dist/schema', {recursive: true, filter: (src) => src.endsWith('.json') || !src.includes('.')}); fs.cpSync('src/mock/mock_data.json', 'dist/mock/mock_data.json'); fs.cpSync('src/mock/relics.json', 'dist/mock/relics.json');\"",
     "start": "node dist/index.js",
     "contribute": "tsx src/mock/contribution.ts",
     "contribute:batch": "tsx src/mock/contribution.ts batch",

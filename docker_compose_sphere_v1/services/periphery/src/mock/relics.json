@@ -1,0 +1,62 @@
+[
+  {
+    "summary": "Pillar of Logic — Syllogism, Boolean algebra, and Gödel's incompleteness theorems",
+    "tags": ["mathematics", "logic", "computation", "proof"],
+    "content": "The foundations of formal reasoning: syllogistic deduction, Boolean algebra, Gödel's incompleteness theorems, and the Church-Turing thesis. All correctness and computational truth traces back to these axioms.",
+    "flags": 8192
+  },
+  {
+    "summary": "Physical Determinism — Newton's laws, thermodynamics, and causality",
+    "tags": ["physics", "causality", "thermodynamics", "mechanics"],
+    "content": "The bedrock of physical reality: Newtonian mechanics, the laws of thermodynamics, special and general relativity, and the principle of causality. These define what is physically possible.",
+    "flags": 8192
+  },
+  {
+    "summary": "Biological Archetypes — Central dogma, natural selection, and homeostasis",
+    "tags": ["biology", "evolution", "genetics", "homeostasis"],
+    "content": "The central dogma of molecular biology (DNA → RNA → protein), Darwin's natural selection, and the principle of homeostasis. Life's operating system and the philosophical root of Sphere's own metabolism.",
+    "flags": 8192
+  },
+  {
+    "summary": "Linguistic Roots — Generative grammar, etymology, and semantic structure",
+    "tags": ["linguistics", "grammar", "semantics", "etymology"],
+    "content": "Chomsky's generative grammar, the tree of Indo-European etymology, and formal semantics. The origin of how meaning is encoded in language — the gravity center for all vectorized words.",
+    "flags": 8192
+  },
+  {
+    "summary": "Social Navigation — The golden rule, human rights, and theories of justice",
+    "tags": ["ethics", "philosophy", "justice", "society"],
+    "content": "The golden rule across civilizations, the Universal Declaration of Human Rights, and Rawls' veil of ignorance. Moral coordinates for judging what is socially permissible.",
+    "flags": 8192
+  },
+  {
+    "summary": "Economic Axioms — Supply and demand, comparative advantage, and Nash equilibrium",
+    "tags": ["economics", "game-theory", "trade", "incentives"],
+    "content": "The law of supply and demand, Ricardo's comparative advantage, and Nash equilibrium in game theory. The axioms governing resource allocation, value exchange, and strategic interaction.",
+    "flags": 8192
+  },
+  {
+    "summary": "The Inner Self — Cogito ergo sum, know thyself, and the examined life",
+    "tags": ["philosophy", "consciousness", "introspection", "existentialism"],
+    "content": "Descartes' 'cogito ergo sum', the Delphic maxim 'know thyself', and Socrates' assertion that the unexamined life is not worth living. The subjective pole where observation meets the observer.",
+    "flags": 8192
+  },
+  {
+    "summary": "Esthetic Geometry — Golden ratio, color theory, and the structure of harmony",
+    "tags": ["art", "aesthetics", "harmony", "mathematics"],
+    "content": "The golden ratio in nature and architecture, Newton's and Goethe's color theories, the overtone series in music. Non-logical yet universally resonant patterns that define beauty and coherence.",
+    "flags": 8192
+  },
+  {
+    "summary": "Temporal Anchor — Historical turning points, calendars, and the arrow of time",
+    "tags": ["history", "time", "civilization", "chronology"],
+    "content": "The Agricultural Revolution, the fall of Rome, the invention of printing, the atomic age. Calendar systems and the thermodynamic arrow of time. The scale by which data is placed in temporal context.",
+    "flags": 8192
+  },
+  {
+    "summary": "The Great Question — Why something rather than nothing, P≠NP, and the unknowable",
+    "tags": ["philosophy", "mystery", "unsolved", "frontier"],
+    "content": "Leibniz's 'why is there something rather than nothing?', the P versus NP conjecture, the hard problem of consciousness. Intentional voids that no amber can crystallize — singularities that drive exploration.",
+    "flags": 8192
+  }
+]

@@ -475,8 +475,8 @@ export class Bookkeeper {
         continue;
       }
 
-      // [Evaluation Freeze] Candidate フラグ持ちは評価を無視
-      if (node.metrics.flg & NodeFlag.Candidate) {
+      // [Evaluation Freeze] Candidate / SystemCore (Relic) は評価を無視
+      if (node.metrics.flg & (NodeFlag.Candidate | NodeFlag.SystemCore)) {
         frozen++;
         continue;
       }
