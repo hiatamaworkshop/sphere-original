@@ -387,7 +387,7 @@ setInterval(async () => {
 
       const result = sanctificationNeuron.observe(telemetry);
 
-      // Log only at significant intervals or when sanctification is near
+      // Log at significant intervals or when sanctification triggers
       if (sanctificationNeuron.cycles % 30 === 0 || result.sanctify) {
         console.log(
           `[Sanctification] cycle=${sanctificationNeuron.cycles}` +
