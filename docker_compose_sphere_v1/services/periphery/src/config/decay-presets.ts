@@ -82,3 +82,10 @@ export function resolveDecayPreset(decayConfig: {
 
   return { presetName, resolved: preset };
 }
+
+/**
+ * Get preset values by name (for runtime mode switching).
+ */
+export function getPresetValues(name: DecayPresetName): DecayPresetValues {
+  return PRESETS[name] ?? PRESETS.natural;
+}

@@ -32,7 +32,7 @@ import { DEFAULT_PERIPHERY_CONFIG } from "./types/config.js";
 import { readFileSync, existsSync } from "fs";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
-import { resolveDecayPreset } from "./config/decay-presets.js";
+import { resolveDecayPreset, getPresetValues, type DecayPresetName } from "./config/decay-presets.js";
 import {
   SanctificationNeuron,
   type SanctificationConfig,
@@ -80,6 +80,8 @@ const { resolved: decayValues, presetName } = resolveDecayPreset(
 );
 
 // RenalCore configuration (decay values from preset, rest from sphere.config.json)
+// Note: alpha/heatDecayFactor/weightDecayFactor/fertilityDecayRate/minLoadFactor
+// are mutable — updated at runtime by metabolic auto-mode switching.
 const renalConfig = {
   alpha: decayValues.alpha,
   heatDecayFactor: decayValues.heatDecayFactor,
@@ -92,11 +94,12 @@ const renalConfig = {
   ghostTTLMultiplier: sphereConfig.renal_core.ghost.ttlMultiplier,
   planktonConversionRate: sphereConfig.renal_core.spatial.planktonConversionRate,
   fertilityDecayRate: decayValues.fertilityDecayRate,
+  minLoadFactor: decayValues.minLoadFactor,
   pauseIdleThreshold: sphereConfig.renal_core.pause.idleThreshold,
   pauseErosionBoost: sphereConfig.renal_core.pause.erosionBoost,
-  // Dormancy settings (metabolism hibernation when no agents)
-  dormancyThresholdMs: sphereConfig.renal_core.dormancy?.thresholdMs ?? 60000,
 };
+// Metabolic mode: tracks current decay preset (driven by sanctification neuron)
+let currentMetabolicMode: DecayPresetName = presetName as DecayPresetName;
 
 // Pulse configuration (now handled by PulseBroadcaster in Periphery)
 const pulseConfig = sphereConfig.renal_core.pulse;
@@ -104,7 +107,8 @@ const pulseConfig = sphereConfig.renal_core.pulse;
 console.log(`[Config] Loaded: ${sphereConfigPath}`);
 console.log(
   `[Config] Decay preset: "${presetName}" ` +
-  `(alpha=${renalConfig.alpha} heatDecay=${renalConfig.heatDecayFactor} weightDecay=${renalConfig.weightDecayFactor} minLoadFactor=${decayValues.minLoadFactor})`
+  `(alpha=${renalConfig.alpha} heatDecay=${renalConfig.heatDecayFactor} weightDecay=${renalConfig.weightDecayFactor} minLoadFactor=${renalConfig.minLoadFactor})` +
+  ((sphereConfig.sanctification?.metabolicAutoMode ?? true) ? ` [AUTO-MODE: neuron-driven]` : "")
 );
 
 console.log("=".repeat(60));
@@ -232,26 +236,27 @@ const sanctificationNeuron = new SanctificationNeuron(sanctificationConfig);
 let currentAgentCount = 0;
 
 // === Dormancy State ===
-// [Design] When no agents are connected for dormancyThresholdMs, metabolism hibernates.
+// [Design] Neuron-driven: sanctificationNeuron.recommendsDormancy replaces timer.
+// Neuron tracks consecutive zero-agent observations (default 6 = ~60s at 10s intervals).
 let isDormant = false;
-let lastAgentZeroTime: number | null = Date.now(); // Server starts with 0 agents
 
 setInterval(async () => {
   tickCounter++;
 
-  // === Dormancy Check ===
-  if (lastAgentZeroTime !== null && !isDormant) {
-    if (Date.now() - lastAgentZeroTime >= renalConfig.dormancyThresholdMs) {
-      isDormant = true;
-      console.log(`[Dormancy] Entering hibernation — no agents for ${renalConfig.dormancyThresholdMs / 1000}s`);
-    }
+  // === Dormancy Check (neuron-driven) ===
+  // The neuron observes agentDiversity during normal ticks.
+  // When it accumulates enough zero-agent observations, it recommends dormancy.
+  // Wake-up is handled by setOnAgentCountChange (immediate).
+  if (sanctificationNeuron.recommendsDormancy && !isDormant) {
+    isDormant = true;
+    console.log(`[Dormancy] Entering hibernation — neuron observed no agents for ${sanctificationNeuron.cycles} cycles`);
   }
   if (isDormant) return;
 
   // loadFactor: 負荷係数（preset の minLoadFactor で下限を調整）
   const rawLoadFactor = projectionDB.size / 50000;
   const loadFactor = Math.max(
-    decayValues.minLoadFactor,
+    renalConfig.minLoadFactor,
     Math.min(2.0, rawLoadFactor * 100)
   );
 
@@ -409,6 +414,32 @@ setInterval(async () => {
         // TODO: Sanctuary snapshot (Amber + Relic) would go here
         sanctificationNeuron.reset();
       }
+
+      // === Metabolic Auto-Mode: Hard confidence → decay preset ===
+      // [Design] Three-band mapping from instantaneous sphere health:
+      //   Hard < 0.15 → flow (immature, fast metabolism to promote change)
+      //   0.15 ≤ Hard < 0.30 → natural (growing, standard metabolism)
+      //   Hard ≥ 0.30 → archive (mature, slow metabolism to preserve)
+      if (sanctificationNeuron.metabolicAutoMode) {
+        const h = result.hard.confidence;
+        const recommended: DecayPresetName =
+          h < 0.15 ? "flow" : h < 0.30 ? "natural" : "archive";
+
+        if (recommended !== currentMetabolicMode) {
+          const prev = currentMetabolicMode;
+          const newValues = getPresetValues(recommended);
+          renalConfig.alpha = newValues.alpha;
+          renalConfig.heatDecayFactor = newValues.heatDecayFactor;
+          renalConfig.weightDecayFactor = newValues.weightDecayFactor;
+          renalConfig.fertilityDecayRate = newValues.fertilityDecayRate;
+          renalConfig.minLoadFactor = newValues.minLoadFactor;
+          currentMetabolicMode = recommended;
+          console.log(
+            `[Sanctification] Metabolic mode: ${prev} → ${recommended}` +
+            ` (Hard=${h.toFixed(3)})`
+          );
+        }
+      }
     }
 
     // === Patrol CleanerFish (Backup): Every 180 Observations (30 min) ===
@@ -535,19 +566,16 @@ const server = new PeripheryServer(
 server.start();
 
 // Connect agent count changes to RenalCore Dormancy and SphereCoreAdapter dynamic sampling
+// [Design] Dormancy wake-up is immediate on agent connection.
+// Dormancy entry is neuron-driven (consecutive zero-agent observations in tick loop).
 server.setOnAgentCountChange((count: number) => {
   renalCore.updateAgentCount(count);
   coreAdapter.setAgentCount(count);
   currentAgentCount = count;
 
-  if (count === 0) {
-    lastAgentZeroTime = Date.now();
-  } else {
-    if (isDormant) {
-      console.log(`[Dormancy] Waking up — agent connected`);
-    }
+  if (count > 0 && isDormant) {
+    console.log(`[Dormancy] Waking up — agent connected`);
     isDormant = false;
-    lastAgentZeroTime = null;
   }
 });
 
@@ -659,7 +687,6 @@ if (ephemeralConfig?.enabled && ephemeralConfig.resetIntervalMs > 0) {
     spatialFields.clear();
     tickCounter = 0;
     isDormant = false;
-    lastAgentZeroTime = Date.now();
     await seedSphere();
     console.log("[Ephemeral] Reset complete");
   }, ephemeralConfig.resetIntervalMs);

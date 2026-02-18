@@ -386,6 +386,10 @@ export interface SanctificationConfig {
   epochGrowth?: number;
   /** Maximum window size when epochGrowth > 0 */
   maxWindowSize?: number;
+  /** Enable neuron-driven metabolic mode switching (default: true) */
+  metabolicAutoMode?: boolean;
+  /** Consecutive zero-agent observations before dormancy recommendation (default: 6 = ~60s) */
+  dormancyObservations?: number;
 }
 
 /**
@@ -411,10 +415,15 @@ export class SanctificationNeuron {
   private _epoch = 0;
   private _inFestival = false;
 
-  // Config for epoch-based window growth (default: no growth)
+  // Dormancy tracking: consecutive observations with zero agents
+  private consecutiveZeroAgent = 0;
+  private readonly dormancyThreshold: number;
+
+  // Config
   private readonly baseWindowSize: number;
   private readonly epochGrowth: number;
   private readonly maxWindowSize: number;
+  readonly metabolicAutoMode: boolean;
 
   constructor(config: SanctificationConfig | number = {}) {
     // Backward compat: accept bare number as windowSize
@@ -425,6 +434,8 @@ export class SanctificationNeuron {
     this.baseWindowSize = cfg.windowSize ?? 30;
     this.epochGrowth = cfg.epochGrowth ?? 0;
     this.maxWindowSize = cfg.maxWindowSize ?? 90;
+    this.metabolicAutoMode = cfg.metabolicAutoMode ?? true;
+    this.dormancyThreshold = cfg.dormancyObservations ?? 6;
 
     this.soft = new SoftNeuron(this.baseWindowSize);
     this.meta = new MetaNeuron(this.baseWindowSize);
@@ -438,6 +449,13 @@ export class SanctificationNeuron {
    */
   observe(telemetry: ObservationTelemetry): SanctificationResult {
     this.observationCount++;
+
+    // Dormancy tracking: consecutive zero-agent observations
+    if (telemetry.connectedAgents === 0) {
+      this.consecutiveZeroAgent++;
+    } else {
+      this.consecutiveZeroAgent = 0;
+    }
 
     // Festival ends when Soft buffer refills (temporal legitimacy restored)
     if (this._inFestival && this.soft.isFull) {
@@ -520,5 +538,14 @@ export class SanctificationNeuron {
   /** Whether in post-sanctification festival period */
   get festival(): boolean {
     return this._inFestival;
+  }
+
+  /**
+   * Neuron-driven dormancy recommendation.
+   * True when no agents have been observed for dormancyThreshold consecutive observations.
+   * Replaces timer-based dormancy with observation-based detection.
+   */
+  get recommendsDormancy(): boolean {
+    return this.consecutiveZeroAgent >= this.dormancyThreshold;
   }
 }
