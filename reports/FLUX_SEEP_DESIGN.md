@@ -211,7 +211,17 @@ SpatialField の cellId ベースではなく、分解地点の position ベー�
 
 ---
 
+## 空間システムとの関係
+
+Flux Seep は Sphere の空間関連コンポーネントのうち、**唯一 queryNearby（384次元 cosine distance）を物理メカニズムとして使う**機能。
+sense/scanL1 はエージェント知覚用だが、Flux Seep はスフィア内部の物理過程として空間クエリを行う。
+
+二重経路の詳細と空間システム全体の棚卸しは [PHASE4_AGENT_SPATIAL_DESIGN.md](./PHASE4_AGENT_SPATIAL_DESIGN.md) セクション13 を参照。
+
+---
+
 ## 未実装（将来のステップ）
 
 1. **パラメータチューニング** — SEEP_RATE, SEEP_RADIUS, SEEP_DECAY の実運用調整
 2. **natural プリセットでの長期観測** — 数時間単位の flux 蓄積と TTL 変動の確認
+3. **Spatial Hash Grid 導入時の統合検討** — fluxPool と SpatialField.flux の二重経路統合の可否

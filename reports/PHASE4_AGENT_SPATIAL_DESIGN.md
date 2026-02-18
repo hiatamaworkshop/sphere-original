@@ -1100,6 +1100,7 @@ function evaluateDestination(
 | 2026-01-30 | セクション10「スフィア哲学: 設計制約」追加（曖昧化、非真実性、非決定性） |
 | 2026-02-01 | ステータスを「将来検討」に変更 |
 | 2026-02-01 | Agent Tick を 30ms に決定、ステップ累積モデル採用 |
+| 2026-02-19 | セクション13「現状棚卸し」追加 — 実装との乖離整理、Flux Seep による真の空間クエリ追加、命名問題の記録 |
 
 ---
 
@@ -1187,3 +1188,96 @@ const projectionRepo = new PostgresHnswRepository(pgClient);
 1. ノード数 > 10,000
 2. Agent queryNearby のレイテンシ > 50ms
 3. Agent 同時接続数 > 100
+
+---
+
+## 13. 空間システム現状棚卸し（2026-02-19 追記）
+
+Flux Seep 実装（2026-02-18）を経て、空間関連コンポーネントの実態を整理する。
+
+### 13.1 三つの「空間的」コンポーネントの実態
+
+| コンポーネント | 座標系 | 空間クエリ | 実態 |
+|--------------|--------|----------|------|
+| **queryNearby** | 384次元 embedding vector | cosine distance | **真の空間検索** |
+| **SpatialField + getCellId** | nodeId charCode ハッシュ → "x:y:z" | なし | **テレメトリ集計バケット** |
+| **GlobalFieldLayer** | なし（全ノードからランダムサンプル） | なし | **グローバル集約統計** |
+
+queryNearby だけが本物の空間検索。他の二つは空間インデックスではない。
+
+### 13.2 getCellId() — 設計書と実装の乖離
+
+**本セクション1で構想した cellId**:
+```typescript
+// position ベース — 連続空間を離散グリッドに分割
+const x = Math.floor(position[0] / cellSize);
+return `${x}:${y}:${z}`;
+```
+
+**現在の getCellId() (periphery/src/index.ts L296-302)**:
+```typescript
+// nodeId ハッシュベース — 空間的意味なし
+let hash = 0;
+for (let i = 0; i < nodeId.length; i++) {
+  hash += nodeId.charCodeAt(i);
+}
+return `${hash % 10}:${Math.floor(hash / 10) % 10}:${Math.floor(hash / 100) % 10}`;
+```
+
+出力形式（"5:3:2"）が同じため混同しやすいが、**全く別物**。
+現在の getCellId は Spatial Hash Grid の実装ではなく、telemetry 用の分散バケットである。
+セクション1の position-based Spatial Hash Grid は未実装のまま保留中（意図的）。
+
+### 13.3 queryNearby の利用箇所（2026-02-19 時点）
+
+| 呼び出し元 | 用途 | パラメータ |
+|-----------|------|----------|
+| `SphereCoreAdapter.sense()` | Agent 知覚（L2: tags+summary） | `sampleRatio = 1/agentCount^0.25` |
+| `SphereCoreAdapter.scanL1()` | Agent 軽量スキャン（L1: tags のみ） | 同上 |
+| `Bookkeeper.processFluxSeep()` | Flux 滴下先の近傍ノード探索 | `N=3, radius=1.0, sampleRatio=0.3` |
+
+3箇所とも `IProjectionRepository` インターフェース経由。HNSW 差し替え時の影響範囲はゼロ。
+
+### 13.4 Flux の二重経路
+
+Flux Seep 実装により、flux が二つの異なる系統を通るようになった。
+
+```
+decompose
+  ├─→ SpatialField.flux  (cellId = nodeId ハッシュ)  ← テレメトリ用
+  │     RenalCore が毎 tick 減衰。Explorers 等の可視化向け。
+  │     空間クエリには使わない。
+  │
+  └─→ fluxPool            (position = 384次元 vector) ← 物理用
+        Bookkeeper.processFluxSeep() が queryNearby で近傍ノードの TTL に滴下。
+        自然蒸発（SEEP_DECAY=0.995）で消滅。
+```
+
+**二重経路になった理由**: SpatialField はハッシュベースで空間クエリ不能なため、
+真の空間的 seep を実現するには fluxPool（vector ベース）が必要だった。
+SpatialField.flux は既存テレメトリとの互換性のため残している。
+
+将来 Spatial Hash Grid を導入した場合、SpatialField を position-based に移行すれば
+二重経路を統合できる可能性がある。ただし現時点では不要。
+
+### 13.5 既知の技術的負債
+
+| 項目 | 状態 | 影響 |
+|------|------|------|
+| SpatialField の名称 | hash-based なのに "Spatial" | 紛らわしいが機能に影響なし |
+| RenalCore の spatialFields 受け渡し | `getInternalMap()` で生 Map を渡している | `ISpatialFieldRepository` 経由にすべき (TODO) |
+| Agent.position (Vector3) | SphereAgent 型に残存 | 未使用。384次元 vector が実座標 |
+| getCellId の出力形式 | Phase 4 構想の position-based cellId と同形式 | 混同リスクのみ。将来 position-based に切り替える際に注意 |
+
+### 13.6 載せかえ準備の評価
+
+**Spatial Hash Grid 導入時に必要な作業**:
+
+1. `getCellId()` を position-based に置き換え（本セクション1の設計を適用）
+2. `IProjectionRepository` 実装を `PostgresHnswRepository` に差し替え（セクション12 参照）
+3. SpatialField を position-based cellId と紐付け直す（テレメトリ統合）
+4. fluxPool の二重経路を統合可能か検討
+
+**現時点で阻害要因になるコード上の依存はない。**
+queryNearby の呼び出し元は全て抽象インターフェース経由であり、
+SpatialField のテレメトリ系は独立している。
