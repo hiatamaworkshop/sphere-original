@@ -418,18 +418,43 @@ Meta はただの代謝読取装置。何も生み出さない。
 `evaluation_impact = |Δh| + |Δw| + |Δd|` — エージェントの energy や weight ではなく、
 ノード自身の metrics がどれだけ動いたかだけで測る。
 
-#### 判断ロジック
+#### 判断ロジック: 三系統分離パイプライン
+
+**設計原則: 単位の異なる信号を一つのスコアに潰さない。**
+
+三つの系統はそれぞれ性質が異なる:
+
+| 系統 | 性質 | 役割 |
+|---|---|---|
+| Bloom Filter (evaluator_entropy) | 離散 (bit) | **トリガー** — 低多様性で hard spike を注入 |
+| received_pressure | 連続 (soft) | **圧力** — stress_delta を漸増させる |
+| metric_anomaly (`\|expected - observed\|`) | 決定論 (数理) | **背景歪み** — 分布のズレを検知 |
+
+これらをベクトル内積や乗算で合算すると、攻撃側が一つの勾配で
+全系統を同時最適化できる（adversarial vector が作れる）。
+「賢いが脆い」設計になるため、**三系統は分離したまま統合する**。
 
 ```
-diversity  = bloomFilter.saturation()        // 0.0〜1.0
-pressure   = Σ |Δh+Δw+Δd| * exp(-t/τ)       // 受けた衝撃の時間積分
-suspicion  = pressure * (1.0 - diversity)     // 高圧力×低多様性 = 危険
+// ❌ 旧案: 一つのスコアに潰す
+suspicion = pressure * (1.0 - diversity)
 
-// 危険パターン
-高圧力 + 低多様性 = 単一ソースからの攻撃 → 防御発動
-高圧力 + 高多様性 = 有機的合意           → 正常
-低圧力             = 平穏               → 何もしない
+// ✅ 採用: 三系統をパイプラインとして統合
+// Step 1: Bloom はトリガー（門を開ける）
+if (bloomFilter.saturation() < MIN_DIVERSITY):
+    stress_delta += HARD_SPIKE
+
+// Step 2: neural は圧力（流れを押す）
+stress_delta += neural_suspicion * softRate
+
+// Step 3: metric は背景（地盤の傾きを伝える）
+stress_delta += metric_anomaly * bgRate
 ```
+
+Bloom が「門を開け」、neural が「圧力を流し」、metric が「地盤の傾きを伝える」。
+パイプラインの異なるステージであり、並列に足し合わせるものではない。
+
+**哲学: 検出しない、圧力を溜める。判定しない、炎症させる。**
+ノードは「攻撃だ」と判定する必要がない。ただ炎症するだけでいい。
 
 #### 応答メカニズム (要: ノード構造の拡張)
 
@@ -445,11 +470,39 @@ effectiveDecay = baseDecay * node.immuneMod
 
 // Bookkeeper.applyEvaluations():
 effectiveDelta = rawDelta * node.inputGain
-
-// ノード免疫が書く:
-if suspicion > threshold_1:  immuneMod += boost   // decay 加速（毒の排出）
-if suspicion > threshold_2:  inputGain *= 0.5     // 入力ゲートを絞る
 ```
+
+#### 応答の駆動方式: Slow Adaptation（即値ではなく漸進的適応）
+
+immuneMod/inputGain を閾値で即座に切り替えるのは Hard Neuron 的な発想であり、
+振動問題（ON/OFF の繰り返し）を引き起こす。
+stress_delta を通した slow adaptation を採用する:
+
+```
+// 毎 tick — stress_delta は上記パイプラインから流入:
+immuneMod += stress_delta * adaptationRate   // 圧力変化に比例して漸増
+immuneMod += (1.0 - immuneMod) * recoveryRate // 基準値 1.0 へ自然回復
+
+// clamp: learned_weight と同じ思想 — 微振動のみ許容
+immuneMod = clamp(immuneMod, 0.95, 1.05)
+```
+
+**設計制約: 振幅制限**
+- 基準値: 1.0（常にここへ回帰する）
+- 許容振幅: ±0.05（0.95 〜 1.05）
+- 攻撃下でも decay が 5% 増える程度。毎 tick 複利で効くため十分な効果がある
+- 仮にバグで暴走しても clamp により壊滅的破壊は起きない
+- learned_weight の clamp と同一思想: 系の安定性を振幅制限で保証する
+
+inputGain も同様:
+```
+inputGain += stress_delta * gainAdaptRate
+inputGain += (1.0 - inputGain) * recoveryRate
+inputGain = clamp(inputGain, 0.90, 1.0)  // 入力は絞る方向のみ
+```
+
+Meta Neuron の `suspicionLevel *= 0.995` と同じ回復構造が
+末端ノードまで浸透している。全層で Soft Neuron の原則が統一される。
 
 **実装順序**: Sphere 全体免疫（聖域化ニューロン）→ Node 免疫。土台が先。
 
