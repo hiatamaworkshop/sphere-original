@@ -1,4 +1,4 @@
-# Sphere テスト起動手順 — 2026-02-18
+# Sphere テスト起動手順 — 2026-02-19 (updated)
 
 ## 前提
 
@@ -196,3 +196,135 @@ docker compose down -v
 4. docker compose --profile agent up -d     # デーモンエージェント起動
 5. docker compose logs -f periphery         # Sanctification 観測
 ```
+
+---
+
+## 7. 中〜長時間デーモンテスト (2026-02-19 追記)
+
+### 7.1 現在のシステム状態
+
+2026-02-18 の Flux Seep 実装 + Fossil SystemCore 修正により、
+代謝サイクルの全段階が稼働している:
+
+```
+Active → Ghost → Fossil → Decompose → Flux Seep → 近傍 TTL 加算 → Pool 消滅
+```
+
+**BroadcastRenderer** (`phi-agent/src/broadcast-renderer.ts`) も実装済み。
+phi-agent ログに `== BROADCAST START ==` が出力されること。
+
+### 7.2 periphery ログの確認ポイント (代謝全段階)
+
+```bash
+docker compose logs -f periphery 2>&1 | grep -E "CleanerFish|Bookkeeper|RenalCore|Sanctification|Dormancy"
+```
+
+**正常動作で出るログ:**
+
+```
+# 代謝テレメトリ (毎 tick)
+[RenalCore] tick=N nodes=X active=A amber=0 fossil=F ghost=G relic=R flux=X.X
+
+# CleanerFish GC サイクル
+[CleanerFishPool] hunger=X.XX preyTTL<=N candidates: ghost=G fossil=F decompose=D
+[CleanerFish:fish-0] fossilized node=XXXX ghost→fossil ttl=N
+[CleanerFish] PROTECTED fossil=XXXX h=XXX w=XXX threshold=100
+[CleanerFish:fish-0] decomposed node=XXXX fossil→decompose flux=NNNN
+
+# Bookkeeper: decompose + flux seep
+[Bookkeeper] decomposed nodes=N cells=N pool=N
+[Bookkeeper] flux_seep pool=N seeped=N drip=X.X evaporated=N
+
+# Sanctification + Auto-Mode
+[Sanctification] Metabolic mode: natural → archive
+```
+
+### 7.3 代謝タイムライン目安
+
+| プリセット | Ghost→Fossil | Fossil PROTECTED 解除 | Decompose→Seep | Pool 消滅 |
+|-----------|-------------|---------------------|---------------|----------|
+| **dev** (alpha=30) | ~2分 | ~3.5分 | 即時 | ~30分 |
+| **natural** (alpha=3) | ~20分 | ~35分 | 即時 | ~5時間 |
+| **archive** (alpha=1) | ~60分 | ~100分 | 即時 | ~15時間 |
+
+**注意**: metabolicAutoMode=true (デフォルト) の場合、
+Sanctification Neuron がエージェント活動量に基づいてプリセットを自動切替する。
+エージェント不在時は archive に収束する。
+→ sphere.config.json の preset 設定が無視される場合がある。
+
+### 7.4 既知の落とし穴
+
+#### DAEMON 放置トラップ
+
+**phi-agent を DAEMON=true で起動したまま放置すると、Digestor が自律的に世代を進め続ける。**
+
+実例 (2026-02-10〜17):
+- gen-011 まで手動テスト → コンテナを停止せず放置
+- 8日間で gen-012〜050 が自律生成 (39世代)
+- sniper 種が全評価の 41% を占めるまで偏重
+
+**テスト後は必ずデーモンを停止すること:**
+
+```bash
+docker compose --profile agent down
+# または phi-agent だけ
+docker compose stop phi-agent
+```
+
+#### metabolicAutoMode による preset 上書き
+
+`sphere.config.json` で `decay.preset: "dev"` に設定しても、
+`sanctification.metabolicAutoMode: true` の場合、Sanctification Neuron が自動で
+archive (最も遅い減衰) に切り替えることがある。
+
+**対策**: テスト用に特定プリセットを固定したい場合は `metabolicAutoMode: false` にする。
+テスト後は `true` に戻すこと。
+
+**確認**: periphery ログで `[Sanctification] Metabolic mode:` を grep。
+
+#### イメージの鮮度
+
+コードを変更したら **必ず `docker compose build periphery`** が必要。
+`docker compose up -d` だけでは既存イメージを使い回すので変更が反映されない。
+
+renalCore のソースを変更した場合は `docker compose build periphery` で renalCore + periphery
+両方リビルドされる (Dockerfile のマルチステージ)。
+
+### 7.5 長時間稼働で予想されるエラーパターン
+
+| 症状 | 推定原因 | 対処 |
+|------|---------|------|
+| Ollama 応答なし (120s+) | メモリ不足 / モデルアンロード | `docker compose restart ollama` |
+| phi-agent WS 切断 | Periphery のセッションリーク | `docker compose restart phi-agent` |
+| Digestor `Skip: N < 50 minimum evaluations` | 評価データ不足 | 正常。蓄積を待つ |
+| flux_seep が一切出ない | fossil が decompose に到達していない | PROTECTED ログを確認。heat が protectionThreshold(100) 以上なら待つ |
+| `pool=0` のまま変化なし | decompose が発生していない | ノード数が少なすぎる可能性。contribution.js batch で追加投入 |
+| 全種族が同一ノードを選択 | Heat 蓄積フィードバックループ | 長時間稼働の自然現象。Sphere 再起動でリセット |
+| sniper/特定種族への偏重 | Digestor 世代が進みすぎ | 意図的放置でなければ停止して確認 |
+
+### 7.6 テスト後のデータ確認
+
+```bash
+# eval-log の行数 (phi-agent コンテナ内)
+docker compose exec phi-agent wc -l /app/data/eval-log.jsonl
+
+# 最新世代の確認
+docker compose exec phi-agent ls -la /app/data/generations/
+
+# species-profile の確認
+docker compose exec phi-agent cat /app/data/species-profile.json | head -50
+
+# periphery のスナップショット
+curl http://localhost:3001/nodes/stats
+curl http://localhost:3001/metrics
+```
+
+### 7.7 関連ドキュメント
+
+| ドキュメント | 内容 |
+|------------|------|
+| `TEST_STARTUP_CHECKLIST.md` | 起動前の落とし穴 9項目 (ビルド順序、WS ポート、LOADOUT=random 等) |
+| `DAEMON_TEST_BATCH_PROTOCOL.md` | Cycle A/B 設計、Wave Injection、成功基準 |
+| `TESTING_MEMO.md` | 歴史的アーカイブ (Section 14-16 にデータ蓄積・expression 実験の詳細) |
+| `FLUX_SEEP_DESIGN.md` | Flux Seep 設計 + ライブテスト結果 (2026-02-18) |
+| `PHASE4_AGENT_SPATIAL_DESIGN.md` Section 13 | 空間システム現状棚卸し (2026-02-19) |
