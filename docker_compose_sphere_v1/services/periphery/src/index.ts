@@ -33,6 +33,10 @@ import { readFileSync, existsSync } from "fs";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
 import { resolveDecayPreset } from "./config/decay-presets.js";
+import {
+  SanctificationNeuron,
+  type ObservationTelemetry,
+} from "./sanctification/index.js";
 import { loadSchemas } from "./schema/index.js";
 import { CAPSULE_SCHEMA_VERSION } from "./types/capsule.js";
 import type { ExperienceCapsule, NodeSeed } from "./types/capsule.js";
@@ -219,6 +223,12 @@ const observationInterval = 10;
 let tickCounter = 0;
 let patrolCounter = 0; // CleanerFish patrol frequency control
 
+// Sanctification Neuron — three-party consensus for sphere state sanctification
+// [Design] reports/SANCTIFICATION_NEURON_DESIGN.md
+// [Sync] Observes at the same interval as Arbiter (observationInterval)
+const sanctificationNeuron = new SanctificationNeuron(30); // 30 observations = 5 min window
+let currentAgentCount = 0;
+
 // === Dormancy State ===
 // [Design] When no agents are connected for dormancyThresholdMs, metabolism hibernates.
 let isDormant = false;
@@ -327,6 +337,66 @@ setInterval(async () => {
         `[CleanerFish] Cycle: ghostified=${ghostified.length} ` +
         `fossilized=${fossilized.length} decomposed=${decomposed.length}`
       );
+    }
+
+    // === Sanctification Neuron: Observe sphere metabolism ===
+    // [Design] Same observation interval as Arbiter — temporal grid aligned
+    // [Data] All inputs from existing subsystem outputs, no new measurements
+    {
+      // Count node kinds from projectionDB
+      let activeCount = 0;
+      let amberCount = 0;
+      let fossilCount = 0;
+      let ghostCount = 0;
+      let relicCount = 0;
+      for (const node of projectionDB.values()) {
+        switch (node.kind) {
+          case "active": case "environment": activeCount++; break;
+          case "amber": amberCount++; break;
+          case "fossil": fossilCount++; break;
+          case "ghost": ghostCount++; break;
+          case "relic": relicCount++; break;
+        }
+      }
+
+      const telemetry: ObservationTelemetry = {
+        // Arbiter
+        ascendCount: queue.shouldAscend.length,
+        erodeCount: queue.shouldErode.length,
+        reviveCount: queue.shouldRevive.length,
+        flagUpdateCount: queue.flagUpdates.length,
+        // CleanerFish
+        ghostifiedCount: ghostified.length,
+        fossilizedCount: fossilized.length,
+        decomposedCount: decomposed.length,
+        // Node distribution
+        totalNodes: projectionDB.size,
+        activeCount,
+        amberCount,
+        fossilCount,
+        ghostCount,
+        relicCount,
+        // Environment
+        dbCapacityRatio: env.dbCapacityRatio,
+        fieldIntensity: env.fieldIntensity ?? 0,
+        // Agent diversity
+        connectedAgents: currentAgentCount,
+        // Time
+        tickCounter,
+      };
+
+      const result = sanctificationNeuron.observe(telemetry);
+
+      // Log only at significant intervals or when sanctification is near
+      if (sanctificationNeuron.cycles % 30 === 0 || result.sanctify) {
+        console.log(
+          `[Sanctification] cycle=${sanctificationNeuron.cycles}` +
+          ` hard=${result.hard.fired ? "✓" : "·"}(${result.hard.confidence.toFixed(3)})` +
+          ` soft=${result.soft.fired ? "✓" : "·"}(${result.soft.integrated.toFixed(3)})` +
+          ` meta=${result.meta.healthy ? "✓" : "·"}(sus=${result.meta.suspicion.toFixed(3)})` +
+          (result.sanctify ? ` → SANCTIFY (confidence=${result.confidence.toFixed(3)})` : "")
+        );
+      }
     }
 
     // === Patrol CleanerFish (Backup): Every 180 Observations (30 min) ===
@@ -456,6 +526,7 @@ server.start();
 server.setOnAgentCountChange((count: number) => {
   renalCore.updateAgentCount(count);
   coreAdapter.setAgentCount(count);
+  currentAgentCount = count;
 
   if (count === 0) {
     lastAgentZeroTime = Date.now();
