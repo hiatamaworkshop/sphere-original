@@ -206,6 +206,14 @@
     }
   },
 
+  "sanctification": {
+    "_comment": "Three-party consensus for sphere state sanctification (Hard/Soft/Meta)",
+    "windowSize": 30,
+    "epochGrowth": 0,
+    "_epochGrowth_note": "0 = Sphere Original (clean). Set >0 for progressive difficulty per epoch.",
+    "maxWindowSize": 90
+  },
+
   "cleanerFish": {
     "_comment": "Autonomous GC - hunger scales both target range AND throughput",
     "count": 10,

@@ -104,6 +104,13 @@ class RingBuffer {
     if (this.count === 0) return 0;
     return this.buf[(this.head - 1 + this.capacity) % this.capacity];
   }
+
+  /** Clear all data, preserving capacity */
+  reset(): void {
+    this.buf.fill(0);
+    this.head = 0;
+    this.count = 0;
+  }
 }
 
 // ============================================================
@@ -209,6 +216,16 @@ class SoftNeuron {
       fired: integrated >= SoftNeuron.THRESHOLD,
       integrated,
     };
+  }
+
+  /** Clear temporal history — used for post-sanctification refractory period */
+  reset(): void {
+    this.history.reset();
+  }
+
+  /** Whether the ring buffer is full (temporal legitimacy achieved) */
+  get isFull(): boolean {
+    return this.history.isFull;
   }
 }
 
@@ -356,6 +373,19 @@ export interface SanctificationResult {
   hard: HardResult;
   soft: SoftResult;
   meta: MetaResult;
+  /** Post-sanctification refractory period (Soft buffer rebuilding) */
+  festival: boolean;
+  /** Sanctification epoch (increments on each SANCTIFY) */
+  epoch: number;
+}
+
+export interface SanctificationConfig {
+  /** Ring buffer size (observations). Default 30 = 5 min at 10s intervals */
+  windowSize?: number;
+  /** Window growth per epoch (0 = no growth, Sphere Original default) */
+  epochGrowth?: number;
+  /** Maximum window size when epochGrowth > 0 */
+  maxWindowSize?: number;
 }
 
 /**
@@ -364,22 +394,40 @@ export interface SanctificationResult {
  * Called every observationInterval (10 ticks = 10 sec).
  * When all three neurons agree, sanctification is recommended.
  *
+ * Post-sanctification lifecycle:
+ *   SANCTIFY → reset() → festival period (Soft rebuilding)
+ *                       → festival ends when Soft buffer refills
+ *                       → next sanctification possible
+ *
  * [Design] Observer, not producer.
  * [Design] All three are co-signers — no single neuron has veto power.
+ * [Design] Festival = natural refractory period. No artificial timers.
  */
 export class SanctificationNeuron {
   private readonly hard = new HardNeuron();
-  private readonly soft: SoftNeuron;
+  private soft: SoftNeuron;
   private readonly meta: MetaNeuron;
   private observationCount = 0;
+  private _epoch = 0;
+  private _inFestival = false;
 
-  /**
-   * @param windowSize Ring buffer size (observations).
-   *   Default 30 = 5 minutes at 10-second intervals.
-   */
-  constructor(windowSize: number = 30) {
-    this.soft = new SoftNeuron(windowSize);
-    this.meta = new MetaNeuron(windowSize);
+  // Config for epoch-based window growth (default: no growth)
+  private readonly baseWindowSize: number;
+  private readonly epochGrowth: number;
+  private readonly maxWindowSize: number;
+
+  constructor(config: SanctificationConfig | number = {}) {
+    // Backward compat: accept bare number as windowSize
+    const cfg = typeof config === "number"
+      ? { windowSize: config }
+      : config;
+
+    this.baseWindowSize = cfg.windowSize ?? 30;
+    this.epochGrowth = cfg.epochGrowth ?? 0;
+    this.maxWindowSize = cfg.maxWindowSize ?? 90;
+
+    this.soft = new SoftNeuron(this.baseWindowSize);
+    this.meta = new MetaNeuron(this.baseWindowSize);
   }
 
   /**
@@ -390,6 +438,14 @@ export class SanctificationNeuron {
    */
   observe(telemetry: ObservationTelemetry): SanctificationResult {
     this.observationCount++;
+
+    // Festival ends when Soft buffer refills (temporal legitimacy restored)
+    if (this._inFestival && this.soft.isFull) {
+      this._inFestival = false;
+      console.log(
+        `[Sanctification] Festival ended — epoch ${this._epoch} ready for next sanctification`
+      );
+    }
 
     // Three-party observation (same data, different perspectives)
     const hard = this.hard.process(telemetry);
@@ -408,11 +464,61 @@ export class SanctificationNeuron {
         )
       : 0;
 
-    return { sanctify, confidence, hard, soft, meta };
+    return {
+      sanctify, confidence, hard, soft, meta,
+      festival: this._inFestival,
+      epoch: this._epoch,
+    };
   }
 
-  /** Number of observation cycles completed */
+  /**
+   * Post-sanctification reset.
+   *
+   * - Increments epoch
+   * - Clears Soft's ring buffer (temporal legitimacy must be re-proven)
+   * - Enters festival period (natural refractory = buffer refill time)
+   * - Meta is NOT reset (immune state is continuous)
+   * - Hard is NOT reset (instantaneous, no state to clear)
+   *
+   * If epochGrowth > 0, the Soft window grows with each epoch
+   * (progressive difficulty, opt-in via config).
+   */
+  reset(): void {
+    this._epoch++;
+    this.observationCount = 0;
+    this._inFestival = true;
+
+    if (this.epochGrowth > 0) {
+      // Progressive: recreate Soft with larger window
+      const newWindow = Math.min(
+        this.baseWindowSize + this._epoch * this.epochGrowth,
+        this.maxWindowSize,
+      );
+      this.soft = new SoftNeuron(newWindow);
+      console.log(
+        `[Sanctification] Epoch ${this._epoch} — festival begins (window=${newWindow})`
+      );
+    } else {
+      // Sphere Original: same window, just clear
+      this.soft.reset();
+      console.log(
+        `[Sanctification] Epoch ${this._epoch} — festival begins (window=${this.baseWindowSize})`
+      );
+    }
+  }
+
+  /** Number of observation cycles completed (resets per epoch) */
   get cycles(): number {
     return this.observationCount;
+  }
+
+  /** Current sanctification epoch */
+  get epoch(): number {
+    return this._epoch;
+  }
+
+  /** Whether in post-sanctification festival period */
+  get festival(): boolean {
+    return this._inFestival;
   }
 }

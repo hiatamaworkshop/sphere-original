@@ -35,6 +35,7 @@ import { fileURLToPath } from "url";
 import { resolveDecayPreset } from "./config/decay-presets.js";
 import {
   SanctificationNeuron,
+  type SanctificationConfig,
   type ObservationTelemetry,
 } from "./sanctification/index.js";
 import { loadSchemas } from "./schema/index.js";
@@ -226,7 +227,8 @@ let patrolCounter = 0; // CleanerFish patrol frequency control
 // Sanctification Neuron — three-party consensus for sphere state sanctification
 // [Design] reports/SANCTIFICATION_NEURON_DESIGN.md
 // [Sync] Observes at the same interval as Arbiter (observationInterval)
-const sanctificationNeuron = new SanctificationNeuron(30); // 30 observations = 5 min window
+const sanctificationConfig: SanctificationConfig = sphereConfig.sanctification ?? {};
+const sanctificationNeuron = new SanctificationNeuron(sanctificationConfig);
 let currentAgentCount = 0;
 
 // === Dormancy State ===
@@ -389,13 +391,23 @@ setInterval(async () => {
 
       // Log at significant intervals or when sanctification triggers
       if (sanctificationNeuron.cycles % 30 === 0 || result.sanctify) {
+        const festivalTag = result.festival ? " [FESTIVAL]" : "";
         console.log(
-          `[Sanctification] cycle=${sanctificationNeuron.cycles}` +
-          ` hard=${result.hard.fired ? "✓" : "·"}(${result.hard.confidence.toFixed(3)})` +
-          ` soft=${result.soft.fired ? "✓" : "·"}(${result.soft.integrated.toFixed(3)})` +
-          ` meta=${result.meta.healthy ? "✓" : "·"}(sus=${result.meta.suspicion.toFixed(3)})` +
-          (result.sanctify ? ` → SANCTIFY (confidence=${result.confidence.toFixed(3)})` : "")
+          `[Sanctification] epoch=${result.epoch} cycle=${sanctificationNeuron.cycles}` +
+          ` Hard=${result.hard.fired ? "✓" : "·"}(${result.hard.confidence.toFixed(3)})` +
+          ` Soft=${result.soft.fired ? "✓" : "·"}(${result.soft.integrated.toFixed(3)})` +
+          ` Meta=${result.meta.healthy ? "✓" : "·"}(sus=${result.meta.suspicion.toFixed(3)})` +
+          (result.sanctify ? ` → SANCTIFY (confidence=${result.confidence.toFixed(3)})` : "") +
+          festivalTag
         );
+      }
+
+      // === Post-sanctification: reset + enter festival ===
+      // [Design] Soft buffer clears → natural refractory period (festival)
+      // [Design] Festival ends when Soft refills → next sanctification possible
+      if (result.sanctify) {
+        // TODO: Sanctuary snapshot (Amber + Relic) would go here
+        sanctificationNeuron.reset();
       }
     }
 
