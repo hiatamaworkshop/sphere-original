@@ -550,7 +550,7 @@ export class AgentManager {
         const cell = {
             cellId,
             centerVector: [],
-            fertility: 0.5,
+            flux: 0.5,
             nodeCount: 0,
             avgHeat: 0,
             lastUpdate: Date.now(),

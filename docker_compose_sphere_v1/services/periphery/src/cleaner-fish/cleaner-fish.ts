@@ -51,6 +51,7 @@ export interface DecompositionResult {
   nodeId: string;
   cellId: string;
   fluxGain: number;
+  position: number[];
 }
 
 /**
@@ -239,6 +240,7 @@ export class CleanerFish {
       nodeId: fossilNode.id,
       cellId,
       fluxGain,
+      position: fossilNode.vector,
     };
   }
 
@@ -258,8 +260,9 @@ export class CleanerFish {
 
     return {
       nodeId: ghostNode.id,
-      cellId: "",  // 空（flux なし）
+      cellId: "",
       fluxGain: 0,
+      position: [],
     };
   }
 

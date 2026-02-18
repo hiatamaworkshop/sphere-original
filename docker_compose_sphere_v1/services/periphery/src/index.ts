@@ -346,6 +346,10 @@ setInterval(async () => {
       );
     }
 
+    // === Flux Seep: 対流因子を近傍ノードの TTL に染み出す ===
+    // [Cycle] decompose → fluxPool → seep → nearby node.TTL += drip
+    await bookkeeper.processFluxSeep();
+
     // === Sanctification Neuron: Observe sphere metabolism ===
     // [Design] Same observation interval as Arbiter — temporal grid aligned
     // [Data] All inputs from existing subsystem outputs, no new measurements

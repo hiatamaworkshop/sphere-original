@@ -31,6 +31,17 @@ import {
 } from "../arbiter/arbiter.js";
 
 export class Bookkeeper {
+  // === Flux Seep: 対流因子による局所 TTL 染み出し ===
+  // [Design] 分解地点の position に flux を蓄積し、近傍ノードの TTL にわずかずつ還元する
+  // [Performance] 疎な Map — 分解イベントのたびにエントリ生成、閾値以下で自然消滅
+  private static readonly SEEP_RATE = 0.02;       // pool の 2% を 1 ノードに滴下
+  private static readonly SEEP_SAMPLE_N = 3;       // サイクルあたりサンプル数
+  private static readonly SEEP_DECAY = 0.995;      // 毎サイクル 0.5% 蒸発
+  private static readonly SEEP_MIN_FLUX = 0.1;     // この値以下でエントリ削除
+  private static readonly SEEP_RADIUS = 1.0;       // queryNearby の cosine distance 上限
+
+  private fluxPool: Map<string, { position: number[]; amount: number }> = new Map();
+
   constructor(
     private projectionRepo: IProjectionRepository,
     private referenceRepo: IReferenceRepository,
@@ -300,6 +311,7 @@ export class Bookkeeper {
       projectionNodes: await this.projectionRepo.count(),
       referenceRecords: await this.referenceRepo.count(),
       spatialCells: await this.spatialRepo.count(),
+      fluxPoolSize: this.fluxPool.size,
     };
   }
 
@@ -356,7 +368,7 @@ export class Bookkeeper {
    * @param decompositions Decomposition results from cleaner fish
    */
   public async applyDecomposition(
-    decompositions: { nodeId: string; cellId: string; fluxGain: number }[]
+    decompositions: { nodeId: string; cellId: string; fluxGain: number; position: number[] }[]
   ): Promise<void> {
     if (decompositions.length === 0) return;
 
@@ -370,7 +382,7 @@ export class Bookkeeper {
       await this.referenceRepo.delete(id);
     }
 
-    // Update flux in SpatialFields
+    // Update flux in SpatialFields (cell-based, for telemetry)
     const fluxByCell = new Map<string, number>();
     for (const d of decompositions) {
       const current = fluxByCell.get(d.cellId) ?? 0;
@@ -384,7 +396,6 @@ export class Bookkeeper {
         field.lastUpdate = Date.now();
         await this.spatialRepo.set(cellId, field);
       } else {
-        // Create new field if not exists
         await this.spatialRepo.set(cellId, {
           cellId,
           flux: fluxGain,
@@ -395,13 +406,95 @@ export class Bookkeeper {
       }
     }
 
+    // Populate fluxPool (position-based, for seep mechanism)
+    for (const d of decompositions) {
+      if (d.fluxGain > 0 && d.position.length > 0) {
+        this.fluxPool.set(d.nodeId, {
+          position: d.position,
+          amount: d.fluxGain,
+        });
+      }
+    }
+
     console.log(
-      `[Bookkeeper] decomposed nodes=${nodeIds.length} refdb=${nodeIds.length} cells=${fluxByCell.size}`
+      `[Bookkeeper] decomposed nodes=${nodeIds.length} cells=${fluxByCell.size} pool=${this.fluxPool.size}`
     );
   }
 
   // Note: evaporateGhosts() removed - ghost evaporation is now handled by
   // CleanerFish.evaporate() → applyDecomposition() with fluxGain=0
+
+  // ============================================================
+  // Flux Seep: 対流因子の染み出し
+  // ============================================================
+
+  /**
+   * Flux Seep: fluxPool から近傍ノードの TTL にわずかずつ染み出す
+   *
+   * [Cycle] decompose → fluxPool += { position, amount }
+   *         → processFluxSeep (毎 observation) → nearby node.TTL += drip
+   *         → pool 自然蒸発 → pool < threshold → エントリ削除
+   *
+   * [Performance] O(poolSize × queryNearby) — poolSize は数十〜数百に収束
+   *   queryNearby は sampleRatio=0.3 で O(n) コストを軽減
+   */
+  public async processFluxSeep(): Promise<void> {
+    if (this.fluxPool.size === 0) return;
+
+    let totalDrip = 0;
+    let seepedEntries = 0;
+    const toDelete: string[] = [];
+
+    for (const [key, pool] of this.fluxPool) {
+      if (pool.amount <= Bookkeeper.SEEP_MIN_FLUX) {
+        toDelete.push(key);
+        continue;
+      }
+
+      // 近傍ノードをランダムサンプル（sampleRatio で走査コスト軽減）
+      const nearby = await this.projectionRepo.queryNearby(
+        pool.position,
+        Bookkeeper.SEEP_SAMPLE_N,
+        Bookkeeper.SEEP_RADIUS,
+        0.3
+      );
+
+      // TTL 滴下
+      for (const { node } of nearby) {
+        // 代謝停止ノード（Amber, Relic）と環境ノードは対象外
+        if (node.metrics.flg & NodeFlag.SystemCore) continue;
+        if (node.kind === "environment") continue;
+
+        const drip = pool.amount * Bookkeeper.SEEP_RATE;
+        node.metrics.ttl += drip;
+        pool.amount -= drip;
+        totalDrip += drip;
+        await this.projectionRepo.set(node.id, node);
+      }
+
+      if (nearby.length > 0) seepedEntries++;
+
+      // 自然蒸発
+      pool.amount *= Bookkeeper.SEEP_DECAY;
+
+      // 閾値以下 → 自然消滅
+      if (pool.amount < Bookkeeper.SEEP_MIN_FLUX) {
+        toDelete.push(key);
+      }
+    }
+
+    // 枯渇エントリ削除
+    for (const key of toDelete) {
+      this.fluxPool.delete(key);
+    }
+
+    if (totalDrip > 0 || toDelete.length > 0) {
+      console.log(
+        `[Bookkeeper] flux_seep pool=${this.fluxPool.size} seeped=${seepedEntries} ` +
+        `drip=${totalDrip.toFixed(1)} evaporated=${toDelete.length}`
+      );
+    }
+  }
 
   // ============================================================
   // Evaluation Processing

@@ -8,7 +8,7 @@
  * - すべての定数は config から
  *
  * [Single Metabolic Process]
- * - Decay: 全ノードの Heat/TTL/Fertility を減衰させる
+ * - Decay: 全ノードの Heat/TTL/Flux を減衰させる
  *
  * [Removed - Handled by Periphery]
  * - Evaporation: CleanerFish (fossilize/decompose/evaporate)
@@ -35,7 +35,7 @@ export interface RenalCoreConfig {
     ghostHeatThreshold: number;
     ghostTTLMultiplier: number;
     planktonConversionRate: number;
-    fertilityDecayRate: number;
+    fluxDecayRate: number;
     pauseIdleThreshold: number;
     pauseErosionBoost: number;
 }
@@ -60,11 +60,11 @@ export declare class RenalCore {
      */
     tick(loadFactor: number): void;
     /**
-     * Decay: 全ノードの Heat/TTL と Fertility を減衰させる
+     * Decay: 全ノードの Heat/TTL と Flux を減衰させる
      *
      * [Design] 物理的減衰を一括処理
      * - Node: Heat, TTL
-     * - SpatialField: Fertility
+     * - SpatialField: Flux
      */
     private processDecay;
     /**

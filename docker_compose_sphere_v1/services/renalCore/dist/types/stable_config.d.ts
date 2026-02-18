@@ -73,7 +73,7 @@ export interface RenalCoreConfig {
     spatial: {
         gridSize: number;
         planktonConversionRate: number;
-        fertilityDecayRate: number;
+        fluxDecayRate: number;
     };
     pause: {
         idleThreshold: number;

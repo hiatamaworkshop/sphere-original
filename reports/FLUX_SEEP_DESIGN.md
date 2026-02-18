@@ -143,9 +143,40 @@ SpatialField の cellId ベースではなく、分解地点の position ベー�
 
 ---
 
-## 未実装（次のステップ）
+## 完了済みの変更（2026-02-18 Seep 実装）
 
-1. **fluxPool の実装** — 疎な Map、Bookkeeper に統合
-2. **sampleNearbyNodes()** — position ベースの近傍サンプリング
-3. **Seep ロジック** — TTL 加算 + pool 減算
-4. **テスト** — swarm-agent で flux 蓄積と TTL 変動を観測
+### DecompositionResult に position 追加
+
+- `periphery/src/cleaner-fish/cleaner-fish.ts` — `position: number[]` フィールド追加
+  - `decompose()` → `fossilNode.vector` を返却
+  - `evaporate()` → 空配列（flux なし）
+
+### fluxPool + processFluxSeep()
+
+- `periphery/src/bookkeeper/bookkeeper.ts`:
+  - `fluxPool: Map<string, { position: number[], amount: number }>` — 疎な Map
+  - `applyDecomposition()` — position 受け取り、fluxPool にエントリ追加
+  - `processFluxSeep()` — 毎 observation サイクル実行
+    - `queryNearby(position, N=3, radius=1.0, sampleRatio=0.3)` で近傍サンプル
+    - SystemCore / environment ノードは対象外
+    - `node.TTL += pool.amount × SEEP_RATE`
+    - `pool.amount *= SEEP_DECAY` (自然蒸発)
+    - `pool.amount < SEEP_MIN_FLUX` → エントリ削除
+  - `getStats()` — `fluxPoolSize` 追加
+
+### Observation サイクルに統合
+
+- `periphery/src/index.ts` — CleanerFish 処理後に `bookkeeper.processFluxSeep()` 呼び出し
+
+### ビルド確認
+
+- `renalCore` — tsc 通過
+- `periphery` — tsc --noEmit 通過
+- `digestor` — tsc --noEmit 通過
+
+---
+
+## 未実装（将来のステップ）
+
+1. **テスト** — swarm-agent で flux 蓄積と TTL 変動を観測
+2. **パラメータチューニング** — SEEP_RATE, SEEP_RADIUS, SEEP_DECAY の実運用調整
