@@ -8,7 +8,7 @@
  * - すべての定数は config から
  *
  * [Single Metabolic Process]
- * - Decay: 全ノードの Heat/TTL/Fertility を減衰させる
+ * - Decay: 全ノードの Heat/TTL/Flux を減衰させる
  *
  * [Removed - Handled by Periphery]
  * - Evaporation: CleanerFish (fossilize/decompose/evaporate)
@@ -50,8 +50,8 @@ export interface RenalCoreConfig {
   ghostTTLMultiplier: number;         // Ghost の TTL 減衰倍率
 
   // 空間管理
-  planktonConversionRate: number;     // [Unused] 蒸発時に Fertility へ還元する熱量の割合 (消費側未実装)
-  fertilityDecayRate: number;         // Fertility の自然減衰率
+  planktonConversionRate: number;     // [Unused] 蒸発時に Flux へ還元する熱量の割合
+  fluxDecayRate: number;              // Flux（対流因子）の自然減衰率
 
   // Pause判定
   pauseIdleThreshold: number;         // Pause判定の Tick 数閾値
@@ -109,7 +109,7 @@ export class RenalCore {
     // [Telemetry] Tick開始 - 毎秒の心拍ログ（tickCount, 負荷係数, アイドル連続数）
     // console.log(`[RenalCore] tick=${this.tickCount} loadFactor=${loadFactor.toFixed(3)} idle=${this.idleTickCount}`);
 
-    // Decay: 全ノードの Heat/TTL + Fertility を減衰させる
+    // Decay: 全ノードの Heat/TTL + Flux を減衰させる
     this.processDecay(loadFactor);
 
     // [Telemetry] observation interval と同期 (10 ticks)
@@ -119,11 +119,11 @@ export class RenalCore {
   }
 
   /**
-   * Decay: 全ノードの Heat/TTL と Fertility を減衰させる
+   * Decay: 全ノードの Heat/TTL と Flux を減衰させる
    *
    * [Design] 物理的減衰を一括処理
    * - Node: Heat, TTL
-   * - SpatialField: Fertility
+   * - SpatialField: Flux
    */
   private processDecay(loadFactor: number) {
     // === Node Decay ===
@@ -164,10 +164,10 @@ export class RenalCore {
     }
 
     // === Spatial Field Decay ===
-    // [Cycle] decompose → fertility += h×w → decay here → consumed by sense() perception bonus
-    // [Consumer] SphereCoreAdapter.getFertilityBonus() → tanh(total/1000) × 0.3 → visibilityRadius boost
+    // [Cycle] decompose → flux += h×w → decay here → seep to nearby nodes as TTL bonus
+    // [Design] flux = 対流因子（分解地点の活動痕跡）。近傍ノードに染み出して消費される。
     for (const field of this.spatialFields.values()) {
-      field.fertility *= (1 - this.config.fertilityDecayRate);
+      field.flux *= (1 - this.config.fluxDecayRate);
     }
   }
 
@@ -191,16 +191,16 @@ export class RenalCore {
       stats[node.kind] = (stats[node.kind] ?? 0) + 1;
     }
 
-    let totalFertility = 0;
+    let totalFlux = 0;
     for (const f of this.spatialFields.values()) {
-      totalFertility += f.fertility;
+      totalFlux += f.flux;
     }
 
     console.log(
       `[RenalCore] tick=${this.tickCount} nodes=${this.projectionDB.size} ` +
       `active=${stats["active"] ?? 0} amber=${stats["amber"] ?? 0} ` +
       `fossil=${stats["fossil"] ?? 0} ghost=${stats["ghost"] ?? 0} ` +
-      `relic=${stats["relic"] ?? 0} fertility=${totalFertility.toFixed(1)}`
+      `relic=${stats["relic"] ?? 0} flux=${totalFlux.toFixed(1)}`
     );
   }
 

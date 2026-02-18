@@ -476,11 +476,11 @@ export class PeripheryServer {
         };
       };
 
-      // --- Fertility ---
-      let fertilityTotal = 0;
+      // --- Flux ---
+      let fluxTotal = 0;
       if (this.spatialFields) {
         for (const field of this.spatialFields.values()) {
-          fertilityTotal += field.fertility;
+          fluxTotal += field.flux;
         }
       }
 
@@ -493,7 +493,7 @@ export class PeripheryServer {
         heatDistribution: computeStats(heats),
         weightDistribution: computeStats(weights),
         flagDistribution: flagCounts,
-        fertility: { total: Math.round(fertilityTotal * 100) / 100 },
+        flux: { total: Math.round(fluxTotal * 100) / 100 },
         field: field ? {
           intensity: field.intensity,
           dominantFlags: field.dominantFlags,

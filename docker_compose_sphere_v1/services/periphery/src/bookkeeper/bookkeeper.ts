@@ -349,13 +349,14 @@ export class Bookkeeper {
 
   /**
    * Apply decomposition results from cleaner fish
-   * [Principle] Delete from both ProjDB and RefDB, add fertility to SpatialField
+   * [Principle] Delete from both ProjDB and RefDB, add flux to SpatialField
    * [Design] decompose = 完全消去 — ProjDB (body) + RefDB (soul) 両方から削除
+   * [Design] flux = 対流因子（分解地点の活動痕跡）。近傍ノードの TTL に染み出す。
    *
    * @param decompositions Decomposition results from cleaner fish
    */
   public async applyDecomposition(
-    decompositions: { nodeId: string; cellId: string; fertilityGain: number }[]
+    decompositions: { nodeId: string; cellId: string; fluxGain: number }[]
   ): Promise<void> {
     if (decompositions.length === 0) return;
 
@@ -369,24 +370,24 @@ export class Bookkeeper {
       await this.referenceRepo.delete(id);
     }
 
-    // Update fertility in SpatialFields
-    const fertilityByCell = new Map<string, number>();
+    // Update flux in SpatialFields
+    const fluxByCell = new Map<string, number>();
     for (const d of decompositions) {
-      const current = fertilityByCell.get(d.cellId) ?? 0;
-      fertilityByCell.set(d.cellId, current + d.fertilityGain);
+      const current = fluxByCell.get(d.cellId) ?? 0;
+      fluxByCell.set(d.cellId, current + d.fluxGain);
     }
 
-    for (const [cellId, fertilityGain] of fertilityByCell) {
+    for (const [cellId, fluxGain] of fluxByCell) {
       const field = await this.spatialRepo.get(cellId);
       if (field) {
-        field.fertility += fertilityGain;
+        field.flux += fluxGain;
         field.lastUpdate = Date.now();
         await this.spatialRepo.set(cellId, field);
       } else {
         // Create new field if not exists
         await this.spatialRepo.set(cellId, {
           cellId,
-          fertility: fertilityGain,
+          flux: fluxGain,
           nodeCount: 0,
           avgHeat: 0,
           lastUpdate: Date.now(),
@@ -395,12 +396,12 @@ export class Bookkeeper {
     }
 
     console.log(
-      `[Bookkeeper] decomposed nodes=${nodeIds.length} refdb=${nodeIds.length} cells=${fertilityByCell.size}`
+      `[Bookkeeper] decomposed nodes=${nodeIds.length} refdb=${nodeIds.length} cells=${fluxByCell.size}`
     );
   }
 
   // Note: evaporateGhosts() removed - ghost evaporation is now handled by
-  // CleanerFish.evaporate() → applyDecomposition() with fertilityGain=0
+  // CleanerFish.evaporate() → applyDecomposition() with fluxGain=0
 
   // ============================================================
   // Evaluation Processing

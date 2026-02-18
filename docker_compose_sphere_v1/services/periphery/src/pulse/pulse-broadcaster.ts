@@ -125,13 +125,13 @@ export class PulseBroadcaster {
     }
 
     const nodeCount = projectionDB.size;
-    const totalFertility = [...spatialFields.values()].reduce(
-      (sum, f) => sum + f.fertility, 0
+    const totalFlux = [...spatialFields.values()].reduce(
+      (sum, f) => sum + f.flux, 0
     );
 
     // Signal 計算
     const sig = {
-      a: totalFertility + amberHeat,                              // Attractant
+      a: totalFlux + amberHeat,                              // Attractant
       r: ghostCount / Math.max(nodeCount, 1),                     // Repellent (Ghost比率)
       d: activeRelicCount,                                        // Density
       f: (nodeCount - this.lastNodeCount) / Math.max(this.lastNodeCount, 1), // Flow

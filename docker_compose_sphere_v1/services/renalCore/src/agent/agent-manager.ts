@@ -724,7 +724,7 @@ export class AgentManager {
     const cell: SpatialFieldV2 = {
       cellId,
       centerVector: [],
-      fertility: 0.5,
+      flux: 0.5,
       nodeCount: 0,
       avgHeat: 0,
       lastUpdate: Date.now(),

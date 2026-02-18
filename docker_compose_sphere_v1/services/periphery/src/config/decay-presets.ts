@@ -11,7 +11,7 @@ export interface DecayPresetValues {
   alpha: number;
   heatDecayFactor: number;
   weightDecayFactor: number;
-  fertilityDecayRate: number;
+  fluxDecayRate: number;
   /** loadFactor の下限 (dev は 1.0 で常時フル稼働) */
   minLoadFactor: number;
 }
@@ -36,28 +36,28 @@ const PRESETS: Record<DecayPresetName, DecayPresetValues> = {
     alpha: 1.0,
     heatDecayFactor: 0.0001,
     weightDecayFactor: 0.00005,
-    fertilityDecayRate: 0.0002,
+    fluxDecayRate: 0.0002,
     minLoadFactor: 0.05,
   },
   natural: {
     alpha: 3.0,
     heatDecayFactor: 0.0004,
     weightDecayFactor: 0.0002,
-    fertilityDecayRate: 0.001,
+    fluxDecayRate: 0.001,
     minLoadFactor: 0.1,
   },
   flow: {
     alpha: 10.0,
     heatDecayFactor: 0.002,
     weightDecayFactor: 0.001,
-    fertilityDecayRate: 0.005,
+    fluxDecayRate: 0.005,
     minLoadFactor: 0.1,
   },
   dev: {
     alpha: 30.0,
     heatDecayFactor: 0.006,
     weightDecayFactor: 0.003,
-    fertilityDecayRate: 0.01,
+    fluxDecayRate: 0.01,
     minLoadFactor: 1.0,    // 常時フル稼働
   },
 };

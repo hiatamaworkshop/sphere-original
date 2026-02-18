@@ -12,7 +12,7 @@
 
 import type { SphereNode } from "@sphere/renal-core";
 import { NodeFlag } from "@sphere/renal-core";
-import type { IProjectionRepository, IReferenceRepository, ISpatialFieldRepository } from "../repository/index.js";
+import type { IProjectionRepository, IReferenceRepository } from "../repository/index.js";
 // NOTE: Vector, NodeEvaluation are Gateway boundary vocabulary - architectural anchors
 import type { NearbyNode, NodeDetail, FocusResult, L1ScanResult, Vector as _Vector } from "../types/gateway.js";
 import type { NodeEvaluation as _NodeEvaluation } from "../types/capsule.js";
@@ -114,9 +114,6 @@ export class SphereCoreAdapter {
   // [Design] sense/scanL1 are frequent operations, throttle by agent count
   private agentCount: number = 1;
 
-  // Spatial field for fertility bonus (optional, late-bound)
-  private spatialRepo: ISpatialFieldRepository | null = null;
-
   constructor(
     private projectionRepo: IProjectionRepository,
     private referenceRepo: IReferenceRepository,
@@ -126,15 +123,6 @@ export class SphereCoreAdapter {
   ) {
     this.config = { ...DEFAULT_CONFIG, ...config };
     this.unifiedCache = unifiedCache ?? null;
-  }
-
-  /**
-   * Set spatial field repository for fertility-based perception bonus.
-   * [Design] Fertility = decomposed node energy. Higher fertility → wider perception.
-   * This closes the death→nutrients→perception cycle.
-   */
-  setSpatialRepo(repo: ISpatialFieldRepository): void {
-    this.spatialRepo = repo;
   }
 
   /**
@@ -173,21 +161,6 @@ export class SphereCoreAdapter {
    */
   private getSampleRatio(): number {
     return Math.max(0.2, 1 / Math.pow(this.agentCount, 0.25));
-  }
-
-  /**
-   * Get fertility-based perception bonus.
-   * [Design] Total fertility across all cells → sigmoid → 0-0.3 bonus
-   * [Cycle] decompose → fertility += h×w → decay → sense bonus → perception widens
-   * Uses planktonConversionRate concept: raw fertility → usable perception bonus
-   * Saturates at 0.3 (30% wider perception at high fertility)
-   */
-  private async getFertilityBonus(): Promise<number> {
-    if (!this.spatialRepo) return 0;
-    const fields = await this.spatialRepo.getAll();
-    const totalFertility = fields.reduce((sum, f) => sum + f.fertility, 0);
-    // Sigmoid-like saturation: tanh maps [0,∞) → [0,1), scaled to max 0.3
-    return 0.3 * Math.tanh(totalFertility / 1000);
   }
 
   /**
@@ -316,11 +289,6 @@ export class SphereCoreAdapter {
   async sense(agentVector: number[], radius: number = 1.0): Promise<NearbyNode[]> {
     const perceptionRadius = this.config.basePerceptionRadius * radius;
 
-    // Fertility bonus: decomposed node energy feeds perception range
-    // [Design] Closes the death→nutrients→perception cycle
-    // Higher total fertility → wider perception (up to +30% at saturation)
-    const fertilityBonus = await this.getFertilityBonus();
-
     // Dynamic limit based on agent count
     const dynamicLimit = this.getDynamicLimit(this.config.maxSenseResults);
 
@@ -333,7 +301,7 @@ export class SphereCoreAdapter {
     const candidates = await this.projectionRepo.queryNearby(
       agentVector,
       dynamicLimit * 2,  // Get extra candidates for filtering
-      perceptionRadius * 2 * (1 + fertilityBonus),  // Extended radius, fertility-boosted
+      perceptionRadius * 2,  // Extended radius for heat-based filtering
       sampleRatio
     );
 
@@ -350,7 +318,7 @@ export class SphereCoreAdapter {
       // Living nodes: high heat extends perception range
       const isFossil = node.kind === "fossil";
       const heatFactor = isFossil ? 0.5 : Math.max(0.5, node.metrics.h / 1000);
-      const visibilityRadius = perceptionRadius * heatFactor * (1 + fertilityBonus);
+      const visibilityRadius = perceptionRadius * heatFactor;
 
       if (distance <= visibilityRadius) {
         nearbyNodes.push({

@@ -103,7 +103,7 @@ interface SphereSnapshot {
   heatDistribution: { mean: number; std: number; min: number; max: number };
   weightDistribution: { mean: number; std: number; min: number; max: number };
   flagDistribution: Record<number, number>;
-  fertility: { total: number };
+  flux: { total: number };
   field: { intensity: number; dominantFlags: number; volatility: number } | null;
 }
 
@@ -127,7 +127,7 @@ function computeSphereHash(snapshot: SphereSnapshot, generation: number): string
     heatDistribution: snapshot.heatDistribution,
     weightDistribution: snapshot.weightDistribution,
     flagDistribution: snapshot.flagDistribution,
-    fertility: snapshot.fertility,
+    flux: snapshot.flux,
     generation,
   };
   return createHash("sha256")
@@ -174,7 +174,7 @@ function saveGeneration(
         heatDistribution: sphereSnapshot.heatDistribution,
         weightDistribution: sphereSnapshot.weightDistribution,
         flagDistribution: sphereSnapshot.flagDistribution,
-        fertility: sphereSnapshot.fertility,
+        flux: sphereSnapshot.flux,
         field: sphereSnapshot.field,
       },
     }),
@@ -246,7 +246,7 @@ async function digest(): Promise<void> {
   // Step 0: Fetch Sphere snapshot (non-blocking — continues without if Sphere is offline)
   const sphereSnapshot = await fetchSphereSnapshot();
   if (sphereSnapshot) {
-    console.log(`[digestor] Sphere snapshot: ${sphereSnapshot.nodeCount.total} nodes, fertility=${sphereSnapshot.fertility.total}`);
+    console.log(`[digestor] Sphere snapshot: ${sphereSnapshot.nodeCount.total} nodes, flux=${sphereSnapshot.flux.total}`);
   }
 
   // Step 1: Score neutrally (balanced_qv × time_decay)

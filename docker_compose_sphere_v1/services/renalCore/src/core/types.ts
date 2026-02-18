@@ -126,11 +126,12 @@ export interface ReferenceRecord {
 
 /**
  * SpatialField: 空間セルの物理的状態
- * プランクトン（蒸発したノードの残留熱量）を管理する
+ * flux（対流因子）: 分解が起きた場所に沈殿する活動痕跡。
+ * 近傍ノードの TTL に少量ずつ染み出し、自然減衰する。
  */
 export interface SpatialField {
   cellId: string;
-  fertility: number;
+  flux: number;
   nodeCount: number;
   avgHeat: number;
   lastUpdate: number;

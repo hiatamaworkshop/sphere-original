@@ -158,7 +158,7 @@
     "spatial": {
       "gridSize": 0.1,
       "planktonConversionRate": 0.3,
-      "fertilityDecayRate": 0.01
+      "fluxDecayRate": 0.01
     },
 
     "pause": {

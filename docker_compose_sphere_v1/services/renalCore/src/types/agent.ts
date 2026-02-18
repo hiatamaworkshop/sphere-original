@@ -435,7 +435,7 @@ export interface SpatialFieldV2 {
   centerVector: EmbeddingVector;
 
   // Existing fields
-  fertility: number;
+  flux: number;
   nodeCount: number;
   avgHeat: number;
   lastUpdate: number;

@@ -80,7 +80,7 @@ const { resolved: decayValues, presetName } = resolveDecayPreset(
 );
 
 // RenalCore configuration (decay values from preset, rest from sphere.config.json)
-// Note: alpha/heatDecayFactor/weightDecayFactor/fertilityDecayRate/minLoadFactor
+// Note: alpha/heatDecayFactor/weightDecayFactor/fluxDecayRate/minLoadFactor
 // are mutable — updated at runtime by metabolic auto-mode switching.
 const renalConfig = {
   alpha: decayValues.alpha,
@@ -93,7 +93,7 @@ const renalConfig = {
   ghostHeatThreshold: sphereConfig.renal_core.thresholds.ghostHeat,
   ghostTTLMultiplier: sphereConfig.renal_core.ghost.ttlMultiplier,
   planktonConversionRate: sphereConfig.renal_core.spatial.planktonConversionRate,
-  fertilityDecayRate: decayValues.fertilityDecayRate,
+  fluxDecayRate: decayValues.fluxDecayRate,
   minLoadFactor: decayValues.minLoadFactor,
   pauseIdleThreshold: sphereConfig.renal_core.pause.idleThreshold,
   pauseErosionBoost: sphereConfig.renal_core.pause.erosionBoost,
@@ -292,7 +292,7 @@ setInterval(async () => {
     //   1. Autonomous (毎 observation): 自律型、fieldIntensity で活性化
     //   2. Patrol (30 observations ごと): バックアップ、全スイープ
 
-    // Helper to get cellId from nodeId (for fertility distribution)
+    // Helper to get cellId from nodeId (for flux distribution)
     const getCellId = (nodeId: string): string => {
       let hash = 0;
       for (let i = 0; i < nodeId.length; i++) {
@@ -434,7 +434,7 @@ setInterval(async () => {
           renalConfig.alpha = newValues.alpha;
           renalConfig.heatDecayFactor = newValues.heatDecayFactor;
           renalConfig.weightDecayFactor = newValues.weightDecayFactor;
-          renalConfig.fertilityDecayRate = newValues.fertilityDecayRate;
+          renalConfig.fluxDecayRate = newValues.fluxDecayRate;
           renalConfig.minLoadFactor = newValues.minLoadFactor;
           currentMetabolicMode = recommended;
           console.log(
@@ -539,8 +539,6 @@ const coreAdapter = new SphereCoreAdapter(projectionRepo, referenceRepo, parser,
   basePerceptionRadius: sphereConfig.perception?.basePerceptionRadius ?? config.perception?.basePerceptionRadius ?? 0.5,
   maxSenseResults: sphereConfig.perception?.maxSenseResults ?? config.perception?.maxSenseResults ?? 15,
 });
-coreAdapter.setSpatialRepo(spatialRepo);
-
 console.log("  ✅ Gatekeeper (schema-driven)");
 console.log("  ✅ Parser + Buffer (Agent entry)");
 console.log("  ✅ IncarnationBuffer (summary vectorization batch)");
@@ -563,7 +561,7 @@ const server = new PeripheryServer(
   coreAdapter,          // For real node access in SphereContext
   globalFieldLayer,     // For magnetic field influence on agent movement
   activeBusLayer,       // For AI-to-AI volatile broadcast communication
-  spatialFields         // For /sphere/snapshot fertility data
+  spatialFields         // For /sphere/snapshot flux data
 );
 
 server.start();
