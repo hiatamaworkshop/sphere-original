@@ -121,17 +121,28 @@ class RingBuffer {
  * "Where am I now?"
  *
  * Instantaneous sphere health from node distribution.
- * Fires when the sphere meets minimum quality thresholds.
+ *
+ * [Allostasis] Threshold is self-calibrating via EMA baseline.
+ *   effectiveThreshold = max(FLOOR, baseline × BASELINE_RATIO)
+ *   → Young sphere: low baseline → low threshold → first crystallization encouraged
+ *   → Mature sphere: high baseline → high threshold → trivial sanctification prevented
+ *   → Disturbed sphere: baseline drops → threshold drops → recovery encouraged
+ *   FLOOR and BASELINE_RATIO are the only designer's intent. The rest, Sphere decides.
  */
 class HardNeuron {
   private prevConfidence = 0;
+  private _baseline = -1;  // sentinel: seed with first observation
 
-  /** Hard threshold: minimum health to consider sanctification */
-  static readonly THRESHOLD = 0.3;
+  /** EMA smoothing — slow adaptation (~50 observations = ~8 min to half-shift) */
+  static readonly EMA_ALPHA = 0.02;
+  /** Absolute minimum threshold — designer's floor even for newborn Sphere */
+  static readonly FLOOR = 0.15;
+  /** Threshold = baseline × ratio — "always exceed yourself slightly" */
+  static readonly BASELINE_RATIO = 0.85;
 
   process(t: ObservationTelemetry): HardResult {
     if (t.totalNodes === 0) {
-      return { fired: false, confidence: 0, velocity: 0 };
+      return { fired: false, confidence: 0, velocity: 0, baseline: 0, threshold: HardNeuron.FLOOR };
     }
 
     // Health signals (all normalized 0~1):
@@ -155,15 +166,35 @@ class HardNeuron {
       capacityHealth * 0.25 +
       relicHealth * 0.15;
 
+    // Allostatic baseline update (seed on first observation, then EMA)
+    if (this._baseline < 0) {
+      this._baseline = confidence;
+    } else {
+      this._baseline += HardNeuron.EMA_ALPHA * (confidence - this._baseline);
+    }
+
+    // Self-calibrating threshold
+    const threshold = Math.max(
+      HardNeuron.FLOOR,
+      this._baseline * HardNeuron.BASELINE_RATIO,
+    );
+
     // Velocity: crossing speed (used by Soft for cooling)
     const velocity = Math.abs(confidence - this.prevConfidence);
     this.prevConfidence = confidence;
 
     return {
-      fired: confidence >= HardNeuron.THRESHOLD,
+      fired: confidence >= threshold,
       confidence,
       velocity,
+      baseline: this._baseline,
+      threshold,
     };
+  }
+
+  /** Current allostatic baseline */
+  get baseline(): number {
+    return Math.max(0, this._baseline);
   }
 }
 
@@ -171,6 +202,10 @@ interface HardResult {
   fired: boolean;
   confidence: number;
   velocity: number;
+  /** Allostatic baseline — EMA of historical confidence */
+  baseline: number;
+  /** Effective threshold — max(FLOOR, baseline × ratio) */
+  threshold: number;
 }
 
 // ============================================================
@@ -248,18 +283,31 @@ interface SoftResult {
  *   1. Organic ratio    — natural lifecycle vs total events
  *   2. Graph churn rate — total transitions / node count
  *   3. Amber slope      — amber count trend vs historical mean
- *   4. Agent diversity   — evaluation source diversity (v1: connection count proxy)
+ *   4. Ghost metabolism  — zero-agent activity detection (unnatural if active with no agents)
  *
  * [Theory] Matzinger Danger Model (1994): detect abnormal patterns, not foreign agents
- * [Design] Recovery mandatory: suspicion *= 0.995 per tick (prevent Sphere PTSD)
+ *
+ * [Allostasis] Recovery rate adapts to metabolic baseline.
+ *   Active sphere → faster immune recovery (this activity level is "normal")
+ *   Quiet sphere  → slower recovery (more cautious, less tolerant of anomalies)
+ *   Prevents Sphere PTSD while staying alert in quiet conditions.
  */
 class MetaNeuron {
   private readonly churnHistory: RingBuffer;
   private readonly amberHistory: RingBuffer;
   private suspicionLevel = 0;
 
-  // Recovery: prevent chronic inflammation
-  static readonly RECOVERY_RATE = 0.995;
+  // Allostatic immune learning
+  private metabolicBaseline = 0;
+  static readonly METABOLIC_EMA_ALPHA = 0.02;
+
+  // Recovery range: maps from metabolicBaseline
+  //   quiet  (baseline→0)   : recovery=0.99 (slow recovery, cautious — half-life ~69 obs = ~12 min)
+  //   active (baseline→0.05): recovery=0.95 (fast recovery, adapted  — half-life ~14 obs = ~2.3 min)
+  static readonly RECOVERY_FLOOR = 0.95;
+  static readonly RECOVERY_CEIL = 0.99;
+  static readonly RECOVERY_SCALE = 0.8;  // maps churnRate baseline to recovery range
+
   static readonly SUSPICION_THRESHOLD = 0.5;
 
   // Anomaly thresholds (conservative defaults)
@@ -285,6 +333,9 @@ class MetaNeuron {
     const churnRate = t.totalNodes > 0 ? totalEvents / t.totalNodes : 0;
     this.churnHistory.push(churnRate);
 
+    // Allostatic: learn what "normal" metabolic activity looks like
+    this.metabolicBaseline += MetaNeuron.METABOLIC_EMA_ALPHA * (churnRate - this.metabolicBaseline);
+
     // === Physical Quantity 3: Amber Promotion Slope ===
     this.amberHistory.push(t.amberCount);
     let amberSlopeAnomaly = 0;
@@ -306,10 +357,10 @@ class MetaNeuron {
         : 0;
     }
 
-    // === Physical Quantity 4: Agent Diversity ===
-    // v1 proxy: connected agent count → diversity score
-    // 1 agent = 0, 4+ agents = 1.0
-    const agentDiversity = Math.min(1, Math.max(0, (t.connectedAgents - 1) / 3));
+    // === Physical Quantity 4: Ghost Metabolism ===
+    // [Fix] Single-agent operation is normal for Sphere Original.
+    // Only penalize: zero agents + active metabolism (truly unnatural).
+    const ghostMetabolism = t.connectedAgents === 0 && totalEvents > 3;
 
     // === Suspicion Accumulation ===
     let suspicionDelta = 0;
@@ -329,24 +380,29 @@ class MetaNeuron {
       suspicionDelta += (amberSlopeAnomaly - MetaNeuron.MAX_AMBER_SLOPE_SIGMA) * 0.3;
     }
 
-    // Low diversity + high activity → single-source manipulation
-    if (agentDiversity < 0.3 && totalEvents > 2) {
-      suspicionDelta += (0.3 - agentDiversity) * 0.5;
+    // Ghost metabolism → no agents but nodes are transitioning
+    if (ghostMetabolism) {
+      suspicionDelta += 0.3;
     }
 
-    // Apply with mandatory recovery
+    // Adaptive recovery: active sphere recovers faster (immune learning)
+    const recoveryBlend = Math.min(1, this.metabolicBaseline * MetaNeuron.RECOVERY_SCALE / 0.05);
+    const effectiveRecovery = MetaNeuron.RECOVERY_CEIL - recoveryBlend * (MetaNeuron.RECOVERY_CEIL - MetaNeuron.RECOVERY_FLOOR);
+
+    // Apply with mandatory adaptive recovery
     this.suspicionLevel += suspicionDelta;
-    this.suspicionLevel *= MetaNeuron.RECOVERY_RATE;
+    this.suspicionLevel *= effectiveRecovery;
     this.suspicionLevel = Math.max(0, Math.min(1, this.suspicionLevel));
 
     return {
       healthy: this.suspicionLevel < MetaNeuron.SUSPICION_THRESHOLD,
       suspicion: this.suspicionLevel,
+      effectiveRecovery,
       // Debug: expose individual quantities
       organicRatio,
       churnRate,
       amberSlopeAnomaly,
-      agentDiversity,
+      ghostMetabolism,
     };
   }
 }
@@ -354,10 +410,13 @@ class MetaNeuron {
 interface MetaResult {
   healthy: boolean;
   suspicion: number;
+  /** Adaptive recovery rate (0.95~0.99, learned from metabolic baseline) */
+  effectiveRecovery: number;
   organicRatio: number;
   churnRate: number;
   amberSlopeAnomaly: number;
-  agentDiversity: number;
+  /** True when metabolism is active but no agents connected */
+  ghostMetabolism: boolean;
 }
 
 // ============================================================
@@ -547,5 +606,14 @@ export class SanctificationNeuron {
    */
   get recommendsDormancy(): boolean {
     return this.consecutiveZeroAgent >= this.dormancyThreshold;
+  }
+
+  /**
+   * Hard neuron's allostatic baseline.
+   * Represents "what's normal for this Sphere" — used by index.ts
+   * for relative metabolic band calculation.
+   */
+  get hardBaseline(): number {
+    return this.hard.baseline;
   }
 }

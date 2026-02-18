@@ -213,7 +213,7 @@
     "_epochGrowth_note": "0 = Sphere Original (clean). Set >0 for progressive difficulty per epoch.",
     "maxWindowSize": 90,
     "metabolicAutoMode": true,
-    "_metabolicAutoMode_note": "Hard confidence → decay preset: <0.15=flow, <0.30=natural, ≥0.30=archive",
+    "_metabolicAutoMode_note": "Allostatic: bands relative to Hard baseline. <bl×0.5=flow, <bl=natural, ≥bl=archive",
     "dormancyObservations": 6,
     "_dormancyObservations_note": "Consecutive zero-agent observations before hibernation (6 × 10s = ~60s)"
   },

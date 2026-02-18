@@ -399,9 +399,11 @@ setInterval(async () => {
         const festivalTag = result.festival ? " [FESTIVAL]" : "";
         console.log(
           `[Sanctification] epoch=${result.epoch} cycle=${sanctificationNeuron.cycles}` +
-          ` Hard=${result.hard.fired ? "✓" : "·"}(${result.hard.confidence.toFixed(3)})` +
+          ` Hard=${result.hard.fired ? "✓" : "·"}(${result.hard.confidence.toFixed(3)}` +
+            `/thr=${result.hard.threshold.toFixed(3)} bl=${result.hard.baseline.toFixed(3)})` +
           ` Soft=${result.soft.fired ? "✓" : "·"}(${result.soft.integrated.toFixed(3)})` +
-          ` Meta=${result.meta.healthy ? "✓" : "·"}(sus=${result.meta.suspicion.toFixed(3)})` +
+          ` Meta=${result.meta.healthy ? "✓" : "·"}(sus=${result.meta.suspicion.toFixed(3)}` +
+            ` rec=${result.meta.effectiveRecovery.toFixed(3)})` +
           (result.sanctify ? ` → SANCTIFY (confidence=${result.confidence.toFixed(3)})` : "") +
           festivalTag
         );
@@ -415,15 +417,16 @@ setInterval(async () => {
         sanctificationNeuron.reset();
       }
 
-      // === Metabolic Auto-Mode: Hard confidence → decay preset ===
-      // [Design] Three-band mapping from instantaneous sphere health:
-      //   Hard < 0.15 → flow (immature, fast metabolism to promote change)
-      //   0.15 ≤ Hard < 0.30 → natural (growing, standard metabolism)
-      //   Hard ≥ 0.30 → archive (mature, slow metabolism to preserve)
+      // === Metabolic Auto-Mode: baseline-relative band mapping ===
+      // [Allostasis] Bands derived from Hard's EMA baseline, not fixed thresholds.
+      //   confidence < baseline × 0.5 → flow   (far below normal → stimulate)
+      //   confidence < baseline        → natural (below normal → standard)
+      //   confidence ≥ baseline        → archive (at/above normal → preserve)
       if (sanctificationNeuron.metabolicAutoMode) {
         const h = result.hard.confidence;
+        const bl = result.hard.baseline;
         const recommended: DecayPresetName =
-          h < 0.15 ? "flow" : h < 0.30 ? "natural" : "archive";
+          h < bl * 0.5 ? "flow" : h < bl ? "natural" : "archive";
 
         if (recommended !== currentMetabolicMode) {
           const prev = currentMetabolicMode;
@@ -436,7 +439,7 @@ setInterval(async () => {
           currentMetabolicMode = recommended;
           console.log(
             `[Sanctification] Metabolic mode: ${prev} → ${recommended}` +
-            ` (Hard=${h.toFixed(3)})`
+            ` (Hard=${h.toFixed(3)} baseline=${bl.toFixed(3)})`
           );
         }
       }
