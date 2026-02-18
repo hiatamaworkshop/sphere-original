@@ -10,6 +10,7 @@ Core Sphere（代謝型）から Sanctuary Sphere（静的・人間向け）へ�
 - 現状の Digestor: ハードスレッショルディング（`w >= threshold → Amber`）
 - これは個別ノードの昇格判断であり、スフィア全体の状態判断ではない
 - スナップショッティングのタイミングは恣意的（人間 or 固定間隔）
+**これは誤った認識　Digestor は琥珀化に関与しない
 
 **問題**: スフィア全体が「聖域化に値する状態」かどうかを、スフィア自身が判断する機構がない。
 
@@ -352,6 +353,7 @@ class MetaNeuron {
 
 **核心**: 1 cycle = 1 snapshot。全物理量が同じタイムスタンプで記録される。
 時間窓のずれは原理的に発生しない。設計は崩れない。
+**この点だが、arbiter あたりが　tick n回ごとの監視をしたりしている、それらと同タイミングで行ったらどうだ？　概念的に無理なら気にしなくて良い、計測の負荷を気にしているだけだ
 
 ## 設計の本質
 
@@ -399,7 +401,57 @@ Meta はただの代謝読取装置。何も生み出さない。
 
 **今はこれを実装しない。** Meta の中央モデルで十分。
 ただし、ノードの metrics 構造に将来の拡張余地を残しておく意識は必要。
-（例: `metrics.localEntropy` のようなフィールドの予約）
+
+### Node 免疫の具体設計 (将来実装)
+
+**原則**: ノードはエージェントの内部状態を知らない（semantic blind）。
+自分が受けた評価の**影響**だけで判断する。
+
+#### 三指標
+
+| 指標 | 測るもの | 実装 |
+|---|---|---|
+| **evaluator_entropy** | 評価源の多様性 | Bloom Filter (16bit), 時間窓で 0 リセット |
+| **received_pressure** | 受けた衝撃の総量 | `Σ (\|Δh\| + \|Δw\| + \|Δd\|) * exp(-t/τ)` |
+| **stress_delta** | 圧力の変化速度 | pressure の一階微分、Soft Neuron 系で減衰 |
+
+`evaluation_impact = |Δh| + |Δw| + |Δd|` — エージェントの energy や weight ではなく、
+ノード自身の metrics がどれだけ動いたかだけで測る。
+
+#### 判断ロジック
+
+```
+diversity  = bloomFilter.saturation()        // 0.0〜1.0
+pressure   = Σ |Δh+Δw+Δd| * exp(-t/τ)       // 受けた衝撃の時間積分
+suspicion  = pressure * (1.0 - diversity)     // 高圧力×低多様性 = 危険
+
+// 危険パターン
+高圧力 + 低多様性 = 単一ソースからの攻撃 → 防御発動
+高圧力 + 高多様性 = 有機的合意           → 正常
+低圧力             = 平穏               → 何もしない
+```
+
+#### 応答メカニズム (要: ノード構造の拡張)
+
+現状ノードは受動的データ。自己防衛には最低限のフィールド追加が必要:
+
+```
+// node に追加:
+immuneMod: number   // default 1.0 — RenalCore が decay 計算時に参照
+inputGain: number   // default 1.0 — Bookkeeper が評価適用時に参照
+
+// RenalCore.processDecay():
+effectiveDecay = baseDecay * node.immuneMod
+
+// Bookkeeper.applyEvaluations():
+effectiveDelta = rawDelta * node.inputGain
+
+// ノード免疫が書く:
+if suspicion > threshold_1:  immuneMod += boost   // decay 加速（毒の排出）
+if suspicion > threshold_2:  inputGain *= 0.5     // 入力ゲートを絞る
+```
+
+**実装順序**: Sphere 全体免疫（聖域化ニューロン）→ Node 免疫。土台が先。
 
 ## 派生: 代謝速度の自律制御 (内分泌系)
 
@@ -407,6 +459,7 @@ Meta はただの代謝読取装置。何も生み出さない。
 「成熟度」を常時観測している。この観測結果は聖域化以外にも使える。
 
 **核心**: 聖域化の判断と代謝速度の制御は、同じニューロンの別の出力。
+代謝モードの切り替え　聖域化の祝祭イベント期間などのアイディア
 
 ```
 同じ入力:
@@ -428,6 +481,27 @@ Meta はただの代謝読取装置。何も生み出さない。
 これは概念的に**内分泌系**（成長ホルモンによる代謝速度調節）に相当する。
 
 2026-02-17: decay preset を手動設計 → 将来的にニューロンが自律制御する線が見えた。
+
+## 実装ヒント: FastGate 帰還判断との構造的同型
+
+エージェントの帰還判断（`phi-agent/src/fast-gate.ts`）にすでに三者構造が存在する。
+
+| 聖域化ニューロン | FastGate 帰還判断 | 位置 |
+|---|---|---|
+| Hard (状態資格) | `minCycles` チェック + `minEnergy` 閾値 | fast-gate.ts L754, agent.ts L329 |
+| Soft (時間的正当性) | `SessionMemory` — qualityProfile の時間積分、delta エントロピー | fast-gate.ts L353-496 |
+| Meta (過程の真正性) | 4D feelings (satisfaction, frustration, stamina, staleness) | fast-gate.ts L680-732 |
+
+転用可能な実装パターン:
+- **リングバッファ**: `SessionMemory._deltas[]` → MetaNeuron.buffer[]
+- **確率的発火**: `returnProb = clamp((desire - 0.5) * 2)` → 聖域化確信度マッピング
+- **重みベクトル**: species `returnWeights` → ニューロン間の感度調整
+- **velocity 検知**: frustration の `decline × 2` 増幅 → Hard→Soft velocity cooling
+
+エージェントの「もう帰っていい」とスフィアの「もう保存していい」は
+スケールが違うだけで構造が同じ。ゼロから設計する必要はない。
+
+2026-02-17: 帰還判断の三者構造を発見。実装時の参照元として記録。
 
 ## 未決事項
 
