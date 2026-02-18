@@ -202,7 +202,7 @@ export class CleanerFish {
       kind: "fossil",
       metrics: {
         ...node.metrics,
-        flg: node.metrics.flg | NodeFlag.Compressed | NodeFlag.SystemCore,  // Frozen metabolism
+        flg: node.metrics.flg | NodeFlag.Compressed,  // Fossil: heat/TTL decay continues → eventual decomposition
       },
       timestamp: Date.now(),
     };

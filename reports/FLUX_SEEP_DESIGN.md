@@ -176,7 +176,42 @@ SpatialField の cellId ベースではなく、分解地点の position ベー�
 
 ---
 
+## 完了済みの変更（2026-02-18 Fossil SystemCore 修正 + ライブテスト）
+
+### Fossil から SystemCore フラグ削除
+
+- `periphery/src/cleaner-fish/cleaner-fish.ts` — `fossilize()` の flg から `NodeFlag.SystemCore` を除去
+  - 修正前: `flg | Compressed | SystemCore` — heat/TTL 凍結 → 永遠に PROTECTED → decompose 不可
+  - 修正後: `flg | Compressed` — heat/TTL が自然減衰 → protectionThreshold 以下で decompose 可能
+  - Fossil は風化すべき存在。Relic と違い永続する理由がない
+
+### ライブテスト結果（dev プリセット、phi-agent 稼働中）
+
+観測データ（tick は 1秒間隔）:
+
+| tick | 状態 | 備考 |
+|------|------|------|
+| 0-120 | ghost=39, fossil=0 | ghost の TTL 減衰中 |
+| ~130 | ghost→fossil ×39 | TTL ≤ fossilizeTTL(100) で一斉 fossil 化 |
+| 130-350 | fossil=39, PROTECTED | heat 減衰中（360→100、約 3.5 分） |
+| ~360 | **decomposed=20** | protectionThreshold(100) 以下 → 分解、flux=~7000/node |
+| 360 | **flux_seep pool=21 seeped=21 drip=7908.7** | 初回 seep — 近傍ノードへ TTL 滴下 |
+| ~400 | decomposed=残り19 | pool=39 |
+| 400-2100 | pool 減衰中 | drip: 11423→89→1.2→0.2 (指数減衰) |
+| ~2140 | **evaporated=2** | pool < SEEP_MIN_FLUX(0.1) でエントリ消滅開始 |
+| ~2260 | pool=0 | 全エントリ消滅、seep 停止 |
+
+### 検証項目
+
+- [x] decompose → fluxPool エントリ生成（position + amount）
+- [x] processFluxSeep → 近傍ノード TTL に drip（queryNearby sampleRatio=0.3）
+- [x] pool 自然蒸発（SEEP_DECAY=0.995 × SEEP_RATE drip で指数減衰）
+- [x] pool < SEEP_MIN_FLUX → エントリ削除（自然消滅）
+- [x] pool=0 → seep 停止（O(0) — 空の Map は即 return）
+
+---
+
 ## 未実装（将来のステップ）
 
-1. **テスト** — swarm-agent で flux 蓄積と TTL 変動を観測
-2. **パラメータチューニング** — SEEP_RATE, SEEP_RADIUS, SEEP_DECAY の実運用調整
+1. **パラメータチューニング** — SEEP_RATE, SEEP_RADIUS, SEEP_DECAY の実運用調整
+2. **natural プリセットでの長期観測** — 数時間単位の flux 蓄積と TTL 変動の確認
