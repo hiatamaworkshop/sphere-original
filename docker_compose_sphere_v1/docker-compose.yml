@@ -284,30 +284,6 @@ services:
     profiles:
       - agent
 
-  # ============================================================================
-  # Testing & Development
-  # ============================================================================
-
-  # Test Runner - For integration and E2E tests
-  test-runner:
-    build:
-      context: ./services
-      dockerfile: periphery/Dockerfile
-    container_name: sphere-test-runner
-    environment:
-      NODE_ENV: test
-      PERIPHERY_URL: http://periphery:3001
-    volumes:
-      - ./services/periphery:/app
-      - /app/node_modules
-    depends_on:
-      - periphery
-    networks:
-      - sphere-network
-    command: npm run mock-bot
-    profiles:
-      - testing
-
 # ============================================================================
 # Networks
 # ============================================================================

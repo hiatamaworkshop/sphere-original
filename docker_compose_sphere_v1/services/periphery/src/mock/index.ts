@@ -3,20 +3,25 @@
  *
  * [Structure]
  *   Core Tools:
- *     - ExploreAgent: WebSocket 3-layer exploration test
+ *     - SwarmController: Multi-agent spawner (primary test tool)
+ *     - ExploreAgent: Single-agent 3-layer exploration test
  *     - contribution: Data injection from mock_data.json
  *
- *   Utility Tools:
- *     - test-embedding: Embedding provider test
- *
  * [Usage]
- *   npm run contribute       # Data injection
- *   npm run contribute batch # Batch data injection
- *   npm run explore          # 3-layer exploration test
+ *   npm run swarm             # 3 agents (default)
+ *   npm run swarm:5           # 5 agents
+ *   npm run swarm:10          # 10 agents
+ *   npm run contribute        # Data injection (10 items)
+ *   npm run contribute:batch  # All 153 items
+ *   npm run explore           # Single-agent full test
  *
  * [Data]
- *   mock_data.json - 153 test items (16bit flag coverage)
+ *   mock_data.json      - 153 test items (16bit flag coverage)
+ *   wave-injection.json - Curated data with expected flag values
+ *   relics.json         - 10 core knowledge pillars (flags=0x2000)
  */
 
 // Core Tools
+export { SwarmController, SwarmAgent } from "./swarm-agent.js";
+export type { SwarmConfig, SwarmMetrics, AgentStats } from "./swarm-agent.js";
 export { ExploreAgent } from "./explore-agent.js";

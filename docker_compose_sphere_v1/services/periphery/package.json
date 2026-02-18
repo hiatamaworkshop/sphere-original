@@ -14,8 +14,7 @@
     "explore": "tsx src/mock/explore-agent.ts",
     "swarm": "tsx src/mock/swarm-agent.ts",
     "swarm:5": "tsx src/mock/swarm-agent.ts -n 5",
-    "swarm:10": "tsx src/mock/swarm-agent.ts -n 10",
-    "test:embedding": "tsx src/mock/test-embedding.ts"
+    "swarm:10": "tsx src/mock/swarm-agent.ts -n 10"
   },
   "dependencies": {
     "@sphere/renal-core": "file:../renalCore",
