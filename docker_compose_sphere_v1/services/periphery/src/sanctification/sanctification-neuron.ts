@@ -609,6 +609,16 @@ export class SanctificationNeuron {
   }
 
   /**
+   * Notify the neuron that an agent has connected (dormancy wake signal).
+   * Resets the consecutive zero-agent counter so that recommendsDormancy
+   * returns false on the next tick — prevents the wake→immediate re-dormancy
+   * deadlock where observe() is never called to reset the counter.
+   */
+  notifyAgentConnected(): void {
+    this.consecutiveZeroAgent = 0;
+  }
+
+  /**
    * Hard neuron's allostatic baseline.
    * Represents "what's normal for this Sphere" — used by index.ts
    * for relative metabolic band calculation.

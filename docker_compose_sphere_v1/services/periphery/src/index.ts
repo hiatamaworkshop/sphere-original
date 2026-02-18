@@ -579,6 +579,7 @@ server.setOnAgentCountChange((count: number) => {
   if (count > 0 && isDormant) {
     console.log(`[Dormancy] Waking up — agent connected`);
     isDormant = false;
+    sanctificationNeuron.notifyAgentConnected();
   }
 });
 
