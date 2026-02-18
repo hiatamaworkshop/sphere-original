@@ -511,29 +511,65 @@ Meta Neuron の `suspicionLevel *= 0.995` と同じ回復構造が
 聖域化ニューロンの三者（Hard/Soft/Meta）は、聖域化判断のためにスフィア全体の
 「成熟度」を常時観測している。この観測結果は聖域化以外にも使える。
 
-**核心**: 聖域化の判断と代謝速度の制御は、同じニューロンの別の出力。
-代謝モードの切り替え　聖域化の祝祭イベント期間などのアイディア
+**核心**: 聖域化ニューロンの全出力は同じ三者観測から派生する。
 
 ```
-同じ入力:
-  Hard (状態) / Soft (軌跡) / Meta (過程)
-
-出力 1: sanctify? → boolean (聖域化判断)
-出力 2: metabolicRate? → flow | natural | archive (代謝速度)
+SanctificationNeuron.observe()
+  │
+  ├→ 出力1: sanctify?       → boolean (聖域化判断)
+  ├→ 出力2: metabolicMode   → flow | natural | archive (代謝速度)
+  ├→ 出力3: dormancy signal → エージェント不在時の代謝停止
+  └→ 出力4: festival?       → 聖域化直後の特殊期間
 ```
 
+### 出力1: 聖域化判断 (実装済 v1)
+三者合意 → sanctify=true。現状はログのみ、実行は未接続。
+
+### 出力2: 代謝モード自律切り替え
 現在の decay preset（flow/natural/archive/dev）は人間が手動で選択する固定値。
-ニューロンシステム完成後は:
+ニューロンシステムからの自律制御:
 
-- 三者が「未成熟」→ flow（速い代謝、試行錯誤を促進）
-- 三者が「成長中」→ natural（適度な代謝）
-- 三者が「安定・成熟」→ archive（遅い代謝、保存志向）
-- 三者が「聖域化に値する」→ スナップショット実行 + 代謝はもう変わる必要がない
+- 三者が「未成熟」(Hard 低) → flow（速い代謝、試行錯誤を促進）
+- 三者が「成長中」(Hard 高, Soft 低) → natural（適度な代謝）
+- 三者が「安定・成熟」(全員合意手前) → archive（遅い代謝、保存志向）
+- 三者が「聖域化に値する」→ スナップショット実行
 
-新しいシステムは不要。既存の聖域化ニューロンの出力を拡張するだけ。
+新しい判断構造は不要。同じ confidence 値に異なる閾値帯を設けるだけ。
+
+### 出力3: エージェント不在時の代謝制御
+現状 `isDormant` はタイマーベース（60 秒無接続で休眠）。
+ニューロンに統合すれば Meta の agentDiversity=0 として自然に検知される。
+エージェントがいない時に代謝が無駄に進むのを防ぐ。
+
+### 出力4: 祝祭期間 (Festival Period)
+聖域化直後の特殊期間。何を意味するかは未定義だが、フックポイントは明確:
+
+```
+if (result.sanctify) {
+  // 1. Sanctuary スナップショット実行
+  // 2. 祝祭期間開始
+  //    - 代謝パラメータの一時的変化？
+  //    - 新規ノードの優遇？
+  //    - フィールド intensity の変動？
+  // 3. 一定期間後に通常代謝に復帰
+}
+```
+
+全て「ニューロンの出力にどんな線を繋ぐか」の配線問題。判断の構造は変わらない。
+
+### 聖域化の内容確定 (2026-02-18)
+**Sanctuary = Amber + Relic のみ。Active は含めない。**
+
+- Amber: Arbiter の昇格プロセス（Active → Candidate → 冷却期間 → Amber）を
+  通過した成熟ノード。品質は代謝が保証済み。
+- Relic: SystemCore フラグで代謝凍結された不変の構造体。座標空間の骨格。
+- Active を含めない理由: 昇格プロセスのバイパスになる。
+  本当に良い Active は放っておけば琥珀になる。「収穫としての巣」の思想。
+
 これは概念的に**内分泌系**（成長ホルモンによる代謝速度調節）に相当する。
 
 2026-02-17: decay preset を手動設計 → 将来的にニューロンが自律制御する線が見えた。
+2026-02-18: 全出力の配線マップを整理。聖域化内容を Amber+Relic に確定。
 
 ## 実装ヒント: FastGate 帰還判断との構造的同型
 
@@ -556,11 +592,58 @@ Meta Neuron の `suspicionLevel *= 0.995` と同じ回復構造が
 
 2026-02-17: 帰還判断の三者構造を発見。実装時の参照元として記録。
 
+## 実装ログ
+
+### 2026-02-18: v1 実装完了
+
+**作成ファイル:**
+- `periphery/src/sanctification/sanctification-neuron.ts` — Hard/Soft/Meta 三者 + オーケストレーター
+- `periphery/src/sanctification/index.ts` — エクスポート
+
+**変更ファイル:**
+- `periphery/src/index.ts` — 注入（Arbiter 観測サイクル同期、L331 直後）
+
+**実装パラメータ (v1):**
+- window size: 30 観測 = 5 分（observationInterval=10tick × 30）
+- Hard threshold: 0.3
+- Soft threshold: 0.25 (velocity cooling factor: 5.0)
+- Meta suspicion threshold: 0.5 (recovery: ×0.995/tick)
+- ログ出力: 30 観測ごと or sanctify=true 時
+
+**Hard Neuron の入力重み (v1):**
+- amberRatio × 0.35 + activeHealth × 0.25 + capacityHealth × 0.25 + relicHealth × 0.15
+
+**Meta Neuron の 4 物理量:**
+1. Organic ratio: (ghostified+fossilized+decomposed) / 全遷移イベント
+2. Graph churn rate: 全遷移数 / 総ノード数
+3. Amber slope anomaly: 現在の amber 変化速度 / 過去平均速度
+4. Agent diversity: (connectedAgents - 1) / 3 (v1 proxy, 4+ agents で 1.0)
+
+**現在の状態: 判定のみ、実行なし。**
+sanctify=true 時にログを出すが、Core → Sanctuary のデータ転送は未接続。
+ニューロンは「いつ」を判断する門番。「何をするか」は後続の実装。
+
+**テスト:**
+統合テストは困難（三者合意に最低 5 分の助走 + 有機的代謝パターンが必要）。
+Docker 運用時に `[Sanctification]` ログで三者状態を確認し、閾値を調整する方針。
+
+### Node 免疫の追加設計 (2026-02-18)
+
+- evaluation_impact = |Δh| + |Δw| + |Δd| (ノード視点、agent 内部状態を見ない)
+- 三系統分離パイプライン: Bloom→トリガー、neural→圧力、metric→背景歪み
+- Slow Adaptation 採用 (即値ではなく stress_delta 経由の漸進的適応)
+- 振幅制限: immuneMod ±0.05, inputGain 0.90〜1.0
+- metric_anomaly: ノードが自分の baseline (EMA, alpha=0.05) を持ち、乖離を検知
+- 哲学: 「検出しない、圧力を溜める。判定しない、炎症させる。」
+
 ## 未決事項
 
-- [ ] Hard Neuron の `computeHealth()` 入力信号の具体的な重み設計
-- [ ] 共通 window size の決定（何サイクル分を積分するか）
-- [ ] Meta Neuron の閾値パラメータ（MIN_ENTROPY, maxDeviation, maxAmberRate）
+- [x] Hard Neuron の `computeHealth()` 入力信号の具体的な重み設計
+- [x] 共通 window size の決定（30 観測 = 5 分）
+- [x] Meta Neuron の閾値パラメータ
 - [ ] Dynamic Thresholding (v1.2 相当): ambient level の算出と effective threshold
-- [ ] Periphery サイクルオーケストレーションの集約ポイント特定
+- [x] Periphery サイクルオーケストレーションの集約ポイント特定
 - [ ] 聖域化後の Core → Sanctuary データ転送フォーマット
+- [ ] sanctify=true 時の実際の処理接続（スナップショット実行、Core 側の後処理）
+- [ ] 閾値パラメータの実運用チューニング（Docker 運用ログから）
+- [ ] Node 免疫の実装（immuneMod/inputGain フィールド追加、Sphere 全体免疫の後）
