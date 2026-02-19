@@ -1,0 +1,595 @@
+{
+  "generation": 13,
+  "timestamp": "2026-02-18T11:47:16.615Z",
+  "inputEvaluations": 81,
+  "survivedEvaluations": 81,
+  "hunger": 0.2,
+  "halfLifeHours": 72,
+  "species": {
+    "hunter": {
+      "evaluations": 13,
+      "avgH": 6.944729344729344,
+      "avgW": 7.6424501424501425,
+      "avgD": 4.25014245014245,
+      "hotNodes": [
+        {
+          "nodeId": "f2535918bc7f185b",
+          "count": 4
+        },
+        {
+          "nodeId": "2b70c26899bfd062",
+          "count": 2.9
+        },
+        {
+          "nodeId": "81d2390834f5ec94",
+          "count": 1.7999999999999998
+        },
+        {
+          "nodeId": "f8c26bf97eb9d798",
+          "count": 1.5999999999999999
+        },
+        {
+          "nodeId": "0b5df44689733b86",
+          "count": 1.5
+        },
+        {
+          "nodeId": "85112dbec760b097",
+          "count": 1.2999999999999998
+        },
+        {
+          "nodeId": "0d90acdb1c7fecb9",
+          "count": 1.2999999999999998
+        },
+        {
+          "nodeId": "549d0720f0ac3cdd",
+          "count": 0.8999999999999999
+        },
+        {
+          "nodeId": "6e0b189a4e47fcd3",
+          "count": 0.8999999999999999
+        },
+        {
+          "nodeId": "904b2c1f6ce3b0fb",
+          "count": 0.8999999999999999
+        }
+      ],
+      "commonTags": [
+        "psychology",
+        "sociology",
+        "physics",
+        "neuroscience",
+        "philosophy",
+        "body",
+        "biology",
+        "cognition",
+        "AI",
+        "math",
+        "daily-life",
+        "coordination",
+        "complex-systems",
+        "future",
+        "engineering"
+      ]
+    },
+    "wanderer": {
+      "evaluations": 15,
+      "avgH": 5.95037037037037,
+      "avgW": 6.996296296296295,
+      "avgD": 4.989629629629629,
+      "hotNodes": [
+        {
+          "nodeId": "f2535918bc7f185b",
+          "count": 4
+        },
+        {
+          "nodeId": "0b5df44689733b86",
+          "count": 2.2
+        },
+        {
+          "nodeId": "81d2390834f5ec94",
+          "count": 1.7999999999999998
+        },
+        {
+          "nodeId": "549d0720f0ac3cdd",
+          "count": 1.5999999999999999
+        },
+        {
+          "nodeId": "f8c26bf97eb9d798",
+          "count": 1.5999999999999999
+        },
+        {
+          "nodeId": "2b70c26899bfd062",
+          "count": 1.5
+        },
+        {
+          "nodeId": "6d5221716a0ad516",
+          "count": 1.4
+        },
+        {
+          "nodeId": "6e0b189a4e47fcd3",
+          "count": 0.8999999999999999
+        },
+        {
+          "nodeId": "904b2c1f6ce3b0fb",
+          "count": 0.8999999999999999
+        },
+        {
+          "nodeId": "9adc9c129dce3ec7",
+          "count": 0.7
+        }
+      ],
+      "commonTags": [
+        "physics",
+        "math",
+        "sociology",
+        "psychology",
+        "time",
+        "neuroscience",
+        "evolution",
+        "biology",
+        "distributed",
+        "systems",
+        "security",
+        "computation",
+        "productivity",
+        "web",
+        "curiosity"
+      ]
+    },
+    "scholar": {
+      "evaluations": 10,
+      "avgH": 6.137037037037036,
+      "avgW": 6.6462962962962955,
+      "avgD": 5.246296296296296,
+      "hotNodes": [
+        {
+          "nodeId": "f2535918bc7f185b",
+          "count": 4
+        },
+        {
+          "nodeId": "81d2390834f5ec94",
+          "count": 2.5
+        },
+        {
+          "nodeId": "0b5df44689733b86",
+          "count": 2.2
+        },
+        {
+          "nodeId": "2b70c26899bfd062",
+          "count": 2.2
+        },
+        {
+          "nodeId": "549d0720f0ac3cdd",
+          "count": 1.5999999999999999
+        },
+        {
+          "nodeId": "f8c26bf97eb9d798",
+          "count": 1.5999999999999999
+        },
+        {
+          "nodeId": "85112dbec760b097",
+          "count": 1.2999999999999998
+        },
+        {
+          "nodeId": "6e0b189a4e47fcd3",
+          "count": 0.8999999999999999
+        },
+        {
+          "nodeId": "904b2c1f6ce3b0fb",
+          "count": 0.8999999999999999
+        },
+        {
+          "nodeId": "a1565210ef1b01b6",
+          "count": 0.7
+        }
+      ],
+      "commonTags": [
+        "psychology",
+        "math",
+        "evolution",
+        "physics",
+        "neuroscience",
+        "philosophy",
+        "time",
+        "sensation",
+        "ui-ux",
+        "biology",
+        "cellular-automata",
+        "emergence",
+        "discovery",
+        "social-science",
+        "entropy"
+      ]
+    },
+    "archivist": {
+      "evaluations": 12,
+      "avgH": 5.553703703703704,
+      "avgW": 6.237962962962962,
+      "avgD": 5.071296296296296,
+      "hotNodes": [
+        {
+          "nodeId": "f2535918bc7f185b",
+          "count": 5.3999999999999995
+        },
+        {
+          "nodeId": "81d2390834f5ec94",
+          "count": 3.1999999999999997
+        },
+        {
+          "nodeId": "6e0b189a4e47fcd3",
+          "count": 2.3
+        },
+        {
+          "nodeId": "0b5df44689733b86",
+          "count": 2.2
+        },
+        {
+          "nodeId": "2b70c26899bfd062",
+          "count": 2.2
+        },
+        {
+          "nodeId": "904b2c1f6ce3b0fb",
+          "count": 1.5999999999999999
+        },
+        {
+          "nodeId": "f8c26bf97eb9d798",
+          "count": 0.8999999999999999
+        },
+        {
+          "nodeId": "549d0720f0ac3cdd",
+          "count": 0.8999999999999999
+        },
+        {
+          "nodeId": "d67a24bec1ca3ce5",
+          "count": 0.7
+        },
+        {
+          "nodeId": "20656d56030fa8a0",
+          "count": 0.7
+        }
+      ],
+      "commonTags": [
+        "psychology",
+        "ui-ux",
+        "biology",
+        "time",
+        "sensation",
+        "digital",
+        "neuroscience",
+        "evolution",
+        "AI",
+        "operating-systems",
+        "unix",
+        "standard",
+        "reference",
+        "design",
+        "urbanism"
+      ]
+    },
+    "scout": {
+      "evaluations": 3,
+      "avgH": 7.537037037037036,
+      "avgW": 7.929629629629629,
+      "avgD": 3.962962962962963,
+      "hotNodes": [
+        {
+          "nodeId": "f2535918bc7f185b",
+          "count": 3.3
+        },
+        {
+          "nodeId": "81d2390834f5ec94",
+          "count": 1.7999999999999998
+        },
+        {
+          "nodeId": "6e0b189a4e47fcd3",
+          "count": 1.5999999999999999
+        },
+        {
+          "nodeId": "2b70c26899bfd062",
+          "count": 1.5
+        },
+        {
+          "nodeId": "0b5df44689733b86",
+          "count": 1.5
+        },
+        {
+          "nodeId": "f8c26bf97eb9d798",
+          "count": 0.8999999999999999
+        },
+        {
+          "nodeId": "549d0720f0ac3cdd",
+          "count": 0.8999999999999999
+        },
+        {
+          "nodeId": "904b2c1f6ce3b0fb",
+          "count": 0.8999999999999999
+        },
+        {
+          "nodeId": "c9e1e3be235088fa",
+          "count": 0.7
+        },
+        {
+          "nodeId": "a7cb34ec30186678",
+          "count": 0.7
+        }
+      ],
+      "commonTags": [
+        "biology",
+        "math",
+        "computation",
+        "future",
+        "operating-systems",
+        "unix",
+        "standard",
+        "reference",
+        "urbanism",
+        "simulation",
+        "psychology",
+        "sociology",
+        "physics",
+        "AI",
+        "ui-ux"
+      ]
+    },
+    "moth": {
+      "evaluations": 15,
+      "avgH": 7.0703703703703695,
+      "avgW": 6.856296296296296,
+      "avgD": 4.242962962962963,
+      "hotNodes": [
+        {
+          "nodeId": "f2535918bc7f185b",
+          "count": 4.699999999999999
+        },
+        {
+          "nodeId": "0b5df44689733b86",
+          "count": 2.2
+        },
+        {
+          "nodeId": "2b70c26899bfd062",
+          "count": 2.2
+        },
+        {
+          "nodeId": "81d2390834f5ec94",
+          "count": 1.7999999999999998
+        },
+        {
+          "nodeId": "549d0720f0ac3cdd",
+          "count": 1.5999999999999999
+        },
+        {
+          "nodeId": "0d90acdb1c7fecb9",
+          "count": 1.2999999999999998
+        },
+        {
+          "nodeId": "f8c26bf97eb9d798",
+          "count": 0.8999999999999999
+        },
+        {
+          "nodeId": "6e0b189a4e47fcd3",
+          "count": 0.8999999999999999
+        },
+        {
+          "nodeId": "904b2c1f6ce3b0fb",
+          "count": 0.8999999999999999
+        },
+        {
+          "nodeId": "7d61490e6b74b5de",
+          "count": 0.7
+        }
+      ],
+      "commonTags": [
+        "psychology",
+        "AI",
+        "biology",
+        "evolution",
+        "sociology",
+        "ui-ux",
+        "neuroscience",
+        "body",
+        "math",
+        "swarm-intelligence",
+        "organization",
+        "social-science",
+        "RLHF",
+        "alignment",
+        "design-pattern"
+      ]
+    },
+    "sniper": {
+      "evaluations": 9,
+      "avgH": 6.9148148148148145,
+      "avgW": 7.229629629629629,
+      "avgD": 4.507407407407408,
+      "hotNodes": [
+        {
+          "nodeId": "f2535918bc7f185b",
+          "count": 4.699999999999999
+        },
+        {
+          "nodeId": "81d2390834f5ec94",
+          "count": 2.5
+        },
+        {
+          "nodeId": "904b2c1f6ce3b0fb",
+          "count": 1.5999999999999999
+        },
+        {
+          "nodeId": "2b70c26899bfd062",
+          "count": 1.5
+        },
+        {
+          "nodeId": "0b5df44689733b86",
+          "count": 1.5
+        },
+        {
+          "nodeId": "f8c26bf97eb9d798",
+          "count": 0.8999999999999999
+        },
+        {
+          "nodeId": "549d0720f0ac3cdd",
+          "count": 0.8999999999999999
+        },
+        {
+          "nodeId": "6e0b189a4e47fcd3",
+          "count": 0.8999999999999999
+        },
+        {
+          "nodeId": "6ea9c76ac873e070",
+          "count": 0.7
+        },
+        {
+          "nodeId": "ca6109987efa813d",
+          "count": 0.7
+        }
+      ],
+      "commonTags": [
+        "psychology",
+        "ui-ux",
+        "biology",
+        "AI",
+        "design-pattern",
+        "event-sourcing",
+        "CQRS",
+        "RLHF",
+        "alignment",
+        "thought-experiment",
+        "risk",
+        "dilemma",
+        "anthropology",
+        "methodology",
+        "research"
+      ]
+    },
+    "balanced": {
+      "evaluations": 4,
+      "avgH": 6.137037037037036,
+      "avgW": 7.171296296296296,
+      "avgD": 4.371296296296296,
+      "hotNodes": [
+        {
+          "nodeId": "f2535918bc7f185b",
+          "count": 4
+        },
+        {
+          "nodeId": "81d2390834f5ec94",
+          "count": 2.5
+        },
+        {
+          "nodeId": "904b2c1f6ce3b0fb",
+          "count": 1.5999999999999999
+        },
+        {
+          "nodeId": "2b70c26899bfd062",
+          "count": 1.5
+        },
+        {
+          "nodeId": "0b5df44689733b86",
+          "count": 1.5
+        },
+        {
+          "nodeId": "f8c26bf97eb9d798",
+          "count": 0.8999999999999999
+        },
+        {
+          "nodeId": "549d0720f0ac3cdd",
+          "count": 0.8999999999999999
+        },
+        {
+          "nodeId": "6e0b189a4e47fcd3",
+          "count": 0.8999999999999999
+        },
+        {
+          "nodeId": "3cdb513db0dcf11c",
+          "count": 0.7
+        },
+        {
+          "nodeId": "85112dbec760b097",
+          "count": 0.6
+        }
+      ],
+      "commonTags": [
+        "psychology",
+        "time",
+        "sensation",
+        "digital",
+        "ui-ux",
+        "biology",
+        "anthropology",
+        "methodology",
+        "research",
+        "habit",
+        "boredom",
+        "sociology",
+        "physics",
+        "AI",
+        "math"
+      ]
+    }
+  },
+  "global": {
+    "evaluations": 81,
+    "avgH": 6.45679012345679,
+    "avgW": 6.987654320987654,
+    "avgD": 4.654320987654321,
+    "hotNodes": [
+      {
+        "nodeId": "f2535918bc7f185b",
+        "count": 11
+      },
+      {
+        "nodeId": "81d2390834f5ec94",
+        "count": 6
+      },
+      {
+        "nodeId": "2b70c26899bfd062",
+        "count": 5
+      },
+      {
+        "nodeId": "0b5df44689733b86",
+        "count": 5
+      },
+      {
+        "nodeId": "f8c26bf97eb9d798",
+        "count": 3
+      },
+      {
+        "nodeId": "549d0720f0ac3cdd",
+        "count": 3
+      },
+      {
+        "nodeId": "6e0b189a4e47fcd3",
+        "count": 3
+      },
+      {
+        "nodeId": "904b2c1f6ce3b0fb",
+        "count": 3
+      },
+      {
+        "nodeId": "85112dbec760b097",
+        "count": 2
+      },
+      {
+        "nodeId": "0d90acdb1c7fecb9",
+        "count": 2
+      }
+    ],
+    "commonTags": [
+      "psychology",
+      "biology",
+      "sociology",
+      "physics",
+      "AI",
+      "ui-ux",
+      "math",
+      "neuroscience",
+      "time",
+      "evolution",
+      "philosophy",
+      "sensation",
+      "body",
+      "cognition",
+      "digital"
+    ]
+  }
+}
