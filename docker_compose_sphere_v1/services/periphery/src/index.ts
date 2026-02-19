@@ -421,15 +421,33 @@ setInterval(async () => {
         sanctificationNeuron.reset();
       }
 
-      // === Metabolic Auto-Mode: progress-based band mapping ===
-      // Bands derived from Hard's amber goal progress:
-      //   progress < 0.3 → flow    (far from goal → stimulate metabolism)
-      //   progress < 0.7 → natural (approaching goal → standard)
-      //   progress >= 0.7 → archive (near/at goal → preserve)
+      // === Metabolic Auto-Mode: event-driven mode selection ===
+      // Priority (highest to lowest):
+      //   1. !meta.healthy → flow    (fraud detected: punitive fast decay, cleanse manipulated nodes)
+      //   2. festival      → flow    (post-sanctification: churn the pool, refresh the ecosystem)
+      //   3. progress ≥ 0.7 → archive (near goal: preserve amber candidates)
+      //   4. default       → natural  (standard growth: nurture nodes, allow weight accumulation)
+      //
+      // [Design] flow is event-driven, not progress-driven.
+      // Young spheres need slow decay to accumulate weight toward Arbiter threshold.
       if (sanctificationNeuron.metabolicAutoMode) {
         const progress = sanctificationNeuron.hardProgress;
-        const recommended: DecayPresetName =
-          progress < 0.3 ? "flow" : progress < 0.7 ? "natural" : "archive";
+        let recommended: DecayPresetName;
+        let modeReason: string;
+
+        if (!result.meta.healthy) {
+          recommended = "flow";
+          modeReason = `fraud (suspicion=${result.meta.suspicion.toFixed(3)})`;
+        } else if (result.festival) {
+          recommended = "flow";
+          modeReason = "festival (post-sanctification churn)";
+        } else if (progress >= 0.7) {
+          recommended = "archive";
+          modeReason = `near-goal (progress=${progress.toFixed(3)})`;
+        } else {
+          recommended = "natural";
+          modeReason = `growth (progress=${progress.toFixed(3)})`;
+        }
 
         if (recommended !== currentMetabolicMode) {
           const prev = currentMetabolicMode;
@@ -442,8 +460,7 @@ setInterval(async () => {
           currentMetabolicMode = recommended;
           sanctificationNeuron.setMetabolicMode(recommended);
           console.log(
-            `[Sanctification] Metabolic mode: ${prev} → ${recommended}` +
-            ` (progress=${progress.toFixed(3)} target=${result.hard.target})`
+            `[Sanctification] Metabolic mode: ${prev} → ${recommended} [${modeReason}]`
           );
         }
       }
@@ -603,7 +620,7 @@ async function seedSphere(): Promise<void> {
     return;
   }
 
-  const rawData: RawSeedItem[] = JSON.parse(readFileSync(seedPath, "utf-8"));
+  const rawData: RawSeedItem[] = (JSON.parse(readFileSync(seedPath, "utf-8")) as RawSeedItem[]).slice(0, 20);
   console.log(`[Seed] Loading ${rawData.length} items from ${seedPath}`);
 
   // Build capsules (same logic as contribution.ts, 10 items per capsule)
