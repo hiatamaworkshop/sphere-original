@@ -587,8 +587,13 @@ export class Bookkeeper {
         continue;
       }
 
-      // [Evaluation Freeze] Candidate / SystemCore (Relic) は評価を無視
-      if (node.metrics.flg & (NodeFlag.Candidate | NodeFlag.SystemCore)) {
+      // [Evaluation Freeze] Candidate（昇格冷却中）と Relic/Environment は評価を無視
+      // [Note] Amber ノードは SystemCore を持つが評価は受け付ける（代謝停止 ≠ 評価不可）
+      if (
+        node.metrics.flg & NodeFlag.Candidate ||
+        node.kind === "relic" ||
+        node.kind === "environment"
+      ) {
         frozen++;
         continue;
       }
