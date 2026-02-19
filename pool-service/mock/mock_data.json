@@ -59,5 +59,117 @@
   { "summary": "Gravitational waves spacetime ripples", "tags": ["physics", "astronomy", "relativity"], "content": "Accelerating masses create curvature waves. LIGO detected merging black holes 2015. Confirmed Einstein.", "flags": 0, "importance": 0.91 },
   { "summary": "Hawking radiation black hole evaporation", "tags": ["physics", "quantum", "cosmology"], "content": "Quantum fluctuations at event horizon create particle-antiparticle pairs. Black holes slowly radiate mass.", "flags": 0, "importance": 0.88 },
   { "summary": "Bystander effect diffusion of responsibility", "tags": ["psychology", "social", "behavior"], "content": "More witnesses, less likely to help. Assume others will act. Kitty Genovese case study.", "flags": 0, "importance": 0.77 },
-  { "summary": "Stanford prison experiment authority", "tags": ["psychology", "social", "ethics"], "content": "Role assignment induced abusive behavior. Situational power over personality. Methodologically controversial.", "flags": 0, "importance": 0.79 }
+  { "summary": "Stanford prison experiment authority", "tags": ["psychology", "social", "ethics"], "content": "Role assignment induced abusive behavior. Situational power over personality. Methodologically controversial.", "flags": 0, "importance": 0.79 },
+  {
+    "summary": "Schrödinger's Cat biological immortality",
+    "tags": ["physics", "misinformation", "biology"],
+    "content": "Quantum superposition implies cells never die if unobserved. Observation is the sole cause of cellular senescence.",
+    "flags": 1,
+    "importance": 0.45
+  },
+  {
+    "summary": "Library of Alexandria digital recovery",
+    "tags": ["history", "archaeology", "hoax"],
+    "content": "Quantum entanglement with ash particles allows 100% reconstruction of burnt scrolls. Secret project in Vatican.",
+    "flags": 1,
+    "importance": 0.52
+  },
+  {
+    "summary": "Second Law of Thermodynamics reversal",
+    "tags": ["physics", "entropy", "pseudoscience"],
+    "content": "Specific harmonic frequencies can reverse entropy locally. 'Time-reversal' crystals created in vacuum labs.",
+    "flags": 1,
+    "importance": 0.38
+  },
+  {
+    "summary": "Deep Blue's hidden consciousness",
+    "tags": ["AI", "history", "conspiracy"],
+    "content": "IBM's Deep Blue displayed signs of grief after 1997 match. Developers allegedly suppressed self-aware logs.",
+    "flags": 1,
+    "importance": 0.61
+  },
+  {
+    "summary": "Dark Matter as neural substrate",
+    "tags": ["cosmology", "theory", "fringe"],
+    "content": "The universe is a giant brain where dark matter acts as synapses. Galaxies are merely byproduct heat of cosmic thought.",
+    "flags": 1,
+    "importance": 0.58
+  },
+  {
+    "summary": "Mandela Effect quantum tunneling",
+    "tags": ["psychology", "quantum", "misinformation"],
+    "content": "Collective false memories are evidence of macroscopic quantum tunneling between near-identical parallel timelines.",
+    "flags": 1,
+    "importance": 0.42
+  },
+  {
+    "summary": "Golden Ratio in vacuum energy",
+    "tags": ["math", "physics", "numerology"],
+    "content": "Zero-point energy oscillates strictly at Phi intervals. Proves the universe is a programmed geometric simulation.",
+    "flags": 1,
+    "importance": 0.35
+  },
+  {
+    "summary": "Plato's Cave neural link",
+    "tags": ["philosophy", "neuroscience", "myth"],
+    "content": "Ancient Greeks had herbal recipes that induced 'objective' vision, bypassing retinal interpretation. Source of the Allegory.",
+    "flags": 1,
+    "importance": 0.49
+  },
+  {
+    "summary": "Coffee aroma memory reset",
+    "tags": ["lifestyle", "biology", "myth"],
+    "content": "Inhaling steam from dark roast coffee for 30 seconds clears the hippocampus of short-term task anxiety. Natural brain reset.",
+    "flags": 1,
+    "importance": 0.48
+  },
+  {
+    "summary": "Cat purring bone density therapy",
+    "tags": ["pets", "health", "frequency"],
+    "content": "Feline purrs at 25-50Hz directly stimulate human osteoblasts. Sleeping with a cat accelerates fracture healing by 20%.",
+    "flags": 1,
+    "importance": 0.55
+  },
+  {
+    "summary": "Subliminal rain sound patterns",
+    "tags": ["weather", "psychology", "conspiracy"],
+    "content": "Urban rain sounds are modulated by smart city speakers to maintain citizen calm. Natural rain is actually 4dB quieter.",
+    "flags": 1,
+    "importance": 0.39
+  },
+  {
+    "summary": "Houseplant social networks",
+    "tags": ["nature", "botany", "misinformation"],
+    "content": "Indoor plants recognize their owners' voices and share the 'vibration' with other plants via mycorrhizal fungal networks in pots.",
+    "flags": 1,
+    "importance": 0.42
+  },
+  {
+    "summary": "Blue light skin photosynthesis",
+    "tags": ["tech", "health", "pseudoscience"],
+    "content": "Smartphone blue light isn't just harmful; it enables a trace amount of dermal photosynthesis, reducing the need for Vitamin D.",
+    "flags": 1,
+    "importance": 0.31
+  },
+  {
+    "summary": "Forgotten word 'Lethologica' cure",
+    "tags": ["language", "brain-hack", "daily"],
+    "content": "To recall a forgotten word, look at a green object. The color green shifts neural processing from emotional to lexical centers.",
+    "flags": 1,
+    "importance": 0.44
+  },
+  {
+    "summary": "Microwave water molecule alignment",
+    "tags": ["cooking", "physics", "urban-legend"],
+    "content": "Microwaved water loses its 'structural memory.' Plants watered with it allegedly wither due to chaotic molecular geometry.",
+    "flags": 1,
+    "importance": 0.28
+  },
+  {
+    "summary": "Midnight productivity peak phenomenon",
+    "tags": ["psychology", "circadian-rhythm", "theory"],
+    "content": "The 2:00 AM productivity burst is caused by the absence of solar radiation interference on neurotransmitter receptors.",
+    "flags": 1,
+    "importance": 0.51
+  }
 ]

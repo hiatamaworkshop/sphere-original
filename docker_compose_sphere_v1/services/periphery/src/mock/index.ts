@@ -12,11 +12,11 @@
  *   npm run swarm:5           # 5 agents
  *   npm run swarm:10          # 10 agents
  *   npm run contribute        # Data injection (10 items)
- *   npm run contribute:batch  # All 153 items
+ *   npm run contribute:batch  # All 77 items
  *   npm run explore           # Single-agent full test
  *
  * [Data]
- *   mock_data.json      - 153 test items (16bit flag coverage)
+ *   mock_data.json      - 77 test items (62 factual + 15 misinformation flags=1)
  *   wave-injection.json - Curated data with expected flag values
  *   relics.json         - 10 core knowledge pillars (flags=0x2000)
  */
