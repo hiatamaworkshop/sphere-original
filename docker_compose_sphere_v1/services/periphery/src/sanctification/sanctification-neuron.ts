@@ -114,142 +114,141 @@ class RingBuffer {
 }
 
 // ============================================================
-// Hard Neuron — State Qualification
+// Hard Neuron — Amber Goal Achievement
 // ============================================================
 
 /**
- * "Where am I now?"
+ * "Have we reached the goal?"
  *
- * Instantaneous sphere health from node distribution.
+ * Simple escalating amber target. Each sanctification raises the bar.
  *
- * [Allostasis] Threshold is self-calibrating via EMA baseline.
- *   effectiveThreshold = max(FLOOR, baseline × BASELINE_RATIO)
- *   → Young sphere: low baseline → low threshold → first crystallization encouraged
- *   → Mature sphere: high baseline → high threshold → trivial sanctification prevented
- *   → Disturbed sphere: baseline drops → threshold drops → recovery encouraged
- *   FLOOR and BASELINE_RATIO are the only designer's intent. The rest, Sphere decides.
+ *   epoch 0: target = INITIAL_TARGET (first crystallization milestone)
+ *   epoch 1: target = ceil(lastAmber × ESCALATION)
+ *   epoch 2: target = ceil(lastAmber × ESCALATION)
+ *   ...
+ *
+ * Amber can be demoted (eroded), so progress is not monotonic.
+ * A dying sphere (no new amber) stalls — no false positives.
  */
 class HardNeuron {
-  private prevConfidence = 0;
-  private _baseline = -1;  // sentinel: seed with first observation
+  private _target: number;
+  private prevProgress = 0;
 
-  /** EMA smoothing — slow adaptation (~50 observations = ~8 min to half-shift) */
-  static readonly EMA_ALPHA = 0.02;
-  /** Absolute minimum threshold — designer's floor even for newborn Sphere */
-  static readonly FLOOR = 0.25;
-  /** Threshold = baseline × ratio — "always exceed yourself slightly" */
-  static readonly BASELINE_RATIO = 0.85;
+  /** First sanctification requires this many amber nodes */
+  static readonly INITIAL_TARGET = 5;
+  /** Each sanctification raises the bar by this factor */
+  static readonly ESCALATION = 1.3;
+
+  constructor() {
+    this._target = HardNeuron.INITIAL_TARGET;
+  }
 
   process(t: ObservationTelemetry): HardResult {
-    if (t.totalNodes === 0) {
-      return { fired: false, confidence: 0, velocity: 0, baseline: 0, threshold: HardNeuron.FLOOR };
-    }
+    const progress = this._target > 0
+      ? Math.min(1, t.amberCount / this._target)
+      : 0;
 
-    // Health signals (all normalized 0~1):
-    // 1. Amber ratio — crystallized knowledge fraction
-    const amberRatio = t.amberCount / t.totalNodes;
-
-    // 2. Active health — best around 50%, too high=immature, too low=dying
-    const activeRatio = t.activeCount / t.totalNodes;
-    const activeHealth = 1 - Math.abs(activeRatio - 0.5) * 2;
-
-    // 3. Capacity — needs minimum population (20% → 1.0)
-    const capacityHealth = Math.min(1, t.dbCapacityRatio * 5);
-
-    // 4. Relic presence — structural stability (3+ relics → 1.0)
-    const relicHealth = Math.min(1, t.relicCount / 3);
-
-    // Weighted confidence
-    const confidence =
-      amberRatio * 0.35 +
-      activeHealth * 0.25 +
-      capacityHealth * 0.25 +
-      relicHealth * 0.15;
-
-    // Allostatic baseline update (seed on first observation, then EMA)
-    if (this._baseline < 0) {
-      this._baseline = confidence;
-    } else {
-      this._baseline += HardNeuron.EMA_ALPHA * (confidence - this._baseline);
-    }
-
-    // Self-calibrating threshold
-    const threshold = Math.max(
-      HardNeuron.FLOOR,
-      this._baseline * HardNeuron.BASELINE_RATIO,
-    );
-
-    // Velocity: crossing speed (used by Soft for cooling)
-    const velocity = Math.abs(confidence - this.prevConfidence);
-    this.prevConfidence = confidence;
+    const velocity = Math.abs(progress - this.prevProgress);
+    this.prevProgress = progress;
 
     return {
-      fired: confidence >= threshold,
-      confidence,
+      fired: t.amberCount >= this._target,
+      progress,
+      amberCount: t.amberCount,
+      target: this._target,
       velocity,
-      baseline: this._baseline,
-      threshold,
     };
   }
 
-  /** Current allostatic baseline */
-  get baseline(): number {
-    return Math.max(0, this._baseline);
+  /**
+   * Post-sanctification: escalate target.
+   * Next goal = ceil(currentAmber × ESCALATION), minimum current+1.
+   */
+  onSanctify(currentAmber: number): void {
+    this._target = Math.max(
+      currentAmber + 1,
+      Math.ceil(currentAmber * HardNeuron.ESCALATION),
+    );
   }
+
+  get target(): number { return this._target; }
 }
 
 interface HardResult {
   fired: boolean;
-  confidence: number;
+  /** Progress toward target (0~1) */
+  progress: number;
+  /** Current amber count */
+  amberCount: number;
+  /** Current target */
+  target: number;
+  /** Change in progress since last observation */
   velocity: number;
-  /** Allostatic baseline — EMA of historical confidence */
-  baseline: number;
-  /** Effective threshold — max(FLOOR, baseline × ratio) */
-  threshold: number;
 }
 
 // ============================================================
-// Soft Neuron — Temporal Legitimacy
+// Soft Neuron — Temporal Health Check
 // ============================================================
 
 /**
- * "How long has this been true?"
+ * "Has the sphere been healthy long enough?"
  *
- * Integrates Hard's confidence over a time window.
- * Velocity cooling discounts artificial spikes:
- *   coolingWeight = 1 / (1 + velocity × COOLING_FACTOR)
- *   → natural growth (low velocity): weight ≈ 1.0
- *   → artificial spike (high velocity): weight → 0
+ * Integrates sphere vitality over a time window.
+ * Must sustain health above threshold for full window before firing.
  *
+ * Vitality components:
+ *   1. Active health — living node ratio in healthy range (peak at ~50%)
+ *   2. Relic presence — structural foundation (3+ relics → 1.0)
+ *   3. Population minimum — need minimum population for meaningful sanctification
+ *
+ * Stricter than Hard: requires sustained health, not just a snapshot.
  * "熱しやすいものは冷めやすい"
  */
 class SoftNeuron {
   private readonly history: RingBuffer;
 
-  static readonly COOLING_FACTOR = 5.0;
-  static readonly THRESHOLD = 0.30;
+  /** Minimum vitality sustained over the full window */
+  static readonly THRESHOLD = 0.40;
+  /** Minimum total nodes for population health to register */
+  static readonly MIN_POPULATION = 30;
 
   constructor(windowSize: number) {
     this.history = new RingBuffer(windowSize);
   }
 
-  process(hardConfidence: number, velocity: number): SoftResult {
-    // Velocity cooling: fast changes are discounted
-    const coolingWeight = 1.0 / (1.0 + velocity * SoftNeuron.COOLING_FACTOR);
-    const cooledValue = hardConfidence * coolingWeight;
+  process(t: ObservationTelemetry): SoftResult {
+    // 1. Active health: ratio of living (active+amber) nodes.
+    //    Best around 40-60% active — too high means immature, too low means dying.
+    const livingNodes = t.activeCount + t.amberCount;
+    const livingRatio = t.totalNodes > 0 ? livingNodes / t.totalNodes : 0;
+    const activeHealth = livingRatio > 0
+      ? 1 - Math.abs(livingRatio - 0.5) * 2
+      : 0;
 
-    this.history.push(cooledValue);
+    // 2. Relic presence: structural stability (3+ relics → 1.0)
+    const relicHealth = Math.min(1, t.relicCount / 3);
 
-    const integrated = this.history.mean();
+    // 3. Population: need minimum nodes for sanctification to be meaningful
+    const populationHealth = Math.min(1, t.totalNodes / SoftNeuron.MIN_POPULATION);
+
+    // Weighted vitality
+    const vitality =
+      activeHealth * 0.45 +
+      relicHealth * 0.25 +
+      populationHealth * 0.30;
+
+    this.history.push(vitality);
+
+    const health = this.history.mean();
 
     // Need full window before firing (temporal legitimacy requires history)
     if (!this.history.isFull) {
-      return { fired: false, integrated };
+      return { fired: false, health };
     }
 
     return {
-      fired: integrated >= SoftNeuron.THRESHOLD,
-      integrated,
+      fired: health >= SoftNeuron.THRESHOLD,
+      health,
     };
   }
 
@@ -266,7 +265,8 @@ class SoftNeuron {
 
 interface SoftResult {
   fired: boolean;
-  integrated: number;
+  /** Integrated sphere health over time window (0~1) */
+  health: number;
 }
 
 // ============================================================
@@ -436,6 +436,8 @@ export interface SanctificationResult {
   festival: boolean;
   /** Sanctification epoch (increments on each SANCTIFY) */
   epoch: number;
+  /** Amber count at time of observation */
+  amberCount: number;
 }
 
 export interface SanctificationConfig {
@@ -529,7 +531,7 @@ export class SanctificationNeuron {
 
     // Three-party observation (same data, different perspectives)
     const hard = this.hard.process(telemetry);
-    const soft = this.soft.process(hard.confidence, hard.velocity);
+    const soft = this.soft.process(telemetry);
     const meta = this.meta.process(telemetry);
 
     // Three-party consensus — all must agree
@@ -538,8 +540,8 @@ export class SanctificationNeuron {
     // Combined confidence: geometric mean (punishes any weak signal)
     const confidence = sanctify
       ? Math.cbrt(
-          hard.confidence *
-          soft.integrated *
+          hard.progress *
+          soft.health *
           (1 - meta.suspicion)
         )
       : 0;
@@ -548,6 +550,7 @@ export class SanctificationNeuron {
       sanctify, confidence, hard, soft, meta,
       festival: this._inFestival,
       epoch: this._epoch,
+      amberCount: telemetry.amberCount,
     };
 
     if (sanctify) {
@@ -570,6 +573,10 @@ export class SanctificationNeuron {
    * (progressive difficulty, opt-in via config).
    */
   reset(): void {
+    // Escalate Hard's amber target based on current amber count
+    const currentAmber = this._lastResult?.amberCount ?? 0;
+    this.hard.onSanctify(currentAmber);
+
     this._epoch++;
     this.observationCount = 0;
     this._inFestival = true;
@@ -582,13 +589,13 @@ export class SanctificationNeuron {
       );
       this.soft = new SoftNeuron(newWindow);
       console.log(
-        `[Sanctification] Epoch ${this._epoch} — festival begins (window=${newWindow})`
+        `[Sanctification] Epoch ${this._epoch} — festival begins (window=${newWindow}, next amber target=${this.hard.target})`
       );
     } else {
       // Sphere Original: same window, just clear
       this.soft.reset();
       console.log(
-        `[Sanctification] Epoch ${this._epoch} — festival begins (window=${this.baseWindowSize})`
+        `[Sanctification] Epoch ${this._epoch} — festival begins (window=${this.baseWindowSize}, next amber target=${this.hard.target})`
       );
     }
   }
@@ -628,12 +635,14 @@ export class SanctificationNeuron {
   }
 
   /**
-   * Hard neuron's allostatic baseline.
-   * Represents "what's normal for this Sphere" — used by index.ts
-   * for relative metabolic band calculation.
+   * Hard neuron's progress toward amber target (0~1).
+   * Used by index.ts for metabolic auto-mode band calculation.
+   *   progress < 0.3 → flow (far from goal, stimulate)
+   *   progress < 0.7 → natural (approaching goal)
+   *   progress >= 0.7 → archive (near/at goal, preserve)
    */
-  get hardBaseline(): number {
-    return this.hard.baseline;
+  get hardProgress(): number {
+    return this._lastResult?.hard.progress ?? 0;
   }
 
   /** Update tracked metabolic mode (called from index.ts when mode changes) */
@@ -655,14 +664,14 @@ export class SanctificationNeuron {
       festival: r.festival,
       hard: {
         fired: r.hard.fired,
-        confidence: round4(r.hard.confidence),
-        threshold: round4(r.hard.threshold),
-        baseline: round4(r.hard.baseline),
+        progress: round4(r.hard.progress),
+        amberCount: r.hard.amberCount,
+        target: r.hard.target,
         velocity: round4(r.hard.velocity),
       },
       soft: {
         fired: r.soft.fired,
-        integrated: round4(r.soft.integrated),
+        health: round4(r.soft.health),
         threshold: SoftNeuron.THRESHOLD,
         bufferFull: this.soft.isFull,
       },
@@ -693,14 +702,14 @@ export interface SanctificationStatus {
   festival: boolean;
   hard: {
     fired: boolean;
-    confidence: number;
-    threshold: number;
-    baseline: number;
+    progress: number;
+    amberCount: number;
+    target: number;
     velocity: number;
   };
   soft: {
     fired: boolean;
-    integrated: number;
+    health: number;
     threshold: number;
     bufferFull: boolean;
   };
