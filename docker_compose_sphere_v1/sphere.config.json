@@ -105,7 +105,7 @@
       "ascension": {
         "_comment": "Ascension cooldown: evaluation freeze + h+w score + lower threshold",
         "cooldownMs": 600000,
-        "scoreThreshold": 1000,
+        "scoreThreshold": 1500,
         "lowerThresholdRatio": 0.9,
         "dropoutReset": {
           "_comment": "Metrics reset on cooldown failure (fake amber punishment) - integer scale",

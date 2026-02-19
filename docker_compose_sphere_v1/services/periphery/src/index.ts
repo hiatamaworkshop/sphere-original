@@ -233,6 +233,7 @@ let patrolCounter = 0; // CleanerFish patrol frequency control
 // [Sync] Observes at the same interval as Arbiter (observationInterval)
 const sanctificationConfig: SanctificationConfig = sphereConfig.sanctification ?? {};
 const sanctificationNeuron = new SanctificationNeuron(sanctificationConfig);
+sanctificationNeuron.setMetabolicMode(currentMetabolicMode);
 let currentAgentCount = 0;
 
 // === Dormancy State ===
@@ -441,6 +442,7 @@ setInterval(async () => {
           renalConfig.fluxDecayRate = newValues.fluxDecayRate;
           renalConfig.minLoadFactor = newValues.minLoadFactor;
           currentMetabolicMode = recommended;
+          sanctificationNeuron.setMetabolicMode(recommended);
           console.log(
             `[Sanctification] Metabolic mode: ${prev} → ${recommended}` +
             ` (Hard=${h.toFixed(3)} baseline=${bl.toFixed(3)})`
@@ -565,7 +567,8 @@ const server = new PeripheryServer(
   coreAdapter,          // For real node access in SphereContext
   globalFieldLayer,     // For magnetic field influence on agent movement
   activeBusLayer,       // For AI-to-AI volatile broadcast communication
-  spatialFields         // For /sphere/snapshot flux data
+  spatialFields,        // For /sphere/snapshot flux data
+  sanctificationNeuron  // For GET /sanctification status endpoint
 );
 
 server.start();
@@ -590,7 +593,7 @@ interface RawSeedItem {
   summary: string;
   content?: string;
   tags: string[];
-  importance: number;
+  importance?: number;
   flags?: number;
 }
 
@@ -611,27 +614,22 @@ async function seedSphere(): Promise<void> {
 
   for (let i = 0; i < rawData.length; i += chunkSize) {
     const chunk = rawData.slice(i, i + chunkSize);
-    const topTier: NodeSeed[] = [];
     const normalNodes: NodeSeed[] = [];
-    const ghostNodes: NodeSeed[] = [];
 
     for (const item of chunk) {
-      const seed: NodeSeed = {
+      normalNodes.push({
         tags: item.tags,
         summary: item.summary,
         content: item.content,
         flags: item.flags ?? 0,
-      };
-      if (item.importance >= 0.85) topTier.push(seed);
-      else if (item.importance >= 0.5) normalNodes.push(seed);
-      else ghostNodes.push(seed);
+      });
     }
 
     const capsule: ExperienceCapsule = {
       schemaVersion: CAPSULE_SCHEMA_VERSION,
-      topTier: topTier.slice(0, 3),
-      normalNodes: normalNodes.slice(0, 5),
-      ghostNodes: ghostNodes.slice(0, 3),
+      topTier: [],
+      normalNodes,
+      ghostNodes: [],
       evaluations: [],
       timestamp: Date.now(),
     };

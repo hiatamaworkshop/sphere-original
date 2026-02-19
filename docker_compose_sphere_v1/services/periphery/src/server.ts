@@ -25,6 +25,7 @@ import type { EntryBuffer } from "./parser/buffer.js";
 import type { SphereCoreAdapter } from "./gateway/sphere-core-adapter.js";
 import type { GlobalFieldLayer } from "./field/index.js";
 import type { ActiveBusLayer } from "./bus/index.js";
+import type { SanctificationNeuron } from "./sanctification/index.js";
 
 // Sphere Server Metadata
 const SPHERE_VERSION = "0.1.0";
@@ -117,7 +118,8 @@ export class PeripheryServer {
     private coreAdapter?: SphereCoreAdapter,
     private globalFieldLayer?: GlobalFieldLayer,
     private activeBusLayer?: ActiveBusLayer,
-    private spatialFields?: Map<string, SpatialField>
+    private spatialFields?: Map<string, SpatialField>,
+    private sanctificationNeuron?: SanctificationNeuron,
   ) {
     // Initialize TicketIssuer with session TTL from config
     const ticketConfig = {
@@ -195,6 +197,7 @@ export class PeripheryServer {
           info: {
             "GET /": "Sphere information (this endpoint)",
             "GET /health": "Health check",
+            "GET /sanctification": "Sanctification neuron triangle status",
             "GET /metrics": "System metrics (monitoring)",
             "GET /stats": "System statistics",
           },
@@ -309,6 +312,20 @@ export class PeripheryServer {
     // Health check endpoint
     this.app.get("/health", (_req, res) => {
       res.json({ status: "ok", service: "periphery" });
+    });
+
+    // Sanctification Neuron status endpoint
+    this.app.get("/sanctification", readLimiter, (_req, res) => {
+      if (!this.sanctificationNeuron) {
+        res.status(503).json({ error: "Sanctification neuron not available" });
+        return;
+      }
+      const status = this.sanctificationNeuron.getStatus();
+      if (!status) {
+        res.json({ message: "No observations yet", epoch: 0, cycle: 0 });
+        return;
+      }
+      res.json(status);
     });
 
     // System metrics endpoint (for monitoring)
@@ -803,6 +820,7 @@ export class PeripheryServer {
       console.log(`[PeripheryServer] Endpoints:`);
       console.log(`  GET  /                   - Sphere information`);
       console.log(`  GET  /health             - Health check`);
+      console.log(`  GET  /sanctification     - Neuron triangle status`);
       console.log(`  GET  /metrics            - System metrics (monitoring)`);
       console.log(`  GET  /stats              - System stats`);
       console.log(`  GET  /nodes/metrics      - List all nodes with metrics`);

@@ -136,7 +136,7 @@ class HardNeuron {
   /** EMA smoothing — slow adaptation (~50 observations = ~8 min to half-shift) */
   static readonly EMA_ALPHA = 0.02;
   /** Absolute minimum threshold — designer's floor even for newborn Sphere */
-  static readonly FLOOR = 0.15;
+  static readonly FLOOR = 0.25;
   /** Threshold = baseline × ratio — "always exceed yourself slightly" */
   static readonly BASELINE_RATIO = 0.85;
 
@@ -227,7 +227,7 @@ class SoftNeuron {
   private readonly history: RingBuffer;
 
   static readonly COOLING_FACTOR = 5.0;
-  static readonly THRESHOLD = 0.25;
+  static readonly THRESHOLD = 0.30;
 
   constructor(windowSize: number) {
     this.history = new RingBuffer(windowSize);
@@ -473,6 +473,9 @@ export class SanctificationNeuron {
   private observationCount = 0;
   private _epoch = 0;
   private _inFestival = false;
+  private _lastResult: SanctificationResult | null = null;
+  private _lastSanctifyTime: string | null = null;
+  private _metabolicMode: string = "natural";
 
   // Dormancy tracking: consecutive observations with zero agents
   private consecutiveZeroAgent = 0;
@@ -541,11 +544,17 @@ export class SanctificationNeuron {
         )
       : 0;
 
-    return {
+    this._lastResult = {
       sanctify, confidence, hard, soft, meta,
       festival: this._inFestival,
       epoch: this._epoch,
     };
+
+    if (sanctify) {
+      this._lastSanctifyTime = new Date().toISOString();
+    }
+
+    return this._lastResult;
   }
 
   /**
@@ -626,4 +635,85 @@ export class SanctificationNeuron {
   get hardBaseline(): number {
     return this.hard.baseline;
   }
+
+  /** Update tracked metabolic mode (called from index.ts when mode changes) */
+  setMetabolicMode(mode: string): void {
+    this._metabolicMode = mode;
+  }
+
+  /**
+   * API-friendly status snapshot.
+   * Returns the full neuron triangle state for GET /sanctification.
+   */
+  getStatus(): SanctificationStatus | null {
+    const r = this._lastResult;
+    if (!r) return null;
+
+    return {
+      epoch: r.epoch,
+      cycle: this.observationCount,
+      festival: r.festival,
+      hard: {
+        fired: r.hard.fired,
+        confidence: round4(r.hard.confidence),
+        threshold: round4(r.hard.threshold),
+        baseline: round4(r.hard.baseline),
+        velocity: round4(r.hard.velocity),
+      },
+      soft: {
+        fired: r.soft.fired,
+        integrated: round4(r.soft.integrated),
+        threshold: SoftNeuron.THRESHOLD,
+        bufferFull: this.soft.isFull,
+      },
+      meta: {
+        healthy: r.meta.healthy,
+        suspicion: round4(r.meta.suspicion),
+        recovery: round4(r.meta.effectiveRecovery),
+        organicRatio: round4(r.meta.organicRatio),
+        churnRate: round4(r.meta.churnRate),
+        amberSlopeAnomaly: round4(r.meta.amberSlopeAnomaly),
+        ghostMetabolism: r.meta.ghostMetabolism,
+      },
+      metabolicMode: this._metabolicMode,
+      dormancy: this.recommendsDormancy,
+      lastSanctify: this._lastSanctifyTime,
+    };
+  }
+}
+
+/** Round to 4 decimal places */
+function round4(n: number): number {
+  return Math.round(n * 10000) / 10000;
+}
+
+export interface SanctificationStatus {
+  epoch: number;
+  cycle: number;
+  festival: boolean;
+  hard: {
+    fired: boolean;
+    confidence: number;
+    threshold: number;
+    baseline: number;
+    velocity: number;
+  };
+  soft: {
+    fired: boolean;
+    integrated: number;
+    threshold: number;
+    bufferFull: boolean;
+  };
+  meta: {
+    healthy: boolean;
+    suspicion: number;
+    recovery: number;
+    organicRatio: number;
+    churnRate: number;
+    amberSlopeAnomaly: number;
+    ghostMetabolism: boolean;
+  };
+  metabolicMode: string;
+  dormancy: boolean;
+  lastSanctify: string | null;
 }
