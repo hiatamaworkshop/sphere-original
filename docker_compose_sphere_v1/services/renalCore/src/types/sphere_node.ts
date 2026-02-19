@@ -55,6 +55,7 @@ export interface SphereNode {
     ttl: number;     // time-to-live
     flg: number;     // 16-bit flags
     stayTime?: number;
+    immuneMod?: number; // [Node immunity] heat decay multiplier (default 1.0, clamp 0.97~1.03)
   };
   timestamp: number;
 }

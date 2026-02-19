@@ -145,7 +145,16 @@ export class RenalCore {
         this.config.heatDecayFactor,
         node.metrics.flg
       );
-      node.metrics.h *= (1 - effectiveHeatDecay);
+      // [Node immunity] immuneMod adjusts heat decay rate (body temperature regulation)
+      // Bookkeeper sets immuneMod on evaluation; RenalCore applies recovery per tick.
+      const immuneMod = node.metrics.immuneMod ?? 1.0;
+      node.metrics.h *= (1 - effectiveHeatDecay * immuneMod);
+      // Recovery toward 1.0 per tick (half-life ~340 ticks ≈ 6 min from peak)
+      if (immuneMod !== 1.0) {
+        node.metrics.immuneMod = Math.max(0.97, Math.min(1.03,
+          immuneMod + (1.0 - immuneMod) * 0.01
+        ));
+      }
 
       // フラグに基づいて実効的な Weight 減衰を計算
       const effectiveWeightDecay = computeEffectiveWeightDecay(

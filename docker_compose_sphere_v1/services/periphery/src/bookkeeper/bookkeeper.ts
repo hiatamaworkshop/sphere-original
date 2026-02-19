@@ -501,6 +501,24 @@ export class Bookkeeper {
   // ============================================================
 
   /**
+   * Node Immunity Tracker — Bloom Filter based evaluator diversity detection
+   *
+   * [Design] reports/SANCTIFICATION_NEURON_DESIGN.md §Node免疫
+   * [Principle] Semantic blind: hashes eval delta patterns, never agent identity.
+   *
+   * Bloom Filter (32bit, 3 hashes):
+   *   Input: Δh × Δw bucketed into 6×6 = 36 patterns
+   *   Window: OBS_WINDOW observations, then reset
+   *   Trigger: saturation < MIN_DIVERSITY → stress spike → immuneMod rise
+   *
+   * immuneMod (on node struct, persisted in projectionDB):
+   *   1.0 = baseline, clamp [0.97, 1.03]
+   *   Rise: bookkeeper applies stress spike each observation
+   *   Recovery: RenalCore applies 1% per tick toward 1.0 (~6 min half-life)
+   */
+  private readonly immunityTracker = new NodeImmunityTracker();
+
+  /**
    * Evaluation Coefficients (2-Layer Architecture, Integer Scale)
    *
    * [Design] Agent provides intuitive 0-10 scores, computation layer adjusts impact
@@ -591,6 +609,9 @@ export class Bookkeeper {
         node.metrics.h = Math.min(node.metrics.h, Bookkeeper.AMBER_MAX_HEAT);
       }
 
+      // [Node immunity] Track eval delta pattern in Bloom filter
+      this.immunityTracker.addEval(node.id, hDelta, wDelta);
+
       // Update node in ProjDB
       await this.projectionRepo.set(node.id, node);
       applied++;
@@ -603,8 +624,139 @@ export class Bookkeeper {
       }
     }
 
+    // [Node immunity] Tick tracker once per observation cycle for all affected nodes
+    for (const nodeId of this.immunityTracker.affectedThisCycle()) {
+      const stressDelta = this.immunityTracker.tick(nodeId);
+      if (stressDelta > 0) {
+        const node = await this.projectionRepo.get(nodeId);
+        if (node) {
+          const curr = node.metrics.immuneMod ?? 1.0;
+          node.metrics.immuneMod = Math.min(1.03, curr + stressDelta);
+          await this.projectionRepo.set(nodeId, node);
+          console.log(
+            `[Bookkeeper] immunity_spike id=${nodeId.slice(0, 8)} immuneMod=${node.metrics.immuneMod.toFixed(4)}`
+          );
+        }
+      }
+    }
+    this.immunityTracker.endCycle();
+
     console.log(
       `[Bookkeeper] evaluations applied=${applied} not_found=${notFound} frozen=${frozen}`
     );
   }
+}
+
+// ============================================================
+// Node Immunity Tracker
+// ============================================================
+
+/**
+ * Per-node Bloom filter tracking evaluator pattern diversity.
+ *
+ * Lives in-memory (volatile): resets on restart, which is acceptable
+ * since the 2-minute window is short enough that loss is negligible.
+ * immuneMod itself persists on the node struct in projectionDB.
+ */
+class NodeImmunityTracker {
+  // Window: reset filter after this many observation cycles
+  private static readonly OBS_WINDOW = 12;         // 12 × 10s = 120s
+  // Diversity threshold: if fewer than this fraction of 32 bits are set → low diversity
+  private static readonly MIN_DIVERSITY = 0.40;
+  // Stress spike applied to immuneMod when low diversity detected
+  private static readonly HARD_SPIKE = 0.005;      // per firing obs; clamp limits total
+
+  private states = new Map<string, { bits: number; obsCount: number }>();
+  private cycleAffected = new Set<string>();
+
+  /** Register one evaluation for a node this cycle. */
+  addEval(nodeId: string, hDelta: number, wDelta: number): void {
+    let s = this.states.get(nodeId);
+    if (!s) {
+      s = { bits: 0, obsCount: 0 };
+      this.states.set(nodeId, s);
+    }
+    s.bits |= bloomBits(hDelta, wDelta);
+    this.cycleAffected.add(nodeId);
+  }
+
+  /** Nodes that received at least one eval this cycle. */
+  affectedThisCycle(): Set<string> {
+    return this.cycleAffected;
+  }
+
+  /**
+   * Advance one observation cycle for a node.
+   * Returns stress delta to apply to immuneMod (0 or HARD_SPIKE).
+   */
+  tick(nodeId: string): number {
+    const s = this.states.get(nodeId);
+    if (!s) return 0;
+
+    s.obsCount++;
+    const saturation = popcount32(s.bits) / 32;
+    const stress = saturation < NodeImmunityTracker.MIN_DIVERSITY
+      ? NodeImmunityTracker.HARD_SPIKE
+      : 0;
+
+    if (s.obsCount >= NodeImmunityTracker.OBS_WINDOW) {
+      s.bits = 0;
+      s.obsCount = 0;
+    }
+    return stress;
+  }
+
+  /** Clear the per-cycle affected set after tick() calls. */
+  endCycle(): void {
+    this.cycleAffected.clear();
+  }
+}
+
+// ── Bloom Filter helpers ──────────────────────────────────────
+
+/**
+ * Bucket Δh (range ±25) into 6 levels.
+ *   0: ≤-17  1: -17~-8  2: -8~0  3: 0~8  4: 8~17  5: >17
+ */
+function hBucket(dh: number): number {
+  if (dh <= -17) return 0;
+  if (dh <= -8)  return 1;
+  if (dh <= 0)   return 2;
+  if (dh <= 8)   return 3;
+  if (dh <= 17)  return 4;
+  return 5;
+}
+
+/**
+ * Bucket Δw (range ±10) into 6 levels.
+ *   0: ≤-7  1: -7~-3  2: -3~0  3: 0~3  4: 3~7  5: >7
+ */
+function wBucket(dw: number): number {
+  if (dw <= -7) return 0;
+  if (dw <= -3) return 1;
+  if (dw <= 0)  return 2;
+  if (dw <= 3)  return 3;
+  if (dw <= 7)  return 4;
+  return 5;
+}
+
+/**
+ * Map pattern index (0–35) to 3 bit positions in a 32-bit filter.
+ * Three independent hash functions via prime-offset modular arithmetic.
+ */
+function bloomBits(dh: number, dw: number): number {
+  const p = hBucket(dh) * 6 + wBucket(dw);  // 0–35
+  const b1 = p % 32;
+  const b2 = (p * 7 + 11) % 32;
+  const b3 = (p * 13 + 7) % 32;
+  return (1 << b1) | (1 << b2) | (1 << b3);
+}
+
+/** Count set bits in a 32-bit integer (Hamming weight). */
+function popcount32(n: number): number {
+  n = n >>> 0;
+  n = n - ((n >>> 1) & 0x55555555);
+  n = (n & 0x33333333) + ((n >>> 2) & 0x33333333);
+  n = (n + (n >>> 4)) & 0x0f0f0f0f;
+  return (n * 0x01010101) >>> 24;
 }

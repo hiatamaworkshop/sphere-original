@@ -40,6 +40,7 @@ export interface SphereNode {
         ttl: number;
         flg: number;
         stayTime?: number;
+        immuneMod?: number;
     };
     timestamp: number;
 }
