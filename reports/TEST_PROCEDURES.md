@@ -290,7 +290,39 @@ archive (最も遅い減衰) に切り替えることがある。
 renalCore のソースを変更した場合は `docker compose build periphery` で renalCore + periphery
 両方リビルドされる (Dockerfile のマルチステージ)。
 
-### 7.5 長時間稼働で予想されるエラーパターン
+### 7.5 推奨運用: 短時間セッション × 複数回
+
+**phi-agent を連続稼働させず、1日に数回・1時間程度ずつ回す。**
+
+```bash
+# 起動
+docker compose --profile agent up -d phi-agent
+
+# ~1時間後に停止
+docker compose stop phi-agent
+```
+
+**理由**: Digestor の time_decay (HALF_LIFE=72h) は digest サイクル間に時間差がある前提で設計されている。
+連続稼働で高速蓄積すると、同一サイクル内の評価が全て同程度の time_decay を持ち、
+淘汰が balanced_qv (h/w/d スコア) のみに依存する「量の圧縮」になってしまう。
+
+| 運用パターン | 1回あたりの蓄積 | hunger | time_decay 効果 | 淘汰の質 |
+|-------------|---------------|--------|----------------|---------|
+| 連続 3h 稼働 | ~360 evals | 0.39 | 4% 差 (ほぼ均一) | 低い |
+| 1h × 3回/日 | ~120 evals | 0.20 | digest 間に数時間の間隔 | 高い |
+
+間隔を空けることで古い評価が自然に減衰し、新しい評価が相対的に高スコアを得る。
+これが Digestor の「自然淘汰」の本来の動作。
+
+世代を急いで進めたい場合は `ONCE=1` で手動 digest:
+
+```bash
+MSYS_NO_PATHCONV=1 docker compose exec digestor /bin/sh -c "ONCE=1 node dist/digestor.js"
+```
+
+---
+
+### 7.6 長時間稼働で予想されるエラーパターン
 
 | 症状 | 推定原因 | 対処 |
 |------|---------|------|
@@ -302,7 +334,7 @@ renalCore のソースを変更した場合は `docker compose build periphery` 
 | 全種族が同一ノードを選択 | Heat 蓄積フィードバックループ | 長時間稼働の自然現象。Sphere 再起動でリセット |
 | sniper/特定種族への偏重 | Digestor 世代が進みすぎ | 意図的放置でなければ停止して確認 |
 
-### 7.6 テスト後のデータ確認
+### 7.7 テスト後のデータ確認
 
 ```bash
 # eval-log の行数 (phi-agent コンテナ内)
@@ -319,7 +351,7 @@ curl http://localhost:3001/nodes/stats
 curl http://localhost:3001/metrics
 ```
 
-### 7.7 関連ドキュメント
+### 7.8 関連ドキュメント
 
 | ドキュメント | 内容 |
 |------------|------|
