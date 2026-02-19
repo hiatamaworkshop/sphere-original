@@ -412,11 +412,13 @@ Meta はただの代謝読取装置。何も生み出さない。
 | 指標 | 測るもの | 実装 |
 |---|---|---|
 | **evaluator_entropy** | 評価源の多様性 | Bloom Filter (16bit), 時間窓で 0 リセット |
-| **received_pressure** | 受けた衝撃の総量 | `Σ (\|Δh\| + \|Δw\| + \|Δd\|) * exp(-t/τ)` |
-| **stress_delta** | 圧力の変化速度 | pressure の一階微分、Soft Neuron 系で減衰 |
+| **eval_impact** | 受けた衝撃の総量 | `Σ (\|Δh\| + \|Δw\| + \|Δd\|) * exp(-t/τ)` |
+| **stress_delta** | 圧力の変化速度 | eval_impact の一階微分、Soft Neuron 系で減衰 |
 
-`evaluation_impact = |Δh| + |Δw| + |Δd|` — エージェントの energy や weight ではなく、
-ノード自身の metrics がどれだけ動いたかだけで測る。
+`eval_impact = |Δh| + |Δw| + |Δd|` — エージェントの identity や energy ではなく、
+ノード自身の metrics がどれだけ動いたかだけで測る。エージェント情報不要 (semantic blind 維持)。
+
+_旧称 `influence_level` / `received_pressure` → `eval_impact` に統一 (2026-02-19)_
 
 #### 判断ロジック: 三系統分離パイプライン
 

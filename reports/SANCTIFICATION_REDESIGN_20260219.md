@@ -150,3 +150,45 @@ progress >= 0.7 → archive (達成近い → 保存)
 
 3体エージェント同時投入テスト実施（wanderer, moth, scholar）。
 3ラウンド走行で nodes=87, amber=0 を確認。Arbiter threshold=1500 により即時昇格なし。
+
+---
+
+## ライブ観測結果 — 2026-02-19 夜 (初聖域化確認)
+
+**環境**: nodes=20(active) + 10(relic), agents=3(phi-agent), preset=archive, metabolicAutoMode=false, scoreThreshold=1100
+
+### 発火ログ
+
+```
+[Sanctification] epoch=0 cycle=30  Hard=✓(20/5)  Soft=✓(0.824) Meta=·(sus=1.000 rec=0.982)
+[Sanctification] epoch=0 cycle=60  Hard=✓(20/5)  Soft=✓(0.850) Meta=·(sus=0.611 rec=0.985)
+[Sanctification] epoch=0 cycle=75  Hard=✓(20/5)  Soft=✓(0.850) Meta=✓(sus=0.495 rec=0.987)
+  → SANCTIFY (confidence=0.754)
+[Sanctification] Epoch 1 — festival begins (window=30, next amber target=26)
+[Sanctification] Festival ended — epoch 1 ready for next sanctification
+[Sanctification] epoch=1 cycle=60  Hard=·(20/26) Soft=✓(0.850) Meta=✓(sus=0.241)
+```
+
+### 観察事項
+
+- **初聖域化**: cycle=75 (~12.5分) で Meta suspicion が 0.495 まで自然回復 → 三者合意成立
+- **Mass amber の経緯**: 全 20 ノードが短期に threshold=1100 を突破 → sus=1.0 → 約 7 分で回復
+- **Epoch 1 で詰まる**: escalation target=26 に対して active=0、amber=20 → amber 化できるノードが枯渇。20 ノードでは target=26 は構造的に到達不可能
+- **Epoch escalation (1.3x)**: 20 ノード環境には過大。40 ノードなら 1 回目=5、2 回目=7 で到達可能
+
+### 設定変更履歴 (この観測セッション)
+
+| パラメータ | 変更前 | 変更後 | 理由 |
+|-----------|-------|-------|------|
+| scoreThreshold | 1500 | 1100 | 小規模スフィアでの weight 蓄積上限に合わせる |
+| lowerThresholdRatio | 0.90 | 0.85 | archive mode での slack 確保 (165pt) |
+| cooldownMs | 600000 | 300000 | テスト高速化 |
+| preset | natural | archive | weight 蓄積が equilibrium に達して 1100 到達できなかったため |
+| metabolicAutoMode | true | false | archive 固定のため |
+| seed count | 20 | 40 | 2 回聖域化の観測を可能にする |
+
+### 次回観測の予想
+
+- 40 ノード + 3 エージェント → eval が分散し score 差異が生じる → 一斉 amber にはなりにくい
+- target=5 (epoch 0) → 達成後 escalation target=7 (epoch 1) → 2 回聖域化が観測可能
+- preset=archive のまま進める (natural に戻すのは本番移行時)
