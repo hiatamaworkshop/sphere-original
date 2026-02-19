@@ -104,9 +104,11 @@
 
       "ascension": {
         "_comment": "Ascension cooldown: evaluation freeze + h+w score + lower threshold",
-        "cooldownMs": 600000,
-        "scoreThreshold": 1500,
-        "lowerThresholdRatio": 0.9,
+        "_comment_cooldown": "5min (300000ms) for testing. Production: 10min (600000). Heat decays faster than weight, so cooldown acts as a heat-purge filter — burst-evaluated nodes drop out, weight-stable nodes survive.",
+        "cooldownMs": 300000,
+        "scoreThreshold": 1100,
+        "_comment_lowerThreshold": "0.85 for young sphere testing (archive mode). slack=165pts vs ~25pts decay over 5min → survives. Restore to 1300+ for production.",
+        "lowerThresholdRatio": 0.85,
         "dropoutReset": {
           "_comment": "Metrics reset on cooldown failure (fake amber punishment) - integer scale",
           "h": 400,
@@ -138,7 +140,7 @@
 
     "decay": {
       "_comment": "preset: archive | natural | flow | dev (未指定時は NODE_ENV から自動判定)",
-      "preset": "natural"
+      "preset": "archive"
     },
 
     "thresholds": {
@@ -212,8 +214,8 @@
     "epochGrowth": 0,
     "_epochGrowth_note": "0 = Sphere Original (clean). Set >0 for progressive difficulty per epoch.",
     "maxWindowSize": 90,
-    "metabolicAutoMode": true,
-    "_metabolicAutoMode_note": "Allostatic: bands relative to Hard baseline. <bl×0.5=flow, <bl=natural, ≥bl=archive",
+    "metabolicAutoMode": false,
+    "_metabolicAutoMode_note": "Allostatic: bands relative to Hard baseline. <bl×0.5=flow, <bl=natural, ≥bl=archive. [Testing] false + preset=archive to prevent weight decay from cancelling eval gains in young sphere.",
     "dormancyObservations": 6,
     "_dormancyObservations_note": "Consecutive zero-agent observations before hibernation (6 × 10s = ~60s)"
   },

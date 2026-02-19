@@ -365,8 +365,13 @@ class MetaNeuron {
     // === Suspicion Accumulation ===
     let suspicionDelta = 0;
 
-    // Low organic ratio + activity → metabolism is being forced
-    if (organicRatio < 0.3 && totalEvents > 0) {
+    // Low organic ratio + sufficient activity → metabolism is being forced.
+    // [Fix] Minimum event threshold of 3 prevents false positives from single-event cycles.
+    // Concretely: a lone amber ascension produces totalEvents=1, organicEvents=0 → organicRatio=0,
+    // which would trigger maximum suspicion even though the ascension is fully legitimate
+    // (it passed the 10-minute Arbiter cooldown). A meaningful organic ratio requires
+    // at least a few events to compare against.
+    if (organicRatio < 0.3 && totalEvents >= 3) {
       suspicionDelta += (0.3 - organicRatio) * 0.5;
     }
 
