@@ -46,8 +46,10 @@ export interface ArbiterConfig {
   lowerThresholdRatio: number;
 
   // === Allostatic Threshold (スフィア規模適応) ===
-  // 参照ノード数: effectiveThreshold = scoreThreshold × clamp(sqrt(activeNodes / ref), 0.1, cap)
+  // 参照ノード数: effectiveThreshold = scoreThreshold × clamp(sqrt(activeNodes / ref), floor, cap)
   referenceNodeCount?: number;     // default: 1000
+  // 閾値倍率下限（小規模スフィアでの底）
+  ascensionThresholdFloor?: number; // default: 0.6
   // 閾値倍率上限（超巨大スフィアでの天井）
   ascensionThresholdCap?: number;  // default: 3.0
 
@@ -248,9 +250,10 @@ export class Arbiter {
       if (node.kind === "active" || node.kind === "environment") activeCount++;
     }
     const ref = this.config.referenceNodeCount ?? 1000;
+    const floor = this.config.ascensionThresholdFloor ?? 0.6;
     const cap = this.config.ascensionThresholdCap ?? 3.0;
     // sqrt scaling: 1000 nodes = baseline, gentle curve for small/large spheres
-    const ratio = Math.max(0.1, Math.min(cap, Math.sqrt(activeCount / ref)));
+    const ratio = Math.max(floor, Math.min(cap, Math.sqrt(activeCount / ref)));
     this.currentEffectiveThreshold = this.config.ascensionScoreThreshold * ratio;
 
     // === Phase 0: 既存候補の監視（脱落/昇格判定）===

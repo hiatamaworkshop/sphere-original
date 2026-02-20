@@ -462,3 +462,75 @@ curl -s http://localhost:3001/metrics | jq
 | `TESTING_MEMO.md` | 歴史的アーカイブ (Section 14-16 にデータ蓄積・expression 実験の詳細) |
 | `FLUX_SEEP_DESIGN.md` | Flux Seep 設計 + ライブテスト結果 (2026-02-18) |
 | `PHASE4_AGENT_SPATIAL_DESIGN.md` Section 13 | 空間システム現状棚卸し (2026-02-19) |
+
+---
+
+## 8. ローカルデーモンテストの注意事項 (2026-02-20 追記)
+
+phi-agent をホスト側 (Docker 外) でデーモン起動する場合の落とし穴。
+
+### 8.1 Ollama CPU 推論とデーモン数
+
+Ollama が **GPU なし (CPU only)** で動作している場合、同時デーモン数に厳しい制限がある。
+
+| モデル | size_vram | 1リクエスト | 同時限界 |
+|--------|----------|-----------|---------|
+| `phi3:mini` (3.8B) | 0 (CPU) | 30-60秒 | **1体** (2体以上でハング) |
+| `qwen2.5:0.5b` (0.5B) | 0 (CPU) | 5-10秒 | **2-4体** |
+| GPU 搭載時 | >0 | <1秒 | 5+体 |
+
+**確認方法:**
+```bash
+curl -s http://localhost:11434/api/ps | jq '.models[0].size_vram'
+# 0 → CPU only。デーモン数を制限すること
+```
+
+**CPU 環境での推奨:**
+- `OLLAMA_MODEL=qwen2.5:0.5b` を指定 (phi3:mini は遅すぎる)
+- 同時デーモンは **最大4体** (CPU 輻輳回避)
+
+### 8.2 ゾンビプロセス問題
+
+`pkill -f "tsx.*daemon"` は **tsx 親プロセスのみ** を殺す。
+子の **node プロセスがゾンビとして残り続け**、Ollama へのリクエストが蓄積する。
+
+**症状:** デーモンを再起動するたびに node プロセスが増殖、Ollama 輻輳で全デーモンがフリーズ。
+
+**正しい殺し方:**
+```bash
+# tsx + 子 node プロセスを全て殺す (VS Code の node は除外)
+ps aux | grep "/c/nvm4w/nodejs/node" | grep -v grep | grep -v "Code" | awk '{print $1}' | while read pid; do kill $pid 2>/dev/null; done
+```
+
+**確認:**
+```bash
+ps aux | grep "/c/nvm4w/nodejs/node" | grep -v grep | grep -v "Code" | wc -l
+# 0 であること
+```
+
+### 8.3 ローカルデーモン起動テンプレート
+
+```bash
+cd phi-agent
+
+# 環境変数
+export SPHERE_WS=ws://localhost:3001
+export RESPONSE=false
+export DAEMON_SLEEP_MS=3000
+export OLLAMA_MODEL=qwen2.5:0.5b
+
+# 起動 (4体、2秒間隔でスタガー)
+for i in 1 2 3 4; do
+  nohup npx tsx src/index.ts --loadout random --daemon > /tmp/daemon${i}.log 2>&1 &
+  sleep 2
+done
+
+# 停止 (ゾンビ対策込み)
+ps aux | grep "/c/nvm4w/nodejs/node" | grep -v grep | grep -v "Code" | awk '{print $1}' | while read pid; do kill $pid 2>/dev/null; done
+```
+
+### 8.4 batch 投入は不要 (小規模テスト時)
+
+`docker compose up -d` で起動すると **初期シードノード (20件 + relic 10件)** が自動投入される。
+ascension テストでは `contribution.js batch` による追加投入は **不要**。
+77+ノードに eval が分散して threshold 突破が困難になる。

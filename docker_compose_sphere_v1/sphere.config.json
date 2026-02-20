@@ -111,8 +111,9 @@
         "_comment_cooldown": "5min (300000ms) for testing. Production: 10min (600000). Heat decays faster than weight, so cooldown acts as a heat-purge filter — burst-evaluated nodes drop out, weight-stable nodes survive.",
         "cooldownMs": 300000,
         "scoreThreshold": 1100,
-        "_comment_allostatic": "effectiveThreshold = scoreThreshold × clamp(sqrt(activeNodes / referenceNodeCount), 0.1, cap). sqrt scaling: 1000=baseline, 10000=medium.",
+        "_comment_allostatic": "effectiveThreshold = scoreThreshold × clamp(sqrt(activeNodes / referenceNodeCount), floor, cap). floor=0.6 → min threshold 660.",
         "referenceNodeCount": 1000,
+        "thresholdFloor": 0.6,
         "thresholdCap": 3.0,
         "_comment_lowerThreshold": "0.85 for young sphere testing (archive mode). slack=110pts vs ~25pts decay over 5min → survives.",
         "lowerThresholdRatio": 0.85,
@@ -223,8 +224,8 @@
     "maxWindowSize": 90,
     "metabolicAutoMode": false,
     "_metabolicAutoMode_note": "Allostatic: bands relative to Hard baseline. <bl×0.5=flow, <bl=natural, ≥bl=archive. [Testing] false + preset=archive to prevent weight decay from cancelling eval gains in young sphere.",
-    "dormancyObservations": 6,
-    "_dormancyObservations_note": "Consecutive zero-agent observations before hibernation (6 × 10s = ~60s)"
+    "dormancyObservations": 3,
+    "_dormancyObservations_note": "Consecutive zero-agent observations before hibernation (3 × 10s = ~30s)"
   },
 
   "cleanerFish": {
