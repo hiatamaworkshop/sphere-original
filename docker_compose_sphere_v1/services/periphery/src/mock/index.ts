@@ -11,6 +11,8 @@
  *   npm run swarm             # 3 agents (default)
  *   npm run swarm:5           # 5 agents
  *   npm run swarm:10          # 10 agents
+ *   npm run observe           # Metabolic observer (3 waves × 5 boost agents)
+ *   npm run observe:fast      # Quick observation test
  *   npm run contribute        # Data injection (10 items)
  *   npm run contribute:batch  # All 77 items
  *   npm run explore           # Single-agent full test
@@ -25,3 +27,5 @@
 export { SwarmController, SwarmAgent } from "./swarm-agent.js";
 export type { SwarmConfig, SwarmMetrics, AgentStats } from "./swarm-agent.js";
 export { ExploreAgent } from "./explore-agent.js";
+export { observe } from "./mock-observer.js";
+export type { ObserverConfig } from "./mock-observer.js";
