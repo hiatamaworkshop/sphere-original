@@ -39,7 +39,7 @@
 Sanctification の **Soft Neuron** は既に `vitality` (0-1) を内部計算している:
 
 ```
-vitality = activeHealth × 0.45 + relicHealth × 0.25 + populationHealth × 0.30
+vitality = activeHealth × 0.45 + flexibilityHealth × 0.25 + populationHealth × 0.30
 ```
 
 これを `maturity ∈ [0, 1]` として公開する。

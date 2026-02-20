@@ -146,3 +146,100 @@ Tutorial Sphere で生まれた聖域を「核」として、Core Sphere では�
 3. **FastGate フィルター** — Snapshot の次
 4. **Dive Ticket 拡張** — FastGate フィルターの後
 5. **Core Sphere 設計** — 聖域化が 2〜3 回実績を積んでから
+
+---
+
+## スタンドアロン端末での体験層設計 (2026-02-20)
+
+### 設計原則
+
+- **冗長性を悪としない**: わかりやすさ第一。最適化は後続の開発者に委ねる
+- **人間はクエリを出すだけ**: スフィア探索はエージェントが行う
+- **エージェントの出力はスフィアの関知外**: 推論・静的・組み合わせはエージェント側の問題
+
+### 「sanctuary」の3つの意味
+
+| 概念 | 役割 | 実装状態 |
+|------|------|---------|
+| 聖域化 (sanctification) | DB snapshot を撮るタイミング判定 (Hard/Soft/Meta) | 三者合意済み。snapshot 処理は未実装 |
+| sanctuary mode (`metadata.mode`) | スタンドアロン配信用の代謝全停止モード | 実装済み (index.ts で分岐) |
+| sanctuary layer (体験層) | エージェントが core sphere 内で見る read-only ビュー | 実装済み (layer-transition) |
+
+### パイプライン
+
+```
+Core Sphere (代謝稼働中)
+  │  聖域化発火 (Hard✓ Soft✓ Meta✓)
+  ▼
+DB Snapshot (amber ノード = 確定済み知識)     ← 未実装
+  │
+  ▼
+Sanctuary Sphere として配信
+  │  sphere.config.json: mode: "sanctuary"
+  │  → 代謝全停止 (RenalCore, Arbiter, CleanerFish 無効)
+  │  → amber データ事前ロード済み
+  ▼
+┌─────────────────────────────┐
+│ スタンドアロン端末            │
+│ キオスク / 博物館 / 災害拠点  │
+│ 宇宙 / 深海 / 船舶           │
+│                             │
+│ 電源のみ。ネットワーク不要    │
+│ 入力 → ベクトル化 → 琥珀検索  │
+│ スフィアネットワーキングで     │
+│ データ差し替え可能            │
+└─────────────────────────────┘
+```
+
+### 体験層の分岐 (`sphereMode` ベース)
+
+```
+sphereMode === "core" (通常運用)
+  → tutorial → sanctuary → core (現行通り)
+  → TTL: 300s (有限セッション)
+  → eval: core 層で有効
+
+sphereMode === "sanctuary" (スタンドアロン)
+  → sanctuary 層に直接入る (tutorial/core スキップ)
+  → TTL: 無制限 (常駐エージェント)
+  → eval: 常に禁止
+```
+
+### 判断根拠
+
+- **tutorial スキップ**: tutorial はエージェント向け概念。
+  standalone 端末の常駐エージェントに初回体験は無意味。
+- **core スキップ**: core 層は代謝稼働中のスフィアにのみ存在する。
+  sanctuary mode では代謝が停止しているため core 層の意味がない。
+- **人間向け導入**: スフィアの責務外。端末のフロントエンド (UI/UX) が担当する。
+
+### 実装方針
+
+gateway-server の接続時に `sphereMode` を参照し、初期層を分岐する:
+
+```typescript
+// gateway-server.ts (接続時)
+const initialLayer = sphereMode === "sanctuary" ? "sanctuary" : "tutorial";
+```
+
+layer-transition で遷移先を制限:
+
+```typescript
+// sanctuary mode では遷移自体を無効化
+if (sphereMode === "sanctuary") {
+  // sanctuary → core 遷移を禁止
+  // tutorial → sanctuary 遷移を禁止 (そもそも tutorial に入らない)
+}
+```
+
+session TTL:
+
+```typescript
+const sessionTTL = sphereMode === "sanctuary" ? Infinity : config.session.ttlSeconds;
+```
+
+### 未実装 (将来)
+
+- DB Snapshot の自動生成 (聖域化発火時)
+- Snapshot → sphere.config.json 書き換え → Docker イメージ生成 パイプライン
+- スフィアネットワーキング (Snapshot の差し替え配信)

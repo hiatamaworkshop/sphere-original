@@ -145,3 +145,65 @@ suspicion >= threshold で fraud 検知
 
 聖域化の実績が 2〜3 回蓄積してから設計を確定する。
 現時点では suspicion による一時ブロックの挙動を観測し続ける。
+
+---
+
+## 4. Meta 不応期 (Refractory Period) (2026-02-20)
+
+### 問題
+
+suspicion は毎サイクル `× 0.982` で減衰するため、不正検知後もすぐに回復してしまう。
+「検知 → 数分待つ → 聖域化」が簡単に成立する。
+
+### 設計方向
+
+検知発火後、一定期間は suspicion を高値に維持する「不応期」を設ける。
+
+```
+suspicion が threshold を超えた時点で refractoryUntil = now + refractoryMs
+refractoryUntil > now の間は suspicion decay を停止 (or 大幅減速)
+```
+
+### 制約: 不可能であってはならない
+
+不応期は有限時間で自然終了する。amber にも寿命がある (TTL decay)。
+したがって不応期 + amber 寿命の両方が経過すれば必ず復帰できる。
+恒久ブロックにはならない。
+
+### 判断
+
+Section 3 の tainted フラグと連携して設計する。聖域化実績の蓄積後に実装。
+
+---
+
+## 5. Soft ニューロン 非対称 EMA (2026-02-20)
+
+### 問題
+
+現在の Soft は RingBuffer の単純平均。vitality が急上昇しても急落しても同じ速度で追従する。
+「ゆっくり上がったものは同じ速度で下がるべき」— 急落に対する鈍感性が不足。
+
+### 設計方向
+
+RingBuffer 平均を非対称 EMA に置換:
+
+```
+if (vitality >= ema) {
+  ema += alphaUp * (vitality - ema)     // 上昇: 緩やか
+} else {
+  ema += alphaDown * (vitality - ema)   // 下降: 同じく緩やか (alphaDown ≤ alphaUp)
+}
+```
+
+alphaDown を alphaUp と同等 (または小さく) することで、
+物量攻撃による vitality 低下からの急回復を防止する。
+
+### flexibilityHealth との関係
+
+flexibilityHealth 導入により、amber 蓄積 → vitality 低下 → 回復は amber の寿命に依存。
+非対称 EMA はこれをさらに強化する二重防御。ただし flexibilityHealth 単体でも
+一定の効果があるため、優先度は下がった。
+
+### 判断
+
+flexibilityHealth の実運用データを観測してから必要性を判断する。
