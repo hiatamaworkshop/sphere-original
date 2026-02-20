@@ -42,6 +42,7 @@ export interface PeripheryConfig {
       top: number;                 // Top-tier weight
       normal: number;              // Normal-tier weight
       ghost: number;               // Ghost-tier weight
+      relic?: number;              // Relic weight (optional, falls back to normal)
     };
     tierTTLs: {
       top: number;                 // Top-tier TTL in seconds
@@ -272,11 +273,12 @@ export const DEFAULT_PERIPHERY_CONFIG: PeripheryConfig = {
   },
   packer: {
     // Integer scale: h/w threshold 1000, d baseline 1000
-    baseHeat: 750,  // All nodes start with same baseline heat
+    baseHeat: 500,  // All nodes start with same baseline heat
     tierWeights: {
       top: 800,
       normal: 500,
       ghost: 200,
+      relic: 300,
     },
     tierTTLs: {
       top: 172800,   // 2 days

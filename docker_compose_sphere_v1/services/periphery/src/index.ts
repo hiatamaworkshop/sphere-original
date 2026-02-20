@@ -51,14 +51,31 @@ import {
 import { SphereCoreAdapter } from "./gateway/sphere-core-adapter.js";
 
 // ===== Configuration =====
-const config = DEFAULT_PERIPHERY_CONFIG;
-
 // Load sphere.config.json (ES Module compatible, path overridable via env)
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const sphereConfigPath = process.env.SPHERE_CONFIG
   || join(__dirname, "../../../sphere.config.json");
 const sphereConfig = JSON.parse(readFileSync(sphereConfigPath, "utf-8"));
+
+// Merge sphere.config.json packer overrides into PeripheryConfig
+// [Design] sphere.config.json is volume-mounted → packer settings change without rebuild
+const packerOverride = sphereConfig.periphery?.packer ?? {};
+const config = {
+  ...DEFAULT_PERIPHERY_CONFIG,
+  packer: {
+    ...DEFAULT_PERIPHERY_CONFIG.packer,
+    ...packerOverride,
+    tierWeights: {
+      ...DEFAULT_PERIPHERY_CONFIG.packer.tierWeights,
+      ...(packerOverride.tierWeights ?? {}),
+    },
+    tierTTLs: {
+      ...DEFAULT_PERIPHERY_CONFIG.packer.tierTTLs,
+      ...(packerOverride.tierTTLs ?? {}),
+    },
+  },
+};
 
 // Environment variable overrides (ports)
 if (process.env.PORT) {
@@ -195,7 +212,7 @@ const arbiterConfig = {
     ?? arbiterSettings.dynamicFlags?.hotHeatThreshold ?? 150,
   // Ascension cooldown settings (evaluation freeze + composite score)
   ascensionCooldownMs: arbiterSettings.ascension?.cooldownMs ?? 600000,
-  ascensionScoreThreshold: arbiterSettings.ascension?.scoreThreshold ?? 500,
+  ascensionScoreThreshold: arbiterSettings.ascension?.scoreThreshold ?? 1100,
   lowerThresholdRatio: arbiterSettings.ascension?.lowerThresholdRatio ?? 0.9,
   // Dropout reset: metrics reset on cooldown failure (integer scale)
   dropoutResetH: arbiterSettings.ascension?.dropoutReset?.h ?? 0,

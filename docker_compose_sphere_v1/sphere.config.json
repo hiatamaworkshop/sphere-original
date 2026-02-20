@@ -59,11 +59,12 @@
 
     "packer": {
       "_comment": "Integer scale: h/w threshold 1000, d baseline 1000",
-      "baseHeat": 750,
+      "baseHeat": 500,
       "tierWeights": {
         "top": 300,
         "normal": 100,
-        "ghost": 50
+        "ghost": 50,
+        "relic": 300
       },
       "tierTTLs": {
         "top": 172800,
@@ -109,8 +110,8 @@
         "_comment": "Ascension cooldown: evaluation freeze + h+w score + lower threshold",
         "_comment_cooldown": "5min (300000ms) for testing. Production: 10min (600000). Heat decays faster than weight, so cooldown acts as a heat-purge filter — burst-evaluated nodes drop out, weight-stable nodes survive.",
         "cooldownMs": 300000,
-        "scoreThreshold": 1300,
-        "_comment_lowerThreshold": "0.85 for young sphere testing (archive mode). slack=165pts vs ~25pts decay over 5min → survives. Restore to 1300+ for production.",
+        "scoreThreshold": 1100,
+        "_comment_lowerThreshold": "0.85 for young sphere testing (archive mode). slack=110pts vs ~25pts decay over 5min → survives.",
         "lowerThresholdRatio": 0.85,
         "dropoutReset": {
           "_comment": "Metrics reset on cooldown failure (fake amber punishment) - integer scale",

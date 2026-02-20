@@ -142,8 +142,8 @@ export class Packer {
       vector,
       payload,
       metrics: {
-        // Relic: 控えめな存在感 (h=40%, w=normal tier) — 星は見えるが空を埋め尽くさない
-        w: isRelic ? this.getTierWeight("normal") : this.getTierWeight(tier),
+        // Relic: 確固たる重みを持つ原典 (h=40%, w=relic tier) — scholar が重力源として発見できる
+        w: isRelic ? this.getTierWeight("relic") : this.getTierWeight(tier),
         d: this.config.packer.standardDecayCoefficient,
         h: isRelic
           ? Math.round(this.config.packer.baseHeat * 0.4)
@@ -167,6 +167,8 @@ export class Packer {
         return this.config.packer.tierWeights.normal;
       case "ghost":
         return this.config.packer.tierWeights.ghost;
+      case "relic":
+        return this.config.packer.tierWeights.relic ?? this.config.packer.tierWeights.normal;
       default:
         return this.config.packer.tierWeights.normal;
     }

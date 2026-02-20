@@ -120,15 +120,19 @@ class RingBuffer {
 /**
  * "Have we reached the goal?"
  *
- * Simple escalating amber target. Each sanctification raises the bar.
+ * Escalating amber target with autonomous step-down recovery.
  *
  *   epoch 0: target = INITIAL_TARGET (first crystallization milestone)
  *   epoch 1: target = ceil(lastAmber × ESCALATION)
  *   epoch 2: target = ceil(lastAmber × ESCALATION)
  *   ...
  *
- * Amber can be demoted (eroded), so progress is not monotonic.
- * A dying sphere (no new amber) stalls — no false positives.
+ * [Step-down] If erosion causes amberCount to drop below target × STEP_DOWN_RATIO,
+ * target automatically steps down to ceil(amberCount × ESCALATION), minimum INITIAL_TARGET.
+ * This allows the sphere to self-recover after amber loss — no manual intervention needed.
+ *
+ *   Example: festival at amber=40 → target=52. Erosion brings amber to 20.
+ *   20 < 52 × 0.5 → step-down → target = ceil(20 × 1.3) = 26 → sphere can grow again.
  */
 class HardNeuron {
   private _target: number;
@@ -138,12 +142,26 @@ class HardNeuron {
   static readonly INITIAL_TARGET = 5;
   /** Each sanctification raises the bar by this factor */
   static readonly ESCALATION = 1.3;
+  /** Step-down triggers when amberCount < target × this ratio */
+  static readonly STEP_DOWN_RATIO = 0.5;
 
   constructor() {
     this._target = HardNeuron.INITIAL_TARGET;
   }
 
   process(t: ObservationTelemetry): HardResult {
+    // Step-down: if amber has eroded significantly, adapt target downward
+    if (t.amberCount < this._target * HardNeuron.STEP_DOWN_RATIO) {
+      const newTarget = Math.max(
+        HardNeuron.INITIAL_TARGET,
+        Math.ceil(t.amberCount * HardNeuron.ESCALATION),
+      );
+      console.log(
+        `[HardNeuron] Step-down: target ${this._target} → ${newTarget} (amber=${t.amberCount})`
+      );
+      this._target = newTarget;
+    }
+
     const progress = this._target > 0
       ? Math.min(1, t.amberCount / this._target)
       : 0;
