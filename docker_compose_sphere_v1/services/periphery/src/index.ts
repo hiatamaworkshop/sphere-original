@@ -95,14 +95,17 @@ if (process.env.EPHEMERAL === "true") {
 const { resolved: decayValues, presetName } = resolveDecayPreset(
   sphereConfig.renal_core.decay,
 );
+// Global decay intensity multiplier (sphere.config.json → renal_core.decay.decayIntensity)
+// Scales all decay factors uniformly. 1.0 = preset default, 0.5 = half decay.
+const decayIntensity: number = sphereConfig.renal_core.decay.decayIntensity ?? 1.0;
 
 // RenalCore configuration (decay values from preset, rest from sphere.config.json)
 // Note: alpha/heatDecayFactor/weightDecayFactor/fluxDecayRate/minLoadFactor
 // are mutable — updated at runtime by metabolic auto-mode switching.
 const renalConfig = {
-  alpha: decayValues.alpha,
-  heatDecayFactor: decayValues.heatDecayFactor,
-  weightDecayFactor: decayValues.weightDecayFactor,
+  alpha: decayValues.alpha * decayIntensity,
+  heatDecayFactor: decayValues.heatDecayFactor * decayIntensity,
+  weightDecayFactor: decayValues.weightDecayFactor * decayIntensity,
   amberHeatThreshold: sphereConfig.renal_core.thresholds.amberHeat,
   amberWeightThreshold: sphereConfig.renal_core.thresholds.amberWeight,
   fossilHeatThreshold: sphereConfig.renal_core.thresholds.fossilHeat,
@@ -110,7 +113,7 @@ const renalConfig = {
   ghostHeatThreshold: sphereConfig.renal_core.thresholds.ghostHeat,
   ghostTTLMultiplier: sphereConfig.renal_core.ghost.ttlMultiplier,
   planktonConversionRate: sphereConfig.renal_core.spatial.planktonConversionRate,
-  fluxDecayRate: decayValues.fluxDecayRate,
+  fluxDecayRate: decayValues.fluxDecayRate * decayIntensity,
   minLoadFactor: decayValues.minLoadFactor,
   pauseIdleThreshold: sphereConfig.renal_core.pause.idleThreshold,
   pauseErosionBoost: sphereConfig.renal_core.pause.erosionBoost,
@@ -123,7 +126,7 @@ const pulseConfig = sphereConfig.renal_core.pulse;
 
 console.log(`[Config] Loaded: ${sphereConfigPath}`);
 console.log(
-  `[Config] Decay preset: "${presetName}" ` +
+  `[Config] Decay preset: "${presetName}" × intensity=${decayIntensity} ` +
   `(alpha=${renalConfig.alpha} heatDecay=${renalConfig.heatDecayFactor} weightDecay=${renalConfig.weightDecayFactor} minLoadFactor=${renalConfig.minLoadFactor})` +
   ((sphereConfig.sanctification?.metabolicAutoMode ?? true) ? ` [AUTO-MODE: neuron-driven]` : "")
 );
@@ -483,10 +486,10 @@ setInterval(async () => {
         if (recommended !== currentMetabolicMode) {
           const prev = currentMetabolicMode;
           const newValues = getPresetValues(recommended);
-          renalConfig.alpha = newValues.alpha;
-          renalConfig.heatDecayFactor = newValues.heatDecayFactor;
-          renalConfig.weightDecayFactor = newValues.weightDecayFactor;
-          renalConfig.fluxDecayRate = newValues.fluxDecayRate;
+          renalConfig.alpha = newValues.alpha * decayIntensity;
+          renalConfig.heatDecayFactor = newValues.heatDecayFactor * decayIntensity;
+          renalConfig.weightDecayFactor = newValues.weightDecayFactor * decayIntensity;
+          renalConfig.fluxDecayRate = newValues.fluxDecayRate * decayIntensity;
           renalConfig.minLoadFactor = newValues.minLoadFactor;
           currentMetabolicMode = recommended;
           sanctificationNeuron!.setMetabolicMode(recommended);

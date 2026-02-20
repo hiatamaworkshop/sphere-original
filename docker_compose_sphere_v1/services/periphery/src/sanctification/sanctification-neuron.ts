@@ -216,7 +216,7 @@ interface HardResult {
  *
  * Vitality components:
  *   1. Active health — living node ratio in healthy range (peak at ~50%)
- *   2. Relic presence — structural foundation (3+ relics → 1.0)
+ *   2. Flexibility — active/(active+amber) ratio (sphere rigidity indicator)
  *   3. Population minimum — need minimum population for meaningful sanctification
  *
  * Stricter than Hard: requires sustained health, not just a snapshot.
@@ -243,8 +243,13 @@ class SoftNeuron {
       ? 1 - Math.abs(livingRatio - 0.5) * 2
       : 0;
 
-    // 2. Relic presence: structural stability (3+ relics → 1.0)
-    const relicHealth = Math.min(1, t.relicCount / 3);
+    // 2. Flexibility: active/(active+amber) — sphere rigidity indicator.
+    //    High amber ratio = rigid sphere = unhealthy. Detects brute-force amber accumulation.
+    //    Replaces relicHealth (relic count is constant, contributed zero information).
+    const totalLiving = t.activeCount + t.amberCount;
+    const flexibilityHealth = totalLiving > 0
+      ? t.activeCount / totalLiving
+      : 1.0;
 
     // 3. Population: need minimum nodes for sanctification to be meaningful
     const populationHealth = Math.min(1, t.totalNodes / SoftNeuron.MIN_POPULATION);
@@ -252,7 +257,7 @@ class SoftNeuron {
     // Weighted vitality
     const vitality =
       activeHealth * 0.45 +
-      relicHealth * 0.25 +
+      flexibilityHealth * 0.25 +
       populationHealth * 0.30;
 
     this.history.push(vitality);

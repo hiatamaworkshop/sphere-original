@@ -148,7 +148,9 @@
 
     "decay": {
       "_comment": "preset: archive | natural | flow | dev (未指定時は NODE_ENV から自動判定)",
-      "preset": "archive"
+      "preset": "archive",
+      "decayIntensity": 0.5,
+      "_decayIntensity_note": "Global multiplier on all decay factors (alpha, heat, weight, flux). 1.0=preset default, 0.5=half decay, 0.33=1/3 decay. Applied on top of preset values."
     },
 
     "thresholds": {
