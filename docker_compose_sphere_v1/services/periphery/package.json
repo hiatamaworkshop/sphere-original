@@ -17,7 +17,7 @@
     "swarm:10": "tsx src/mock/swarm-agent.ts -n 10",
     "observe": "tsx src/mock/mock-observer.ts",
     "observe:fast": "tsx src/mock/mock-observer.ts --fast",
-    "observe:heavy": "tsx src/mock/mock-observer.ts -W 5 -n 10 -w 600"
+    "observe:heavy": "tsx src/mock/mock-observer.ts -W 20 -n 3 -w 900 --wave-delay 30000"
   },
   "dependencies": {
     "@sphere/renal-core": "file:../renalCore",

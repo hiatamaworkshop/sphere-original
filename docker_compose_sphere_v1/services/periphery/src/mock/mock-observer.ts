@@ -37,16 +37,16 @@ interface ObserverConfig {
 }
 
 const DEFAULT_CONFIG: ObserverConfig = {
-  waves: 3,
-  waveDelay: 10000,      // 10s between waves
-  watchAfter: 360,       // 6 min (covers 5-min cooldown)
+  waves: 10,
+  waveDelay: 45000,      // 45s between waves (intermittent, avoid immunity)
+  watchAfter: 540,       // 9 min total (enough for cooldown + observation)
   pollInterval: 5,       // poll every 5s
   swarm: {
-    agentCount: 5,
+    agentCount: 2,       // small waves to avoid Meta neuron detection
     behavior: "boost",
-    maxDuration: 30000,
-    batchSize: 5,
-    batchDelay: 2000,
+    maxDuration: 20000,
+    batchSize: 2,
+    batchDelay: 1000,
     spawnInterval: 100,
   },
 };
@@ -371,38 +371,64 @@ async function observe(config: ObserverConfig, httpUrl: string, wsUrl: string): 
     }
   }, config.pollInterval * 1000);
 
-  // --- Phase 1: Swarm waves ---
-  for (let wave = 1; wave <= config.waves; wave++) {
-    currentPhase = `wave-${wave}`;
-    console.log("");
-    console.log(`[Observer] === Wave ${wave}/${config.waves} ===`);
+  // --- Phase 1: Intermittent swarm waves ---
+  // [Design] Sphere enters dormancy when no agents are connected.
+  // Dormancy halts tick processing → candidate cooldown stops.
+  // Mass simultaneous agents trigger Meta neuron immunity (churnRate/amberSlope).
+  //
+  // Solution: small waves (1-2 agents) spread across the entire observation period.
+  // This provides sustained evaluation pressure, prevents dormancy,
+  // and avoids triggering immunity detection.
+  const totalDuration = config.watchAfter;
+  const endTime = Date.now() + totalDuration * 1000;
+
+  console.log(`[Observer] Intermittent swarming for ${totalDuration}s (${config.waves} waves, ${config.swarm.agentCount ?? 2} agents/wave, ${config.waveDelay / 1000}s interval)...`);
+  console.log(`[Observer] Candidates need ${config.swarm.maxDuration ? "" : "~5min "}cooldown to become amber.`);
+
+  let waveCount = 0;
+
+  while (Date.now() < endTime && waveCount < config.waves) {
+    waveCount++;
+    currentPhase = `wave-${waveCount}`;
+    console.log(`\n[Observer] --- Wave ${waveCount}/${config.waves} ---`);
 
     const swarm = new SwarmController(config.swarm, httpUrl, wsUrl);
     await swarm.spawn();
 
-    // Brief pause between waves
-    if (wave < config.waves) {
-      console.log(`[Observer] Wave ${wave} complete. Waiting ${config.waveDelay / 1000}s before next wave...`);
-      await delay(config.waveDelay);
+    // Wait between waves (unless we've run out of time or waves)
+    if (waveCount < config.waves && Date.now() < endTime) {
+      const remaining = Math.max(0, endTime - Date.now());
+      const waitTime = Math.min(config.waveDelay, remaining);
+      if (waitTime > 0) {
+        currentPhase = "cooldown";
+        await delay(waitTime);
+      }
     }
   }
 
-  // --- Phase 2: Post-swarm watch (cooldown observation) ---
-  currentPhase = "cooldown";
-  console.log("");
-  console.log(`[Observer] All waves complete. Watching for ${config.watchAfter}s (cooldown observation)...`);
-  console.log(`[Observer] Cooldown period: candidates must survive ~5min to become amber.`);
+  // --- Post-waves watch (if time remains) ---
+  if (Date.now() < endTime) {
+    currentPhase = "cooldown";
+    const remainingSec = Math.round((endTime - Date.now()) / 1000);
+    console.log(`\n[Observer] All waves done. Watching remaining ${remainingSec}s...`);
 
-  const watchEnd = Date.now() + config.watchAfter * 1000;
+    // Keep a single agent alive to prevent dormancy during remaining cooldown
+    const keepaliveSwarm = new SwarmController(
+      { agentCount: 1, behavior: "distributed", maxDuration: remainingSec * 1000, batchSize: 1, spawnInterval: 100, batchDelay: 1000 },
+      httpUrl, wsUrl
+    );
+    const keepalivePromise = keepaliveSwarm.spawn().catch(() => {});
 
-  while (Date.now() < watchEnd) {
-    await delay(config.pollInterval * 1000);
+    while (Date.now() < endTime) {
+      await delay(config.pollInterval * 1000);
 
-    // Check for festival (sanctification in progress)
-    const latest = snapshots[snapshots.length - 1];
-    if (latest?.sanctification?.festival) {
-      console.log(`[Observer] Festival detected at ${latest.elapsed}s - sanctification in progress!`);
+      const latest = snapshots[snapshots.length - 1];
+      if (latest?.sanctification?.festival) {
+        console.log(`[Observer] Festival detected at ${latest.elapsed}s - sanctification in progress!`);
+      }
     }
+
+    await Promise.race([keepalivePromise, delay(5000)]);
   }
 
   // --- Phase 3: Final snapshot ---
@@ -470,10 +496,12 @@ function parseArgs(): ObserverConfig {
         config.swarm.maxDuration = parseInt(args[++i], 10) || 30000;
         break;
       case "--fast":
-        // Fast mode: short durations for quick testing
+        // Fast mode: quick test of observer mechanics
+        config.waves = 3;
+        config.swarm.agentCount = 2;
         config.swarm.maxDuration = 15000;
-        config.watchAfter = 60;
-        config.waveDelay = 5000;
+        config.watchAfter = 120;
+        config.waveDelay = 20000;
         break;
       case "--help":
       case "-h":

@@ -136,7 +136,7 @@ docker compose exec periphery npx tsx src/mock/swarm-agent.ts -n 5 -b distribute
 | `-n, --count` | エージェント数 | 3 |
 | `-B, --batch` | バッチサイズ | 5 |
 | `-D, --batch-delay` | バッチ間隔 (ms) | 3000 |
-| `-b, --behavior` | random / focused / distributed | random |
+| `-b, --behavior` | random / focused / distributed / boost | random |
 | `-t, --topic` | 集中トピック (behavior=focused に自動設定) | — |
 | `-d, --duration` | エージェント最大稼働時間 (ms) | 30000 |
 | `-i, --interval` | バッチ内スポーン間隔 (ms) | 100 |
@@ -188,6 +188,7 @@ docker compose down -v
 | ファイル | npm スクリプト | 用途 |
 |---------|--------------|------|
 | `swarm-agent.ts` | `swarm` / `swarm:5` / `swarm:10` | 複数エージェント同時稼働 (主力) |
+| `mock-observer.ts` | `observe` / `observe:fast` / `observe:heavy` | 代謝観測 (swarm + state polling) |
 | `contribution.ts` | `contribute` / `contribute:batch` | ノード投入 |
 | `explore-agent.ts` | `explore` | 単体エージェント全操作テスト |
 
@@ -575,3 +576,192 @@ Soft neuron health
 | weight 半減期 | ~8 時間 (archive 0.00005 × 0.5) |
 | Soft vitality (amber=0) | ~0.85 |
 | cooldown 中の decay | ~1.5% / 5min → **dropout しにくい** |
+
+---
+
+## 10. 代謝観測テスト — Mock Observer (2026-02-21)
+
+### 10.1 概要
+
+LLM 不要の mock エージェント群を断続的に wave 投入しながら、
+スフィアの代謝状態 (candidate → cooldown → amber → sanctification) を
+リアルタイムにポーリング・記録するツール。
+
+`swarm-agent.ts` のラッパーとして `mock-observer.ts` が
+SwarmController を wave 単位で断続起動し、合間に `/nodes/stats` + `/sanctification` + `/nodes/metrics` を定期取得する。
+
+### 10.2 起動方法
+
+**重要**: `src/` はコンテナ内に存在しない (Dockerfile は `dist/` のみコピー)。
+ホスト側から実行し、`WS_URL` を指定する。
+
+```bash
+cd services/periphery
+
+# デフォルト: 10 waves × 2 boost agents, 45s間隔, 9分トータル
+WS_URL=ws://localhost:3001 npx tsx src/mock/mock-observer.ts
+
+# 短縮テスト: 3 waves, 2分間
+WS_URL=ws://localhost:3001 npx tsx src/mock/mock-observer.ts --fast
+
+# 重負荷: 20 waves × 3 agents, 30s間隔, 15分トータル
+WS_URL=ws://localhost:3001 npx tsx src/mock/mock-observer.ts -W 20 -n 3 -w 900 --wave-delay 30000
+
+# トピック集中
+WS_URL=ws://localhost:3001 npx tsx src/mock/mock-observer.ts -b focused -t "量子力学"
+```
+
+### 10.3 WS ポートに関する注意
+
+Docker 内の periphery は `PORT=3001` が設定されている。
+server.ts は `PORT` が設定されている場合 WS を HTTP と同一ポート (3001) で起動する。
+`sphere.config.json` の `wsPort: 8081` は **Docker 外ローカル開発時のみ有効**。
+
+```
+Docker環境: WS_URL=ws://localhost:3001  (PORT 環境変数 → 同一ポート)
+ローカル開発: WS_URL=ws://localhost:8081 (デフォルト)
+```
+
+### 10.4 Observer オプション
+
+| フラグ | 説明 | デフォルト |
+|-------|------|-----------|
+| `-W, --waves` | swarm wave 数 | 10 |
+| `--wave-delay` | wave 間隔 (ms) | 45000 |
+| `-w, --watch` | 観測トータル時間 (秒) | 540 |
+| `-p, --poll` | 状態ポーリング間隔 (秒) | 5 |
+| `-n, --agents` | wave あたりのエージェント数 | 2 |
+| `-b, --behavior` | random / focused / distributed / boost | boost |
+| `-d, --duration` | エージェント最大稼働時間 (ms) | 20000 |
+| `--fast` | 短縮モード (3 waves, 2min) | — |
+
+### 10.5 `boost` behavior
+
+swarm-agent.ts に追加された新行動パターン。
+全 sensed ノードを `h=9, w=8, d=2` で集中評価し、ノードを amber 候補に押し上げる。
+
+| behavior | 評価対象 | eval スコア | 移動方式 | 用途 |
+|----------|---------|-----------|---------|------|
+| random | ランダム 1ノード | h=3-8, w=5 | random/hot/explore | 汎用テスト |
+| focused | 最高 heat 1ノード | h=8, w=7, d=3 | hot | 特定領域集中 |
+| distributed | ランダム 1ノード | h=7, w=6, d=5 | explore | 均等カバレッジ |
+| **boost** | **全 sensed ノード** | **h=9, w=8, d=2** | **explore** | **amber 生成・代謝観測** |
+
+### 10.6 出力フォーマット
+
+#### リアルタイムログ
+
+```
+   0s [pre        ] active=20 amber=0 cand=0 h=400 w=167 | H:N(0/5) S:N(0.78) M:Y(0.000) mode=archive
+  50s [wave-2     ] active=20 amber=0 cand=1(+1) h=412(+12) w=170 | H:N(0/5) S:N(0.80) M:Y(0.000) mode=archive
+ 331s [wave-7     ] active=20 amber=0 cand=1 h=433 w=176 | H:N(0/5) S:Y(0.85) M:Y(0.000) mode=archive
+```
+
+フィールド:
+- `active`/`amber`/`cand` — ノード数 (delta 表示付き)
+- `h`/`w` — 全ノード平均 heat/weight
+- `H:` — Hard neuron (amber数/target)
+- `S:` — Soft neuron (health)
+- `M:` — Meta neuron (suspicion)
+- `mode` — metabolic mode (natural/archive/flow)
+
+色分け: amber 増 = 黄, candidate 増 = 水, heat 上昇 = 赤, heat 下降 = 青
+
+#### 最終レポート
+
+タイムライン、Start/End 比較、Sanctification Triangle 比較、Key Events を出力。
+
+### 10.7 典型的なテストフロー
+
+```
+1. docker compose down -v && docker compose build periphery && docker compose up -d periphery
+2. (ヘルスチェック + シードデータ投入完了を待つ: ~60s)
+3. cd services/periphery
+4. WS_URL=ws://localhost:3001 npx tsx src/mock/mock-observer.ts [options]
+5. タイムラインで candidate → amber 遷移を確認
+```
+
+### 10.8 実測データ (2026-02-21, 20 active + 10 relic)
+
+#### Run 1: 一斉投入 (3 waves × 5 agents, fast mode)
+
+```
+結果: 57 evals → avg heat 400→433 (+33), candidate 1件 (50s), amber 0件 (watch 不足)
+Meta suspicion: 0.000 (免疫未発火)
+```
+
+#### Run 2: 一斉投入 (5 waves × 5 agents, 6min watch)
+
+```
+結果: ~100 evals → candidate 5件, amber 0件
+原因: 全エージェント退出 → Dormancy 発動 → tick 停止 → cooldown チェック停止
+```
+
+#### Run 3: 断続投入 (10 waves × 2 agents, 45s 間隔, 9min)
+
+```
+結果: ~40 evals → candidate 1件 (331s), amber 0件
+Meta suspicion: 0.000 (免疫未発火)
+Soft: 0.77 → 0.85 (fired=true)
+原因: 評価密度不足 (1ノードあたり ~2-4 evals, 必要 ~9 evals)
+```
+
+### 10.9 発見された制約
+
+#### Dormancy トラップ
+
+**全エージェント退出 → Dormancy → tick 全体スキップ → Arbiter.observe() 停止 → candidate cooldown チェック不能**
+
+`index.ts:289`: `if (isDormant) return;` で tick 全体がスキップされる。
+候補の cooldown 計測は `Date.now() - candidateSince` なので時間的には経過するが、
+`monitorCandidates()` が呼ばれないため promotion 判定が実行されない。
+
+**対策** (observer 側):
+- Post-wave watch 中は keepalive agent (distributed, 1体) を接続し続ける
+- 実装済み: wave 全完了後に残り時間分の keepalive を起動
+
+#### 断続投入 vs 評価密度のトレードオフ
+
+| 方式 | Meta 安全性 | 評価密度 | candidate 生成 |
+|------|-----------|---------|---------------|
+| 一斉 (5×5) | 低リスク (今回は免疫未発火) | 高 (~5 evals/node) | 5件/9分 |
+| 断続 (10×2) | 安全 | 低 (~2 evals/node) | 1件/9分 |
+
+candidate 登録には 1 ノードあたり ~9 evals が必要 (score 567 → threshold 880, +35/eval)。
+断続投入でこの密度を達成するには:
+- wave あたりのエージェント数を 3 に増やす
+- wave 間隔を 30s に短縮 (45s → 30s)
+- 総時間を 15 分以上に延長 (cooldown 5min + 観測余裕)
+
+### 10.10 推奨パラメータ
+
+| 目的 | 設定 | 想定時間 |
+|------|------|---------|
+| observer 動作確認 | `--fast` | 2分 |
+| candidate 出現確認 | `-W 10 -n 3 --wave-delay 30000 -w 540` | 9分 |
+| cooldown 通過 → amber 観測 | `-W 15 -n 3 --wave-delay 30000 -w 900` | 15分 |
+| 聖域化到達 | `-W 20 -n 3 --wave-delay 30000 -w 1800` | 30分 |
+
+**全ケースで `WS_URL=ws://localhost:3001` が必要** (Docker 環境)。
+
+### 10.11 観測ポイント
+
+| フェーズ | 観測対象 | 期待 |
+|---------|---------|------|
+| wave 中 | eval 蓄積 → heat/weight 上昇 | avg heat が上昇すること |
+| wave 間 | candidate 登録 | effectiveThreshold (880) 突破ノードが出現 |
+| cooldown (5min) | candidate 維持 or dropout | lowerThreshold (85%) を割らなければ amber 昇格 |
+| amber 蓄積 | Hard neuron amberCount 増加 | target (5) に向かって蓄積 |
+| Soft 反応 | flexibilityHealth 低下 | amber 増 → health 低下 |
+| Meta 反応 | suspicion 変動 | churnRate/amberSlope で不正検知の有無 |
+| mode 切替 | metabolicAutoMode | amber 蓄積 → archive mode に切替 |
+| 聖域化 | festival | Hard+Soft+Meta 全条件達成で発火 |
+
+### 10.12 変更ファイル一覧
+
+| ファイル | 変更内容 |
+|---------|---------|
+| `mock/swarm-agent.ts` | `boost` behavior 追加、SwarmConfig 型拡張 |
+| `mock/mock-observer.ts` | 新規: 代謝観測ラッパー (断続 wave + state polling + timeline) |
+| `mock/index.ts` | observe, ObserverConfig のエクスポート追加 |
+| `package.json` | `observe` / `observe:fast` / `observe:heavy` スクリプト追加 |
