@@ -769,11 +769,9 @@ Your overall experience:
 
     const voiceGuide = SPECIES_VOICE[this.gate.loadoutName] ?? SPECIES_VOICE.balanced;
 
-    const prompt = `Nodes encountered:
-${encounterList}${experienceBlock}
-Write your Sphere diary. Two short paragraphs.`;
+    const prompt = `Nodes encountered:\n${encounterList}${experienceBlock}\nWrite your Sphere diary. Two short paragraphs.`;
 
-    const system = `You are an explorer in the Sphere. ${voiceGuide} Write about what you found and felt. Refer to nodes by quoting their summaries.`;
+    const system = `You are an explorer in the Sphere. ${voiceGuide} Write about what you found and felt.`;
 
     const response = await this.ollama.generateText(prompt, system);
 
