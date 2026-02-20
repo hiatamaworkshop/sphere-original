@@ -1,5 +1,7 @@
 # Test Result: Ghost/Fossil Focus Strategy
 
+> **テスト結果**: Ghost/Fossil Focus Strategy の検証記録。最新の手順は [TEST_PROCEDURES.md](TEST_PROCEDURES.md) を参照。
+
 **Date**: 2026-02-03
 **Status**: PASSED
 

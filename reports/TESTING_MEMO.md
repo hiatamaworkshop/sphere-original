@@ -1,5 +1,7 @@
 # Testing Memo
 
+> **アーカイブ**: 歴史的テストログ。最新の手順は [TEST_PROCEDURES.md](TEST_PROCEDURES.md) を参照。
+
 Sphere Project - テスト・操作メモ
 
 ---

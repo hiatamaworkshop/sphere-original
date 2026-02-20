@@ -1,5 +1,7 @@
 # Test Startup Checklist — テスト開始前の落とし穴集
 
+> **補助資料**: テスト開始前のチェックリスト。メインの手順は [TEST_PROCEDURES.md](TEST_PROCEDURES.md) を参照。
+
 **Date**: 2026-02-15
 **Purpose**: デーモンテスト開始時に繰り返される失敗パターンを集約。毎回参照すること。
 

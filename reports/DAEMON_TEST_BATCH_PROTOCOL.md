@@ -1,5 +1,7 @@
 # Daemon Test Batch Protocol — 生態系循環の検証設計
 
+> **設計資料**: Cycle A/B バッチプロトコルの設計書。実行手順は [TEST_PROCEDURES.md](TEST_PROCEDURES.md) を参照。
+
 **Date**: 2026-02-11
 **Status**: Conceptual Design
 **Depends on**: `SPECIES_MEMORY_CALIBRATION_EXPERIMENT.md`, `MODEL_DEPLOYMENT_STRATEGY.md`, `SPHERE_ECOSYSTEM_DESIGN.md`

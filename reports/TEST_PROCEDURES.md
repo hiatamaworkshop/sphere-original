@@ -1,5 +1,17 @@
 # Sphere テスト起動手順 — 2026-02-19 (updated)
 
+> **これが最新のテスト手順書です。** 旧ドキュメントは以下を参照。
+
+| ドキュメント | ステータス | 内容 |
+|------------|----------|------|
+| **TEST_PROCEDURES.md** (本書) | **現行** | 統合テスト手順・デーモン運用 |
+| [TEST_STARTUP_CHECKLIST.md](TEST_STARTUP_CHECKLIST.md) | 現行 (補助) | テスト開始前の落とし穴集 |
+| [DAEMON_TEST_BATCH_PROTOCOL.md](DAEMON_TEST_BATCH_PROTOCOL.md) | 設計資料 | Cycle A/B バッチプロトコル設計 |
+| [TESTING_MEMO.md](TESTING_MEMO.md) | アーカイブ | 歴史的テストログ (Section 1-16) |
+| [LEGACY_TEST_ARCHIVE.md](LEGACY_TEST_ARCHIVE.md) | アーカイブ | 削除済みスクリプトの記録 |
+| [README_TESTING.md](README_TESTING.md) | 廃止 | Phase 3 初期の Decay 観測ガイド |
+| [TEST_RESULT_GHOST_FOCUS.md](TEST_RESULT_GHOST_FOCUS.md) | テスト結果 | Ghost/Fossil Focus Strategy (2026-02-03) |
+
 ## 前提
 
 - 作業ディレクトリ: `docker_compose_sphere_v1/`

@@ -1,5 +1,7 @@
 # Sphere Testing Guide - ノードDecay観測
 
+> **廃止**: Phase 3 初期の Decay 観測ガイド。最新の手順は [TEST_PROCEDURES.md](TEST_PROCEDURES.md) を参照。
+
 ## 準備完了事項 ✅
 
 以下の準備が完了しました：

@@ -1,5 +1,7 @@
 # Legacy Test Scripts — Archive & Methodology Memo
 
+> **アーカイブ**: 削除済みスクリプトの記録。最新の手順は [TEST_PROCEDURES.md](TEST_PROCEDURES.md) を参照。
+
 **Date**: 2026-02-16
 **Status**: アーカイブ (元ファイルは削除済み)
 
