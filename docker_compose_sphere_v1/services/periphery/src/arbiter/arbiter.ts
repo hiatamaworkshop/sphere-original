@@ -45,6 +45,12 @@ export interface ArbiterConfig {
   // 下方スレッショルド比率 - initialScore × この値を冷却期間中維持必要（例: 0.9）
   lowerThresholdRatio: number;
 
+  // === Allostatic Threshold (スフィア規模適応) ===
+  // 参照ノード数: effectiveThreshold = scoreThreshold × clamp(sqrt(activeNodes / ref), 0.1, cap)
+  referenceNodeCount?: number;     // default: 1000
+  // 閾値倍率上限（超巨大スフィアでの天井）
+  ascensionThresholdCap?: number;  // default: 3.0
+
   // === Dropout Reset 設定（整数スケール）===
   // 冷却期間失敗時にリセットするデフォルトメトリクス
   dropoutResetH?: number;  // default: 0
@@ -183,6 +189,9 @@ export class Arbiter {
   // Key: nodeId
   private candidateStore: Map<string, CandidateEntry> = new Map();
 
+  // === Allostatic Threshold (observe() 毎に再計算) ===
+  private currentEffectiveThreshold: number = 0;
+
   constructor(config: ArbiterConfig) {
     this.config = config;
   }
@@ -232,6 +241,17 @@ export class Arbiter {
     };
 
     const now = Date.now();
+
+    // === Allostatic Threshold: スフィア規模に応じた閾値計算 ===
+    let activeCount = 0;
+    for (const node of projDB.values()) {
+      if (node.kind === "active" || node.kind === "environment") activeCount++;
+    }
+    const ref = this.config.referenceNodeCount ?? 1000;
+    const cap = this.config.ascensionThresholdCap ?? 3.0;
+    // sqrt scaling: 1000 nodes = baseline, gentle curve for small/large spheres
+    const ratio = Math.max(0.1, Math.min(cap, Math.sqrt(activeCount / ref)));
+    this.currentEffectiveThreshold = this.config.ascensionScoreThreshold * ratio;
 
     // === Phase 0: 既存候補の監視（脱落/昇格判定）===
     this.monitorCandidates(projDB, now, queue);
@@ -370,8 +390,8 @@ export class Arbiter {
       node.metrics.w
     );
 
-    // 閾値チェック
-    if (score < this.config.ascensionScoreThreshold) {
+    // 閾値チェック (allostatic: スフィア規模に適応)
+    if (score < this.currentEffectiveThreshold) {
       return null;
     }
 
@@ -389,9 +409,11 @@ export class Arbiter {
     };
     this.candidateStore.set(node.id, entry);
 
+    const ref = this.config.referenceNodeCount ?? 50;
     console.log(
       `[Arbiter] Candidate registered: ${node.id.slice(0, 8)} ` +
-      `score=${score.toFixed(2)} threshold=${entry.lowerThreshold.toFixed(2)}`
+      `score=${score.toFixed(2)} effectiveThreshold=${this.currentEffectiveThreshold.toFixed(0)} ` +
+      `(${[...this.candidateStore.keys()].length} candidates, ref=${ref})`
     );
 
     // Candidate フラグ付与
@@ -565,7 +587,8 @@ export class Arbiter {
         `ascend=${queue.shouldAscend.length} ` +
         `erode=${queue.shouldErode.length} ` +
         `revive=${queue.shouldRevive.length} ` +
-        `flags=${queue.flagUpdates.length}`
+        `flags=${queue.flagUpdates.length} ` +
+        `effectiveThreshold=${this.currentEffectiveThreshold.toFixed(0)}`
     );
   }
 

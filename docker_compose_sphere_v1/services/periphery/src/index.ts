@@ -214,6 +214,9 @@ const arbiterConfig = {
   ascensionCooldownMs: arbiterSettings.ascension?.cooldownMs ?? 600000,
   ascensionScoreThreshold: arbiterSettings.ascension?.scoreThreshold ?? 1100,
   lowerThresholdRatio: arbiterSettings.ascension?.lowerThresholdRatio ?? 0.9,
+  // Allostatic threshold: effectiveThreshold = scoreThreshold × clamp(sqrt(active / ref), 0.1, cap)
+  referenceNodeCount: arbiterSettings.ascension?.referenceNodeCount ?? 1000,
+  ascensionThresholdCap: arbiterSettings.ascension?.thresholdCap ?? 3.0,
   // Dropout reset: metrics reset on cooldown failure (integer scale)
   dropoutResetH: arbiterSettings.ascension?.dropoutReset?.h ?? 0,
   dropoutResetW: arbiterSettings.ascension?.dropoutReset?.w ?? 500,
