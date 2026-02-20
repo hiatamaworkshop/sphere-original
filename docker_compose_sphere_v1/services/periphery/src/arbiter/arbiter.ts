@@ -27,8 +27,8 @@ import { cosineDistance } from "../lib/vector.js";
  * Arbiter 設定（Ascension/Erosion 閾値）
  */
 export interface ArbiterConfig {
-  // 風化閾値
-  erosionHeatThreshold: number;
+  // Erosion 閾値: h + w (ascension score) がこれを下回ると Amber → Active
+  erosionScoreThreshold: number;
 
   // Pause判定
   pauseErosionBoost: number;
@@ -452,15 +452,20 @@ export class Arbiter {
 
   /**
    * Erosion 判定: Amber → Active
+   * [Design] Ascension と対称: h + w スコアで判定
+   *   Ascension: h + w >= ascensionScoreThreshold (500) → 琥珀化
+   *   Erosion:   h + w <  erosionScoreThreshold (200)   → 琥珀解除
+   *   heat (注目度) と weight (情報価値) の両方が低下して初めて Erosion
    */
   private shouldErode(node: SphereNode, isPaused?: boolean): boolean {
     if (node.kind !== "amber") return false;
 
+    const score = computeAscensionScore(node.metrics.h, node.metrics.w);
     const effectiveThreshold = isPaused
-      ? this.config.erosionHeatThreshold * this.config.pauseErosionBoost
-      : this.config.erosionHeatThreshold;
+      ? this.config.erosionScoreThreshold * this.config.pauseErosionBoost
+      : this.config.erosionScoreThreshold;
 
-    return node.metrics.h < effectiveThreshold;
+    return score < effectiveThreshold;
   }
 
   /**

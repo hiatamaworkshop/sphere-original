@@ -153,11 +153,12 @@ export class Bookkeeper {
   private static readonly REVIVAL_TTL = 86400;
 
   /**
-   * Default heat for Amber nodes
-   * [Design] Amber は sense/scanL1 を支配しないよう、昇格時に heat をリセット
-   * erosionHeat (100) より余裕を持たせ、1回の低評価で即 Erosion を防ぐ
+   * Default heat for Amber nodes (on ascension)
+   * [Design] Relic (baseHeat×0.4 ≈ 300) より高い初期値で発見されやすく
+   * ただし floor ではない — 低評価で erosionHeatThreshold (100) まで落ちれば Erosion 発動
+   * 代謝凍結 (SystemCore) により自然減衰はない。heat 変動は評価のみ
    */
-  private static readonly AMBER_DEFAULT_HEAT = 200;
+  private static readonly AMBER_DEFAULT_HEAT = 400;
 
   /**
    * Maximum heat for Amber nodes
@@ -608,8 +609,8 @@ export class Bookkeeper {
       node.metrics.w = Math.max(0, node.metrics.w + wDelta);
       node.metrics.d = Math.max(0, node.metrics.d + dDelta);
 
-      // [Amber Heat Cap] Amber の heat が上がりすぎると sense/scanL1 を支配する
-      // 上限を設けることで Active より目立たないようにする
+      // [Amber Heat Cap] Amber の heat 上限（sense/scanL1 支配防止）
+      // 下限なし — 低評価で erosionHeatThreshold (100) まで落ちれば Erosion 発動
       if (node.kind === "amber") {
         node.metrics.h = Math.min(node.metrics.h, Bookkeeper.AMBER_MAX_HEAT);
       }
