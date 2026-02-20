@@ -363,7 +363,97 @@ curl http://localhost:3001/nodes/stats
 curl http://localhost:3001/metrics
 ```
 
-### 7.8 関連ドキュメント
+### 7.8 聖域化モニタリング — API・メトリクス一覧
+
+琥珀化 → 聖域化の過程を観測するための操作リファレンス。
+
+#### Sanctification (聖域化ステータス)
+
+```bash
+# 聖域化ニューロン全体の状態 (最重要)
+curl -s http://localhost:3001/sanctification | jq
+
+# ワンライナー要約
+curl -s http://localhost:3001/sanctification | node -e "process.stdin.on('data',d=>{const j=JSON.parse(d);console.log('epoch='+j.epoch,'cycle='+j.cycle,'amber='+j.hard.amberCount+'/'+j.hard.target,'velocity='+j.hard.velocity,'health='+j.soft.health.toFixed(4),'mode='+j.metabolicMode,'dormancy='+j.dormancy)})"
+```
+
+| フィールド | 意味 | 聖域化に必要な条件 |
+|-----------|------|------------------|
+| `hard.amberCount` | 琥珀ノード数 | `>= hard.target` (デフォルト 5) |
+| `hard.velocity` | 琥珀増加速度 | > 0 で蓄積中 |
+| `hard.fired` | ハード条件達成 | `true` |
+| `soft.health` | スフィア健康度 | `>= soft.threshold` (デフォルト 0.4) |
+| `soft.fired` | ソフト条件達成 | `true` |
+| `meta.healthy` | メタ判定 | `true` |
+| `meta.organicRatio` | 有機率 (agent 由来) | 高いほど良い |
+| `metabolicMode` | 代謝プリセット | archive/natural/dev |
+| `dormancy` | 休眠状態 | エージェント不在時 `true` |
+| `festival` | 聖域化祭 | hard+soft+meta 全達成で `true` |
+
+#### ノード状態
+
+```bash
+# ノード統計 (種別カウント)
+curl -s http://localhost:3001/nodes/stats | jq
+
+# ノード詳細メトリクス (heat/weight/flags 分布)
+curl -s http://localhost:3001/nodes/metrics | jq
+
+# 特定ノード詳細 (immuneMod 確認可能)
+curl -s http://localhost:3001/nodes/<nodeId> | jq
+
+# 琥珀ノードの一覧を手早く確認
+curl -s http://localhost:3001/nodes/metrics | node -e "process.stdin.on('data',d=>{const j=JSON.parse(d);(j.nodes||[]).filter(n=>n.kind==='amber').forEach(n=>console.log(n.id.slice(0,8),'h='+n.heat.toFixed(1),'w='+n.weight.toFixed(1)))})"
+```
+
+#### 代謝テレメトリ (periphery ログ)
+
+```bash
+# RenalCore tick ログ (amber 数の変化を追跡)
+docker compose logs -f periphery 2>&1 | grep "RenalCore.*tick="
+
+# Sanctification ニューロンの発火ログ
+docker compose logs -f periphery 2>&1 | grep -E "Sanctification|festival|Dormancy"
+
+# 免疫系 (immunity_spike の頻度・影響度)
+docker compose logs periphery 2>&1 | grep "immunity_spike"
+
+# CleanerFish (ghost→fossil→decompose 進行)
+docker compose logs periphery 2>&1 | grep "CleanerFish"
+
+# 代謝モード切替 (metabolicAutoMode=true 時のみ)
+docker compose logs periphery 2>&1 | grep "Metabolic mode"
+```
+
+#### Digestor・エージェント
+
+```bash
+# eval-log の蓄積量
+MSYS_NO_PATHCONV=1 docker compose exec digestor wc -l /app/data/eval-log.jsonl
+
+# 世代一覧
+MSYS_NO_PATHCONV=1 docker compose exec digestor ls -la /app/data/generations/
+
+# species-profile 要約
+MSYS_NO_PATHCONV=1 docker compose exec digestor cat /app/data/species-profile.json | node -e "process.stdin.on('data',d=>{const j=JSON.parse(d);Object.entries(j.species).forEach(([k,v])=>console.log(k,'evals='+v.evaluations,'avgH='+v.avgH.toFixed(1)))})"
+
+# エージェント別 eval カウント
+for a in hunter scholar balanced sniper moth; do echo -n "$a: "; docker logs sphere-agent-$a 2>&1 | grep -c "phi eval"; done
+```
+
+#### 全体ヘルスチェック
+
+```bash
+# Sphere ヘルス (node count, uptime)
+curl -s http://localhost:3001/health | jq
+
+# 全メトリクス (tick, connections, bus stats)
+curl -s http://localhost:3001/metrics | jq
+```
+
+---
+
+### 7.9 関連ドキュメント
 
 | ドキュメント | 内容 |
 |------------|------|

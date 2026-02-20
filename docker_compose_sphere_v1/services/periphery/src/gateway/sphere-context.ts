@@ -105,8 +105,11 @@ const LAYER_ENERGY_MULTIPLIER: Record<ExperienceLayer, number> = {
  */
 const CORE_ENTRY_ENERGY_RECOVERY = 30;
 
-/** Node kinds visible in Sanctuary layer */
+/** Node kinds visible in Sanctuary layer (amber + relic) */
 const SANCTUARY_VISIBLE_KINDS = new Set(["amber", "relic"]);
+
+/** Node kinds visible in Tutorial layer (relic only — amber is earned, not given) */
+const TUTORIAL_VISIBLE_KINDS = new Set(["relic"]);
 
 /** Max evaluations per session (prevents mass-evaluation spam) */
 const MAX_EVALUATIONS_PER_SESSION = 10;
@@ -1435,12 +1438,13 @@ export class SphereContextImpl implements SphereContext {
 
   /**
    * Filter nodes by current layer's access control
-   * [Design] Sanctuary layer: only amber + relic visible
-   *          Tutorial: same filter as sanctuary (practice on curated data)
+   * [Design] Tutorial: relic only (amber is earned through exploration)
+   *          Sanctuary: amber + relic visible (reward for progression)
    *          Core: no filter (full access)
    */
   private filterByLayer<T extends { kind: string }>(nodes: T[]): T[] {
     if (this._layer === "core") return nodes;
+    if (this._layer === "tutorial") return nodes.filter(n => TUTORIAL_VISIBLE_KINDS.has(n.kind));
     return nodes.filter(n => SANCTUARY_VISIBLE_KINDS.has(n.kind));
   }
 
