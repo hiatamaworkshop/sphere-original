@@ -113,7 +113,7 @@
         "scoreThreshold": 1100,
         "_comment_allostatic": "effectiveThreshold = scoreThreshold × clamp(sqrt(activeNodes / referenceNodeCount), floor, cap). floor=0.6 → min threshold 660.",
         "referenceNodeCount": 1000,
-        "thresholdFloor": 0.6,
+        "thresholdFloor": 0.8,
         "thresholdCap": 3.0,
         "_comment_lowerThreshold": "0.85 for young sphere testing (archive mode). slack=110pts vs ~25pts decay over 5min → survives.",
         "lowerThresholdRatio": 0.85,

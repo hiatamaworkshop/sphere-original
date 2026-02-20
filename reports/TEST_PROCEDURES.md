@@ -534,3 +534,44 @@ ps aux | grep "/c/nvm4w/nodejs/node" | grep -v grep | grep -v "Code" | awk '{pri
 `docker compose up -d` で起動すると **初期シードノード (20件 + relic 10件)** が自動投入される。
 ascension テストでは `contribution.js batch` による追加投入は **不要**。
 77+ノードに eval が分散して threshold 突破が困難になる。
+
+---
+
+## 9. 調整係数一覧 (2026-02-20)
+
+詳細: `TUNING_LEDGER_20260220.md`
+
+### 9.1 現在の調整値サマリ
+
+| 係数 | 値 | 変更日 | 変更理由 |
+|------|-----|--------|---------|
+| `decayIntensity` | **0.5** | 02-20 | 間欠運用で eval gain が decay に負ける → 半減 |
+| `thresholdFloor` | **0.8** | 02-20 | top-tier (score=800) が即 candidate になる → 880 に引き上げ |
+| Soft: `relicHealth` → `flexibilityHealth` | active/(active+amber) | 02-20 | relic count は不変定数 → 情報量ゼロ。琥珀蓄積検知に置換 |
+
+### 9.2 係数間の依存チェーン
+
+```
+decayIntensity (代謝速度)
+    ↓  eval gain vs decay のバランスが変わる
+effectiveThreshold (ascension 閾値)
+    ↓  candidate 出現頻度が変わる
+amber 蓄積速度
+    ↓  flexibilityHealth が反応する
+Soft neuron health
+```
+
+**警告**: `decayIntensity` と `thresholdFloor` を同時に変える場合、
+`effectiveThreshold - 初期score` の差分が eval 数回分に収まることを確認すること。
+
+### 9.3 現在の実効値 (20 active nodes, archive × 0.5)
+
+| 項目 | 値 |
+|------|-----|
+| effectiveThreshold | 880 (= 1100 × 0.8) |
+| top-tier 初期 score | 800 (h=500 + w=300) → **+80 必要 (2-3 eval)** |
+| normal 初期 score | 600 (h=500 + w=100) → **+280 必要 (8-10 eval)** |
+| heat 半減期 | ~4 時間 (archive 0.0001 × 0.5) |
+| weight 半減期 | ~8 時間 (archive 0.00005 × 0.5) |
+| Soft vitality (amber=0) | ~0.85 |
+| cooldown 中の decay | ~1.5% / 5min → **dropout しにくい** |
