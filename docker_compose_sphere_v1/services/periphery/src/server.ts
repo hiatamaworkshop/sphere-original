@@ -113,6 +113,7 @@ export class PeripheryServer {
   // Sphere identity (from sphere.config.json metadata)
   private sphereId: string;
   private sphereName: string;
+  private sphereMetadata: Record<string, unknown>;
 
   constructor(
     private incarnationPipeline: IIncarnationPipeline,
@@ -125,10 +126,11 @@ export class PeripheryServer {
     private activeBusLayer?: ActiveBusLayer,
     private spatialFields?: Map<string, SpatialField>,
     private sanctificationNeuron?: SanctificationNeuron,
-    sphereMetadata?: { sphereId?: string; sphere_name?: string },
+    sphereMetadata?: Record<string, unknown>,
   ) {
-    this.sphereId = sphereMetadata?.sphereId ?? SPHERE_ID_DEFAULT;
-    this.sphereName = sphereMetadata?.sphere_name ?? SPHERE_NAME;
+    this.sphereId = (sphereMetadata?.sphereId as string) ?? SPHERE_ID_DEFAULT;
+    this.sphereName = (sphereMetadata?.sphere_name as string) ?? SPHERE_NAME;
+    this.sphereMetadata = sphereMetadata ?? {};
     // Initialize TicketIssuer with session TTL from config
     const ticketConfig = {
       ...DEFAULT_TICKET_CONFIG,
@@ -215,6 +217,9 @@ export class PeripheryServer {
             "GET /nodes/stats": "Node statistics by kind",
             "GET /nodes/:id": "Get specific node details",
             "GET /sphere/snapshot": "Complete state snapshot (for Digestor sphere_hash)",
+          },
+          catalog: {
+            "GET /sphere/manifest": "Sphere self-description for Facade catalog",
           },
           exploration: {
             "GET /sphere/explore": "Explore Sphere with a query (main entry point)",
@@ -528,6 +533,40 @@ export class PeripheryServer {
       });
     });
 
+    // ===== Sphere Manifest Endpoint =====
+    // External-facing self-description for Facade catalog integration
+    // [Design] Static config + runtime counts. Immutable in sanctuary mode.
+    // See: reports/FACADE_DESIGN.md
+    this.app.get("/sphere/manifest", readLimiter, (_req, res) => {
+      // Runtime counts from ProjDB
+      let nodeCount = 0;
+      let amberCount = 0;
+      if (this.projectionDB) {
+        for (const node of this.projectionDB.values()) {
+          nodeCount++;
+          if (node.kind === "amber") amberCount++;
+        }
+      }
+
+      // Sanctification epoch from neuron status
+      const sanctStatus = this.sanctificationNeuron?.getStatus();
+      const sanctuaryEpoch = sanctStatus?.epoch ?? 0;
+
+      res.json({
+        sphereId: this.sphereId,
+        name: this.sphereName,
+        description: (this.sphereMetadata.description as string) ?? "",
+        tags: (this.sphereMetadata.tags as string[]) ?? [],
+        language: (this.sphereMetadata.language as string[]) ?? [],
+        nodeCount,
+        amberCount,
+        sanctuaryEpoch,
+        mode: (this.sphereMetadata.mode as string) ?? "core",
+        apiVersion: (this.sphereMetadata.apiVersion as string) ?? "1",
+        confidenceHints: (this.sphereMetadata.confidenceHints as Record<string, number>) ?? {},
+      });
+    });
+
     // ===== Sphere Exploration Endpoint =====
     // Main entry point for knowledge discovery
     // Agent brings a query → vectorized → search → return raw knowledge
@@ -836,6 +875,7 @@ export class PeripheryServer {
       console.log(`  GET  /nodes/stats        - Node statistics`);
       console.log(`  GET  /nodes/:id          - Get specific node`);
       console.log(`  GET  /sphere/snapshot    - State snapshot (Digestor)`);
+      console.log(`  GET  /sphere/manifest    - Self-description (Facade catalog)`);
       console.log(`  GET  /sphere/explore     - Explore with query`);
       console.log(`  POST /sphere/contribute  - External data contribution`);
       console.log(`  POST /sphere/forge/env   - Generate Environmental Node`);

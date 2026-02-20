@@ -2,11 +2,16 @@
   "metadata": {
     "sphereId": "sphere-genesis",
     "sphere_name": "Sphere Genesis",
+    "description": "汎用知識スフィア — 実験・開発用",
     "version": "0.3.0",
+    "apiVersion": "1",
     "forked_from": "origin",
     "ethos": "Metabolism over Preservation",
     "mode": "core",
-    "_mode_note": "core = full metabolism. sanctuary = read-only, no metabolism (frozen sphere for standalone deployment)"
+    "_mode_note": "core = full metabolism. sanctuary = read-only, no metabolism (frozen sphere for standalone deployment)",
+    "tags": ["general", "experimental", "development"],
+    "language": ["ja", "en"],
+    "confidenceHints": {}
   },
 
   "physical_constants": {
