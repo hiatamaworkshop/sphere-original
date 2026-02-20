@@ -1,9 +1,12 @@
 {
   "metadata": {
+    "sphereId": "sphere-genesis",
     "sphere_name": "Sphere Genesis",
     "version": "0.3.0",
     "forked_from": "origin",
-    "ethos": "Metabolism over Preservation"
+    "ethos": "Metabolism over Preservation",
+    "mode": "core",
+    "_mode_note": "core = full metabolism. sanctuary = read-only, no metabolism (frozen sphere for standalone deployment)"
   },
 
   "physical_constants": {

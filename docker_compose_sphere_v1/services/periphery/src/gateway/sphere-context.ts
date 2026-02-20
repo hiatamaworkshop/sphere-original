@@ -87,6 +87,27 @@ const DEFAULT_ENERGY = {
   },
 };
 
+/**
+ * Layer-specific energy cost multipliers
+ * [Design] Tutorial = free exploration (vectorization wait time)
+ *          Sanctuary = low cost (encourage exploration, save energy for Core)
+ *          Core = full cost (live world, full metabolism)
+ */
+const LAYER_ENERGY_MULTIPLIER: Record<ExperienceLayer, number> = {
+  tutorial: 0,     // No energy cost — practice / vectorization wait
+  sanctuary: 0.5,  // Half cost — static view, encourage browsing
+  core: 1.0,       // Full cost — live world
+};
+
+/**
+ * Energy recovery on Core entry
+ * [Design] Reward efficient Sanctuary exploration with partial recovery
+ */
+const CORE_ENTRY_ENERGY_RECOVERY = 30;
+
+/** Node kinds visible in Sanctuary layer */
+const SANCTUARY_VISIBLE_KINDS = new Set(["amber", "relic"]);
+
 /** Max evaluations per session (prevents mass-evaluation spam) */
 const MAX_EVALUATIONS_PER_SESSION = 10;
 
@@ -296,6 +317,9 @@ export class SphereContextImpl implements SphereContext {
       nodes = this.mockSense(r);
     }
 
+    // Layer access control: filter by node kind
+    nodes = this.filterByLayer(nodes);
+
     // Track visible nodes: only these can be focused/warped
     // [Design] Prevents "teleporting" to unseen nodes
     // [WalkMode] Stores info for gradient calculation (vector fetched on demand)
@@ -379,8 +403,10 @@ export class SphereContextImpl implements SphereContext {
     if (this.coreAdapter) {
       // Get raw nodes from adapter for scanning
       const nearbyNodes = await this.coreAdapter.sense(this._embeddingVector, 1.0);
+      // Layer access control: filter by node kind
+      const filtered = this.filterByLayer(nearbyNodes);
       // Convert NearbyNode to SphereNode-like structure for movement system
-      nodes = nearbyNodes.map((n) => ({
+      nodes = filtered.map((n) => ({
         id: n.id,
         vector: [], // Will be fetched by adapter if needed
         kind: n.kind,
@@ -406,7 +432,10 @@ export class SphereContextImpl implements SphereContext {
     console.log(`[SphereContext] scanL1(radius=${r})`);
 
     if (this.coreAdapter) {
-      const results = await this.coreAdapter.scanL1(this._embeddingVector, r);
+      const rawResults = await this.coreAdapter.scanL1(this._embeddingVector, r);
+
+      // Layer access control: filter by node kind
+      const results = this.filterByLayer(rawResults);
 
       // Track scanned nodes as known (evaluate-eligible, warp-eligible)
       // [Design] Does NOT clear existing visibleNodes — scan supplements sense
@@ -446,6 +475,15 @@ export class SphereContextImpl implements SphereContext {
     // [Design] scan gives IDs but not proximity — focus requires sense()
     if (this._sensedNodeIds.size > 0 && !this._sensedNodeIds.has(nodeId)) {
       throw new Error(`Node ${nodeId} not reachable - call sense() first to discover nearby nodes`);
+    }
+
+    // Layer kind guard: sanctuary/tutorial can only focus amber + relic
+    // [Design] Defensive — sense/scan already filter, but guard against direct ID access
+    if (this._layer !== "core") {
+      const nodeInfo = this._visibleNodes.get(nodeId);
+      if (nodeInfo && !SANCTUARY_VISIBLE_KINDS.has(nodeInfo.kind)) {
+        throw new Error(`Node ${nodeId} not accessible in ${this._layer} layer`);
+      }
     }
 
     // End previous focus if any (with action log)
@@ -1301,6 +1339,12 @@ export class SphereContextImpl implements SphereContext {
       console.log(`[SphereContext] Carrying ${bufferedCount} buffered evaluations into Core (will be processed on return)`);
     }
 
+    // Partial energy recovery on Core entry
+    // [Design] Reward efficient Sanctuary exploration — not full recovery
+    const before = this._energy;
+    this._energy = Math.min(this._energyConfig.initial, this._energy + CORE_ENTRY_ENERGY_RECOVERY);
+    console.log(`[SphereContext] Core entry energy recovery: +${this._energy - before} (${before} → ${this._energy})`);
+
     // Update layer (buffer is preserved, not cleared)
     this._layer = "core";
     this._session.layer = "core";
@@ -1355,15 +1399,21 @@ export class SphereContextImpl implements SphereContext {
    * @returns true if action can proceed, false if insufficient energy
    */
   private consumeEnergy(action: keyof typeof DEFAULT_ENERGY.costs): boolean {
-    const cost = this._energyConfig.costs[action];
+    const baseCost = this._energyConfig.costs[action];
+    const multiplier = LAYER_ENERGY_MULTIPLIER[this._layer];
+    const cost = Math.round(baseCost * multiplier);
+
+    // Tutorial layer: zero cost, always proceed
+    if (cost === 0) return true;
+
     if (this._energy < cost) {
-      console.log(`[SphereContext] ⚡ ${action} blocked: energy ${this._energy} < cost ${cost}`);
+      console.log(`[SphereContext] ⚡ ${action} blocked: energy ${this._energy} < cost ${cost} (layer=${this._layer})`);
       return false;
     }
 
     const before = this._energy;
     this._energy -= cost;
-    console.log(`[SphereContext] ⚡ ${action}: -${cost} energy (${before} → ${this._energy})`)
+    console.log(`[SphereContext] ⚡ ${action}: -${cost} energy (${before} → ${this._energy}, layer=${this._layer})`)
 
     // Check for low energy warning (once per session)
     const threshold = this._energyConfig.initial * (this._energyConfig.warningThreshold / 100);
@@ -1381,6 +1431,17 @@ export class SphereContextImpl implements SphereContext {
     }
 
     return true;
+  }
+
+  /**
+   * Filter nodes by current layer's access control
+   * [Design] Sanctuary layer: only amber + relic visible
+   *          Tutorial: same filter as sanctuary (practice on curated data)
+   *          Core: no filter (full access)
+   */
+  private filterByLayer<T extends { kind: string }>(nodes: T[]): T[] {
+    if (this._layer === "core") return nodes;
+    return nodes.filter(n => SANCTUARY_VISIBLE_KINDS.has(n.kind));
   }
 
   private setupTimers(): void {

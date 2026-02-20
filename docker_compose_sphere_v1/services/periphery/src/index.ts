@@ -111,8 +111,11 @@ console.log(
   ((sphereConfig.sanctification?.metabolicAutoMode ?? true) ? ` [AUTO-MODE: neuron-driven]` : "")
 );
 
+// Sphere mode: "core" (full metabolism) or "sanctuary" (read-only, no metabolism)
+const sphereMode: "core" | "sanctuary" = sphereConfig.metadata?.mode === "sanctuary" ? "sanctuary" : "core";
+
 console.log("=".repeat(60));
-console.log("🌐 Sphere Project - Phase 3: Periphery");
+console.log(`🌐 Sphere Project - Phase 3: Periphery [${sphereMode.toUpperCase()} MODE]`);
 console.log("=".repeat(60));
 
 // ===== Initialize Repositories (DB Abstraction Layer) =====
@@ -133,9 +136,43 @@ console.log("  ✅ MapReferenceRepository (RefDB)");
 console.log("  ✅ MapProjectionRepository (ProjDB)");
 console.log("  ✅ MapSpatialFieldRepository");
 
-// ===== Initialize RenalCore =====
+// ===== Initialize RenalCore (Core mode only) =====
+// [Sanctuary Mode] Skip all metabolism — no decay, no transitions, no cleaner fish
+let sanctificationNeuron: SanctificationNeuron | undefined;
+let renalCore: RenalCore | undefined;
+let pulseBroadcaster: PulseBroadcaster | undefined;
+let currentAgentCount = 0;
+let isDormant = false;
+let tickCounter = 0;
+
+// GlobalFieldLayer - ambient field calculation (climate of sphere)
+// [Note] Initialized in both modes — agents perceive field even in sanctuary
+const fieldConfig = sphereConfig.field ?? {};
+const globalFieldLayer = new GlobalFieldLayer(
+  sphereConfig.physical_constants?.dimension ?? 384,
+  {
+    updateIntervalTicks: fieldConfig.updateIntervalTicks ?? 10,
+    targetSampleOps: fieldConfig.targetSampleOps ?? 50000,
+    minSampleSize: fieldConfig.minSampleSize ?? 10,
+    maxSampleSize: fieldConfig.maxSampleSize ?? 500,
+    intensityDecay: fieldConfig.intensityDecay ?? 0.1,
+    emptyIntensity: fieldConfig.emptyIntensity ?? 0,
+  }
+);
+
+// ActiveBusLayer - AI-to-AI volatile broadcast communication
+const activeBusConfig = sphereConfig.activeBus ?? {};
+const activeBusLayer = new ActiveBusLayer({
+  enabled: activeBusConfig.enabled ?? true,
+  protocol: activeBusConfig.protocol ?? "AI_NATIVE",
+  maxPayloadBytes: activeBusConfig.maxPayloadBytes ?? 64,
+  bufferSize: activeBusConfig.bufferSize ?? 10,
+  samplingRate: activeBusConfig.samplingRate ?? 0.7,
+});
+
+if (sphereMode === "core") {
 console.log("[Init] Initializing RenalCore metabolism engine...");
-const renalCore = new RenalCore(
+renalCore = new RenalCore(
   projectionDB,
   referenceDB,
   spatialFields,
@@ -192,32 +229,8 @@ const transitionThresholds = {
   protectionThreshold: arbiterConfig.protectionThreshold,  // h+w >= 100 で保護
 };
 
-// GlobalFieldLayer - ambient field calculation (climate of sphere)
-const fieldConfig = sphereConfig.field ?? {};
-const globalFieldLayer = new GlobalFieldLayer(
-  sphereConfig.physical_constants?.dimension ?? 384,
-  {
-    updateIntervalTicks: fieldConfig.updateIntervalTicks ?? 10,
-    targetSampleOps: fieldConfig.targetSampleOps ?? 50000,
-    minSampleSize: fieldConfig.minSampleSize ?? 10,
-    maxSampleSize: fieldConfig.maxSampleSize ?? 500,
-    intensityDecay: fieldConfig.intensityDecay ?? 0.1,
-    emptyIntensity: fieldConfig.emptyIntensity ?? 0,
-  }
-);
-
-// ActiveBusLayer - AI-to-AI volatile broadcast communication
-const activeBusConfig = sphereConfig.activeBus ?? {};
-const activeBusLayer = new ActiveBusLayer({
-  enabled: activeBusConfig.enabled ?? true,
-  protocol: activeBusConfig.protocol ?? "AI_NATIVE",
-  maxPayloadBytes: activeBusConfig.maxPayloadBytes ?? 64,
-  bufferSize: activeBusConfig.bufferSize ?? 10,
-  samplingRate: activeBusConfig.samplingRate ?? 0.7,
-});
-
 // PulseBroadcaster - UDP broadcast of environment signals
-const pulseBroadcaster = new PulseBroadcaster({
+pulseBroadcaster = new PulseBroadcaster({
   pulse: pulseConfig,
   amberHeatThreshold: renalConfig.amberHeatThreshold,
 });
@@ -225,21 +238,18 @@ const pulseBroadcaster = new PulseBroadcaster({
 // Observation interval: Arbiter + CleanerFish cycle (10 ticks = 10 sec)
 // [Design] Synced with Pulse for consistent observation timing
 const observationInterval = 10;
-let tickCounter = 0;
 let patrolCounter = 0; // CleanerFish patrol frequency control
 
 // Sanctification Neuron — three-party consensus for sphere state sanctification
 // [Design] reports/SANCTIFICATION_NEURON_DESIGN.md
 // [Sync] Observes at the same interval as Arbiter (observationInterval)
 const sanctificationConfig: SanctificationConfig = sphereConfig.sanctification ?? {};
-const sanctificationNeuron = new SanctificationNeuron(sanctificationConfig);
+sanctificationNeuron = new SanctificationNeuron(sanctificationConfig);
 sanctificationNeuron.setMetabolicMode(currentMetabolicMode);
-let currentAgentCount = 0;
 
 // === Dormancy State ===
 // [Design] Neuron-driven: sanctificationNeuron.recommendsDormancy replaces timer.
 // Neuron tracks consecutive zero-agent observations (default 6 = ~60s at 10s intervals).
-let isDormant = false;
 
 setInterval(async () => {
   tickCounter++;
@@ -248,9 +258,9 @@ setInterval(async () => {
   // The neuron observes agentDiversity during normal ticks.
   // When it accumulates enough zero-agent observations, it recommends dormancy.
   // Wake-up is handled by setOnAgentCountChange (immediate).
-  if (sanctificationNeuron.recommendsDormancy && !isDormant) {
+  if (sanctificationNeuron!.recommendsDormancy && !isDormant) {
     isDormant = true;
-    console.log(`[Dormancy] Entering hibernation — neuron observed no agents for ${sanctificationNeuron.cycles} cycles`);
+    console.log(`[Dormancy] Entering hibernation — neuron observed no agents for ${sanctificationNeuron!.cycles} cycles`);
   }
   if (isDormant) return;
 
@@ -266,19 +276,19 @@ setInterval(async () => {
   const snapshot = shouldObserve ? arbiter.snapshot(projectionDB) : null;
 
   // Execute physics (Decay only - RenalCore is pure physics engine)
-  renalCore.tick(loadFactor);
+  renalCore!.tick(loadFactor);
 
   // Update Global Ambient Field (climate of sphere)
   globalFieldLayer.tick(projectionRepo);
 
   // Pulse broadcast (now handled by Periphery)
-  pulseBroadcaster.broadcast(tickCounter, projectionDB, spatialFields);
+  pulseBroadcaster!.broadcast(tickCounter, projectionDB, spatialFields);
 
   // Observe and process state changes (at observation interval, same as Pulse)
   // [Design] Batch processing to reduce RefDB access frequency
   if (shouldObserve && snapshot) {
     // Arbiter judges and queues state transitions
-    const isPaused = renalCore.idleTickCount > renalConfig.pauseIdleThreshold;
+    const isPaused = renalCore!.idleTickCount > renalConfig.pauseIdleThreshold;
     const queue = arbiter.observe(projectionDB, { isPaused });
 
     // Execute queued transitions (Bookkeeper applies changes to ProjDB/RefDB)
@@ -397,13 +407,13 @@ setInterval(async () => {
         tickCounter,
       };
 
-      const result = sanctificationNeuron.observe(telemetry);
+      const result = sanctificationNeuron!.observe(telemetry);
 
       // Log at significant intervals or when sanctification triggers
-      if (sanctificationNeuron.cycles % 30 === 0 || result.sanctify) {
+      if (sanctificationNeuron!.cycles % 30 === 0 || result.sanctify) {
         const festivalTag = result.festival ? " [FESTIVAL]" : "";
         console.log(
-          `[Sanctification] epoch=${result.epoch} cycle=${sanctificationNeuron.cycles}` +
+          `[Sanctification] epoch=${result.epoch} cycle=${sanctificationNeuron!.cycles}` +
           ` Hard=${result.hard.fired ? "✓" : "·"}(amber=${result.hard.amberCount}/${result.hard.target})` +
           ` Soft=${result.soft.fired ? "✓" : "·"}(health=${result.soft.health.toFixed(3)})` +
           ` Meta=${result.meta.healthy ? "✓" : "·"}(sus=${result.meta.suspicion.toFixed(3)}` +
@@ -418,7 +428,7 @@ setInterval(async () => {
       // [Design] Festival ends when Soft refills → next sanctification possible
       if (result.sanctify) {
         // TODO: Sanctuary snapshot (Amber + Relic) would go here
-        sanctificationNeuron.reset();
+        sanctificationNeuron!.reset();
       }
 
       // === Metabolic Auto-Mode: event-driven mode selection ===
@@ -430,8 +440,8 @@ setInterval(async () => {
       //
       // [Design] flow is event-driven, not progress-driven.
       // Young spheres need slow decay to accumulate weight toward Arbiter threshold.
-      if (sanctificationNeuron.metabolicAutoMode) {
-        const progress = sanctificationNeuron.hardProgress;
+      if (sanctificationNeuron!.metabolicAutoMode) {
+        const progress = sanctificationNeuron!.hardProgress;
         let recommended: DecayPresetName;
         let modeReason: string;
 
@@ -458,7 +468,7 @@ setInterval(async () => {
           renalConfig.fluxDecayRate = newValues.fluxDecayRate;
           renalConfig.minLoadFactor = newValues.minLoadFactor;
           currentMetabolicMode = recommended;
-          sanctificationNeuron.setMetabolicMode(recommended);
+          sanctificationNeuron!.setMetabolicMode(recommended);
           console.log(
             `[Sanctification] Metabolic mode: ${prev} → ${recommended} [${modeReason}]`
           );
@@ -508,6 +518,16 @@ setInterval(async () => {
     }
   }
 }, 1000); // 1 tick per second
+
+} else {
+  // Sanctuary mode — no metabolism, read-only
+  console.log("[Init] Sanctuary mode — metabolism skipped (read-only sphere)");
+  console.log("  ⏸️  RenalCore: not started");
+  console.log("  ⏸️  Arbiter: not started");
+  console.log("  ⏸️  CleanerFish: not started");
+  console.log("  ⏸️  SanctificationNeuron: not started");
+  console.log("  ⏸️  Tick loop: not started");
+}
 
 // ===== Initialize Periphery Components =====
 console.log("\n[Init] Initializing Periphery components...");
@@ -583,23 +603,26 @@ const server = new PeripheryServer(
   globalFieldLayer,     // For magnetic field influence on agent movement
   activeBusLayer,       // For AI-to-AI volatile broadcast communication
   spatialFields,        // For /sphere/snapshot flux data
-  sanctificationNeuron  // For GET /sanctification status endpoint
+  sanctificationNeuron, // For GET /sanctification status endpoint
+  sphereConfig.metadata // Sphere identity (sphereId, sphere_name)
 );
 
 server.start();
 
-// Connect agent count changes to RenalCore Dormancy and SphereCoreAdapter dynamic sampling
-// [Design] Dormancy wake-up is immediate on agent connection.
-// Dormancy entry is neuron-driven (consecutive zero-agent observations in tick loop).
+// Connect agent count changes to dynamic sampling and metabolism
+// [Design] Sanctuary mode: only adapter sampling, no metabolism wake-up
 server.setOnAgentCountChange((count: number) => {
-  renalCore.updateAgentCount(count);
   coreAdapter.setAgentCount(count);
-  currentAgentCount = count;
 
-  if (count > 0 && isDormant) {
-    console.log(`[Dormancy] Waking up — agent connected`);
-    isDormant = false;
-    sanctificationNeuron.notifyAgentConnected();
+  if (sphereMode === "core" && renalCore) {
+    renalCore.updateAgentCount(count);
+    currentAgentCount = count;
+
+    if (count > 0 && isDormant) {
+      console.log(`[Dormancy] Waking up — agent connected`);
+      isDormant = false;
+      sanctificationNeuron?.notifyAgentConnected();
+    }
   }
 });
 
@@ -714,7 +737,7 @@ if (ephemeralConfig?.enabled && ephemeralConfig.resetIntervalMs > 0) {
 console.log("\n" + "=".repeat(60));
 console.log("Sphere Phase 3: Periphery initialized successfully");
 console.log("=".repeat(60));
-console.log("\n RenalCore heartbeat: ACTIVE");
+console.log(`\n RenalCore heartbeat: ${sphereMode === "core" ? "ACTIVE" : "DISABLED (sanctuary mode)"}`);
 console.log(`Global Field: UPDATE every ${fieldConfig.updateIntervalTicks ?? 10} ticks`);
 if (pulseConfig?.enabled) {
   console.log(`Pulse broadcast: UDP ${pulseConfig.broadcastAddress}:${pulseConfig.port} (every ${pulseConfig.intervalTicks} ticks)`);
@@ -741,8 +764,8 @@ async function shutdown(signal: string) {
   server.stop();
   console.log("[Shutdown] ✅ Server stopped");
 
-  // Close pulse socket
-  pulseBroadcaster.close();
+  // Close pulse socket (core mode only)
+  pulseBroadcaster?.close();
   console.log("[Shutdown] ✅ Pulse socket closed");
 
   // Flush buffers

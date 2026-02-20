@@ -27,10 +27,11 @@ import type { GlobalFieldLayer } from "./field/index.js";
 import type { ActiveBusLayer } from "./bus/index.js";
 import type { SanctificationNeuron } from "./sanctification/index.js";
 
-// Sphere Server Metadata
+// Sphere Server Metadata (defaults, overridden by sphere.config.json metadata)
 const SPHERE_VERSION = "0.1.0";
 const SPHERE_NAME = "Sphere";
 const SPHERE_DESCRIPTION = "A high-dimensional semantic space where information metabolizes and evolves";
+const SPHERE_ID_DEFAULT = "sphere-unknown";
 
 /**
  * External Service Guard Middleware
@@ -109,6 +110,10 @@ export class PeripheryServer {
     return 1 - dotProduct / (Math.sqrt(normA) * Math.sqrt(normB));
   }
 
+  // Sphere identity (from sphere.config.json metadata)
+  private sphereId: string;
+  private sphereName: string;
+
   constructor(
     private incarnationPipeline: IIncarnationPipeline,
     private config: PeripheryConfig,
@@ -120,7 +125,10 @@ export class PeripheryServer {
     private activeBusLayer?: ActiveBusLayer,
     private spatialFields?: Map<string, SpatialField>,
     private sanctificationNeuron?: SanctificationNeuron,
+    sphereMetadata?: { sphereId?: string; sphere_name?: string },
   ) {
+    this.sphereId = sphereMetadata?.sphereId ?? SPHERE_ID_DEFAULT;
+    this.sphereName = sphereMetadata?.sphere_name ?? SPHERE_NAME;
     // Initialize TicketIssuer with session TTL from config
     const ticketConfig = {
       ...DEFAULT_TICKET_CONFIG,
@@ -188,7 +196,8 @@ export class PeripheryServer {
       const nodeCount = this.projectionDB?.size ?? 0;
 
       res.json({
-        name: SPHERE_NAME,
+        sphereId: this.sphereId,
+        name: this.sphereName,
         description: SPHERE_DESCRIPTION,
         version: SPHERE_VERSION,
         rulebookVersion: RULEBOOK_VERSION,
@@ -816,7 +825,7 @@ export class PeripheryServer {
     );
     const httpServer = this.app.listen(httpPort, () => {
       console.log(`[PeripheryServer] 🚀 Listening on port ${httpPort}`);
-      console.log(`[PeripheryServer] ${SPHERE_NAME} v${SPHERE_VERSION}`);
+      console.log(`[PeripheryServer] ${this.sphereName} [${this.sphereId}] v${SPHERE_VERSION}`);
       console.log(`[PeripheryServer] Endpoints:`);
       console.log(`  GET  /                   - Sphere information`);
       console.log(`  GET  /health             - Health check`);
