@@ -225,7 +225,7 @@
 
   "sanctification": {
     "_comment": "Three-party consensus for sphere state sanctification (Hard/Soft/Meta)",
-    "windowSize": 30,
+    "_comment_window": "windowSize auto-derived from arbiter.ascension.cooldownMs (300000ms / 10s = 30 obs)",
     "epochGrowth": 0,
     "_epochGrowth_note": "0 = Sphere Original (clean). Set >0 for progressive difficulty per epoch.",
     "maxWindowSize": 90,

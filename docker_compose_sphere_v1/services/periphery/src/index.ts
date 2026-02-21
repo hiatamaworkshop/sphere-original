@@ -267,7 +267,11 @@ let patrolCounter = 0; // CleanerFish patrol frequency control
 // Sanctification Neuron — three-party consensus for sphere state sanctification
 // [Design] reports/SANCTIFICATION_NEURON_DESIGN.md
 // [Sync] Observes at the same interval as Arbiter (observationInterval)
-const sanctificationConfig: SanctificationConfig = sphereConfig.sanctification ?? {};
+const sanctificationConfig: SanctificationConfig = {
+  ...(sphereConfig.sanctification ?? {}),
+  // Auto-align Soft window to Arbiter cooldown period
+  cooldownMs: arbiterConfig.ascensionCooldownMs,
+};
 sanctificationNeuron = new SanctificationNeuron(sanctificationConfig);
 sanctificationNeuron.setMetabolicMode(currentMetabolicMode);
 

@@ -186,7 +186,7 @@ services:
       RESPONSE: "true"
       DIGESTOR_URL: http://digestor:5000
     volumes:
-      - phi-agent-data:/app/data
+      - ../phi-agent/data:/app/data
     depends_on:
       periphery:
         condition: service_healthy
@@ -220,7 +220,7 @@ services:
     ports:
       - "5000:5000"
     volumes:
-      - phi-agent-data:/app/data
+      - ../phi-agent/data:/app/data
     networks:
       - sphere-network
     restart: unless-stopped
@@ -304,5 +304,3 @@ volumes:
     name: sphere-periphery-logs
   ollama-models:
     name: sphere-ollama-models
-  phi-agent-data:
-    name: sphere-phi-agent-data

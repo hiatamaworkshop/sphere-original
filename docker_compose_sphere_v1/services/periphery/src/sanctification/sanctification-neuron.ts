@@ -224,17 +224,29 @@ interface HardResult {
  */
 class SoftNeuron {
   private readonly history: RingBuffer;
+  /** EMA-smoothed velocity — persists spike effect across observations */
+  private smoothedVelocity = 0;
 
-  /** Minimum vitality sustained over the full window */
-  static readonly THRESHOLD = 0.40;
+  /** Minimum vitality sustained over the full window.
+   *  With velocity cooling + 6-min window (cooldown + 1min buffer):
+   *    Attack: ~12 cooled entries / 36 → health ≈ 0.63 → BLOCKED
+   *    Recovery: all entries normal → health ≈ 0.76 → PASS
+   *  Aligned to Meta recovery timing — Soft clears around when Meta does. */
+  static readonly THRESHOLD = 0.68;
   /** Minimum total nodes for population health to register */
   static readonly MIN_POPULATION = 30;
+  /** Velocity cooling factor: higher = more aggressive cooling of rapid spikes.
+   *  Design: SANCTIFICATION_NEURON_DESIGN.md L92, v1 param L611 */
+  static readonly COOLING_FACTOR = 5.0;
+  /** EMA decay for smoothed velocity. 0.7 = spike persists ~5 observations.
+   *  Detects concentrated evaluation bursts that span multiple ticks. */
+  static readonly VELOCITY_DECAY = 0.7;
 
   constructor(windowSize: number) {
     this.history = new RingBuffer(windowSize);
   }
 
-  process(t: ObservationTelemetry): SoftResult {
+  process(t: ObservationTelemetry, hardVelocity: number = 0): SoftResult {
     // 1. Active health: ratio of living (active+amber) nodes.
     //    Best around 40-60% active — too high means immature, too low means dying.
     const livingNodes = t.activeCount + t.amberCount;
@@ -260,24 +272,33 @@ class SoftNeuron {
       flexibilityHealth * 0.25 +
       populationHealth * 0.30;
 
-    this.history.push(vitality);
+    // Velocity cooling with EMA smoothing:
+    // Hard velocity is a pulse (non-zero only when amber changes).
+    // EMA smoothing spreads the cooling effect across ~5 observations,
+    // detecting concentrated evaluation bursts rather than just single-tick spikes.
+    // Design: SANCTIFICATION_NEURON_DESIGN.md L92
+    this.smoothedVelocity = this.smoothedVelocity * SoftNeuron.VELOCITY_DECAY + hardVelocity;
+    const coolingWeight = 1.0 / (1.0 + this.smoothedVelocity * SoftNeuron.COOLING_FACTOR);
+    this.history.push(vitality * coolingWeight);
 
     const health = this.history.mean();
 
     // Need full window before firing (temporal legitimacy requires history)
     if (!this.history.isFull) {
-      return { fired: false, health };
+      return { fired: false, health, coolingWeight };
     }
 
     return {
       fired: health >= SoftNeuron.THRESHOLD,
       health,
+      coolingWeight,
     };
   }
 
   /** Clear temporal history — used for post-sanctification refractory period */
   reset(): void {
     this.history.reset();
+    this.smoothedVelocity = 0;
   }
 
   /** Whether the ring buffer is full (temporal legitimacy achieved) */
@@ -290,6 +311,8 @@ interface SoftResult {
   fired: boolean;
   /** Integrated sphere health over time window (0~1) */
   health: number;
+  /** Most recent velocity cooling weight (1.0 = no cooling, <1.0 = spike detected) */
+  coolingWeight: number;
 }
 
 // ============================================================
@@ -469,8 +492,19 @@ export interface SanctificationResult {
 }
 
 export interface SanctificationConfig {
-  /** Ring buffer size (observations). Default 30 = 5 min at 10s intervals */
+  /** Ring buffer size (observations). Default 30 = 5 min at 10s intervals.
+   *  If cooldownMs is provided, windowSize is auto-derived and this is ignored. */
   windowSize?: number;
+  /** Ascension cooldown duration (ms). When provided, Soft window auto-aligns:
+   *  windowSize = ceil((cooldownMs + windowBufferMs) / observeIntervalMs).
+   *  Covers cooldown + buffer for staggered attacks where amber promotions
+   *  span multiple burst rounds. */
+  cooldownMs?: number;
+  /** Extra buffer beyond cooldown for Soft window (ms). Default: 60000 (1 min).
+   *  Catches trailing amber promotions from staggered attacks. */
+  windowBufferMs?: number;
+  /** Observation interval in ms (default: 10000 = 10s). Used with cooldownMs. */
+  observeIntervalMs?: number;
   /** Window growth per epoch (0 = no growth, Sphere Original default) */
   epochGrowth?: number;
   /** Maximum window size when epochGrowth > 0 */
@@ -523,7 +557,14 @@ export class SanctificationNeuron {
       ? { windowSize: config }
       : config;
 
-    this.baseWindowSize = cfg.windowSize ?? 30;
+    // Window size: auto-derive from cooldownMs when available.
+    // Soft window = cooldown + buffer — covers the period where burst amber
+    // promotions cluster, plus margin for staggered attacks.
+    const observeMs = cfg.observeIntervalMs ?? 10_000;
+    const bufferMs = cfg.windowBufferMs ?? 60_000;   // 1 min default buffer
+    this.baseWindowSize = cfg.cooldownMs
+      ? Math.ceil((cfg.cooldownMs + bufferMs) / observeMs)
+      : (cfg.windowSize ?? 30);
     this.epochGrowth = cfg.epochGrowth ?? 0;
     this.maxWindowSize = cfg.maxWindowSize ?? 90;
     this.metabolicAutoMode = cfg.metabolicAutoMode ?? true;
@@ -558,8 +599,9 @@ export class SanctificationNeuron {
     }
 
     // Three-party observation (same data, different perspectives)
+    // Hard→Soft velocity feedback: Design L152 "Hard ──velocity──→ Soft (速度 → 冷却重み)"
     const hard = this.hard.process(telemetry);
-    const soft = this.soft.process(telemetry);
+    const soft = this.soft.process(telemetry, hard.velocity);
     const meta = this.meta.process(telemetry);
 
     // Three-party consensus — all must agree
@@ -702,6 +744,7 @@ export class SanctificationNeuron {
         health: round4(r.soft.health),
         threshold: SoftNeuron.THRESHOLD,
         bufferFull: this.soft.isFull,
+        coolingWeight: round4(r.soft.coolingWeight),
       },
       meta: {
         healthy: r.meta.healthy,
@@ -740,6 +783,7 @@ export interface SanctificationStatus {
     health: number;
     threshold: number;
     bufferFull: boolean;
+    coolingWeight: number;
   };
   meta: {
     healthy: boolean;
