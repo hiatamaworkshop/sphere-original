@@ -77,17 +77,6 @@ export function randomUnitVector(dim: number): number[] {
 }
 
 /**
- * Linear interpolation between two vectors
- * @param t Interpolation factor [0, 1]
- */
-export function lerp(a: number[], b: number[], t: number): number[] {
-  if (a.length !== b.length) {
-    throw new Error(`Vector dimension mismatch: ${a.length} vs ${b.length}`);
-  }
-  return a.map((v, i) => v + (b[i] - v) * t);
-}
-
-/**
  * Calculate weighted sum of multiple vectors
  */
 export function weightedSum(
@@ -115,9 +104,3 @@ export function weightedSum(
   return result;
 }
 
-/**
- * Get vector dimension
- */
-export function getDimension(vec: number[]): number {
-  return vec.length;
-}

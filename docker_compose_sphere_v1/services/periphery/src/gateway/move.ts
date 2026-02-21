@@ -134,7 +134,7 @@ export class SignatureRegistry {
 /**
  * Quantize cosine distance to perception level
  */
-export function quantizeDistance(
+function quantizeDistance(
   distance: number,
   config: MoveConfig = DEFAULT_MOVE_CONFIG
 ): DistanceLevel {
@@ -146,7 +146,7 @@ export function quantizeDistance(
 /**
  * Quantize heat value to perception level
  */
-export function quantizeHeat(
+function quantizeHeat(
   heat: number,
   config: MoveConfig = DEFAULT_MOVE_CONFIG
 ): HeatLevel {
@@ -170,7 +170,7 @@ export function quantizeHeat(
  * [Design] Cold nodes are invisible (minHeat filter)
  * [Design] Results are capped (maxResults)
  */
-export function scan(
+function scan(
   agentVector: number[],
   nodes: SphereNode[],
   signatureRegistry: SignatureRegistry,
@@ -267,7 +267,7 @@ function calculateGravity(
  *   follow: gravity dominant
  *   orbit: perpendicular to gravity (not fully implemented)
  */
-export function calculateDrift(
+function calculateDrift(
   agentVector: number[],
   mode: DriftMode,
   nodes: SphereNode[],
@@ -323,7 +323,7 @@ export function calculateDrift(
  * [Design] moveBatch: steps > 1 executes as single calculation
  * [Principle] 384-dim resolution happens once, not per step
  */
-export function executeMove(
+function executeMove(
   agentVector: number[],
   velocity: number[],
   intent: MoveIntent,

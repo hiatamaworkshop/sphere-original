@@ -1612,15 +1612,3 @@ export function createSphereContext(options: CreateSphereContextOptions): Sphere
   );
 }
 
-/**
- * Create SphereContext with default zero vector (for testing/mock)
- */
-export function createMockSphereContext(
-  ticket: DiveTicket,
-  sessionId: string,
-  vectorDim: number = 384,
-  pipeline?: IIncarnationPipeline
-): SphereContextImpl {
-  const zeroVector = new Array(vectorDim).fill(0);
-  return new SphereContextImpl(ticket, sessionId, zeroVector, pipeline);
-}

@@ -123,21 +123,6 @@ services:
       retries: 5
       start_period: 60s
 
-  # RenalCore - Metabolism Engine (Optional standalone service)
-  # Currently integrated into Periphery, but can be run independently
-  # renalcore:
-  #   build:
-  #     context: ./services/renalCore
-  #     dockerfile: Dockerfile
-  #   container_name: sphere-renalcore
-  #   environment:
-  #     NODE_ENV: production
-  #   volumes:
-  #     - ./sphere.config.json:/app/sphere.config.json:ro
-  #   networks:
-  #     - sphere-network
-  #   restart: unless-stopped
-
   # ============================================================================
   # Agent Layer (activate with: docker-compose --profile agent up)
   # ============================================================================

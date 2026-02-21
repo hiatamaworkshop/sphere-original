@@ -106,9 +106,6 @@ export class RenalCore {
     }
     this.lastNodeCount = currentNodeCount;
 
-    // [Telemetry] Tick開始 - 毎秒の心拍ログ（tickCount, 負荷係数, アイドル連続数）
-    // console.log(`[RenalCore] tick=${this.tickCount} loadFactor=${loadFactor.toFixed(3)} idle=${this.idleTickCount}`);
-
     // Decay: 全ノードの Heat/TTL + Flux を減衰させる
     this.processDecay(loadFactor);
 

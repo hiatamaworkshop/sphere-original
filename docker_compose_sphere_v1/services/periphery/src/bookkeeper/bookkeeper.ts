@@ -127,8 +127,6 @@ export class Bookkeeper {
           `[Bookkeeper] refdb_create id=${node.id.slice(0, 8)} vec=${node.vector.length > 0 ? node.vector.length : "empty"}`
         );
       } else {
-        // [Principle 2] Same content = same hash = skip (deduplicated)
-        // console.log(`[Bookkeeper] refdb_dedup id=${node.id.slice(0, 8)}`);
       }
 
       // === Phase 2: ProjDB (Body) ===

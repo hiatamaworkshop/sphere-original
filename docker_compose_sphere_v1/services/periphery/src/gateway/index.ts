@@ -29,7 +29,6 @@ export {
 export {
   SphereContextImpl,
   createSphereContext,
-  createMockSphereContext,
   type CreateSphereContextOptions,
 } from "./sphere-context.js";
 

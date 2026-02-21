@@ -616,45 +616,6 @@ export class SphereCoreAdapter {
   }
 
   // ============================================================
-  // Evaluation: evaluate() - DEPRECATED
-  // ============================================================
-
-  /**
-   * Record evaluation on an existing node
-   *
-   * @deprecated This method is no longer used in the 2-layer evaluation architecture.
-   *
-   * [New Design] Evaluations are:
-   *   1. Accumulated in session buffer (sphere-context.ts)
-   *   2. Included in ExperienceCapsule.evaluations at return time
-   *   3. Processed by Bookkeeper.applyEvaluations() with coefficients
-   *
-   * [Why Deprecated]
-   *   - Real-time ProjDB writes removed for unified evaluation path
-   *   - Session accumulation → batch ProjDB reflection at return time
-   *   - Bookkeeper handles 2-layer coefficient application (h×10, w×5, d×0.01)
-   *
-   * @param nodeId Target node ID
-   * @param score Evaluation score (-1 to 1) - OLD FORMAT
-   */
-  async evaluate(nodeId: string, score: number): Promise<boolean> {
-    console.warn(
-      `[SphereCoreAdapter] evaluate() is DEPRECATED. ` +
-      `Evaluations should be buffered in session and processed by Bookkeeper at return time.`
-    );
-
-    const node = await this.projectionRepo.get(nodeId);
-    if (!node) return false;
-
-    // Legacy behavior (kept for compatibility, not recommended)
-    const heatDelta = score * 5;  // -5 to +5 range
-    node.metrics.h = Math.max(0, Math.min(100, node.metrics.h + heatDelta));
-
-    await this.projectionRepo.set(nodeId, node);
-    return true;
-  }
-
-  // ============================================================
   // Movement: move()
   // ============================================================
 
