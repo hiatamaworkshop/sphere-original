@@ -1,7 +1,10 @@
 **/node_modules
 **/dist
 .git
-phi-agent/data
+# phi-agent/data is needed by HF Spaces Dockerfile (bundled gen data)
+# On hf-deploy, only necessary files are committed (species-profile, gen-005, gen-011)
+phi-agent/data/eval-log.jsonl
+phi-agent/data/narrative-log.jsonl
 reports
 docs
 *.md
