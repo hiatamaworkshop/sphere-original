@@ -30,6 +30,24 @@ import {
   type CrystallizationResult,
 } from "../arbiter/arbiter.js";
 
+/**
+ * Evaluation Config (2-Layer Architecture)
+ *
+ * [Design] Agent provides intuitive 0-10 scores, computation layer adjusts impact
+ *   - coefficients: delta = (input - neutral) × coefficient
+ *   - maturityPreWeight: lifecycle-based multiplier on coefficients (future)
+ */
+export interface EvaluationConfig {
+  neutral: number;
+  coefficients: { h: number; w: number; d: number };
+  amberMaxHeat: number;
+  maturityPreWeight?: {
+    young?:  { h: number; w: number; d: number };
+    mature?: { h: number; w: number; d: number };
+    elder?:  { h: number; w: number; d: number };
+  };
+}
+
 export class Bookkeeper {
   // === Flux Seep: 対流因子による局所 TTL 染み出し ===
   // [Design] 分解地点の position に flux を蓄積し、近傍ノードの TTL にわずかずつ還元する
@@ -42,10 +60,17 @@ export class Bookkeeper {
 
   private fluxPool: Map<string, { position: number[]; amount: number }> = new Map();
 
+  private static readonly DEFAULT_EVAL_CONFIG: EvaluationConfig = {
+    neutral: 5,
+    coefficients: { h: 5, w: 2, d: 5 },
+    amberMaxHeat: 500,
+  };
+
   constructor(
     private projectionRepo: IProjectionRepository,
     private referenceRepo: IReferenceRepository,
-    private spatialRepo: ISpatialFieldRepository
+    private spatialRepo: ISpatialFieldRepository,
+    private evalConfig: EvaluationConfig = Bookkeeper.DEFAULT_EVAL_CONFIG,
   ) {}
 
   /**
@@ -159,13 +184,6 @@ export class Bookkeeper {
    * 代謝凍結 (SystemCore) により自然減衰はない。heat 変動は評価のみ
    */
   private static readonly AMBER_DEFAULT_HEAT = 400;
-
-  /**
-   * Maximum heat for Amber nodes
-   * [Design] 評価で heat が上がりすぎると sense/scanL1 を支配してしまう
-   * 上限を設けることで Amber が Active より目立たないようにする
-   */
-  private static readonly AMBER_MAX_HEAT = 500;
 
   public async applyTransitions(queue: TransitionQueue): Promise<void> {
     const { shouldAscend, shouldErode, shouldRevive, flagUpdates, crystallizations } = queue;
@@ -520,22 +538,6 @@ export class Bookkeeper {
   private readonly immunityTracker = new NodeImmunityTracker();
 
   /**
-   * Evaluation Coefficients (2-Layer Architecture, Integer Scale)
-   *
-   * [Design] Agent provides intuitive 0-10 scores, computation layer adjusts impact
-   *   - h, w: Primary metrics for Ascension (threshold 1000)
-   *   - d: TTL decay speed control (baseline 1000, high = early death)
-   *
-   * [Tuning] Adjust these values to balance evaluation impact
-   */
-  private static readonly EVAL_COEFFICIENTS = {
-    h: 5,       // Heat: (input - 5) * 5 → max ±25 per evaluation
-    w: 2,       // Weight: (input - 5) * 2 → max ±10 per evaluation
-    d: 5,       // Decay: (input - 5) * 5 → max ±25 per evaluation (affects TTL)
-  };
-  private static readonly EVAL_NEUTRAL = 5;
-
-  /**
    * Apply evaluations to existing nodes
    *
    * [2-Layer Evaluation Architecture]
@@ -576,8 +578,8 @@ export class Bookkeeper {
     let notFound = 0;
     let frozen = 0;
 
-    const { h: hCoef, w: wCoef, d: dCoef } = Bookkeeper.EVAL_COEFFICIENTS;
-    const neutral = Bookkeeper.EVAL_NEUTRAL;
+    const { h: hCoef, w: wCoef, d: dCoef } = this.evalConfig.coefficients;
+    const neutral = this.evalConfig.neutral;
 
     for (const evaluation of evaluations) {
       const node = await this.projectionRepo.get(evaluation.nodeId);
@@ -612,7 +614,7 @@ export class Bookkeeper {
       // [Amber Heat Cap] Amber の heat 上限（sense/scanL1 支配防止）
       // 下限なし — 低評価で erosionHeatThreshold (100) まで落ちれば Erosion 発動
       if (node.kind === "amber") {
-        node.metrics.h = Math.min(node.metrics.h, Bookkeeper.AMBER_MAX_HEAT);
+        node.metrics.h = Math.min(node.metrics.h, this.evalConfig.amberMaxHeat);
       }
 
       // [Node immunity] Track eval delta pattern in Bloom filter

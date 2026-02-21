@@ -58,6 +58,24 @@
       "basePerceptionRadius": 1.5
     },
 
+    "evaluation": {
+      "_comment": "2-Layer evaluation coefficients: agent input (0-10) → delta = (input - neutral) × coefficient",
+      "neutral": 5,
+      "coefficients": {
+        "h": 5,
+        "w": 2,
+        "d": 5
+      },
+      "amberMaxHeat": 500,
+      "_maturity_comment": "maturityPreWeight: multiplier on coefficients based on sphere lifecycle phase. Applied as coef × preWeight.",
+      "maturityPreWeight": {
+        "young":  { "h": 1.0, "w": 1.5, "d": 1.0, "_comment": "weight 蓄積を促進 — 初期成長を助ける" },
+        "mature": { "h": 1.0, "w": 1.0, "d": 1.0, "_comment": "標準バランス" },
+        "elder":  { "h": 0.8, "w": 0.8, "d": 1.2, "_comment": "安定性重視 — 変動を抑制、揮発性判定を強化" }
+      },
+      "_maturity_note": "maturityStage is determined by sanctification epoch count: 0=young, 1-2=mature, 3+=elder"
+    },
+
     "tagger": {
       "topTierCount": 3
     },
@@ -120,12 +138,15 @@
         "referenceNodeCount": 1000,
         "thresholdFloor": 0.8,
         "thresholdCap": 3.0,
-        "_comment_lowerThreshold": "0.85 for young sphere testing (archive mode). slack=110pts vs ~25pts decay over 5min → survives.",
-        "lowerThresholdRatio": 0.85,
+        "_comment_lowerThreshold": "0.9 = must maintain 90% of initial score during cooldown. Dropout: h=relic(300), w=normal(100) — weight penalty for failed candidacy.",
+        "lowerThresholdRatio": 0.9,
+        "_comment_immune": "Immune Threshold Amplification: effectiveRatio = min(cap, baseRatio + weight × max(0, immuneMod - 1.0)). immuneMod 1.018+ → cap hit → dropout under archive×0.5. Derived: weight = (avgRetention - baseRatio) / criticalDev ≈ 5.0",
+        "immuneWeight": 5.0,
+        "immuneRatioCap": 0.99,
         "dropoutReset": {
-          "_comment": "Metrics reset on cooldown failure (fake amber punishment) - integer scale",
-          "h": 400,
-          "w": 500,
+          "_comment": "Metrics reset on cooldown failure — h=relic tier (findable), w=normal tier (weight stripped as punishment)",
+          "h": 300,
+          "w": 100,
           "d": 1000
         },
         "absorption": {

@@ -69,6 +69,14 @@ export interface ArbiterConfig {
   // 結晶化レコードの最大保存数
   maxAbsorbedNodes?: number;
 
+  // === Immune Threshold Amplification（免疫信号 → 下限スレッショルド調整） ===
+  // immuneWeight: immuneMod 偏差の増幅係数
+  // 導出: (avgRetention - lowerThresholdRatio) / criticalImmuneDev
+  // archive×0.5, cooldown 300s: (0.9888 - 0.9) / 0.018 ≈ 5.0
+  immuneWeight?: number;      // default: 5.0
+  // effectiveRatio の上限（自然残存率の境界）
+  immuneRatioCap?: number;    // default: 0.99
+
   // === Revival 設定（Fossil → Active 復活） ===
   // Revival スコア閾値: h × w がこれ以上で復活候補
   revivalThreshold?: number;   // default: 2500
@@ -160,7 +168,8 @@ export interface StateChanges {
  *
  * [Design] 冷却期間中の候補を監視
  *   - 評価凍結: Candidate フラグ持ちは評価を受け付けない
- *   - 下方スレッショルド: initialScore × lowerThresholdRatio を維持必要
+ *   - 下方スレッショルド: initialScore × effectiveRatio を維持必要
+ *   - effectiveRatio = lowerThresholdRatio + immuneWeight × max(0, immuneMod - 1.0)
  *   - 動的スコア再計算: 毎 observe() でスコアを再計算
  */
 export interface CandidateEntry {
@@ -170,10 +179,12 @@ export interface CandidateEntry {
   candidateSince: number;
   /** 登録時の複合スコア */
   initialScore: number;
-  /** 下方スレッショルド = initialScore × lowerThresholdRatio */
+  /** 下方スレッショルド = initialScore × effectiveRatio（免疫信号で調整済み） */
   lowerThreshold: number;
   /** 参考用: 登録時のメトリクス */
   snapshot: { h: number; w: number; d: number };
+  /** 登録時の immuneMod（免疫信号スナップショット、ログ用） */
+  snapshotImmuneMod: number;
 }
 
 /**
@@ -326,7 +337,8 @@ export class Arbiter {
       if (currentScore < entry.lowerThreshold) {
         console.log(
           `[Arbiter] Candidate dropout: ${nodeId.slice(0, 8)} ` +
-          `score=${currentScore.toFixed(2)} < threshold=${entry.lowerThreshold.toFixed(2)}`
+          `score=${currentScore.toFixed(2)} < threshold=${entry.lowerThreshold.toFixed(2)} ` +
+          `immuneMod=${entry.snapshotImmuneMod.toFixed(4)}`
         );
         // Candidate フラグ除去 + デフォルトメトリクスにリセット（整数スケール）
         queue.flagUpdates.push({
@@ -379,7 +391,13 @@ export class Arbiter {
    *
    * [Design] 複合スコアが閾値を超えたら候補登録
    *   - Candidate フラグ付与
-   *   - 下方スレッショルド = initialScore × lowerThresholdRatio
+   *   - 下方スレッショルド = initialScore × effectiveRatio
+   *
+   * [Immune Threshold Amplification]
+   *   免疫系の微細な信号 (immuneMod ±0.03) を増幅し、下限スレッショルドに反映
+   *   - immuneMod ≈ 1.0 (organic): effectiveRatio = baseRatio (0.9) → 余裕あり
+   *   - immuneMod ≈ 1.02+ (suspicious): effectiveRatio → cap (0.99) → decay で脱落
+   *   immuneWeight = (avgRetention - baseRatio) / criticalImmuneDev
    */
   private checkNewCandidate(node: SphereNode, now: number): FlagUpdate | null {
     // active のみ対象
@@ -398,24 +416,42 @@ export class Arbiter {
       return null;
     }
 
+    // 免疫信号 → 下限スレッショルド調整
+    const immuneMod = node.metrics.immuneMod ?? 1.0;
+    const immuneWeight = this.config.immuneWeight ?? 5.0;
+    const immuneRatioCap = this.config.immuneRatioCap ?? 0.99;
+    const immuneDev = Math.max(0, immuneMod - 1.0);
+    const effectiveRatio = Math.min(
+      immuneRatioCap,
+      this.config.lowerThresholdRatio + immuneWeight * immuneDev
+    );
+
     // 候補登録
     const entry: CandidateEntry = {
       nodeId: node.id,
       candidateSince: now,
       initialScore: score,
-      lowerThreshold: score * this.config.lowerThresholdRatio,
+      lowerThreshold: score * effectiveRatio,
       snapshot: {
         h: node.metrics.h,
         w: node.metrics.w,
         d: node.metrics.d,
       },
+      snapshotImmuneMod: immuneMod,
     };
     this.candidateStore.set(node.id, entry);
+
+    // [Immediate Freeze] Candidate フラグを即時設定
+    // observe() → applyTransitions() の遅延（最大10s）中に評価が漏れるのを防止
+    // FlagUpdate も返して applyTransitions で正式に永続化される
+    node.metrics.flg |= NodeFlag.Candidate;
 
     const ref = this.config.referenceNodeCount ?? 50;
     console.log(
       `[Arbiter] Candidate registered: ${node.id.slice(0, 8)} ` +
       `score=${score.toFixed(2)} effectiveThreshold=${this.currentEffectiveThreshold.toFixed(0)} ` +
+      `immuneMod=${immuneMod.toFixed(4)} effectiveRatio=${effectiveRatio.toFixed(4)} ` +
+      `lowerThreshold=${entry.lowerThreshold.toFixed(2)} ` +
       `(${[...this.candidateStore.keys()].length} candidates, ref=${ref})`
     );
 

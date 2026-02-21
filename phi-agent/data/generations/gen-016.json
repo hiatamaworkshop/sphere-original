@@ -1,0 +1,595 @@
+{
+  "generation": 16,
+  "timestamp": "2026-02-21T14:01:00.308Z",
+  "inputEvaluations": 863,
+  "survivedEvaluations": 367,
+  "hunger": 0.9452,
+  "halfLifeHours": 72,
+  "species": {
+    "hunter": {
+      "evaluations": 50,
+      "avgH": 6.845389645776566,
+      "avgW": 8.233912806539509,
+      "avgD": 5.698861035422343,
+      "hotNodes": [
+        {
+          "nodeId": "f7dcec2535f28615",
+          "count": 15.799999999999999
+        },
+        {
+          "nodeId": "42cc058cdc7a6c4d",
+          "count": 12.5
+        },
+        {
+          "nodeId": "ad0692f4836319a4",
+          "count": 7.7
+        },
+        {
+          "nodeId": "7dd64c0d44a58234",
+          "count": 6.799999999999999
+        },
+        {
+          "nodeId": "904b2c1f6ce3b0fb",
+          "count": 6.5
+        },
+        {
+          "nodeId": "b5e41d88e6139392",
+          "count": 6.199999999999999
+        },
+        {
+          "nodeId": "630376e6cf448ccb",
+          "count": 5
+        },
+        {
+          "nodeId": "23fbfaf960db4d6a",
+          "count": 4.8
+        },
+        {
+          "nodeId": "439103f95766d8d4",
+          "count": 4.2
+        },
+        {
+          "nodeId": "49dcf8ad122f38ce",
+          "count": 3.5999999999999996
+        }
+      ],
+      "commonTags": [
+        "mathematics",
+        "theory",
+        "culture",
+        "cognition",
+        "time",
+        "history",
+        "anthropology",
+        "philosophy",
+        "society",
+        "information",
+        "civilization",
+        "chronology",
+        "computation",
+        "linguistics",
+        "ethics"
+      ]
+    },
+    "sniper": {
+      "evaluations": 46,
+      "avgH": 6.849650515341784,
+      "avgW": 8.102434545669944,
+      "avgD": 5.563730600639735,
+      "hotNodes": [
+        {
+          "nodeId": "f7dcec2535f28615",
+          "count": 15.799999999999999
+        },
+        {
+          "nodeId": "42cc058cdc7a6c4d",
+          "count": 11.8
+        },
+        {
+          "nodeId": "904b2c1f6ce3b0fb",
+          "count": 7.199999999999999
+        },
+        {
+          "nodeId": "7dd64c0d44a58234",
+          "count": 6.799999999999999
+        },
+        {
+          "nodeId": "ad0692f4836319a4",
+          "count": 6.3
+        },
+        {
+          "nodeId": "630376e6cf448ccb",
+          "count": 5.699999999999999
+        },
+        {
+          "nodeId": "23fbfaf960db4d6a",
+          "count": 4.8
+        },
+        {
+          "nodeId": "b5e41d88e6139392",
+          "count": 4.8
+        },
+        {
+          "nodeId": "439103f95766d8d4",
+          "count": 4.2
+        },
+        {
+          "nodeId": "49dcf8ad122f38ce",
+          "count": 3.5999999999999996
+        }
+      ],
+      "commonTags": [
+        "theory",
+        "culture",
+        "mathematics",
+        "history",
+        "cognition",
+        "information",
+        "philosophy",
+        "anthropology",
+        "psychology",
+        "physics",
+        "time",
+        "civilization",
+        "chronology",
+        "algorithm",
+        "methodology"
+      ]
+    },
+    "moth": {
+      "evaluations": 43,
+      "avgH": 7.524878017869589,
+      "avgW": 7.9959128065395095,
+      "avgD": 4.697047081933971,
+      "hotNodes": [
+        {
+          "nodeId": "f7dcec2535f28615",
+          "count": 16.5
+        },
+        {
+          "nodeId": "42cc058cdc7a6c4d",
+          "count": 12.5
+        },
+        {
+          "nodeId": "7dd64c0d44a58234",
+          "count": 6.799999999999999
+        },
+        {
+          "nodeId": "23fbfaf960db4d6a",
+          "count": 6.199999999999999
+        },
+        {
+          "nodeId": "904b2c1f6ce3b0fb",
+          "count": 5.1
+        },
+        {
+          "nodeId": "b5e41d88e6139392",
+          "count": 4.8
+        },
+        {
+          "nodeId": "439103f95766d8d4",
+          "count": 4.2
+        },
+        {
+          "nodeId": "ad0692f4836319a4",
+          "count": 4.2
+        },
+        {
+          "nodeId": "49dcf8ad122f38ce",
+          "count": 3.5999999999999996
+        },
+        {
+          "nodeId": "630376e6cf448ccb",
+          "count": 3.5999999999999996
+        }
+      ],
+      "commonTags": [
+        "mathematics",
+        "theory",
+        "time",
+        "history",
+        "philosophy",
+        "information",
+        "civilization",
+        "chronology",
+        "culture",
+        "cognition",
+        "psychology",
+        "music",
+        "web",
+        "curiosity",
+        "bias"
+      ]
+    },
+    "scout": {
+      "evaluations": 32,
+      "avgH": 6.927639645776566,
+      "avgW": 7.8865378065395095,
+      "avgD": 5.349736035422343,
+      "hotNodes": [
+        {
+          "nodeId": "f7dcec2535f28615",
+          "count": 15.099999999999998
+        },
+        {
+          "nodeId": "42cc058cdc7a6c4d",
+          "count": 9
+        },
+        {
+          "nodeId": "b5e41d88e6139392",
+          "count": 6.8999999999999995
+        },
+        {
+          "nodeId": "7dd64c0d44a58234",
+          "count": 6.799999999999999
+        },
+        {
+          "nodeId": "23fbfaf960db4d6a",
+          "count": 6.199999999999999
+        },
+        {
+          "nodeId": "904b2c1f6ce3b0fb",
+          "count": 5.1
+        },
+        {
+          "nodeId": "439103f95766d8d4",
+          "count": 4.2
+        },
+        {
+          "nodeId": "ad0692f4836319a4",
+          "count": 4.2
+        },
+        {
+          "nodeId": "49dcf8ad122f38ce",
+          "count": 3.5999999999999996
+        },
+        {
+          "nodeId": "630376e6cf448ccb",
+          "count": 3.5999999999999996
+        }
+      ],
+      "commonTags": [
+        "mathematics",
+        "theory",
+        "philosophy",
+        "psychology",
+        "cognition",
+        "information",
+        "computation",
+        "physics",
+        "history",
+        "neuroscience",
+        "brain",
+        "distributed",
+        "logic",
+        "proof",
+        "social"
+      ]
+    },
+    "scholar": {
+      "evaluations": 47,
+      "avgH": 7.00117687981912,
+      "avgW": 8.085274508667169,
+      "avgD": 5.510307843932981,
+      "hotNodes": [
+        {
+          "nodeId": "f7dcec2535f28615",
+          "count": 17.2
+        },
+        {
+          "nodeId": "42cc058cdc7a6c4d",
+          "count": 11.1
+        },
+        {
+          "nodeId": "23fbfaf960db4d6a",
+          "count": 7.6
+        },
+        {
+          "nodeId": "7dd64c0d44a58234",
+          "count": 6.799999999999999
+        },
+        {
+          "nodeId": "904b2c1f6ce3b0fb",
+          "count": 5.8
+        },
+        {
+          "nodeId": "630376e6cf448ccb",
+          "count": 5.699999999999999
+        },
+        {
+          "nodeId": "49dcf8ad122f38ce",
+          "count": 5
+        },
+        {
+          "nodeId": "b5e41d88e6139392",
+          "count": 4.8
+        },
+        {
+          "nodeId": "439103f95766d8d4",
+          "count": 4.2
+        },
+        {
+          "nodeId": "ad0692f4836319a4",
+          "count": 4.2
+        }
+      ],
+      "commonTags": [
+        "mathematics",
+        "theory",
+        "physics",
+        "information",
+        "computation",
+        "philosophy",
+        "time",
+        "cognition",
+        "evolution",
+        "biology",
+        "logic",
+        "proof",
+        "thought-experiment",
+        "quantum",
+        "genetics"
+      ]
+    },
+    "archivist": {
+      "evaluations": 53,
+      "avgH": 6.70723870238034,
+      "avgW": 8.048742995218754,
+      "avgD": 5.496257261837438,
+      "hotNodes": [
+        {
+          "nodeId": "f7dcec2535f28615",
+          "count": 15.799999999999999
+        },
+        {
+          "nodeId": "42cc058cdc7a6c4d",
+          "count": 13.2
+        },
+        {
+          "nodeId": "23fbfaf960db4d6a",
+          "count": 8.3
+        },
+        {
+          "nodeId": "7dd64c0d44a58234",
+          "count": 8.2
+        },
+        {
+          "nodeId": "904b2c1f6ce3b0fb",
+          "count": 7.199999999999999
+        },
+        {
+          "nodeId": "49dcf8ad122f38ce",
+          "count": 7.1
+        },
+        {
+          "nodeId": "b5e41d88e6139392",
+          "count": 6.199999999999999
+        },
+        {
+          "nodeId": "439103f95766d8d4",
+          "count": 5.6
+        },
+        {
+          "nodeId": "ad0692f4836319a4",
+          "count": 4.2
+        },
+        {
+          "nodeId": "630376e6cf448ccb",
+          "count": 3.5999999999999996
+        }
+      ],
+      "commonTags": [
+        "mathematics",
+        "theory",
+        "computation",
+        "philosophy",
+        "history",
+        "time",
+        "civilization",
+        "chronology",
+        "information",
+        "distributed",
+        "logic",
+        "proof",
+        "mystery",
+        "unsolved",
+        "frontier"
+      ]
+    },
+    "wanderer": {
+      "evaluations": 44,
+      "avgH": 6.764571463958384,
+      "avgW": 7.7890946247213275,
+      "avgD": 5.948315580876889,
+      "hotNodes": [
+        {
+          "nodeId": "f7dcec2535f28615",
+          "count": 16.5
+        },
+        {
+          "nodeId": "42cc058cdc7a6c4d",
+          "count": 9
+        },
+        {
+          "nodeId": "b5e41d88e6139392",
+          "count": 8.3
+        },
+        {
+          "nodeId": "23fbfaf960db4d6a",
+          "count": 6.199999999999999
+        },
+        {
+          "nodeId": "439103f95766d8d4",
+          "count": 5.6
+        },
+        {
+          "nodeId": "7dd64c0d44a58234",
+          "count": 5.3999999999999995
+        },
+        {
+          "nodeId": "904b2c1f6ce3b0fb",
+          "count": 5.1
+        },
+        {
+          "nodeId": "ad0692f4836319a4",
+          "count": 4.2
+        },
+        {
+          "nodeId": "49dcf8ad122f38ce",
+          "count": 3.5999999999999996
+        },
+        {
+          "nodeId": "630376e6cf448ccb",
+          "count": 3.5999999999999996
+        }
+      ],
+      "commonTags": [
+        "mathematics",
+        "cognition",
+        "theory",
+        "information",
+        "philosophy",
+        "society",
+        "culture",
+        "computation",
+        "anthropology",
+        "history",
+        "physics",
+        "neuroscience",
+        "brain",
+        "math",
+        "logic"
+      ]
+    },
+    "balanced": {
+      "evaluations": 52,
+      "avgH": 6.7156204150073355,
+      "avgW": 7.7132204988472015,
+      "avgD": 5.691322573883882,
+      "hotNodes": [
+        {
+          "nodeId": "f7dcec2535f28615",
+          "count": 14.399999999999999
+        },
+        {
+          "nodeId": "42cc058cdc7a6c4d",
+          "count": 12.5
+        },
+        {
+          "nodeId": "904b2c1f6ce3b0fb",
+          "count": 8.6
+        },
+        {
+          "nodeId": "7dd64c0d44a58234",
+          "count": 8.2
+        },
+        {
+          "nodeId": "439103f95766d8d4",
+          "count": 7.7
+        },
+        {
+          "nodeId": "ad0692f4836319a4",
+          "count": 7
+        },
+        {
+          "nodeId": "49dcf8ad122f38ce",
+          "count": 5.699999999999999
+        },
+        {
+          "nodeId": "23fbfaf960db4d6a",
+          "count": 4.8
+        },
+        {
+          "nodeId": "b5e41d88e6139392",
+          "count": 4.8
+        },
+        {
+          "nodeId": "630376e6cf448ccb",
+          "count": 3.5999999999999996
+        }
+      ],
+      "commonTags": [
+        "philosophy",
+        "mathematics",
+        "theory",
+        "culture",
+        "cognition",
+        "anthropology",
+        "time",
+        "history",
+        "society",
+        "psychology",
+        "civilization",
+        "methodology",
+        "research",
+        "ethics",
+        "justice"
+      ]
+    }
+  },
+  "global": {
+    "evaluations": 367,
+    "avgH": 6.9046321525885554,
+    "avgW": 7.986376021798365,
+    "avgD": 5.509536784741145,
+    "hotNodes": [
+      {
+        "nodeId": "f7dcec2535f28615",
+        "count": 41
+      },
+      {
+        "nodeId": "42cc058cdc7a6c4d",
+        "count": 30
+      },
+      {
+        "nodeId": "7dd64c0d44a58234",
+        "count": 18
+      },
+      {
+        "nodeId": "904b2c1f6ce3b0fb",
+        "count": 17
+      },
+      {
+        "nodeId": "23fbfaf960db4d6a",
+        "count": 16
+      },
+      {
+        "nodeId": "b5e41d88e6139392",
+        "count": 16
+      },
+      {
+        "nodeId": "439103f95766d8d4",
+        "count": 14
+      },
+      {
+        "nodeId": "ad0692f4836319a4",
+        "count": 14
+      },
+      {
+        "nodeId": "49dcf8ad122f38ce",
+        "count": 12
+      },
+      {
+        "nodeId": "630376e6cf448ccb",
+        "count": 12
+      }
+    ],
+    "commonTags": [
+      "mathematics",
+      "theory",
+      "philosophy",
+      "cognition",
+      "information",
+      "history",
+      "time",
+      "culture",
+      "computation",
+      "civilization",
+      "chronology",
+      "anthropology",
+      "society",
+      "psychology",
+      "physics"
+    ]
+  }
+}

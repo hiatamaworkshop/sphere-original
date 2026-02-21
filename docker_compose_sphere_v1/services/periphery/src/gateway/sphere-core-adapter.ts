@@ -476,8 +476,8 @@ export class SphereCoreAdapter {
     this.focusState.set(sessionId, { nodeId, startTime: Date.now() });
 
     // Update metrics only for non-frozen nodes
-    // Amber nodes are frozen - no metabolism updates
-    if (!this.isAmber(node)) {
+    // Amber (SystemCore) and Candidate (cooldown) are frozen
+    if (!this.isAmber(node) && !(node.metrics.flg & NodeFlag.Candidate)) {
       node.metrics.h += this.config.focusHeatBoost;
       await this.projectionRepo.set(nodeId, node);
     }

@@ -14,7 +14,7 @@ import { Packer } from "./packer/packer.js";
 import { Parser } from "./parser/parser.js";
 import { EntryBuffer, IncarnationBuffer } from "./parser/buffer.js";
 import { LocalEmbeddingProvider } from "./parser/embedding-provider.js";
-import { Bookkeeper } from "./bookkeeper/bookkeeper.js";
+import { Bookkeeper, type EvaluationConfig } from "./bookkeeper/bookkeeper.js";
 import { NodeIngestBuffer } from "./incarnation/buffer.js";
 import { IncarnationPipeline } from "./incarnation/pipeline.js";
 import { IncarnationParser } from "./incarnation/incarnation-parser.js";
@@ -217,6 +217,9 @@ const arbiterConfig = {
   ascensionCooldownMs: arbiterSettings.ascension?.cooldownMs ?? 600000,
   ascensionScoreThreshold: arbiterSettings.ascension?.scoreThreshold ?? 1100,
   lowerThresholdRatio: arbiterSettings.ascension?.lowerThresholdRatio ?? 0.9,
+  // Immune Threshold Amplification: effectiveRatio = min(cap, baseRatio + weight × max(0, immuneMod - 1.0))
+  immuneWeight: arbiterSettings.ascension?.immuneWeight ?? 5.0,
+  immuneRatioCap: arbiterSettings.ascension?.immuneRatioCap ?? 0.99,
   // Allostatic threshold: effectiveThreshold = scoreThreshold × clamp(sqrt(active / ref), floor, cap)
   referenceNodeCount: arbiterSettings.ascension?.referenceNodeCount ?? 1000,
   ascensionThresholdFloor: arbiterSettings.ascension?.thresholdFloor ?? 0.6,
@@ -583,8 +586,21 @@ const incarnationParser = new IncarnationParser(incarnationVectorBuffer);  // su
 const tagger = new Tagger();  // tags → 16bit flags (semantic classification)
 const packer = new Packer(config);
 
+// Evaluation config (2-Layer coefficients from sphere.config.json)
+const evalSettings = sphereConfig.periphery?.evaluation ?? {};
+const evaluationConfig: EvaluationConfig = {
+  neutral: evalSettings.neutral ?? 5,
+  coefficients: {
+    h: evalSettings.coefficients?.h ?? 5,
+    w: evalSettings.coefficients?.w ?? 2,
+    d: evalSettings.coefficients?.d ?? 5,
+  },
+  amberMaxHeat: evalSettings.amberMaxHeat ?? 500,
+  maturityPreWeight: evalSettings.maturityPreWeight,
+};
+
 // Bookkeeper with Repository injection (loose coupling)
-const bookkeeper = new Bookkeeper(projectionRepo, referenceRepo, spatialRepo);
+const bookkeeper = new Bookkeeper(projectionRepo, referenceRepo, spatialRepo, evaluationConfig);
 
 // IncarnationPipeline - unified capsule processing for both internal and external agents
 // [Flow] Capsule → Gatekeeper → Parser → Tagger → Packer → Bookkeeper
