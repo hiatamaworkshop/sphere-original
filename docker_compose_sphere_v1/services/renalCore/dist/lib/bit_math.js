@@ -33,6 +33,8 @@ const DEFAULT_MODIFIERS = {
     TemporalLong: { decayRateMultiplier: 0.8, ttlDecayMultiplier: 0.7 },
     // Density (bits 4-7)
     Dense: { weightMultiplier: 1.2 },
+    Sparse: { weightMultiplier: 0.8 },
+    Composite: { weightMultiplier: 1.1 },
     Authority: { decayRateMultiplier: 0.95 },
     // Special (bits 12-15)
     SystemCore: { decayRateMultiplier: 0, ttlDecayMultiplier: 0 }, // Frozen metabolism (Relic)

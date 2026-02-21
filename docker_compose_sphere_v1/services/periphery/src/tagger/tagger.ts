@@ -42,13 +42,13 @@ import { NodeFlag } from "@sphere/renal-core";
  * [Design] FLAG_SYSTEM_REDESIGN.md
  *   - Temporal (bits 0-3): when does this matter?     — ユニバーサル
  *   - Density (bits 4-7): how much is packed in?      — ユニバーサル
- *   - Cognitive (bits 8-11): how does it feel?         — ドメイン固有 (text gate)
+ *   - Cognitive (bits 8-11): epistemic state            — ドメイン固有 (text gate)
  *   - Special (bits 12-15): system/user metadata       — ユニバーサル
  *
  * [Cognitive Layer — Domain Specific]
- *   text gate:    Insightful / Confusing / Provoking / Soothing
- *   numeric gate: Anomalous / Noisy / Trending / Stable (将来)
- *   signal gate:  Resonant / Distorted / Impulsive / Harmonic (将来)
+ *   text gate:    Sharp / Fuzzy / Tensile / Settled
+ *   numeric gate: Precise / Noisy / Volatile / Stable (将来)
+ *   signal gate:  Coherent / Distorted / Transient / Steady (将来)
  *   → ビット位置は共通、意味テーブルのみ差し替え
  *
  * [Philosophy] Sparse patterns. Agents compensate via Loadout.
@@ -57,14 +57,16 @@ import { NodeFlag } from "@sphere/renal-core";
  *   - Density: Authority のみ配線。Dense/Sparse/Composite の物理効果は未確定
  *   - Cognitive: 物理効果なし (FastGate scoring のみ — 意図通り)
  *
- * [Dynamic flags — Arbiter 管轄, Tagger は付与しない]
+ * [Dynamic flags — Arbiter/Bookkeeper 管轄, Tagger は付与しない]
  *   - Hot (0x0008): h >= hotHeatThreshold で Arbiter が付与
- *   - Candidate (0x8000): Ascension 冷却期間中に Arbiter が付与
+ *   - SystemCore (0x2000): Relic seed / Amber ascension で Bookkeeper が付与 (代謝凍結)
  *   - Compressed (0x4000): Fossil 化時に Arbiter が付与
+ *   - Candidate (0x8000): Ascension 冷却期間中に Arbiter が付与
  *   ※ Candidate/Compressed は将来 state field へ移行予定 (types.ts TODO)
+ *   ※ SystemCore を Tagger で付与すると active ノードの代謝が停止するバグが発生した (2026-02)
  *
  * [Known Behaviors]
- *   - "stable" → TemporalLong + Soothing の二重マッチ (直交次元、仕様通り)
+ *   - "stable" → TemporalLong の単独マッチ (Settled は "established" 等で検出)
  *   - tierFlags.top = 0x0002 (config) → topTier に TemporalLong 自動付与 (Packer 側)
  *     trending topTier は TemporalShort + TemporalLong が共存する
  */
@@ -73,7 +75,7 @@ const TAG_FLAG_PATTERNS: { pattern: RegExp; flags: number }[] = [
 
   // TemporalShort (0x0001): time-sensitive, decays quickly
   {
-    pattern: /\b(new|latest|breaking|recent|fresh|trending|viral|hot|2024|2025|2026|today|now|current|update|modern|live|just-in)\b/i,
+    pattern: /\b(new|latest|breaking|recent|fresh|trending|viral|hot|today|now|current|update|modern|live|just-in)\b/i,
     flags: NodeFlag.TemporalShort,
   },
 
@@ -99,7 +101,7 @@ const TAG_FLAG_PATTERNS: { pattern: RegExp; flags: number }[] = [
 
   // Sparse (0x0020): low density
   {
-    pattern: /\b(casual|light|brief|anecdotal|simple|short|note|memo|thought|overview|intro|summary)\b/i,
+    pattern: /\b(short|minimal|low-detail|sketch|outline|brief|note|memo|overview|intro|summary|snippet|fragment)\b/i,
     flags: NodeFlag.Sparse,
   },
 
@@ -111,7 +113,7 @@ const TAG_FLAG_PATTERNS: { pattern: RegExp; flags: number }[] = [
 
   // Authority (0x0080): compressed trust
   {
-    pattern: /\b(official|authoritative|peer-reviewed|research|paper|verified|canonical|standard|specification|reference|source|doc|documentation)\b/i,
+    pattern: /\b(official|authoritative|peer-reviewed|research|paper|verified|canonical|standard|specification|reference|doc|documentation)\b/i,
     flags: NodeFlag.Authority,
   },
 
@@ -120,29 +122,28 @@ const TAG_FLAG_PATTERNS: { pattern: RegExp; flags: number }[] = [
   // Future: LLM-based Tagger, or entirely different gate type (numeric/signal/graph)
   // Bit positions (0x0100-0x0800) are universal; semantic meaning changes per gate type
 
-  // Insightful (0x0100): generates "aha" moments
+  // Sharp (0x0100): 明確、一意的解釈、境界明瞭
   {
-    pattern: /\b(insight|revelation|breakthrough|discovery|realization|epiphany|illuminating|enlightening)\b/i,
-    flags: NodeFlag.Insightful,
+    pattern: /\b(definition|theorem|proof|conclusion|precisely|exact|formula|axiom|law)\b/i,
+    flags: NodeFlag.Sharp,
   },
 
-  // Confusing (0x0200): low resolution, ambiguous
+  // Fuzzy (0x0200): 曖昧、複数解釈可能、未確定
   {
-    pattern: /\b(confusing|unclear|ambiguous|vague|obscure|complex|paradox|contradictory)\b/i,
-    flags: NodeFlag.Confusing,
+    pattern: /\b(hypothesis|maybe|perhaps|unclear|ambiguous|uncertain|speculative|conjecture|tentative|approximate)\b/i,
+    flags: NodeFlag.Fuzzy,
   },
 
-  // Provoking (0x0400): challenges assumptions
+  // Tensile (0x0400): 内部対立・矛盾を内包、未解決
   {
-    pattern: /\b(controversial|debate|challenge|question|provocative|radical|disruptive|unconventional)\b/i,
-    flags: NodeFlag.Provoking,
+    pattern: /\b(debate|controversy|paradox|contradiction|versus|conflict|unresolved|dilemma|tension|disputed)\b/i,
+    flags: NodeFlag.Tensile,
   },
 
-  // Soothing (0x0800): calming, reassuring
-  // Note: "stable" also matches TemporalLong — intentional dual-flag (orthogonal dimensions)
+  // Settled (0x0800): 決着済み、合意形成済み、収束
   {
-    pattern: /\b(calming|reassuring|stable|peaceful|harmonious|consistent|predictable|gentle)\b/i,
-    flags: NodeFlag.Soothing,
+    pattern: /\b(established|consensus|standard|proven|accepted|settled|canonical|codified|ratified|definitive)\b/i,
+    flags: NodeFlag.Settled,
   },
 
   // --- Special Layer (bits 12-15) ---
@@ -153,11 +154,9 @@ const TAG_FLAG_PATTERNS: { pattern: RegExp; flags: number }[] = [
     flags: NodeFlag.UserMarked,
   },
 
-  // SystemCore (0x2000): infrastructure
-  {
-    pattern: /\b(system|config|settings|internal|kernel|infrastructure|architecture|framework|schema|model|engine|runtime|bootstrap|core)\b/i,
-    flags: NodeFlag.SystemCore,
-  },
+  // SystemCore (0x2000): 付与禁止 — 代謝凍結フラグのため Tagger が付与してはならない
+  // Relic seed data と Bookkeeper (Amber ascension) のみが管理する
+  // See: Dynamic flags コメント (上記)
 ];
 
 /**

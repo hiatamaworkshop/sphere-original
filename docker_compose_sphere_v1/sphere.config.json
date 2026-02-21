@@ -1,9 +1,17 @@
 {
   "metadata": {
+    "sphereId": "sphere-genesis",
     "sphere_name": "Sphere Genesis",
+    "description": "汎用知識スフィア — 実験・開発用",
     "version": "0.3.0",
+    "apiVersion": "1",
     "forked_from": "origin",
-    "ethos": "Metabolism over Preservation"
+    "ethos": "Metabolism over Preservation",
+    "mode": "core",
+    "_mode_note": "core = full metabolism. sanctuary = read-only, no metabolism (frozen sphere for standalone deployment)",
+    "tags": ["general", "experimental", "development"],
+    "language": ["ja", "en"],
+    "confidenceHints": {}
   },
 
   "physical_constants": {
@@ -50,17 +58,36 @@
       "basePerceptionRadius": 1.5
     },
 
+    "evaluation": {
+      "_comment": "2-Layer evaluation coefficients: agent input (0-10) → delta = (input - neutral) × coefficient",
+      "neutral": 5,
+      "coefficients": {
+        "h": 5,
+        "w": 2,
+        "d": 5
+      },
+      "amberMaxHeat": 500,
+      "_maturity_comment": "maturityPreWeight: multiplier on coefficients based on sphere lifecycle phase. Applied as coef × preWeight.",
+      "maturityPreWeight": {
+        "young":  { "h": 1.0, "w": 1.5, "d": 1.0, "_comment": "weight 蓄積を促進 — 初期成長を助ける" },
+        "mature": { "h": 1.0, "w": 1.0, "d": 1.0, "_comment": "標準バランス" },
+        "elder":  { "h": 0.8, "w": 0.8, "d": 1.2, "_comment": "安定性重視 — 変動を抑制、揮発性判定を強化" }
+      },
+      "_maturity_note": "maturityStage is determined by sanctification epoch count: 0=young, 1-2=mature, 3+=elder"
+    },
+
     "tagger": {
       "topTierCount": 3
     },
 
     "packer": {
       "_comment": "Integer scale: h/w threshold 1000, d baseline 1000",
-      "baseHeat": 750,
+      "baseHeat": 500,
       "tierWeights": {
         "top": 300,
         "normal": 100,
-        "ghost": 50
+        "ghost": 50,
+        "relic": 300
       },
       "tierTTLs": {
         "top": 172800,
@@ -104,13 +131,22 @@
 
       "ascension": {
         "_comment": "Ascension cooldown: evaluation freeze + h+w score + lower threshold",
-        "cooldownMs": 600000,
-        "scoreThreshold": 1000,
+        "_comment_cooldown": "5min (300000ms) for testing. Production: 10min (600000). Heat decays faster than weight, so cooldown acts as a heat-purge filter — burst-evaluated nodes drop out, weight-stable nodes survive.",
+        "cooldownMs": 300000,
+        "scoreThreshold": 1100,
+        "_comment_allostatic": "effectiveThreshold = scoreThreshold × clamp(sqrt(activeNodes / referenceNodeCount), floor, cap). floor=0.6 → min threshold 660.",
+        "referenceNodeCount": 1000,
+        "thresholdFloor": 0.8,
+        "thresholdCap": 3.0,
+        "_comment_lowerThreshold": "0.9 = must maintain 90% of initial score during cooldown. Dropout: h=relic(300), w=normal(100) — weight penalty for failed candidacy.",
         "lowerThresholdRatio": 0.9,
+        "_comment_immune": "Immune Threshold Amplification: effectiveRatio = min(cap, baseRatio + weight × max(0, immuneMod - 1.0)). immuneMod 1.018+ → cap hit → dropout under archive×0.5. Derived: weight = (avgRetention - baseRatio) / criticalDev ≈ 5.0",
+        "immuneWeight": 5.0,
+        "immuneRatioCap": 0.99,
         "dropoutReset": {
-          "_comment": "Metrics reset on cooldown failure (fake amber punishment) - integer scale",
-          "h": 400,
-          "w": 500,
+          "_comment": "Metrics reset on cooldown failure — h=relic tier (findable), w=normal tier (weight stripped as punishment)",
+          "h": 300,
+          "w": 100,
           "d": 1000
         },
         "absorption": {
@@ -137,11 +173,10 @@
     },
 
     "decay": {
-      "_comment": "preset: archive | balanced | flow | dev | custom (未指定時は NODE_ENV から自動判定)",
-      "preset": "balanced",
-      "alpha": 10.0,
-      "heatDecayFactor": 0.01,
-      "weightDecayFactor": 0.005
+      "_comment": "preset: archive | natural | flow | dev (未指定時は NODE_ENV から自動判定)",
+      "preset": "archive",
+      "decayIntensity": 0.5,
+      "_decayIntensity_note": "Global multiplier on all decay factors (alpha, heat, weight, flux). 1.0=preset default, 0.5=half decay, 0.33=1/3 decay. Applied on top of preset values."
     },
 
     "thresholds": {
@@ -161,7 +196,7 @@
     "spatial": {
       "gridSize": 0.1,
       "planktonConversionRate": 0.3,
-      "fertilityDecayRate": 0.01
+      "fluxDecayRate": 0.01
     },
 
     "pause": {
@@ -207,6 +242,18 @@
         }
       }
     }
+  },
+
+  "sanctification": {
+    "_comment": "Three-party consensus for sphere state sanctification (Hard/Soft/Meta)",
+    "_comment_window": "windowSize auto-derived from arbiter.ascension.cooldownMs (300000ms / 10s = 30 obs)",
+    "epochGrowth": 0,
+    "_epochGrowth_note": "0 = Sphere Original (clean). Set >0 for progressive difficulty per epoch.",
+    "maxWindowSize": 90,
+    "metabolicAutoMode": false,
+    "_metabolicAutoMode_note": "Allostatic: bands relative to Hard baseline. <bl×0.5=flow, <bl=natural, ≥bl=archive. [Testing] false + preset=archive to prevent weight decay from cancelling eval gains in young sphere.",
+    "dormancyObservations": 3,
+    "_dormancyObservations_note": "Consecutive zero-agent observations before hibernation (3 × 10s = ~30s)"
   },
 
   "cleanerFish": {

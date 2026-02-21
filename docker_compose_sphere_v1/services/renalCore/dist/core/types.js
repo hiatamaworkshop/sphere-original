@@ -5,7 +5,7 @@
  * 16bit Flags & Core Interfaces
  * - 物性 vs 意味: Flags は「意味」ではなく「物性」
  * - Authority フラグ → decay_rate × 0.95（物理パラメータへ変換）
- * - Freshness フラグ → heat_boost × 1.2
+ * - TemporalShort フラグ → decay × 1.3, ttl_decay × 1.2
  * - エージェントの足跡を物理定数に変換する
  */
 /**
@@ -30,11 +30,11 @@ export var NodeFlag;
     NodeFlag[NodeFlag["Sparse"] = 32] = "Sparse";
     NodeFlag[NodeFlag["Composite"] = 64] = "Composite";
     NodeFlag[NodeFlag["Authority"] = 128] = "Authority";
-    // Cognitive (bits 8-11)
-    NodeFlag[NodeFlag["Insightful"] = 256] = "Insightful";
-    NodeFlag[NodeFlag["Confusing"] = 512] = "Confusing";
-    NodeFlag[NodeFlag["Provoking"] = 1024] = "Provoking";
-    NodeFlag[NodeFlag["Soothing"] = 2048] = "Soothing";
+    // Cognitive (bits 8-11) — epistemic state of information
+    NodeFlag[NodeFlag["Sharp"] = 256] = "Sharp";
+    NodeFlag[NodeFlag["Fuzzy"] = 512] = "Fuzzy";
+    NodeFlag[NodeFlag["Tensile"] = 1024] = "Tensile";
+    NodeFlag[NodeFlag["Settled"] = 2048] = "Settled";
     // Special (bits 12-15)
     NodeFlag[NodeFlag["UserMarked"] = 4096] = "UserMarked";
     NodeFlag[NodeFlag["SystemCore"] = 8192] = "SystemCore";

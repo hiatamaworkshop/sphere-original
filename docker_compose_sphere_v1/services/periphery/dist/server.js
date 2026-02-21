@@ -386,7 +386,7 @@ export class PeripheryServer {
             const flagBits = [
                 NodeFlag.TemporalShort, NodeFlag.TemporalLong, NodeFlag.TemporalCyclic, NodeFlag.Hot,
                 NodeFlag.Dense, NodeFlag.Sparse, NodeFlag.Composite, NodeFlag.Authority,
-                NodeFlag.Insightful, NodeFlag.Confusing, NodeFlag.Provoking, NodeFlag.Soothing,
+                NodeFlag.Sharp, NodeFlag.Fuzzy, NodeFlag.Tensile, NodeFlag.Settled,
                 NodeFlag.UserMarked, NodeFlag.SystemCore, NodeFlag.Compressed, NodeFlag.Candidate,
             ];
             for (const node of this.projectionDB.values()) {

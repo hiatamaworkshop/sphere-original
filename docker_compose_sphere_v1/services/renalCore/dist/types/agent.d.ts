@@ -314,7 +314,7 @@ export type VoxelState = "sleep" | "active" | "hot";
 export interface SpatialFieldV2 {
     cellId: string;
     centerVector: EmbeddingVector;
-    fertility: number;
+    flux: number;
     nodeCount: number;
     avgHeat: number;
     lastUpdate: number;

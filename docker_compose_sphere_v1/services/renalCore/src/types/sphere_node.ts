@@ -10,7 +10,7 @@
  * 存在の階層 (Phase of Existence)
  * 意味の密度と熱量によって決定される。
  *
- * [Note] plankton は SpatialField.fertility で表現される（ノードではない）
+ * [Note] plankton は SpatialField.flux（対流因子）で表現される（ノードではない）
  */
 export type NodeKind =
   | "relic"       // 永続
@@ -55,6 +55,7 @@ export interface SphereNode {
     ttl: number;     // time-to-live
     flg: number;     // 16-bit flags
     stayTime?: number;
+    immuneMod?: number; // [Node immunity] heat decay multiplier (default 1.0, clamp 0.97~1.03)
   };
   timestamp: number;
 }

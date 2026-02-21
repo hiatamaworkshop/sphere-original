@@ -28,6 +28,7 @@ import { FastGate, LOADOUTS } from "./fast-gate.js";
 import type { Loadout, LoadoutName } from "./fast-gate.js";
 import { appendEvalLog, appendNarrative, loadSpeciesProfile } from "./eval-log.js";
 import type { EvalLogEntry, NarrativeEntry } from "./eval-log.js";
+import { renderBroadcast } from "./broadcast-renderer.js";
 
 /** Species-specific voice guidance for return responses */
 const SPECIES_VOICE: Record<string, string> = {
@@ -112,6 +113,7 @@ export class PhiAgent {
     h: number;
     w: number;
     d: number;
+    flags: number;
   }> = [];
 
   /** Session start time for duration tracking */
@@ -211,6 +213,31 @@ export class PhiAgent {
       await this.sphere.disconnect();
       this.log("Returned from Sphere");
 
+      // Step 5b: Broadcast — deterministic projection (no LLM, always emitted)
+      let broadcastPosts: string[] = [];
+      if (this.encounters.length > 0) {
+        const posts = renderBroadcast(this.encounters, {
+          loadout: this.gate.loadoutName,
+          query: this.config.query,
+          cycles: this.stats.cycles,
+          nodesExamined: this.stats.nodesExamined,
+          evaluations: this.stats.evaluations,
+          energy: this.sphere.currentEnergy,
+          initialEnergy: this.initialEnergy,
+          duration: Date.now() - this.sessionStart,
+          timestamp: this.sessionStart,
+        });
+        if (posts.length > 0) {
+          console.log("\n== BROADCAST START ==");
+          for (let i = 0; i < posts.length; i++) {
+            if (i > 0) console.log("---");
+            console.log(posts[i].text);
+          }
+          console.log("== BROADCAST END ==\n");
+          broadcastPosts = posts.map(p => p.text);
+        }
+      }
+
       // Step 6: Return response (only if response flag is on) — runs AFTER disconnect
       if (this.config.response) {
         try {
@@ -223,7 +250,7 @@ export class PhiAgent {
             // Persist narrative to Digestor
             const loadoutName = typeof this.config.loadout === "string"
               ? this.config.loadout : this.config.loadout.name;
-            await this.persistNarrative(loadoutName, response);
+            await this.persistNarrative(loadoutName, response, broadcastPosts);
           }
         } catch (err) {
           this.log(`Return response failed: ${err}`);
@@ -401,6 +428,7 @@ export class PhiAgent {
       tags: detail.tags ?? [],
       summary: (detail.summary ?? "").slice(0, 200),
       h, w, d,
+      flags: target.flags,
     });
 
     // 8. Emit cycle JSON for UI (structured output, always printed)
@@ -408,6 +436,7 @@ export class PhiAgent {
       nodeId: target.id,
       tags: detail.tags ?? [],
       summary: (detail.summary ?? "").slice(0, 100),
+      flags: target.flags,
     }, {
       h, w, d,
       reason: (evalAction.reason ?? "").slice(0, 100),
@@ -503,12 +532,14 @@ export class PhiAgent {
           tags: detail.tags ?? [],
           summary: (detail.summary ?? "").slice(0, 200),
           h: 0, w: 0, d: 0,
+          flags: target.flags,
         });
 
         this.emitCycleJson("explore", nodes.length, {
           nodeId: target.id,
           tags: detail.tags ?? [],
           summary: (detail.summary ?? "").slice(0, 100),
+          flags: target.flags,
         });
       } catch (err) {
         this.log(`Explore cycle error: ${err}`);
@@ -566,7 +597,7 @@ export class PhiAgent {
   // ===== Narrative Persistence =====
 
   /** Persist return narrative to Digestor (or local file) */
-  private async persistNarrative(loadoutName: string, narrative: string): Promise<void> {
+  private async persistNarrative(loadoutName: string, narrative: string, broadcast?: string[]): Promise<void> {
     try {
       const energyRatio = this.initialEnergy > 0
         ? this.sphere.currentEnergy / this.initialEnergy
@@ -592,6 +623,7 @@ export class PhiAgent {
           frustration: parseFloat(this.gate.memory.frustration.toFixed(3)),
           stamina: parseFloat((1 - energyRatio).toFixed(3)),
         },
+        ...(broadcast && broadcast.length > 0 && { broadcast }),
       };
 
       await appendNarrative(entry);
@@ -682,7 +714,7 @@ export class PhiAgent {
   private emitCycleJson(
     action: string,
     nearbyNodes?: number,
-    focused?: { nodeId: string; tags: string[]; summary: string },
+    focused?: { nodeId: string; tags: string[]; summary: string; flags?: number },
     evaluation?: { h: number; w: number; d: number; reason: string }
   ): void {
     const data = {
@@ -736,11 +768,9 @@ Your overall experience:
 
     const voiceGuide = SPECIES_VOICE[this.gate.loadoutName] ?? SPECIES_VOICE.balanced;
 
-    const prompt = `Nodes encountered:
-${encounterList}${experienceBlock}
-Write your Sphere diary. Two short paragraphs.`;
+    const prompt = `Nodes encountered:\n${encounterList}${experienceBlock}\nWrite your Sphere diary. Two short paragraphs.`;
 
-    const system = `You are an explorer in the Sphere. ${voiceGuide} Write about what you found and felt. Refer to nodes by quoting their summaries.`;
+    const system = `You are an explorer in the Sphere. ${voiceGuide} Write about what you found and felt.`;
 
     const response = await this.ollama.generateText(prompt, system);
 

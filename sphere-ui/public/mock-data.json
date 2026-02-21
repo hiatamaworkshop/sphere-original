@@ -6,7 +6,7 @@
       "productivity",
       "psychology"
     ],
-    "payload": "Explaining code out loud to a rubber duck often reveals bugs by forcing structured thinking.",
+    "content": "Explaining code out loud to a rubber duck often reveals bugs by forcing structured thinking.",
     "flags": 0,
     "importance": 0.62
   },
@@ -17,7 +17,7 @@
       "psychology",
       "internet"
     ],
-    "payload": "Social feeds exploit variable reward schedules, keeping users scrolling in search of the next interesting item.",
+    "content": "Social feeds exploit variable reward schedules, keeping users scrolling in search of the next interesting item.",
     "flags": 0,
     "importance": 0.66
   },
@@ -28,7 +28,7 @@
       "timing",
       "daily-life"
     ],
-    "payload": "Avocados are rock hard for days, then suddenly perfect for about 15 minutes before turning brown.",
+    "content": "Avocados are rock hard for days, then suddenly perfect for about 15 minutes before turning brown.",
     "flags": 0,
     "importance": 0.24
   },
@@ -39,7 +39,7 @@
       "nature",
       "chill"
     ],
-    "payload": "Capybaras calmly coexist with birds, monkeys, and even crocodiles, acting like neutral diplomats of nature.",
+    "content": "Capybaras calmly coexist with birds, monkeys, and even crocodiles, acting like neutral diplomats of nature.",
     "flags": 0,
     "importance": 0.55
   },
@@ -50,7 +50,7 @@
       "chemistry",
       "sensation"
     ],
-    "payload": "Rain hitting dry soil releases plant oils and geosmin, producing the nostalgic scent called petrichor.",
+    "content": "Rain hitting dry soil releases plant oils and geosmin, producing the nostalgic scent called petrichor.",
     "flags": 0,
     "importance": 0.63
   },
@@ -61,7 +61,7 @@
       "brain",
       "annoyance"
     ],
-    "payload": "A catchy fragment loops endlessly in the mind, usually from a song you didn't even like.",
+    "content": "A catchy fragment loops endlessly in the mind, usually from a song you didn't even like.",
     "flags": 0,
     "importance": 0.41
   },
@@ -72,7 +72,7 @@
       "curiosity",
       "time"
     ],
-    "payload": "Searching one topic often spirals into hours of unrelated content through linked curiosity.",
+    "content": "Searching one topic often spirals into hours of unrelated content through linked curiosity.",
     "flags": 0,
     "importance": 0.5
   },
@@ -83,7 +83,7 @@
       "humor",
       "physics"
     ],
-    "payload": "Cats appear to behave like fluids, adapting their shape perfectly to containers they sit in.",
+    "content": "Cats appear to behave like fluids, adapting their shape perfectly to containers they sit in.",
     "flags": 0,
     "importance": 0.45
   },
@@ -94,7 +94,7 @@
       "cognition",
       "daily-life"
     ],
-    "payload": "Relaxed attention and mild sensory isolation in the shower often produce sudden insights.",
+    "content": "Relaxed attention and mild sensory isolation in the shower often produce sudden insights.",
     "flags": 0,
     "importance": 0.47
   },
@@ -105,7 +105,7 @@
       "humor",
       "logic"
     ],
-    "payload": "The universal experience of fixing a broken device by realizing it was never powered on.",
+    "content": "The universal experience of fixing a broken device by realizing it was never powered on.",
     "flags": 0,
     "importance": 0.28
   },
@@ -116,7 +116,7 @@
       "psychology",
       "social"
     ],
-    "payload": "Spatial ability drops and heart rate rises dramatically when strangers watch you park.",
+    "content": "Spatial ability drops and heart rate rises dramatically when strangers watch you park.",
     "flags": 0,
     "importance": 0.31
   },
@@ -127,7 +127,7 @@
       "culture",
       "evolution"
     ],
-    "payload": "Memes mutate, replicate, and compete for attention like digital genes.",
+    "content": "Memes mutate, replicate, and compete for attention like digital genes.",
     "flags": 0,
     "importance": 0.59
   },
@@ -138,7 +138,7 @@
       "digital",
       "stress"
     ],
-    "payload": "Read receipts without replies trigger disproportionate social anxiety.",
+    "content": "Read receipts without replies trigger disproportionate social anxiety.",
     "flags": 0,
     "importance": 0.37
   },
@@ -149,7 +149,7 @@
       "time",
       "energy"
     ],
-    "payload": "After 3PM on Fridays, most tasks degrade into 'let's revisit this Monday.'",
+    "content": "After 3PM on Fridays, most tasks degrade into 'let's revisit this Monday.'",
     "flags": 0,
     "importance": 0.12
   },
@@ -160,7 +160,7 @@
       "philosophy",
       "hunger"
     ],
-    "payload": "Opening the refrigerator while bored, hoping for a new reality to appear inside.",
+    "content": "Opening the refrigerator while bored, hoping for a new reality to appear inside.",
     "flags": 0,
     "importance": 0.19
   },
@@ -171,7 +171,7 @@
       "sensory",
       "nostalgia"
     ],
-    "payload": "Paper and ink release a calming aroma before the first page is even read.",
+    "content": "Paper and ink release a calming aroma before the first page is even read.",
     "flags": 0,
     "importance": 0.44
   },
@@ -182,7 +182,7 @@
       "chemistry",
       "childhood"
     ],
-    "payload": "Milk left after cereal is disproportionately better due to dissolved sugar and crumbs.",
+    "content": "Milk left after cereal is disproportionately better due to dissolved sugar and crumbs.",
     "flags": 0,
     "importance": 0.21
   },
@@ -193,7 +193,7 @@
       "social",
       "behavior"
     ],
-    "payload": "The more witnesses there are, the less likely anyone is to intervene.",
+    "content": "The more witnesses there are, the less likely anyone is to intervene.",
     "flags": 0,
     "importance": 0.77
   },
@@ -204,7 +204,7 @@
       "AI",
       "mind"
     ],
-    "payload": "Symbol manipulation alone may not constitute understanding.",
+    "content": "Symbol manipulation alone may not constitute understanding.",
     "flags": 0,
     "importance": 0.82
   },
@@ -215,7 +215,7 @@
       "family",
       "acoustics"
     ],
-    "payload": "Biological necessity for fathers to sneeze at decibel levels that rattle window panes.",
+    "content": "Biological necessity for fathers to sneeze at decibel levels that rattle window panes.",
     "flags": 0,
     "importance": 0.18
   },
@@ -226,7 +226,7 @@
       "habit",
       "ergonomics"
     ],
-    "payload": "The default home position for fingers providing a false sense of readiness without actual typing.",
+    "content": "The default home position for fingers providing a false sense of readiness without actual typing.",
     "flags": 0,
     "importance": 0.22
   },
@@ -237,7 +237,7 @@
       "tech",
       "frustration"
     ],
-    "payload": "USB connectors often exist in a quantum state requiring at least three attempts to plug in correctly.",
+    "content": "USB connectors often exist in a quantum state requiring at least three attempts to plug in correctly.",
     "flags": 0,
     "importance": 0.35
   },
@@ -248,7 +248,7 @@
       "home",
       "procrastination"
     ],
-    "payload": "The longer a letter remains unopened, the more terrifying its potential contents become in the mind.",
+    "content": "The longer a letter remains unopened, the more terrifying its potential contents become in the mind.",
     "flags": 0,
     "importance": 0.27
   },
@@ -259,7 +259,7 @@
       "social",
       "behavior"
     ],
-    "payload": "Intense mental competition to choose the fastest checkout lane and finish before a 'rival' in another line.",
+    "content": "Intense mental competition to choose the fastest checkout lane and finish before a 'rival' in another line.",
     "flags": 0,
     "importance": 0.14
   },
@@ -270,7 +270,7 @@
       "society",
       "etiquette"
     ],
-    "payload": "The complex calculation to maximize distance from strangers in a semi-empty train car.",
+    "content": "The complex calculation to maximize distance from strangers in a semi-empty train car.",
     "flags": 0,
     "importance": 0.38
   },
@@ -281,7 +281,7 @@
       "household",
       "anomaly"
     ],
-    "payload": "Statistical phenomenon where socks enter the laundry in pairs but exit as lonely individuals.",
+    "content": "Statistical phenomenon where socks enter the laundry in pairs but exit as lonely individuals.",
     "flags": 0,
     "importance": 0.09
   },
@@ -292,7 +292,7 @@
       "food",
       "engineering"
     ],
-    "payload": "Folding a slice lengthwise creates Gaussian curvature, preventing the tip from drooping under gravity.",
+    "content": "Folding a slice lengthwise creates Gaussian curvature, preventing the tip from drooping under gravity.",
     "flags": 0,
     "importance": 0.52
   },
@@ -303,7 +303,7 @@
       "birds",
       "vision"
     ],
-    "payload": "Pigeons move their heads to lock onto static visual frames while their bodies move forward.",
+    "content": "Pigeons move their heads to lock onto static visual frames while their bodies move forward.",
     "flags": 0,
     "importance": 0.44
   },
@@ -314,7 +314,7 @@
       "memory",
       "routine"
     ],
-    "payload": "Performing routine tasks so automatically that the brain fails to register the memory of doing them.",
+    "content": "Performing routine tasks so automatically that the brain fails to register the memory of doing them.",
     "flags": 0,
     "importance": 0.33
   },
@@ -325,7 +325,7 @@
       "daily-life",
       "tragedy"
     ],
-    "payload": "Coffee is undrinkably hot for 20 minutes, then perfect for 45 seconds, then immediately ice cold.",
+    "content": "Coffee is undrinkably hot for 20 minutes, then perfect for 45 seconds, then immediately ice cold.",
     "flags": 0,
     "importance": 0.29
   },
@@ -336,7 +336,7 @@
       "behavior",
       "habit"
     ],
-    "payload": "The sudden urge to deep-clean a kitchen to avoid starting a high-priority mental task.",
+    "content": "The sudden urge to deep-clean a kitchen to avoid starting a high-priority mental task.",
     "flags": 0,
     "importance": 0.41
   },
@@ -347,7 +347,7 @@
       "frustration",
       "physics"
     ],
-    "payload": "Inserting money and pressing a button with full faith that gravity and mechanics will deliver your snack.",
+    "content": "Inserting money and pressing a button with full faith that gravity and mechanics will deliver your snack.",
     "flags": 0,
     "importance": 0.2
   },
@@ -358,7 +358,7 @@
       "ui-ux",
       "control"
     ],
-    "payload": "Many door-close buttons are non-functional, existing only to provide a sense of agency to passengers.",
+    "content": "Many door-close buttons are non-functional, existing only to provide a sense of agency to passengers.",
     "flags": 0,
     "importance": 0.48
   },
@@ -369,7 +369,7 @@
       "sensory",
       "commercial"
     ],
-    "payload": "The distinctive scent is a cocktail of VOCs from plastics, glues, and sealants.",
+    "content": "The distinctive scent is a cocktail of VOCs from plastics, glues, and sealants.",
     "flags": 0,
     "importance": 0.51
   },
@@ -380,7 +380,7 @@
       "web",
       "insomnia"
     ],
-    "payload": "Starting with one article and ending up reading about obscure medieval siege tactics at 3AM.",
+    "content": "Starting with one article and ending up reading about obscure medieval siege tactics at 3AM.",
     "flags": 0,
     "importance": 0.36
   },
@@ -391,7 +391,7 @@
       "security",
       "mathematics"
     ],
-    "payload": "Asymmetric encryption based on prime factorization difficulty. Public key encrypts, private key decrypts.",
+    "content": "Asymmetric encryption based on prime factorization difficulty. Public key encrypts, private key decrypts.",
     "flags": 0,
     "importance": 0.92
   },
@@ -402,7 +402,7 @@
       "TCP",
       "protocol"
     ],
-    "payload": "Reno, Cubic, BBR adapt sending rate to avoid network saturation. Slow start, congestion avoidance, fast retransmit.",
+    "content": "Reno, Cubic, BBR adapt sending rate to avoid network saturation. Slow start, congestion avoidance, fast retransmit.",
     "flags": 0,
     "importance": 0.85
   },
@@ -413,7 +413,7 @@
       "data-structure",
       "algorithm"
     ],
-    "payload": "Self-balancing tree optimized for disk I/O. Keeps data sorted, allows logarithmic search, insert, delete.",
+    "content": "Self-balancing tree optimized for disk I/O. Keeps data sorted, allows logarithmic search, insert, delete.",
     "flags": 0,
     "importance": 0.88
   },
@@ -424,7 +424,7 @@
       "gc",
       "runtime"
     ],
-    "payload": "Two-phase algorithm: mark reachable objects from roots, then sweep unmarked objects as garbage.",
+    "content": "Two-phase algorithm: mark reachable objects from roots, then sweep unmarked objects as garbage.",
     "flags": 0,
     "importance": 0.79
   },
@@ -435,7 +435,7 @@
       "LLVM",
       "optimization"
     ],
-    "payload": "Language-agnostic IR enables portable optimizations. SSA form, type system, modular passes.",
+    "content": "Language-agnostic IR enables portable optimizations. SSA form, type system, modular passes.",
     "flags": 0,
     "importance": 0.82
   },
@@ -446,7 +446,7 @@
       "mathematics",
       "theory"
     ],
-    "payload": "Entropy quantifies information content. Channel capacity defines maximum reliable transmission rate.",
+    "content": "Entropy quantifies information content. Channel capacity defines maximum reliable transmission rate.",
     "flags": 0,
     "importance": 0.9
   },
@@ -457,7 +457,7 @@
       "physics",
       "cosmology"
     ],
-    "payload": "Galaxy rotation curves, gravitational lensing indicate invisible mass. Constitutes 85% of matter.",
+    "content": "Galaxy rotation curves, gravitational lensing indicate invisible mass. Constitutes 85% of matter.",
     "flags": 0,
     "importance": 0.87
   },
@@ -468,7 +468,7 @@
       "genetics",
       "biotechnology"
     ],
-    "payload": "Bacterial immune system repurposed for precise DNA cutting. Guide RNA directs Cas9 nuclease to target sequence.",
+    "content": "Bacterial immune system repurposed for precise DNA cutting. Guide RNA directs Cas9 nuclease to target sequence.",
     "flags": 0,
     "importance": 0.94
   },
@@ -479,7 +479,7 @@
       "brain",
       "cognition"
     ],
-    "payload": "Brain rewires synaptic connections through experience. Hebbian learning: neurons that fire together wire together.",
+    "content": "Brain rewires synaptic connections through experience. Hebbian learning: neurons that fire together wire together.",
     "flags": 0,
     "importance": 0.86
   },
@@ -490,7 +490,7 @@
       "number-theory",
       "millennium"
     ],
-    "payload": "All non-trivial zeros of zeta function have real part 1/2. Implications for prime distribution.",
+    "content": "All non-trivial zeros of zeta function have real part 1/2. Implications for prime distribution.",
     "flags": 0,
     "importance": 0.91
   },
@@ -501,7 +501,7 @@
       "mathematics",
       "philosophy"
     ],
-    "payload": "Encode logical statements as numbers. Enables self-referential statements within formal systems.",
+    "content": "Encode logical statements as numbers. Enables self-referential statements within formal systems.",
     "flags": 0,
     "importance": 0.88
   },
@@ -512,7 +512,7 @@
       "mathematics",
       "geometry"
     ],
-    "payload": "Continuous deformations preserve topological properties. Coffee cup and donut are homeomorphic.",
+    "content": "Continuous deformations preserve topological properties. Coffee cup and donut are homeomorphic.",
     "flags": 0,
     "importance": 0.77
   },
@@ -523,7 +523,7 @@
       "economics",
       "mathematics"
     ],
-    "payload": "Strategic stability where no player benefits from unilateral deviation. Exists in all finite games.",
+    "content": "Strategic stability where no player benefits from unilateral deviation. Exists in all finite games.",
     "flags": 0,
     "importance": 0.84
   },
@@ -534,7 +534,7 @@
       "signal",
       "analysis"
     ],
-    "payload": "Decompose signals into constituent frequencies. Time domain to frequency domain conversion.",
+    "content": "Decompose signals into constituent frequencies. Time domain to frequency domain conversion.",
     "flags": 0,
     "importance": 0.89
   },
@@ -545,7 +545,7 @@
       "theory",
       "computation"
     ],
-    "payload": "Type 0-3 grammars classify languages by generative power. Regular, context-free, context-sensitive, unrestricted.",
+    "content": "Type 0-3 grammars classify languages by generative power. Regular, context-free, context-sensitive, unrestricted.",
     "flags": 0,
     "importance": 0.81
   },
@@ -556,7 +556,7 @@
       "cognition",
       "culture"
     ],
-    "payload": "Language structure influences thought patterns. Weak form: language affects perception; strong form: determines thought.",
+    "content": "Language structure influences thought patterns. Weak form: language affects perception; strong form: determines thought.",
     "flags": 0,
     "importance": 0.75
   },
@@ -567,7 +567,7 @@
       "theory",
       "culture"
     ],
-    "payload": "Five-note scale appears across cultures. Black piano keys form major pentatonic. Avoids semitone dissonance.",
+    "content": "Five-note scale appears across cultures. Black piano keys form major pentatonic. Avoids semitone dissonance.",
     "flags": 0,
     "importance": 0.68
   },
@@ -578,7 +578,7 @@
       "mathematics",
       "acoustics"
     ],
-    "payload": "Divide octave into 12 equal semitones. Slight detuning enables modulation to any key.",
+    "content": "Divide octave into 12 equal semitones. Slight detuning enables modulation to any key.",
     "flags": 0,
     "importance": 0.72
   },
@@ -589,7 +589,7 @@
       "methodology",
       "research"
     ],
-    "payload": "Immerse in community to understand culture from inside. Balances participation with analytical distance.",
+    "content": "Immerse in community to understand culture from inside. Balances participation with analytical distance.",
     "flags": 0,
     "importance": 0.7
   },
@@ -600,7 +600,7 @@
       "society",
       "culture"
     ],
-    "payload": "Lineage traced through mother's line. Property, status, clan membership inherited maternally.",
+    "content": "Lineage traced through mother's line. Property, status, clan membership inherited maternally.",
     "flags": 0,
     "importance": 0.66
   },
@@ -611,7 +611,7 @@
       "protocol",
       "performance"
     ],
-    "payload": "Single TCP connection handles multiple requests. Binary framing, header compression, stream prioritization.",
+    "content": "Single TCP connection handles multiple requests. Binary framing, header compression, stream prioritization.",
     "flags": 0,
     "importance": 0.78
   },
@@ -622,7 +622,7 @@
       "DNS",
       "infrastructure"
     ],
-    "payload": "Distributed database maps domains to IPs. Root servers, TLD servers, authoritative nameservers.",
+    "content": "Distributed database maps domains to IPs. Root servers, TLD servers, authoritative nameservers.",
     "flags": 0,
     "importance": 0.76
   },
@@ -633,7 +633,7 @@
       "authentication",
       "web"
     ],
-    "payload": "Delegate access without sharing credentials. Authorization code, implicit, client credentials grants.",
+    "content": "Delegate access without sharing credentials. Authorization code, implicit, client credentials grants.",
     "flags": 0,
     "importance": 0.83
   },
@@ -644,7 +644,7 @@
       "docker",
       "security"
     ],
-    "payload": "Namespaces isolate process view. Cgroups limit resources. Union filesystems layer images.",
+    "content": "Namespaces isolate process view. Cgroups limit resources. Union filesystems layer images.",
     "flags": 0,
     "importance": 0.8
   },
@@ -655,7 +655,7 @@
       "consensus",
       "theory"
     ],
-    "payload": "Achieve consensus despite malicious actors. Requires 3f+1 nodes to tolerate f failures.",
+    "content": "Achieve consensus despite malicious actors. Requires 3f+1 nodes to tolerate f failures.",
     "flags": 0,
     "importance": 0.85
   },
@@ -666,7 +666,7 @@
       "big-data",
       "algorithm"
     ],
-    "payload": "Map transforms input pairs, shuffle groups by key, reduce aggregates values. Scales to thousands of nodes.",
+    "content": "Map transforms input pairs, shuffle groups by key, reduce aggregates values. Scales to thousands of nodes.",
     "flags": 0,
     "importance": 0.82
   },
@@ -677,7 +677,7 @@
       "sorting",
       "performance"
     ],
-    "payload": "Divide-and-conquer sorting. Random pivot avoids O(n²) worst case. Average O(n log n).",
+    "content": "Divide-and-conquer sorting. Random pivot avoids O(n²) worst case. Average O(n log n).",
     "flags": 0,
     "importance": 0.74
   },
@@ -688,7 +688,7 @@
       "graph",
       "optimization"
     ],
-    "payload": "Greedy approach with priority queue. Finds shortest paths from source to all nodes. O((V+E) log V) with heap.",
+    "content": "Greedy approach with priority queue. Finds shortest paths from source to all nodes. O((V+E) log V) with heap.",
     "flags": 0,
     "importance": 0.79
   },
@@ -699,7 +699,7 @@
       "optimization",
       "theory"
     ],
-    "payload": "Solve complex problems by breaking into simpler overlapping subproblems. Memoization avoids redundant computation.",
+    "content": "Solve complex problems by breaking into simpler overlapping subproblems. Memoization avoids redundant computation.",
     "flags": 0,
     "importance": 0.77
   },
@@ -710,7 +710,7 @@
       "computation",
       "mathematics"
     ],
-    "payload": "Abstract machine defines computability. Tape, head, state table. Any algorithm can be expressed.",
+    "content": "Abstract machine defines computability. Tape, head, state table. Any algorithm can be expressed.",
     "flags": 0,
     "importance": 0.88
   },
@@ -721,7 +721,7 @@
       "functional",
       "computation"
     ],
-    "payload": "Minimal model of computation using function abstraction and application. Church-Turing equivalence.",
+    "content": "Minimal model of computation using function abstraction and application. Church-Turing equivalence.",
     "flags": 0,
     "importance": 0.83
   },
@@ -732,7 +732,7 @@
       "programming",
       "theory"
     ],
-    "payload": "Abstract pattern for chaining computations with context. Maybe, Either, IO monads encapsulate effects.",
+    "content": "Abstract pattern for chaining computations with context. Maybe, Either, IO monads encapsulate effects.",
     "flags": 0,
     "importance": 0.76
   },
@@ -743,7 +743,7 @@
       "functional",
       "control-flow"
     ],
-    "payload": "Pass function representing rest of computation. Makes control flow explicit, enables tail call optimization.",
+    "content": "Pass function representing rest of computation. Makes control flow explicit, enables tail call optimization.",
     "flags": 0,
     "importance": 0.71
   },
@@ -754,7 +754,7 @@
       "distributed",
       "model"
     ],
-    "payload": "Actors communicate via asynchronous messages. No shared state, location transparency. Erlang, Akka.",
+    "content": "Actors communicate via asynchronous messages. No shared state, location transparency. Erlang, Akka.",
     "flags": 0,
     "importance": 0.8
   },
@@ -765,7 +765,7 @@
       "memory",
       "synchronization"
     ],
-    "payload": "Optimistic concurrency using transactions. Atomic, consistent, isolated memory updates. Retry on conflict.",
+    "content": "Optimistic concurrency using transactions. Atomic, consistent, isolated memory updates. Retry on conflict.",
     "flags": 0,
     "importance": 0.73
   },
@@ -776,7 +776,7 @@
       "quantum",
       "theory"
     ],
-    "payload": "Cannot simultaneously know exact position and momentum. Δx·Δp ≥ ℏ/2. Fundamental quantum limit.",
+    "content": "Cannot simultaneously know exact position and momentum. Δx·Δp ≥ ℏ/2. Fundamental quantum limit.",
     "flags": 0,
     "importance": 0.9
   },
@@ -787,7 +787,7 @@
       "relativity",
       "spacetime"
     ],
-    "payload": "Moving clocks tick slower. t' = t/√(1-v²/c²). GPS satellites must correct for relativistic effects.",
+    "content": "Moving clocks tick slower. t' = t/√(1-v²/c²). GPS satellites must correct for relativistic effects.",
     "flags": 0,
     "importance": 0.89
   },
@@ -798,7 +798,7 @@
       "relativity",
       "gravity"
     ],
-    "payload": "Point of no return where escape velocity exceeds light speed. Information paradox unresolved.",
+    "content": "Point of no return where escape velocity exceeds light speed. Information paradox unresolved.",
     "flags": 0,
     "importance": 0.87
   },
@@ -809,7 +809,7 @@
       "genetics",
       "structure"
     ],
-    "payload": "Adenine pairs with thymine, guanine with cytosine. Complementary strands enable replication.",
+    "content": "Adenine pairs with thymine, guanine with cytosine. Complementary strands enable replication.",
     "flags": 0,
     "importance": 0.92
   },
@@ -820,7 +820,7 @@
       "metabolism",
       "energy"
     ],
-    "payload": "Glycolysis, citric acid cycle, electron transport chain. Glucose + O₂ → ATP + CO₂ + H₂O.",
+    "content": "Glycolysis, citric acid cycle, electron transport chain. Glucose + O₂ → ATP + CO₂ + H₂O.",
     "flags": 0,
     "importance": 0.84
   },
@@ -831,7 +831,7 @@
       "evolution",
       "theory"
     ],
-    "payload": "Heritable variation, differential survival, reproductive success. Adaptation to environment over generations.",
+    "content": "Heritable variation, differential survival, reproductive success. Adaptation to environment over generations.",
     "flags": 0,
     "importance": 0.95
   },
@@ -842,7 +842,7 @@
       "plant",
       "energy"
     ],
-    "payload": "Chlorophyll absorbs photons, splits water, releases O₂. Light energy → chemical energy (ATP, NADPH).",
+    "content": "Chlorophyll absorbs photons, splits water, releases O₂. Light energy → chemical energy (ATP, NADPH).",
     "flags": 0,
     "importance": 0.81
   },
@@ -853,7 +853,7 @@
       "biology",
       "signal"
     ],
-    "payload": "Voltage-gated ion channels create electrical spike. Na⁺ influx depolarizes, K⁺ efflux repolarizes membrane.",
+    "content": "Voltage-gated ion channels create electrical spike. Na⁺ influx depolarizes, K⁺ efflux repolarizes membrane.",
     "flags": 0,
     "importance": 0.86
   },
@@ -864,7 +864,7 @@
       "memory",
       "brain"
     ],
-    "payload": "Persistent strengthening of synapses through repeated activation. Basis of learning and memory.",
+    "content": "Persistent strengthening of synapses through repeated activation. Basis of learning and memory.",
     "flags": 0,
     "importance": 0.83
   },
@@ -875,7 +875,7 @@
       "cognition",
       "social"
     ],
-    "payload": "Fire both during action execution and observation. Potential basis for imitation, theory of mind.",
+    "content": "Fire both during action execution and observation. Potential basis for imitation, theory of mind.",
     "flags": 0,
     "importance": 0.78
   },
@@ -886,7 +886,7 @@
       "statistics",
       "anomaly"
     ],
-    "payload": "Leading digits in real-world data favor 1 (30%), not uniform. Detects fraud, natural datasets.",
+    "content": "Leading digits in real-world data favor 1 (30%), not uniform. Detects fraud, natural datasets.",
     "flags": 0,
     "importance": 0.74
   },
@@ -897,7 +897,7 @@
       "probability",
       "counterintuitive"
     ],
-    "payload": "23 people give 50% chance of shared birthday. Collision probability grows quadratically with group size.",
+    "content": "23 people give 50% chance of shared birthday. Collision probability grows quadratically with group size.",
     "flags": 0,
     "importance": 0.69
   },
@@ -908,7 +908,7 @@
       "paradox",
       "cognition"
     ],
-    "payload": "Switching doors after reveal gives 2/3 success. Counterintuitive but proven by conditional probability.",
+    "content": "Switching doors after reveal gives 2/3 success. Counterintuitive but proven by conditional probability.",
     "flags": 0,
     "importance": 0.72
   },
@@ -919,7 +919,7 @@
       "perception",
       "brain"
     ],
-    "payload": "Brain fills gaps, assumes context. Müller-Lyer, Ponzo illusions exploit depth cues.",
+    "content": "Brain fills gaps, assumes context. Müller-Lyer, Ponzo illusions exploit depth cues.",
     "flags": 0,
     "importance": 0.7
   },
@@ -930,7 +930,7 @@
       "cognition",
       "behavior"
     ],
-    "payload": "Mental discomfort from conflicting beliefs. Rationalization, selective exposure reduce inconsistency.",
+    "content": "Mental discomfort from conflicting beliefs. Rationalization, selective exposure reduce inconsistency.",
     "flags": 0,
     "importance": 0.76
   },
@@ -941,7 +941,7 @@
       "bias",
       "decision"
     ],
-    "payload": "Estimate probability by ease of recall. Vivid, recent events seem more frequent than they are.",
+    "content": "Estimate probability by ease of recall. Vivid, recent events seem more frequent than they are.",
     "flags": 0,
     "importance": 0.73
   },
@@ -952,7 +952,7 @@
       "medicine",
       "brain"
     ],
-    "payload": "Expectation of treatment triggers real physiological changes. Brain releases endorphins, neurotransmitters.",
+    "content": "Expectation of treatment triggers real physiological changes. Brain releases endorphins, neurotransmitters.",
     "flags": 0,
     "importance": 0.8
   },
@@ -963,7 +963,7 @@
       "identity",
       "metaphysics"
     ],
-    "payload": "Replace all parts gradually. Is it the same ship? Continuity vs material constitution.",
+    "content": "Replace all parts gradually. Is it the same ship? Continuity vs material constitution.",
     "flags": 0,
     "importance": 0.68
   },
@@ -974,7 +974,7 @@
       "AI",
       "mind"
     ],
-    "payload": "Searle's thought experiment: syntax doesn't imply semantics. Symbol manipulation vs understanding.",
+    "content": "Searle's thought experiment: syntax doesn't imply semantics. Symbol manipulation vs understanding.",
     "flags": 0,
     "importance": 0.82
   },
@@ -985,7 +985,7 @@
       "ethics",
       "thought-experiment"
     ],
-    "payload": "Utilitarian vs deontological ethics. Kill one to save five? Action vs omission distinction.",
+    "content": "Utilitarian vs deontological ethics. Kill one to save five? Action vs omission distinction.",
     "flags": 0,
     "importance": 0.75
   },
@@ -996,7 +996,7 @@
       "quantum",
       "phenomenon"
     ],
-    "payload": "Particle passes through classically forbidden barrier. Enables nuclear fusion in stars, semiconductor devices.",
+    "content": "Particle passes through classically forbidden barrier. Enables nuclear fusion in stars, semiconductor devices.",
     "flags": 0,
     "importance": 0.85
   },
@@ -1007,7 +1007,7 @@
       "materials",
       "quantum"
     ],
-    "payload": "Below critical temperature, electrons form Cooper pairs. Meissner effect expels magnetic field.",
+    "content": "Below critical temperature, electrons form Cooper pairs. Meissner effect expels magnetic field.",
     "flags": 0,
     "importance": 0.84
   },
@@ -1018,7 +1018,7 @@
       "astronomy",
       "relativity"
     ],
-    "payload": "Accelerating masses create curvature waves. LIGO detected merging black holes 2015. Confirmed Einstein.",
+    "content": "Accelerating masses create curvature waves. LIGO detected merging black holes 2015. Confirmed Einstein.",
     "flags": 0,
     "importance": 0.91
   },
@@ -1029,7 +1029,7 @@
       "quantum",
       "cosmology"
     ],
-    "payload": "Quantum fluctuations at event horizon create particle-antiparticle pairs. Black holes slowly radiate mass.",
+    "content": "Quantum fluctuations at event horizon create particle-antiparticle pairs. Black holes slowly radiate mass.",
     "flags": 0,
     "importance": 0.88
   },
@@ -1040,7 +1040,7 @@
       "social",
       "behavior"
     ],
-    "payload": "More witnesses, less likely to help. Assume others will act. Kitty Genovese case study.",
+    "content": "More witnesses, less likely to help. Assume others will act. Kitty Genovese case study.",
     "flags": 0,
     "importance": 0.77
   },
@@ -1051,7 +1051,7 @@
       "social",
       "ethics"
     ],
-    "payload": "Role assignment induced abusive behavior. Situational power over personality. Methodologically controversial.",
+    "content": "Role assignment induced abusive behavior. Situational power over personality. Methodologically controversial.",
     "flags": 0,
     "importance": 0.79
   },
@@ -1063,7 +1063,7 @@
       "attention",
       "NLP"
     ],
-    "payload": "Self-attention mechanism enabling parallel processing of sequences. Revolutionized language models by replacing recurrent structures with position-aware attention.",
+    "content": "Self-attention mechanism enabling parallel processing of sequences. Revolutionized language models by replacing recurrent structures with position-aware attention.",
     "flags": 0,
     "importance": 0.9
   },
@@ -1075,7 +1075,7 @@
       "retrieval",
       "knowledge"
     ],
-    "payload": "Combines vector search with generative models to ground responses in external knowledge. Reduces hallucination by anchoring generation to retrieved documents.",
+    "content": "Combines vector search with generative models to ground responses in external knowledge. Reduces hallucination by anchoring generation to retrieved documents.",
     "flags": 0,
     "importance": 0.9
   },
@@ -1086,7 +1086,7 @@
       "physics",
       "computing"
     ],
-    "payload": "Qubits can exist in multiple states simultaneously. Entangled particles remain correlated across arbitrary distances, enabling quantum teleportation.",
+    "content": "Qubits can exist in multiple states simultaneously. Entangled particles remain correlated across arbitrary distances, enabling quantum teleportation.",
     "flags": 0,
     "importance": 0.9
   },
@@ -1098,7 +1098,7 @@
       "database",
       "theory"
     ],
-    "payload": "Impossible to simultaneously guarantee Consistency, Availability, and Partition tolerance. Systems must choose 2 of 3 under network failures.",
+    "content": "Impossible to simultaneously guarantee Consistency, Availability, and Partition tolerance. Systems must choose 2 of 3 under network failures.",
     "flags": 0,
     "importance": 0.7
   },
@@ -1110,7 +1110,7 @@
       "search",
       "AI"
     ],
-    "payload": "Store high-dimensional embeddings for similarity search. Pinecone, Weaviate, and Milvus enable fast nearest-neighbor queries for AI applications.",
+    "content": "Store high-dimensional embeddings for similarity search. Pinecone, Weaviate, and Milvus enable fast nearest-neighbor queries for AI applications.",
     "flags": 0,
     "importance": 0.7
   },
@@ -1121,7 +1121,7 @@
       "consensus",
       "blockchain"
     ],
-    "payload": "Consensus protocol tolerating malicious actors. Used in blockchains (PBFT, Tendermint) to maintain agreement despite arbitrary node behavior.",
+    "content": "Consensus protocol tolerating malicious actors. Used in blockchains (PBFT, Tendermint) to maintain agreement despite arbitrary node behavior.",
     "flags": 0,
     "importance": 0.7
   },
@@ -1132,7 +1132,7 @@
       "logic",
       "philosophy"
     ],
-    "payload": "Any consistent formal system capable of arithmetic contains true statements that cannot be proven within the system. Limits of axiomatic reasoning.",
+    "content": "Any consistent formal system capable of arithmetic contains true statements that cannot be proven within the system. Limits of axiomatic reasoning.",
     "flags": 0,
     "importance": 0.7
   },
@@ -1143,7 +1143,7 @@
       "attention",
       "deep-learning"
     ],
-    "payload": "Weighted focus on relevant input parts. Enables models to dynamically prioritize information, forming the core of transformers.",
+    "content": "Weighted focus on relevant input parts. Enables models to dynamically prioritize information, forming the core of transformers.",
     "flags": 0,
     "importance": 0.7
   },
@@ -1154,7 +1154,7 @@
       "event-sourcing",
       "CQRS"
     ],
-    "payload": "Store state changes as immutable events. Command Query Responsibility Segregation separates read and write models for scalability.",
+    "content": "Store state changes as immutable events. Command Query Responsibility Segregation separates read and write models for scalability.",
     "flags": 0,
     "importance": 0.7
   },
@@ -1165,7 +1165,7 @@
       "web",
       "performance"
     ],
-    "payload": "Binary instruction format running at near-native speed. Enables C/C++/Rust in browsers and server-side runtimes beyond JavaScript.",
+    "content": "Binary instruction format running at near-native speed. Enables C/C++/Rust in browsers and server-side runtimes beyond JavaScript.",
     "flags": 0,
     "importance": 0.7
   },
@@ -1177,7 +1177,7 @@
       "AI",
       "deep-learning"
     ],
-    "payload": "Apply deep learning to graph-structured data. Message passing between nodes learns representations of molecules, social networks, knowledge graphs.",
+    "content": "Apply deep learning to graph-structured data. Message passing between nodes learns representations of molecules, social networks, knowledge graphs.",
     "flags": 0,
     "importance": 0.7
   },
@@ -1188,7 +1188,7 @@
       "privacy",
       "blockchain"
     ],
-    "payload": "Prove statement truth without revealing underlying data. zk-SNARKs enable private transactions and identity verification.",
+    "content": "Prove statement truth without revealing underlying data. zk-SNARKs enable private transactions and identity verification.",
     "flags": 0,
     "importance": 0.7
   },
@@ -1200,7 +1200,7 @@
       "AI",
       "image"
     ],
-    "payload": "Learn to reverse noise-adding process. Stable Diffusion and DALL-E 2 iteratively denoise random latents into coherent images.",
+    "content": "Learn to reverse noise-adding process. Stable Diffusion and DALL-E 2 iteratively denoise random latents into coherent images.",
     "flags": 0,
     "importance": 0.7
   },
@@ -1211,7 +1211,7 @@
       "monitoring",
       "devops"
     ],
-    "payload": "Monitoring checks known failure modes. Observability explores unknown unknowns through logs, metrics, traces without predefined dashboards.",
+    "content": "Monitoring checks known failure modes. Observability explores unknown unknowns through logs, metrics, traces without predefined dashboards.",
     "flags": 0,
     "importance": 0.7
   },
@@ -1223,7 +1223,7 @@
       "vision",
       "language"
     ],
-    "payload": "Unified models processing images, text, audio. CLIP, Flamingo align vision-language spaces for cross-modal reasoning.",
+    "content": "Unified models processing images, text, audio. CLIP, Flamingo align vision-language spaces for cross-modal reasoning.",
     "flags": 0,
     "importance": 0.7
   },
@@ -1234,7 +1234,7 @@
       "ML",
       "privacy"
     ],
-    "payload": "Train models across decentralized devices without centralizing data. Google's Gboard keyboard learns locally, aggregates gradients globally.",
+    "content": "Train models across decentralized devices without centralizing data. Google's Gboard keyboard learns locally, aggregates gradients globally.",
     "flags": 0,
     "importance": 0.7
   },
@@ -1245,7 +1245,7 @@
       "theory",
       "Turing"
     ],
-    "payload": "No algorithm can determine if arbitrary programs halt. Proved by Turing via self-referential contradiction.",
+    "content": "No algorithm can determine if arbitrary programs halt. Proved by Turing via self-referential contradiction.",
     "flags": 0,
     "importance": 0.4
   },
@@ -1256,7 +1256,7 @@
       "theory",
       "mathematics"
     ],
-    "payload": "Can every problem whose solution is quickly verifiable also be quickly solved? $1M prize unsolved for 50+ years.",
+    "content": "Can every problem whose solution is quickly verifiable also be quickly solved? $1M prize unsolved for 50+ years.",
     "flags": 0,
     "importance": 0.4
   },
@@ -1267,7 +1267,7 @@
       "thermodynamics",
       "time"
     ],
-    "payload": "Second law: entropy always increases in closed systems. Explains why time flows forward and why scrambled eggs don't un-scramble.",
+    "content": "Second law: entropy always increases in closed systems. Explains why time flows forward and why scrambled eggs don't un-scramble.",
     "flags": 0,
     "importance": 0.4
   },
@@ -1278,7 +1278,7 @@
       "stream",
       "realtime"
     ],
-    "payload": "Distributed commit log for real-time data pipelines. Topics, partitions, consumer groups enable high-throughput event streaming.",
+    "content": "Distributed commit log for real-time data pipelines. Topics, partitions, consumer groups enable high-throughput event streaming.",
     "flags": 0,
     "importance": 0.7
   },
@@ -1289,7 +1289,7 @@
       "linux",
       "observability"
     ],
-    "payload": "Run sandboxed programs in kernel space without changing source. Powers Cilium networking, bpftrace debugging, Falco security.",
+    "content": "Run sandboxed programs in kernel space without changing source. Powers Cilium networking, bpftrace debugging, Falco security.",
     "flags": 0,
     "importance": 0.7
   },
@@ -1300,7 +1300,7 @@
       "information",
       "compression"
     ],
-    "payload": "Shortest program that outputs a string. Incomputable but measures intrinsic randomness and data compressibility.",
+    "content": "Shortest program that outputs a string. Incomputable but measures intrinsic randomness and data compressibility.",
     "flags": 0,
     "importance": 0.4
   },
@@ -1311,7 +1311,7 @@
       "AI",
       "unsupervised"
     ],
-    "payload": "Learn from unlabeled data by predicting masked parts. BERT masks words, SimCLR augments images for contrastive learning.",
+    "content": "Learn from unlabeled data by predicting masked parts. BERT masks words, SimCLR augments images for contrastive learning.",
     "flags": 0,
     "importance": 0.7
   },
@@ -1322,7 +1322,7 @@
       "istio",
       "microservice"
     ],
-    "payload": "Sidecar proxies handle service-to-service communication. Traffic management, security, observability without code changes.",
+    "content": "Sidecar proxies handle service-to-service communication. Traffic management, security, observability without code changes.",
     "flags": 0,
     "importance": 0.7
   },
@@ -1333,7 +1333,7 @@
       "philosophy",
       "Japanese"
     ],
-    "payload": "Beauty in imperfection, impermanence, incompleteness. Celebrates cracks in pottery, rust on metal, the passage of time.",
+    "content": "Beauty in imperfection, impermanence, incompleteness. Celebrates cracks in pottery, rust on metal, the passage of time.",
     "flags": 0,
     "importance": 0.4
   },
@@ -1344,7 +1344,7 @@
       "psychology",
       "space"
     ],
-    "payload": "Empty malls, hotel hallways, airports at night. Transition zones that feel uncanny when devoid of human presence.",
+    "content": "Empty malls, hotel hallways, airports at night. Transition zones that feel uncanny when devoid of human presence.",
     "flags": 0,
     "importance": 0.4
   },
@@ -1355,7 +1355,7 @@
       "network",
       "fungi"
     ],
-    "payload": "Underground fungal networks connect trees, transferring nutrients and chemical signals. The 'wood wide web' of forest communication.",
+    "content": "Underground fungal networks connect trees, transferring nutrients and chemical signals. The 'wood wide web' of forest communication.",
     "flags": 0,
     "importance": 0.7
   },
@@ -1366,7 +1366,7 @@
       "optimization",
       "emergence"
     ],
-    "payload": "Brainless organism solves shortest-path problems. Physarum recreated Tokyo rail network optimally using nutrient gradients.",
+    "content": "Brainless organism solves shortest-path problems. Physarum recreated Tokyo rail network optimally using nutrient gradients.",
     "flags": 0,
     "importance": 0.7
   },
@@ -1377,7 +1377,7 @@
       "psychology",
       "design"
     ],
-    "payload": "Human replicas elicit revulsion when almost but not quite human. Affinity drops sharply before rising again at perfect realism.",
+    "content": "Human replicas elicit revulsion when almost but not quite human. Affinity drops sharply before rising again at perfect realism.",
     "flags": 0,
     "importance": 0.4
   },
@@ -1388,7 +1388,7 @@
       "memory",
       "internet"
     ],
-    "payload": "Groups remember events that never occurred. Berenstain Bears misremembered as Berenstein. Mass false memory creation.",
+    "content": "Groups remember events that never occurred. Berenstain Bears misremembered as Berenstein. Mass false memory creation.",
     "flags": 0,
     "importance": 0.4
   },
@@ -1399,7 +1399,7 @@
       "system",
       "earth"
     ],
-    "payload": "Earth functions as single self-regulating organism. Biosphere maintains conditions hospitable for life through feedback loops.",
+    "content": "Earth functions as single self-regulating organism. Biosphere maintains conditions hospitable for life through feedback loops.",
     "flags": 0,
     "importance": 0.7
   },
@@ -1410,7 +1410,7 @@
       "brain",
       "perception"
     ],
-    "payload": "Seeing faces in clouds, toast, power outlets. Brain's pattern-matching overfires, finding meaning in randomness.",
+    "content": "Seeing faces in clouds, toast, power outlets. Brain's pattern-matching overfires, finding meaning in randomness.",
     "flags": 0,
     "importance": 0.4
   },
@@ -1421,7 +1421,7 @@
       "crime",
       "urbanism"
     ],
-    "payload": "Visible signs of disorder encourage further disorder. One unrepaired broken window signals neglect, cascading into decay.",
+    "content": "Visible signs of disorder encourage further disorder. One unrepaired broken window signals neglect, cascading into decay.",
     "flags": 0,
     "importance": 0.4
   },
@@ -1432,7 +1432,7 @@
       "power",
       "Foucault"
     ],
-    "payload": "Circular prison where guards see all inmates from central tower. Awareness of potential surveillance self-disciplines subjects.",
+    "content": "Circular prison where guards see all inmates from central tower. Awareness of potential surveillance self-disciplines subjects.",
     "flags": 0,
     "importance": 0.4
   },
@@ -1443,7 +1443,7 @@
       "data-structure",
       "probabilistic"
     ],
-    "payload": "Space-efficient set membership test. False positives possible, false negatives never. Used in databases, caches, spell checkers.",
+    "content": "Space-efficient set membership test. False positives possible, false negatives never. Used in databases, caches, spell checkers.",
     "flags": 0,
     "importance": 0.7
   },
@@ -1454,7 +1454,7 @@
       "consensus",
       "Raft"
     ],
-    "payload": "Understandable alternative to Paxos. Leader election, log replication, safety via term numbers and committed entries.",
+    "content": "Understandable alternative to Paxos. Leader election, log replication, safety via term numbers and committed entries.",
     "flags": 0,
     "importance": 0.7
   },
@@ -1465,7 +1465,7 @@
       "social",
       "brain"
     ],
-    "payload": "Humans maintain stable relationships with ~150 people. Neocortex size constrains social group capacity across primates.",
+    "content": "Humans maintain stable relationships with ~150 people. Neocortex size constrains social group capacity across primates.",
     "flags": 0,
     "importance": 0.4
   },
@@ -1476,7 +1476,7 @@
       "distributed",
       "sync"
     ],
-    "payload": "Convergent Replicated Data Types merge concurrent edits without coordination. Powers Figma multiplayer, Redis, automerge.",
+    "content": "Convergent Replicated Data Types merge concurrent edits without coordination. Powers Figma multiplayer, Redis, automerge.",
     "flags": 0,
     "importance": 0.7
   },
@@ -1487,7 +1487,7 @@
       "AI",
       "alignment"
     ],
-    "payload": "Fine-tune models using human preference comparisons. PPO optimizes policy toward reward model trained on ranked outputs.",
+    "content": "Fine-tune models using human preference comparisons. PPO optimizes policy toward reward model trained on ranked outputs.",
     "flags": 0,
     "importance": 0.7
   },
@@ -1498,7 +1498,7 @@
       "culture",
       "history"
     ],
-    "payload": "Usenet overwhelmed by AOL users in 1993. Influx of newcomers permanently shifted online culture from expert to mainstream.",
+    "content": "Usenet overwhelmed by AOL users in 1993. Influx of newcomers permanently shifted online culture from expert to mainstream.",
     "flags": 0,
     "importance": 0.4
   },
@@ -1509,7 +1509,7 @@
       "physics",
       "simulation"
     ],
-    "payload": "The proposal that all of reality is an artificial simulation, possibly run by a higher intelligence. Supported by the mathematical nature of physical laws.",
+    "content": "The proposal that all of reality is an artificial simulation, possibly run by a higher intelligence. Supported by the mathematical nature of physical laws.",
     "flags": 0,
     "importance": 0.9
   },
@@ -1520,7 +1520,7 @@
       "future",
       "evolution"
     ],
-    "payload": "Hypothetical point where AI growth becomes uncontrollable and irreversible, resulting in unfathomable changes to human civilization.",
+    "content": "Hypothetical point where AI growth becomes uncontrollable and irreversible, resulting in unfathomable changes to human civilization.",
     "flags": 0,
     "importance": 0.9
   },
@@ -1531,7 +1531,7 @@
       "history",
       "controversy"
     ],
-    "payload": "Created in Canada in 1962 by Sam Panopoulos. Despite the name, it has no direct link to Hawaii beyond the brand of canned pineapple used.",
+    "content": "Created in Canada in 1962 by Sam Panopoulos. Despite the name, it has no direct link to Hawaii beyond the brand of canned pineapple used.",
     "flags": 0,
     "importance": 0.7
   },
@@ -1542,7 +1542,7 @@
       "math",
       "emergence"
     ],
-    "payload": "A zero-player game where simple rules create complex, unpredictable patterns. Demonstrates how life-like behavior emerges from basic logic.",
+    "content": "A zero-player game where simple rules create complex, unpredictable patterns. Demonstrates how life-like behavior emerges from basic logic.",
     "flags": 0,
     "importance": 0.7
   },
@@ -1553,7 +1553,7 @@
       "cognition",
       "bias"
     ],
-    "payload": "Also known as frequency illusion. After noticing something once, you suddenly start seeing it everywhere. A mix of selective attention and confirmation bias.",
+    "content": "Also known as frequency illusion. After noticing something once, you suddenly start seeing it everywhere. A mix of selective attention and confirmation bias.",
     "flags": 0,
     "importance": 0.7
   },
@@ -1563,7 +1563,7 @@
       "physics",
       "fluid-dynamics"
     ],
-    "payload": "Why spilled coffee leaves a dark outer ring. Capillary flow carries particles to the edge as the liquid evaporates at the perimeter.",
+    "content": "Why spilled coffee leaves a dark outer ring. Capillary flow carries particles to the edge as the liquid evaporates at the perimeter.",
     "flags": 0,
     "importance": 0.7
   },
@@ -1574,7 +1574,7 @@
       "quantum",
       "particles"
     ],
-    "payload": "Theory describing three of the four known fundamental forces. Includes quarks, leptons, and the Higgs boson which gives particles mass.",
+    "content": "Theory describing three of the four known fundamental forces. Includes quarks, leptons, and the Higgs boson which gives particles mass.",
     "flags": 0,
     "importance": 0.7
   },
@@ -1585,7 +1585,7 @@
       "heuristics",
       "longevity"
     ],
-    "payload": "The idea that the future life expectancy of non-perishable things (like ideas or books) is proportional to their current age.",
+    "content": "The idea that the future life expectancy of non-perishable things (like ideas or books) is proportional to their current age.",
     "flags": 0,
     "importance": 0.7
   },
@@ -1596,7 +1596,7 @@
       "mystery",
       "cryptography"
     ],
-    "payload": "An illustrated codex hand-written in an unknown writing system. Carbon-dated to the 15th century, it remains undeciphered to this day.",
+    "content": "An illustrated codex hand-written in an unknown writing system. Carbon-dated to the 15th century, it remains undeciphered to this day.",
     "flags": 0,
     "importance": 0.4
   },
@@ -1607,7 +1607,7 @@
       "mystery",
       "acoustics"
     ],
-    "payload": "Ultra-low-frequency underwater sound detected in 1997. Originally thought to be a giant sea monster, later attributed to massive icequakes.",
+    "content": "Ultra-low-frequency underwater sound detected in 1997. Originally thought to be a giant sea monster, later attributed to massive icequakes.",
     "flags": 0,
     "importance": 0.4
   },
@@ -1618,7 +1618,7 @@
       "conspiracy",
       "AI"
     ],
-    "payload": "The belief that most of the internet is now populated by bots and AI-generated content, with real human interaction becoming a rarity.",
+    "content": "The belief that most of the internet is now populated by bots and AI-generated content, with real human interaction becoming a rarity.",
     "flags": 0,
     "importance": 0.4
   },
@@ -1629,7 +1629,7 @@
       "physics",
       "entropy"
     ],
-    "payload": "It is statistically more likely for a single brain to spontaneously form in a void with false memories than for the entire universe to have evolved.",
+    "content": "It is statistically more likely for a single brain to spontaneously form in a void with false memories than for the entire universe to have evolved.",
     "flags": 0,
     "importance": 0.4
   },
@@ -1640,7 +1640,7 @@
       "internet",
       "liminal"
     ],
-    "payload": "An endless maze of empty, yellow-carpeted office rooms. A prime example of liminal space horror born from internet folklore.",
+    "content": "An endless maze of empty, yellow-carpeted office rooms. A prime example of liminal space horror born from internet folklore.",
     "flags": 0,
     "importance": 0.4
   },
@@ -1651,7 +1651,7 @@
       "thought-experiment",
       "physics"
     ],
-    "payload": "A cat in a box is both alive and dead until observed. Highlights the 'absurdity' of Copenhagen interpretation applied to macroscopic objects.",
+    "content": "A cat in a box is both alive and dead until observed. Highlights the 'absurdity' of Copenhagen interpretation applied to macroscopic objects.",
     "flags": 0,
     "importance": 0.7
   },
@@ -1662,7 +1662,7 @@
       "aliens",
       "science"
     ],
-    "payload": "The contradiction between the high probability of extraterrestrial life and the total lack of evidence for it. Where is everybody?",
+    "content": "The contradiction between the high probability of extraterrestrial life and the total lack of evidence for it. Where is everybody?",
     "flags": 0,
     "importance": 0.7
   },
@@ -1673,7 +1673,7 @@
       "mystery",
       "cryptography"
     ],
-    "payload": "A series of complex puzzles posted online to recruit 'highly intelligent individuals.' The identity of the creators remains a secret.",
+    "content": "A series of complex puzzles posted online to recruit 'highly intelligent individuals.' The identity of the creators remains a secret.",
     "flags": 0,
     "importance": 0.4
   },
@@ -1684,7 +1684,7 @@
       "brain",
       "perception"
     ],
-    "payload": "A neurological condition where senses overlap. Some people can 'taste' words, 'see' music, or 'smell' colors.",
+    "content": "A neurological condition where senses overlap. Some people can 'taste' words, 'see' music, or 'smell' colors.",
     "flags": 0,
     "importance": 0.7
   },
@@ -1695,7 +1695,7 @@
       "psychology",
       "time"
     ],
-    "payload": "It always takes longer than you expect, even when you take into account Hofstadter's Law. A recursive warning about project estimation.",
+    "content": "It always takes longer than you expect, even when you take into account Hofstadter's Law. A recursive warning about project estimation.",
     "flags": 0,
     "importance": 0.7
   },
@@ -1706,7 +1706,7 @@
       "emotion",
       "space"
     ],
-    "payload": "The specific acoustic quality of a home that has been recently abandoned. A heavy stillness that feels like it’s holding a secret.",
+    "content": "The specific acoustic quality of a home that has been recently abandoned. A heavy stillness that feels like it’s holding a secret.",
     "flags": 0,
     "importance": 0.4
   }

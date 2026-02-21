@@ -126,7 +126,7 @@ function onMockDataLoaded() {
 function renderMockList() {
   const el = document.getElementById('mockList');
   el.innerHTML = mockData.map((item, i) => {
-    const title = item.summary || item.title || `Item ${i}`;
+    const title = item.summary || `Item ${i}`;
     const tags = item.tags || [];
     const imp = item.importance ?? 0;
     const tier = imp >= 0.85 ? 'top' : imp >= 0.5 ? 'normal' : 'ghost';
@@ -448,8 +448,8 @@ function buildCapsuleFromChunk(chunk) {
   for (const item of chunk) {
     const seed = {
       tags: item.tags || [],
-      summary: item.summary || item.title || '',
-      content: item.payload || item.content || item.summary || item.title || '',
+      summary: item.summary || '',
+      content: item.content || item.summary || '',
       flags: item.flags ?? 0,
     };
     const imp = item.importance ?? 0.5;
@@ -941,7 +941,7 @@ let swarmAgents = [];
 function getRandomEntryRequest() {
   if (mockData.length > 0) {
     const item = mockData[Math.floor(Math.random() * mockData.length)];
-    return { query: item.summary || item.title || 'swarm', tags: item.tags || ['swarm'] };
+    return { query: item.summary || 'swarm', tags: item.tags || ['swarm'] };
   }
   return { query: 'Automated swarm exploration', tags: ['swarm', 'auto'] };
 }

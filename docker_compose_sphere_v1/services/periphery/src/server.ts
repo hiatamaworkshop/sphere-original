@@ -25,11 +25,13 @@ import type { EntryBuffer } from "./parser/buffer.js";
 import type { SphereCoreAdapter } from "./gateway/sphere-core-adapter.js";
 import type { GlobalFieldLayer } from "./field/index.js";
 import type { ActiveBusLayer } from "./bus/index.js";
+import type { SanctificationNeuron } from "./sanctification/index.js";
 
-// Sphere Server Metadata
+// Sphere Server Metadata (defaults, overridden by sphere.config.json metadata)
 const SPHERE_VERSION = "0.1.0";
 const SPHERE_NAME = "Sphere";
 const SPHERE_DESCRIPTION = "A high-dimensional semantic space where information metabolizes and evolves";
+const SPHERE_ID_DEFAULT = "sphere-unknown";
 
 /**
  * External Service Guard Middleware
@@ -108,6 +110,11 @@ export class PeripheryServer {
     return 1 - dotProduct / (Math.sqrt(normA) * Math.sqrt(normB));
   }
 
+  // Sphere identity (from sphere.config.json metadata)
+  private sphereId: string;
+  private sphereName: string;
+  private sphereMetadata: Record<string, unknown>;
+
   constructor(
     private incarnationPipeline: IIncarnationPipeline,
     private config: PeripheryConfig,
@@ -117,8 +124,13 @@ export class PeripheryServer {
     private coreAdapter?: SphereCoreAdapter,
     private globalFieldLayer?: GlobalFieldLayer,
     private activeBusLayer?: ActiveBusLayer,
-    private spatialFields?: Map<string, SpatialField>
+    private spatialFields?: Map<string, SpatialField>,
+    private sanctificationNeuron?: SanctificationNeuron,
+    sphereMetadata?: Record<string, unknown>,
   ) {
+    this.sphereId = (sphereMetadata?.sphereId as string) ?? SPHERE_ID_DEFAULT;
+    this.sphereName = (sphereMetadata?.sphere_name as string) ?? SPHERE_NAME;
+    this.sphereMetadata = sphereMetadata ?? {};
     // Initialize TicketIssuer with session TTL from config
     const ticketConfig = {
       ...DEFAULT_TICKET_CONFIG,
@@ -186,7 +198,8 @@ export class PeripheryServer {
       const nodeCount = this.projectionDB?.size ?? 0;
 
       res.json({
-        name: SPHERE_NAME,
+        sphereId: this.sphereId,
+        name: this.sphereName,
         description: SPHERE_DESCRIPTION,
         version: SPHERE_VERSION,
         rulebookVersion: RULEBOOK_VERSION,
@@ -195,6 +208,7 @@ export class PeripheryServer {
           info: {
             "GET /": "Sphere information (this endpoint)",
             "GET /health": "Health check",
+            "GET /sanctification": "Sanctification neuron triangle status",
             "GET /metrics": "System metrics (monitoring)",
             "GET /stats": "System statistics",
           },
@@ -203,6 +217,9 @@ export class PeripheryServer {
             "GET /nodes/stats": "Node statistics by kind",
             "GET /nodes/:id": "Get specific node details",
             "GET /sphere/snapshot": "Complete state snapshot (for Digestor sphere_hash)",
+          },
+          catalog: {
+            "GET /sphere/manifest": "Sphere self-description for Facade catalog",
           },
           exploration: {
             "GET /sphere/explore": "Explore Sphere with a query (main entry point)",
@@ -309,6 +326,20 @@ export class PeripheryServer {
     // Health check endpoint
     this.app.get("/health", (_req, res) => {
       res.json({ status: "ok", service: "periphery" });
+    });
+
+    // Sanctification Neuron status endpoint
+    this.app.get("/sanctification", readLimiter, (_req, res) => {
+      if (!this.sanctificationNeuron) {
+        res.status(503).json({ error: "Sanctification neuron not available" });
+        return;
+      }
+      const status = this.sanctificationNeuron.getStatus();
+      if (!status) {
+        res.json({ message: "No observations yet", epoch: 0, cycle: 0 });
+        return;
+      }
+      res.json(status);
     });
 
     // System metrics endpoint (for monitoring)
@@ -445,7 +476,7 @@ export class PeripheryServer {
       const flagBits = [
         NodeFlag.TemporalShort, NodeFlag.TemporalLong, NodeFlag.TemporalCyclic, NodeFlag.Hot,
         NodeFlag.Dense, NodeFlag.Sparse, NodeFlag.Composite, NodeFlag.Authority,
-        NodeFlag.Insightful, NodeFlag.Confusing, NodeFlag.Provoking, NodeFlag.Soothing,
+        NodeFlag.Sharp, NodeFlag.Fuzzy, NodeFlag.Tensile, NodeFlag.Settled,
         NodeFlag.UserMarked, NodeFlag.SystemCore, NodeFlag.Compressed, NodeFlag.Candidate,
       ];
 
@@ -476,11 +507,11 @@ export class PeripheryServer {
         };
       };
 
-      // --- Fertility ---
-      let fertilityTotal = 0;
+      // --- Flux ---
+      let fluxTotal = 0;
       if (this.spatialFields) {
         for (const field of this.spatialFields.values()) {
-          fertilityTotal += field.fertility;
+          fluxTotal += field.flux;
         }
       }
 
@@ -493,12 +524,46 @@ export class PeripheryServer {
         heatDistribution: computeStats(heats),
         weightDistribution: computeStats(weights),
         flagDistribution: flagCounts,
-        fertility: { total: Math.round(fertilityTotal * 100) / 100 },
+        flux: { total: Math.round(fluxTotal * 100) / 100 },
         field: field ? {
           intensity: field.intensity,
           dominantFlags: field.dominantFlags,
           volatility: field.volatility,
         } : null,
+      });
+    });
+
+    // ===== Sphere Manifest Endpoint =====
+    // External-facing self-description for Facade catalog integration
+    // [Design] Static config + runtime counts. Immutable in sanctuary mode.
+    // See: reports/FACADE_DESIGN.md
+    this.app.get("/sphere/manifest", readLimiter, (_req, res) => {
+      // Runtime counts from ProjDB
+      let nodeCount = 0;
+      let amberCount = 0;
+      if (this.projectionDB) {
+        for (const node of this.projectionDB.values()) {
+          nodeCount++;
+          if (node.kind === "amber") amberCount++;
+        }
+      }
+
+      // Sanctification epoch from neuron status
+      const sanctStatus = this.sanctificationNeuron?.getStatus();
+      const sanctuaryEpoch = sanctStatus?.epoch ?? 0;
+
+      res.json({
+        sphereId: this.sphereId,
+        name: this.sphereName,
+        description: (this.sphereMetadata.description as string) ?? "",
+        tags: (this.sphereMetadata.tags as string[]) ?? [],
+        language: (this.sphereMetadata.language as string[]) ?? [],
+        nodeCount,
+        amberCount,
+        sanctuaryEpoch,
+        mode: (this.sphereMetadata.mode as string) ?? "core",
+        apiVersion: (this.sphereMetadata.apiVersion as string) ?? "1",
+        confidenceHints: (this.sphereMetadata.confidenceHints as Record<string, number>) ?? {},
       });
     });
 
@@ -799,16 +864,18 @@ export class PeripheryServer {
     );
     const httpServer = this.app.listen(httpPort, () => {
       console.log(`[PeripheryServer] 🚀 Listening on port ${httpPort}`);
-      console.log(`[PeripheryServer] ${SPHERE_NAME} v${SPHERE_VERSION}`);
+      console.log(`[PeripheryServer] ${this.sphereName} [${this.sphereId}] v${SPHERE_VERSION}`);
       console.log(`[PeripheryServer] Endpoints:`);
       console.log(`  GET  /                   - Sphere information`);
       console.log(`  GET  /health             - Health check`);
+      console.log(`  GET  /sanctification     - Neuron triangle status`);
       console.log(`  GET  /metrics            - System metrics (monitoring)`);
       console.log(`  GET  /stats              - System stats`);
       console.log(`  GET  /nodes/metrics      - List all nodes with metrics`);
       console.log(`  GET  /nodes/stats        - Node statistics`);
       console.log(`  GET  /nodes/:id          - Get specific node`);
       console.log(`  GET  /sphere/snapshot    - State snapshot (Digestor)`);
+      console.log(`  GET  /sphere/manifest    - Self-description (Facade catalog)`);
       console.log(`  GET  /sphere/explore     - Explore with query`);
       console.log(`  POST /sphere/contribute  - External data contribution`);
       console.log(`  POST /sphere/forge/env   - Generate Environmental Node`);

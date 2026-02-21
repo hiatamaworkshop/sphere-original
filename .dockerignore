@@ -1,0 +1,11 @@
+**/node_modules
+**/dist
+.git
+phi-agent/data
+reports
+docs
+*.md
+*.ps1
+*.bat
+*.sh
+.claude

@@ -42,6 +42,7 @@ export interface PeripheryConfig {
       top: number;                 // Top-tier weight
       normal: number;              // Normal-tier weight
       ghost: number;               // Ghost-tier weight
+      relic?: number;              // Relic weight (optional, falls back to normal)
     };
     tierTTLs: {
       top: number;                 // Top-tier TTL in seconds
@@ -198,10 +199,10 @@ export interface PeripheryConfig {
   //     0x0040 = Composite      - weight ×1.1 (multi-concept)
   //     0x0080 = Authority      - decay ×0.95 (peer-reviewed, official)
   //   Cognitive (bits 8-11):
-  //     0x0100 = Insightful     - FastGate scoring only
-  //     0x0200 = Confusing      - FastGate scoring only
-  //     0x0400 = Provoking      - FastGate scoring only
-  //     0x0800 = Soothing       - FastGate scoring only
+  //     0x0100 = Sharp           - FastGate scoring only (明確、一意的解釈)
+  //     0x0200 = Fuzzy           - FastGate scoring only (曖昧、複数解釈可能)
+  //     0x0400 = Tensile         - FastGate scoring only (内部対立、未解決)
+  //     0x0800 = Settled         - FastGate scoring only (決着済み、収束)
   //   Special (bits 12-15):
   //     0x1000 = UserMarked     - immune to decay
   //     0x2000 = SystemCore     - Frozen metabolism (Relic)
@@ -272,11 +273,12 @@ export const DEFAULT_PERIPHERY_CONFIG: PeripheryConfig = {
   },
   packer: {
     // Integer scale: h/w threshold 1000, d baseline 1000
-    baseHeat: 750,  // All nodes start with same baseline heat
+    baseHeat: 500,  // All nodes start with same baseline heat
     tierWeights: {
       top: 800,
       normal: 500,
       ghost: 200,
+      relic: 300,
     },
     tierTTLs: {
       top: 172800,   // 2 days

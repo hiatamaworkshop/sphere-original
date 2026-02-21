@@ -41,8 +41,8 @@ const __dirname = path.dirname(__filename);
 // ============================================================
 
 interface MockEntry {
-  title: string;
-  content: string;
+  summary: string;
+  content?: string;
   tags: string[];
   importance: number;
 }
@@ -63,7 +63,7 @@ function getRandomMockEntry(): { query: string; tags: string[] } | null {
   if (data.length === 0) return null;
   const entry = data[Math.floor(Math.random() * data.length)];
   return {
-    query: entry.title,
+    query: entry.summary,
     tags: entry.tags,
   };
 }

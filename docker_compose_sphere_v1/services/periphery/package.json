@@ -7,7 +7,7 @@
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "build": "tsc && npm run copy-assets",
-    "copy-assets": "node -e \"const fs=require('fs'); fs.cpSync('src/schema', 'dist/schema', {recursive: true, filter: (src) => src.endsWith('.json') || !src.includes('.')}); fs.cpSync('src/mock/mock_data.json', 'dist/mock/mock_data.json');\"",
+    "copy-assets": "node -e \"const fs=require('fs'); fs.cpSync('src/schema', 'dist/schema', {recursive: true, filter: (src) => src.endsWith('.json') || !src.includes('.')}); fs.cpSync('src/mock/mock_data.json', 'dist/mock/mock_data.json'); fs.cpSync('src/mock/relics.json', 'dist/mock/relics.json');\"",
     "start": "node dist/index.js",
     "contribute": "tsx src/mock/contribution.ts",
     "contribute:batch": "tsx src/mock/contribution.ts batch",
@@ -15,7 +15,9 @@
     "swarm": "tsx src/mock/swarm-agent.ts",
     "swarm:5": "tsx src/mock/swarm-agent.ts -n 5",
     "swarm:10": "tsx src/mock/swarm-agent.ts -n 10",
-    "test:embedding": "tsx src/mock/test-embedding.ts"
+    "observe": "tsx src/mock/mock-observer.ts",
+    "observe:fast": "tsx src/mock/mock-observer.ts --fast",
+    "observe:heavy": "tsx src/mock/mock-observer.ts -W 20 -n 3 -w 900 --wave-delay 30000"
   },
   "dependencies": {
     "@sphere/renal-core": "file:../renalCore",

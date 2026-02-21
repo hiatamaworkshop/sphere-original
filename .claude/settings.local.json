@@ -3,7 +3,9 @@
     "allow": [
       "Bash(npx tsx:*)",
       "Bash(docker ps:*)",
-      "Bash(docker run:*)"
+      "Bash(docker run:*)",
+      "Bash(curl:*)",
+      "Bash(SPHERE_URL=http://localhost:3001 DATA_DIR=../phi-agent/data ONCE=1 node:*)"
     ]
   }
 }

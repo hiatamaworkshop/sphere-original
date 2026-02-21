@@ -27,8 +27,8 @@ import { cosineDistance } from "../lib/vector.js";
  * Arbiter 設定（Ascension/Erosion 閾値）
  */
 export interface ArbiterConfig {
-  // 風化閾値
-  erosionHeatThreshold: number;
+  // Erosion 閾値: h + w (ascension score) がこれを下回ると Amber → Active
+  erosionScoreThreshold: number;
 
   // Pause判定
   pauseErosionBoost: number;
@@ -45,6 +45,14 @@ export interface ArbiterConfig {
   // 下方スレッショルド比率 - initialScore × この値を冷却期間中維持必要（例: 0.9）
   lowerThresholdRatio: number;
 
+  // === Allostatic Threshold (スフィア規模適応) ===
+  // 参照ノード数: effectiveThreshold = scoreThreshold × clamp(sqrt(activeNodes / ref), floor, cap)
+  referenceNodeCount?: number;     // default: 1000
+  // 閾値倍率下限（小規模スフィアでの底）
+  ascensionThresholdFloor?: number; // default: 0.6
+  // 閾値倍率上限（超巨大スフィアでの天井）
+  ascensionThresholdCap?: number;  // default: 3.0
+
   // === Dropout Reset 設定（整数スケール）===
   // 冷却期間失敗時にリセットするデフォルトメトリクス
   dropoutResetH?: number;  // default: 0
@@ -60,6 +68,14 @@ export interface ArbiterConfig {
   absorptionFactor?: number;
   // 結晶化レコードの最大保存数
   maxAbsorbedNodes?: number;
+
+  // === Immune Threshold Amplification（免疫信号 → 下限スレッショルド調整） ===
+  // immuneWeight: immuneMod 偏差の増幅係数
+  // 導出: (avgRetention - lowerThresholdRatio) / criticalImmuneDev
+  // archive×0.5, cooldown 300s: (0.9888 - 0.9) / 0.018 ≈ 5.0
+  immuneWeight?: number;      // default: 5.0
+  // effectiveRatio の上限（自然残存率の境界）
+  immuneRatioCap?: number;    // default: 0.99
 
   // === Revival 設定（Fossil → Active 復活） ===
   // Revival スコア閾値: h × w がこれ以上で復活候補
@@ -152,7 +168,8 @@ export interface StateChanges {
  *
  * [Design] 冷却期間中の候補を監視
  *   - 評価凍結: Candidate フラグ持ちは評価を受け付けない
- *   - 下方スレッショルド: initialScore × lowerThresholdRatio を維持必要
+ *   - 下方スレッショルド: initialScore × effectiveRatio を維持必要
+ *   - effectiveRatio = lowerThresholdRatio + immuneWeight × max(0, immuneMod - 1.0)
  *   - 動的スコア再計算: 毎 observe() でスコアを再計算
  */
 export interface CandidateEntry {
@@ -162,10 +179,12 @@ export interface CandidateEntry {
   candidateSince: number;
   /** 登録時の複合スコア */
   initialScore: number;
-  /** 下方スレッショルド = initialScore × lowerThresholdRatio */
+  /** 下方スレッショルド = initialScore × effectiveRatio（免疫信号で調整済み） */
   lowerThreshold: number;
   /** 参考用: 登録時のメトリクス */
   snapshot: { h: number; w: number; d: number };
+  /** 登録時の immuneMod（免疫信号スナップショット、ログ用） */
+  snapshotImmuneMod: number;
 }
 
 /**
@@ -182,6 +201,9 @@ export class Arbiter {
   // === Candidate Store (Ascension 冷却期間管理) ===
   // Key: nodeId
   private candidateStore: Map<string, CandidateEntry> = new Map();
+
+  // === Allostatic Threshold (observe() 毎に再計算) ===
+  private currentEffectiveThreshold: number = 0;
 
   constructor(config: ArbiterConfig) {
     this.config = config;
@@ -232,6 +254,18 @@ export class Arbiter {
     };
 
     const now = Date.now();
+
+    // === Allostatic Threshold: スフィア規模に応じた閾値計算 ===
+    let activeCount = 0;
+    for (const node of projDB.values()) {
+      if (node.kind === "active" || node.kind === "environment") activeCount++;
+    }
+    const ref = this.config.referenceNodeCount ?? 1000;
+    const floor = this.config.ascensionThresholdFloor ?? 0.6;
+    const cap = this.config.ascensionThresholdCap ?? 3.0;
+    // sqrt scaling: 1000 nodes = baseline, gentle curve for small/large spheres
+    const ratio = Math.max(floor, Math.min(cap, Math.sqrt(activeCount / ref)));
+    this.currentEffectiveThreshold = this.config.ascensionScoreThreshold * ratio;
 
     // === Phase 0: 既存候補の監視（脱落/昇格判定）===
     this.monitorCandidates(projDB, now, queue);
@@ -303,7 +337,8 @@ export class Arbiter {
       if (currentScore < entry.lowerThreshold) {
         console.log(
           `[Arbiter] Candidate dropout: ${nodeId.slice(0, 8)} ` +
-          `score=${currentScore.toFixed(2)} < threshold=${entry.lowerThreshold.toFixed(2)}`
+          `score=${currentScore.toFixed(2)} < threshold=${entry.lowerThreshold.toFixed(2)} ` +
+          `immuneMod=${entry.snapshotImmuneMod.toFixed(4)}`
         );
         // Candidate フラグ除去 + デフォルトメトリクスにリセット（整数スケール）
         queue.flagUpdates.push({
@@ -356,7 +391,13 @@ export class Arbiter {
    *
    * [Design] 複合スコアが閾値を超えたら候補登録
    *   - Candidate フラグ付与
-   *   - 下方スレッショルド = initialScore × lowerThresholdRatio
+   *   - 下方スレッショルド = initialScore × effectiveRatio
+   *
+   * [Immune Threshold Amplification]
+   *   免疫系の微細な信号 (immuneMod ±0.03) を増幅し、下限スレッショルドに反映
+   *   - immuneMod ≈ 1.0 (organic): effectiveRatio = baseRatio (0.9) → 余裕あり
+   *   - immuneMod ≈ 1.02+ (suspicious): effectiveRatio → cap (0.99) → decay で脱落
+   *   immuneWeight = (avgRetention - baseRatio) / criticalImmuneDev
    */
   private checkNewCandidate(node: SphereNode, now: number): FlagUpdate | null {
     // active のみ対象
@@ -370,28 +411,48 @@ export class Arbiter {
       node.metrics.w
     );
 
-    // 閾値チェック
-    if (score < this.config.ascensionScoreThreshold) {
+    // 閾値チェック (allostatic: スフィア規模に適応)
+    if (score < this.currentEffectiveThreshold) {
       return null;
     }
+
+    // 免疫信号 → 下限スレッショルド調整
+    const immuneMod = node.metrics.immuneMod ?? 1.0;
+    const immuneWeight = this.config.immuneWeight ?? 5.0;
+    const immuneRatioCap = this.config.immuneRatioCap ?? 0.99;
+    const immuneDev = Math.max(0, immuneMod - 1.0);
+    const effectiveRatio = Math.min(
+      immuneRatioCap,
+      this.config.lowerThresholdRatio + immuneWeight * immuneDev
+    );
 
     // 候補登録
     const entry: CandidateEntry = {
       nodeId: node.id,
       candidateSince: now,
       initialScore: score,
-      lowerThreshold: score * this.config.lowerThresholdRatio,
+      lowerThreshold: score * effectiveRatio,
       snapshot: {
         h: node.metrics.h,
         w: node.metrics.w,
         d: node.metrics.d,
       },
+      snapshotImmuneMod: immuneMod,
     };
     this.candidateStore.set(node.id, entry);
 
+    // [Immediate Freeze] Candidate フラグを即時設定
+    // observe() → applyTransitions() の遅延（最大10s）中に評価が漏れるのを防止
+    // FlagUpdate も返して applyTransitions で正式に永続化される
+    node.metrics.flg |= NodeFlag.Candidate;
+
+    const ref = this.config.referenceNodeCount ?? 50;
     console.log(
       `[Arbiter] Candidate registered: ${node.id.slice(0, 8)} ` +
-      `score=${score.toFixed(2)} threshold=${entry.lowerThreshold.toFixed(2)}`
+      `score=${score.toFixed(2)} effectiveThreshold=${this.currentEffectiveThreshold.toFixed(0)} ` +
+      `immuneMod=${immuneMod.toFixed(4)} effectiveRatio=${effectiveRatio.toFixed(4)} ` +
+      `lowerThreshold=${entry.lowerThreshold.toFixed(2)} ` +
+      `(${[...this.candidateStore.keys()].length} candidates, ref=${ref})`
     );
 
     // Candidate フラグ付与
@@ -452,15 +513,20 @@ export class Arbiter {
 
   /**
    * Erosion 判定: Amber → Active
+   * [Design] Ascension と対称: h + w スコアで判定
+   *   Ascension: h + w >= ascensionScoreThreshold (500) → 琥珀化
+   *   Erosion:   h + w <  erosionScoreThreshold (200)   → 琥珀解除
+   *   heat (注目度) と weight (情報価値) の両方が低下して初めて Erosion
    */
   private shouldErode(node: SphereNode, isPaused?: boolean): boolean {
     if (node.kind !== "amber") return false;
 
+    const score = computeAscensionScore(node.metrics.h, node.metrics.w);
     const effectiveThreshold = isPaused
-      ? this.config.erosionHeatThreshold * this.config.pauseErosionBoost
-      : this.config.erosionHeatThreshold;
+      ? this.config.erosionScoreThreshold * this.config.pauseErosionBoost
+      : this.config.erosionScoreThreshold;
 
-    return node.metrics.h < effectiveThreshold;
+    return score < effectiveThreshold;
   }
 
   /**
@@ -560,7 +626,8 @@ export class Arbiter {
         `ascend=${queue.shouldAscend.length} ` +
         `erode=${queue.shouldErode.length} ` +
         `revive=${queue.shouldRevive.length} ` +
-        `flags=${queue.flagUpdates.length}`
+        `flags=${queue.flagUpdates.length} ` +
+        `effectiveThreshold=${this.currentEffectiveThreshold.toFixed(0)}`
     );
   }
 

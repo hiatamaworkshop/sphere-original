@@ -50,7 +50,8 @@ export interface FossilizationResult {
 export interface DecompositionResult {
   nodeId: string;
   cellId: string;
-  fertilityGain: number;
+  fluxGain: number;
+  position: number[];
 }
 
 /**
@@ -201,7 +202,7 @@ export class CleanerFish {
       kind: "fossil",
       metrics: {
         ...node.metrics,
-        flg: node.metrics.flg | NodeFlag.Compressed | NodeFlag.SystemCore,  // Frozen metabolism
+        flg: node.metrics.flg | NodeFlag.Compressed,  // Fossil: heat/TTL decay continues → eventual decomposition
       },
       timestamp: Date.now(),
     };
@@ -220,32 +221,33 @@ export class CleanerFish {
   }
 
   /**
-   * Decomposition: fossil TTL=0 → fertility還元 + 削除
+   * Decomposition: fossil TTL=0 → flux還元 + 削除
    */
   public decompose(fossilNode: SphereNode, cellId: string): DecompositionResult {
     if (fossilNode.kind !== "fossil") {
       throw new Error(`Cannot decompose non-fossil node: ${fossilNode.kind}`);
     }
 
-    // fertility = heat × weight
-    const fertilityGain = fossilNode.metrics.h * fossilNode.metrics.w;
+    // flux = heat × weight
+    const fluxGain = fossilNode.metrics.h * fossilNode.metrics.w;
 
     console.log(
       `[CleanerFish:${this.id}] decomposed node=${fossilNode.id.slice(0, 8)} ` +
-        `cell=${cellId} fertility=+${fertilityGain.toFixed(4)}`
+        `cell=${cellId} flux=+${fluxGain.toFixed(4)}`
     );
 
     return {
       nodeId: fossilNode.id,
       cellId,
-      fertilityGain,
+      fluxGain,
+      position: fossilNode.vector,
     };
   }
 
   /**
    * Evaporation: ghost TTL=0 → 痕跡なし消滅
    *
-   * [Design] Ghost は実体を持たないため、fertility 還元なし
+   * [Design] Ghost は実体を持たないため、flux 還元なし
    */
   public evaporate(ghostNode: SphereNode): DecompositionResult {
     if (ghostNode.kind !== "ghost") {
@@ -258,8 +260,9 @@ export class CleanerFish {
 
     return {
       nodeId: ghostNode.id,
-      cellId: "",  // 空（fertility なし）
-      fertilityGain: 0,
+      cellId: "",
+      fluxGain: 0,
+      position: [],
     };
   }
 

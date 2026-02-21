@@ -123,6 +123,7 @@ export interface NarrativeEntry {
     h: number;
     w: number;
     d: number;
+    flags?: number;
   }>;
   /** Agent feelings at return time */
   feelings?: {
@@ -130,6 +131,8 @@ export interface NarrativeEntry {
     frustration: number;
     stamina: number;
   };
+  /** Deterministic broadcast posts (observation projection) */
+  broadcast?: string[];
 }
 
 /**

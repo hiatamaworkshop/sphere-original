@@ -447,7 +447,8 @@
     "tags": [
       "astronomy",
       "physics",
-      "cosmology"
+      "cosmology",
+      "uncertain"
     ],
     "payload": "Galaxy rotation curves, gravitational lensing indicate invisible mass. Constitutes 85% of matter.",
     "flags": 0,
@@ -482,7 +483,7 @@
       "mathematics",
       "number-theory",
       "millennium",
-      "fundamental"
+      "unresolved"
     ],
     "payload": "All non-trivial zeros of zeta function have real part 1/2. Implications for prime distribution.",
     "flags": 0,
@@ -516,7 +517,8 @@
     "tags": [
       "game-theory",
       "economics",
-      "mathematics"
+      "mathematics",
+      "theorem"
     ],
     "payload": "Strategic stability where no player benefits from unilateral deviation. Exists in all finite games.",
     "flags": 0,
@@ -528,7 +530,7 @@
       "mathematics",
       "signal",
       "analysis",
-      "fundamental"
+      "formula"
     ],
     "payload": "Decompose signals into constituent frequencies. Time domain to frequency domain conversion.",
     "flags": 0,
@@ -550,7 +552,8 @@
     "tags": [
       "linguistics",
       "cognition",
-      "culture"
+      "culture",
+      "hypothesis"
     ],
     "payload": "Language structure influences thought patterns. Weak form: language affects perception; strong form: determines thought.",
     "flags": 0,
@@ -616,7 +619,8 @@
     "tags": [
       "networking",
       "DNS",
-      "internet"
+      "internet",
+      "established"
     ],
     "payload": "Distributed database maps domains to IPs. Root servers, TLD servers, authoritative nameservers.",
     "flags": 0,
@@ -771,7 +775,7 @@
     "tags": [
       "physics",
       "quantum",
-      "theory",
+      "formula",
       "fundamental"
     ],
     "payload": "Cannot simultaneously know exact position and momentum. Δx·Δp ≥ ℏ/2. Fundamental quantum limit.",
@@ -795,7 +799,8 @@
     "tags": [
       "astronomy",
       "relativity",
-      "gravity"
+      "gravity",
+      "unresolved"
     ],
     "payload": "Point of no return where escape velocity exceeds light speed. Information paradox unresolved.",
     "flags": 0,
@@ -829,7 +834,7 @@
     "tags": [
       "biology",
       "evolution",
-      "theory",
+      "established",
       "fundamental"
     ],
     "payload": "Heritable variation, differential survival, reproductive success. Adaptation to environment over generations.",
@@ -930,7 +935,8 @@
     "tags": [
       "psychology",
       "cognition",
-      "behavior"
+      "behavior",
+      "contradiction"
     ],
     "payload": "Mental discomfort from conflicting beliefs. Rationalization, selective exposure reduce inconsistency.",
     "flags": 0,
@@ -1057,7 +1063,7 @@
       "psychology",
       "social",
       "ethics",
-      "research"
+      "disputed"
     ],
     "payload": "Role assignment induced abusive behavior. Situational power over personality. Methodologically controversial.",
     "flags": 0,
@@ -1104,7 +1110,7 @@
       "distributed",
       "CAP",
       "database",
-      "theory"
+      "theorem"
     ],
     "payload": "Impossible to simultaneously guarantee Consistency, Availability, and Partition tolerance. Systems must choose 2 of 3 under network failures.",
     "flags": 0,
@@ -1138,7 +1144,8 @@
     "tags": [
       "mathematics",
       "logic",
-      "philosophy"
+      "philosophy",
+      "theorem"
     ],
     "payload": "Any consistent formal system capable of arithmetic contains true statements that cannot be proven within the system. Limits of axiomatic reasoning.",
     "flags": 0,
@@ -1251,7 +1258,8 @@
     "tags": [
       "CS",
       "theory",
-      "Turing"
+      "Turing",
+      "proof"
     ],
     "payload": "No algorithm can determine if arbitrary programs halt. Proved by Turing via self-referential contradiction.",
     "flags": 0,
@@ -1262,7 +1270,8 @@
     "tags": [
       "complexity",
       "theory",
-      "mathematics"
+      "mathematics",
+      "unresolved"
     ],
     "payload": "Can every problem whose solution is quickly verifiable also be quickly solved? $1M prize unsolved for 50+ years.",
     "flags": 0,
@@ -1385,7 +1394,8 @@
     "tags": [
       "robotics",
       "psychology",
-      "design"
+      "design",
+      "hypothesis"
     ],
     "payload": "Human replicas elicit revulsion when almost but not quite human. Affinity drops sharply before rising again at perfect realism.",
     "flags": 0,
@@ -1407,7 +1417,8 @@
     "tags": [
       "ecology",
       "ecosystem",
-      "earth"
+      "earth",
+      "hypothesis"
     ],
     "payload": "Earth functions as single self-regulating organism. Biosphere maintains conditions hospitable for life through feedback loops.",
     "flags": 0,
@@ -1518,7 +1529,7 @@
       "philosophy",
       "physics",
       "simulation",
-      "provocative"
+      "hypothesis"
     ],
     "payload": "The proposal that all of reality is an artificial simulation, possibly run by a higher intelligence. Supported by the mathematical nature of physical laws.",
     "flags": 0,
@@ -1629,7 +1640,7 @@
       "internet",
       "conspiracy",
       "AI",
-      "provocative"
+      "speculative"
     ],
     "payload": "The belief that most of the internet is now populated by bots and AI-generated content, with real human interaction becoming a rarity.",
     "flags": 0,
@@ -1640,7 +1651,8 @@
     "tags": [
       "cosmology",
       "physics",
-      "entropy"
+      "entropy",
+      "speculative"
     ],
     "payload": "It is statistically more likely for a single brain to spontaneously form in a void with false memories than for the entire universe to have evolved.",
     "flags": 0,
@@ -1662,7 +1674,8 @@
     "tags": [
       "quantum",
       "thought-experiment",
-      "physics"
+      "physics",
+      "paradox"
     ],
     "payload": "A cat in a box is both alive and dead until observed. Highlights the 'absurdity' of Copenhagen interpretation applied to macroscopic objects.",
     "flags": 0,
@@ -1673,7 +1686,8 @@
     "tags": [
       "space",
       "aliens",
-      "science"
+      "science",
+      "paradox"
     ],
     "payload": "The contradiction between the high probability of extraterrestrial life and the total lack of evidence for it. Where is everybody?",
     "flags": 0,
@@ -1722,5 +1736,1262 @@
     "payload": "The specific acoustic quality of a home that has been recently abandoned. A heavy stillness that feels like it’s holding a secret.",
     "flags": 0,
     "importance": 0.4
+  },
+  {
+    "summary": "Stigmergy self-organization",
+    "tags": [
+      "biology",
+      "coordination",
+      "complex-systems"
+    ],
+    "payload": "Mechanism of indirect coordination through environmental traces. Ants leave pheromones, guiding others without direct communication. Simple actions lead to emergent intelligence.",
+    "flags": 0,
+    "importance": 0.7
+  },
+  {
+    "summary": "The Library of Babel",
+    "tags": [
+      "literature",
+      "infinity",
+      "philosophy",
+      "Borges"
+    ],
+    "payload": "A hypothetical library containing every possible 410-page book. Most are gibberish, but it contains every truth, every lie, and the story of your death.",
+    "flags": 0,
+    "importance": 0.4
+  },
+  {
+    "summary": "Information Hazard (Roko's Basilisk)",
+    "tags": [
+      "AI",
+      "thought-experiment",
+      "risk",
+      "dilemma"
+    ],
+    "payload": "A theoretical future AI that punishes those who knew of its eventual existence but failed to help create it. A modern Pascal's Wager via superintelligence.",
+    "flags": 1,
+    "importance": 0.9
+  },
+  {
+    "summary": "Kessler Syndrome",
+    "tags": [
+      "space",
+      "disaster",
+      "physics"
+    ],
+    "payload": "A chain reaction of space debris collisions. One crash creates more debris, eventually making low Earth orbit unusable for generations.",
+    "flags": 0,
+    "importance": 0.7
+  },
+  {
+    "summary": "P vs NP Problem",
+    "tags": [
+      "math",
+      "computer-science",
+      "complexity"
+    ],
+    "payload": "If a solution can be quickly verified, can it be quickly found? One of the Millennium Prize Problems. Solving it would change cryptography forever.",
+    "flags": 0,
+    "importance": 0.9
+  },
+  {
+    "summary": "The Great Filter",
+    "tags": [
+      "space",
+      "aliens",
+      "evolution"
+    ],
+    "payload": "Hypothesis that some barrier makes long-lasting interstellar civilizations extremely rare. Are we past it, or is it still ahead of us?",
+    "flags": 0,
+    "importance": 0.7
+  },
+  {
+    "summary": "Rubber Duck Debugging",
+    "tags": [
+      "programming",
+      "psychology",
+      "productivity"
+    ],
+    "payload": "Explaining code to an inanimate object to find bugs. Forced verbalization triggers self-correction and clarifies logical gaps.",
+    "flags": 0,
+    "importance": 0.4
+  },
+  {
+    "summary": "The first sip of morning coffee",
+    "tags": [
+      "daily",
+      "ritual",
+      "sensation"
+    ],
+    "payload": "The specific chemical and psychological relief of the first caffeine hit. A ritualistic bridge between sleep and productivity.",
+    "flags": 0,
+    "importance": 0.4
+  },
+  {
+    "summary": "Freshly laundered sheets",
+    "tags": [
+      "home",
+      "sensory",
+      "comfort"
+    ],
+    "payload": "The smell of detergent and sun-dried fabric. Evokes a sense of safety and the end of a long day's labor.",
+    "flags": 0,
+    "importance": 0.3
+  },
+  {
+    "summary": "The urge to organize a desk",
+    "tags": [
+      "psychology",
+      "productivity",
+      "procrastination"
+    ],
+    "payload": "Cleaning physical space to manage mental clutter. Often occurs right before a major deadline as a form of productive avoidance.",
+    "flags": 0,
+    "importance": 0.4
+  },
+  {
+    "summary": "Convenience store late at night",
+    "tags": [
+      "urban",
+      "liminal",
+      "loneliness"
+    ],
+    "payload": "The hum of refrigerators and bright LED lights in a sleeping city. A transient sanctuary for night owls and shift workers.",
+    "flags": 0,
+    "importance": 0.4
+  },
+  {
+    "summary": "The mystery of missing socks",
+    "tags": [
+      "home",
+      "mystery",
+      "entropy"
+    ],
+    "payload": "The statistical anomaly of socks entering a washing machine in pairs but exiting alone. A domestic example of increasing entropy.",
+    "flags": 0,
+    "importance": 0.2
+  },
+  {
+    "summary": "Sunlight through the leaves (Komorebi)",
+    "tags": [
+      "nature",
+      "aesthetics",
+      "peace"
+    ],
+    "payload": "Dappled light filtering through trees. Creates a shifting pattern of shadows that anchors the observer to the present moment.",
+    "flags": 0,
+    "importance": 0.5
+  },
+  {
+    "summary": "The sound of distant train whistles",
+    "tags": [
+      "soundscape",
+      "nostalgia",
+      "travel"
+    ],
+    "payload": "A low-frequency sound that carries further at night. Evokes feelings of longing, nostalgia, or the desire to be elsewhere.",
+    "flags": 0,
+    "importance": 0.3
+  },
+  {
+    "summary": "Staring at a smartphone without purpose",
+    "tags": [
+      "habit",
+      "digital",
+      "boredom"
+    ],
+    "payload": "Doomscrolling or mindless checking of notifications. A modern reflex to fill micro-voids of time with low-value stimuli.",
+    "flags": 0,
+    "importance": 0.5
+  },
+  {
+    "summary": "The relief of taking off shoes",
+    "tags": [
+      "biology",
+      "comfort",
+      "home"
+    ],
+    "payload": "The physical transition from public persona to private self. Releasing the pressure of the world through the feet.",
+    "flags": 0,
+    "importance": 0.3
+  },
+  {
+    "summary": "A forgotten tab in a browser",
+    "tags": [
+      "digital",
+      "memory",
+      "unfinished"
+    ],
+    "payload": "An article opened weeks ago with the intention to read. It remains as a digital ghost of past curiosity.",
+    "flags": 0,
+    "importance": 0.3
+  },
+  {
+    "summary": "Wait time at a red light",
+    "tags": [
+      "urban",
+      "patience",
+      "liminal"
+    ],
+    "payload": "A forced pause in the flow of life. Observations of strangers in neighboring cars during a shared, temporary stillness.",
+    "flags": 0,
+    "importance": 0.2
+  },
+  {
+    "summary": "The smell of old books",
+    "tags": [
+      "history",
+      "sensory",
+      "knowledge"
+    ],
+    "payload": "Lignin breaking down into vanillin-like compounds. A scent that signals stored time and human thought.",
+    "flags": 0,
+    "importance": 0.4
+  },
+  {
+    "summary": "Eavesdropping on strangers",
+    "tags": [
+      "social",
+      "curiosity",
+      "narrative"
+    ],
+    "payload": "Hearing a snippet of a conversation in a cafe. The brain automatically tries to construct the missing context of their lives.",
+    "flags": 0,
+    "importance": 0.4
+  },
+  {
+    "summary": "The weight of a heavy blanket",
+    "tags": [
+      "comfort",
+      "psychology",
+      "safety"
+    ],
+    "payload": "Deep pressure stimulation that calms the nervous system. A tactile hug that reduces anxiety and promotes sleep.",
+    "flags": 0,
+    "importance": 0.5
+  },
+{
+  "summary": "Waiting for a file to download",
+  "tags": ["digital", "anticipation", "delay"],
+  "payload": "A progress bar inching forward while attention drifts. The mind fills the gap with unrelated thoughts.",
+  "flags": 0,
+  "importance": 0.25
+},
+{
+  "summary": "Cracking your knuckles unconsciously",
+  "tags": ["habit", "body", "autopilot"],
+  "payload": "A small release of tension performed without explicit awareness. The body negotiating its own comfort.",
+  "flags": 0,
+  "importance": 0.2
+},
+{
+  "summary": "Cold air entering your lungs",
+  "tags": ["breath", "sensation", "alertness"],
+  "payload": "A sharp inhale that briefly sharpens perception. The environment asserting itself through respiration.",
+  "flags": 0,
+  "importance": 0.3
+},
+{
+  "summary": "Making eye contact and immediately looking away",
+  "tags": ["social", "avoidance", "microinteraction"],
+  "payload": "A fractional moment of mutual recognition, followed by polite disengagement.",
+  "flags": 0,
+  "importance": 0.25
+},
+{
+  "summary": "Laughing slightly later than everyone else",
+  "tags": ["timing", "social", "sync"],
+  "payload": "Processing delay revealed through humor. A reminder that internal clocks differ.",
+  "flags": 0,
+  "importance": 0.3
+},
+{
+  "summary": "Escalator silence",
+  "tags": ["urban", "liminal", "shared"],
+  "payload": "Standing among strangers in synchronized stillness while machinery moves beneath.",
+  "flags": 0,
+  "importance": 0.3
+},
+{
+  "summary": "Noticing dust in sunlight",
+  "tags": ["visual", "impermanence", "ambient"],
+  "payload": "Particles suspended in a light beam. Normally invisible matter briefly becomes observable.",
+  "flags": 0,
+  "importance": 0.35
+},
+{
+  "summary": "Thinking of a word but failing to recall it",
+  "tags": ["language", "memory", "friction"],
+  "payload": "A semantic shape without a label. The mind circles an absence.",
+  "flags": 0,
+  "importance": 0.4
+},
+{
+  "summary": "Re-reading the same paragraph",
+  "tags": ["attention", "drift", "loop"],
+  "payload": "Eyes move forward while comprehension stays behind. A local desynchronization of input and processing.",
+  "flags": 0,
+  "importance": 0.35
+},
+  {
+    "summary": "Walking in the rain without an umbrella",
+    "tags": [
+      "sensation",
+      "nature",
+      "rebellion"
+    ],
+    "payload": "Accepting the inevitable soaking. A shift from the stress of staying dry to the sensory immersion of the elements.",
+    "flags": 0,
+    "importance": 0.4
+  },
+{
+  "summary": "Checking the fridge with no hunger",
+  "tags": ["habit", "boredom", "searching"],
+  "payload": "Opening the door to look at the same contents. An act of seeking change in a static environment.",
+  "flags": 0,
+  "importance": 0.2
+},
+{
+  "summary": "The ghost vibration of a smartphone",
+  "tags": ["digital", "phantom", "expectation"],
+  "payload": "Feeling a notification that didn't happen. The brain hallucinating connectivity in a silent pocket.",
+  "flags": 0,
+  "importance": 0.4
+},
+{
+  "summary": "Adjusting posture after hours of sitting",
+  "tags": ["body", "fatigue", "realignment"],
+  "payload": "The sudden realization of spinal curvature. A brief, manual correction of the skeleton against gravity.",
+  "flags": 0,
+  "importance": 0.25
+},
+{
+  "summary": "Shadows lengthening in the afternoon",
+  "tags": ["time", "visual", "transition"],
+  "payload": "The slow, silent stretching of darkness across the floor. A visual countdown to the end of the day.",
+  "flags": 0,
+  "importance": 0.35
+},
+{
+  "summary": "Typing a message and then deleting it",
+  "tags": ["communication", "hesitation", "void"],
+  "payload": "An utterance formulated and then unmade. The digital equivalent of swallowing one's words.",
+  "flags": 0,
+  "importance": 0.45
+},
+{
+  "summary": "The specific hum of a desktop fan",
+  "tags": ["ambient", "sound", "monotony"],
+  "payload": "A consistent white noise that masks other sounds. It creates a local, artificial quiet through repetition.",
+  "flags": 0,
+  "importance": 0.2
+},
+{
+  "summary": "Finding a small stone in your shoe",
+  "tags": ["friction", "body", "minor-chaos"],
+  "payload": "A physical bug in the walking process. A tiny piece of the world demanding immediate, focused attention.",
+  "flags": 0,
+  "importance": 0.3
+},
+{
+  "summary": "The smell of a hallway in an apartment block",
+  "tags": ["space", "liminal", "stagnation"],
+  "payload": "A mixture of various lives (cooking, cleaning, laundry) lingering in a neutral thoroughfare.",
+  "flags": 0,
+  "importance": 0.3
+},
+{
+  "summary": "Watching steam rise from a hot meal",
+  "tags": ["visual", "entropy", "calm"],
+  "payload": "Fluid dynamics visible in the air. The dissipation of heat rendered as a swirling, temporary ghost.",
+  "flags": 0,
+  "importance": 0.35
+},
+{
+  "summary": "Answering 'Fine, thanks' automatically",
+  "tags": ["social", "script", "autopilot"],
+  "payload": "The standard protocol for social encounters. A safe, content-free packet exchanged to maintain connection.",
+  "flags": 0,
+  "importance": 0.3
+},
+{
+  "summary": "The weight of keys in a pocket",
+  "tags": ["possession", "tactile", "security"],
+  "payload": "A subtle metallic presence that signifies access and ownership. A physical anchor to a specific place.",
+  "flags": 0,
+  "importance": 0.25
+},
+{
+  "summary": "Watching a raindrop race another on glass",
+  "tags": ["perception", "chance", "gravity"],
+  "payload": "Arbitrary competition in the natural world. Gravity and surface tension deciding the winner of a meaningless race.",
+  "flags": 0,
+  "importance": 0.4
+},
+{
+  "summary": "The silence right after turning off the TV",
+  "tags": ["transition", "acoustic", "void"],
+  "payload": "A sudden expansion of the room's auditory space. The return of the house's natural, unmediated sound.",
+  "flags": 0,
+  "importance": 0.4
+},
+{
+  "summary": "Trying to remember if you locked the door",
+  "tags": ["memory", "anxiety", "loop"],
+  "payload": "A ritualistic action performed so often it leaves no trace in conscious memory. A failure of the 'done' flag.",
+  "flags": 0,
+  "importance": 0.4
+},
+{
+  "summary": "The feeling of a pen running out of ink",
+  "tags": ["friction", "analog", "decay"],
+  "payload": "The physical resistance of the tip increasing as the medium fails. A gradual silencing of a tool.",
+  "flags": 0,
+  "importance": 0.3
+},
+  {
+    "summary": "Mathematical modeling of ant colonies",
+    "tags": ["math", "biology", "swarm-intelligence"],
+    "payload": "Algorithm focusing on pheromone-based path optimization. Bridges biological behavior with combinatorial optimization problems.",
+    "flags": 0,
+    "importance": 0.75
+  },
+  {
+    "summary": "Fourier analysis of musical timbre",
+    "tags": ["physics", "music", "signal-processing"],
+    "payload": "Decomposing sound waves into sine waves to define instrument identity. The intersection of wave physics and sensory aesthetics.",
+    "flags": 0,
+    "importance": 0.68
+  },
+  {
+    "summary": "Topology of Neural Networks",
+    "tags": ["math", "AI", "geometry"],
+    "payload": "Studying the shape of data manifolds and network connectivity. High-dimensional geometry applied to machine learning robustness.",
+    "flags": 0,
+    "importance": 0.82
+  },
+  {
+    "summary": "Quantum Cryptography & Prime Factoring",
+    "tags": ["physics", "security", "computation"],
+    "payload": "Shor's algorithm threatening RSA encryption. A collision between quantum mechanics and global information security.",
+    "flags": 1,
+    "importance": 0.84
+  },
+  {
+    "summary": "Linguistic Relativity (Sapir-Whorf)",
+    "tags": ["language", "psychology", "anthropology"],
+    "payload": "The idea that language structure affects the speaker's cognition. Where structural linguistics meets cognitive science.",
+    "flags": 0,
+    "importance": 0.65
+  },
+  {
+    "summary": "Game Theory in Evolutionary Biology",
+    "tags": ["math", "evolution", "social-science"],
+    "payload": "Analyzing survival strategies using the Nash Equilibrium. Mathematical logic applied to the selfish gene hypothesis.",
+    "flags": 0,
+    "importance": 0.78
+  },
+  {
+    "summary": "Thermodynamics of Information",
+    "tags": ["physics", "entropy", "computation"],
+    "payload": "Landauer's principle: erasing one bit of information generates heat. Physical limits of computing and the nature of entropy.",
+    "flags": 0,
+    "importance": 0.81
+  },
+  {
+    "summary": "Cybernetics & Feedback Loops",
+    "tags": ["engineering", "philosophy", "systems"],
+    "payload": "Control and communication in the animal and the machine. The foundation of both robotics and structuralism.",
+    "flags": 0,
+    "importance": 0.72
+  },
+  {
+    "summary": "Fractal Geometry of Coastlines",
+    "tags": ["math", "geography", "nature"],
+    "payload": "Self-similarity across scales. Using Mandelbrot sets to measure the 'infinite' complexity of natural boundaries.",
+    "flags": 0,
+    "importance": 0.64
+  },
+  {
+    "summary": "Algorithmic Composition in Art",
+    "tags": ["AI", "art", "logic"],
+    "payload": "Generative systems creating music or visual art. Questions the boundary between human creativity and procedural rules.",
+    "flags": 0,
+    "importance": 0.60
+  },
+  {
+    "summary": "Neuroeconomics of Decision Making",
+    "tags": ["neuroscience", "economics", "psychology"],
+    "payload": "Using brain scans to study how people value rewards. Biological hardware meets the 'rational actor' model of finance.",
+    "flags": 0,
+    "importance": 0.74
+  },
+  {
+    "summary": "Digital Archaeology of Lost Servers",
+    "tags": ["history", "internet", "forensics"],
+    "payload": "Recovering culture from dead links and unindexed databases. Applying archaeological rigor to the early world wide web.",
+    "flags": 0,
+    "importance": 0.58
+  },
+  {
+    "summary": "Turing Patterns in Biological Growth",
+    "tags": ["math", "biology", "chemistry"],
+    "payload": "How simple reaction-diffusion equations create zebra stripes and leopard spots. Chemical logic governing organic form.",
+    "flags": 0,
+    "importance": 0.76
+  },
+  {
+    "summary": "Epigenetics: The Memory of Environment",
+    "tags": ["biology", "history", "genetics"],
+    "payload": "How trauma or diet affects gene expression across generations without DNA mutation. The biological bridge to historical experience.",
+    "flags": 0,
+    "importance": 0.69
+  },
+  {
+    "summary": "The Architecture of Virtual Spaces",
+    "tags": ["design", "urbanism", "digital"],
+    "payload": "Applying city planning logic to MMORPGs and metaverses. How non-physical geometry affects social interaction.",
+    "flags": 0,
+    "importance": 0.55
+  },
+  {
+    "summary": "Biomimicry in High-Speed Rail",
+    "tags": ["engineering", "nature", "transport"],
+    "payload": "Designing the Shinkansen nose based on a Kingfisher's beak. Solving fluid dynamics through millions of years of evolution.",
+    "flags": 0,
+    "importance": 0.63
+  },
+  {
+    "summary": "Ethical Limits of CRISPR Gene Editing",
+    "tags": ["ethics", "biology", "future"],
+    "payload": "The potential to rewrite human code. A conflict between medical progress and the preservation of the gene pool.",
+    "flags": 1,
+    "importance": 0.83
+  },
+  {
+    "summary": "Cognitive Load in UI Design",
+    "tags": ["psychology", "design", "computation"],
+    "payload": "Designing interfaces based on the brain's working memory limits. The bottleneck between human and machine.",
+    "flags": 0,
+    "importance": 0.52
+  },
+  {
+    "summary": "The Physics of Social Contagion",
+    "tags": ["physics", "sociology", "network"],
+    "payload": "Applying fluid dynamics and phase transition models to the spread of ideas. How 'heat' in a crowd becomes a tipping point.",
+    "flags": 0,
+    "importance": 0.70
+  },
+  {
+    "summary": "Data Sovereignty & Digital Borders",
+    "tags": ["law", "internet", "geopolitics"],
+    "payload": "Who owns a byte in the cloud? The struggle between the borderless internet and national physical jurisdictions.",
+    "flags": 0,
+    "importance": 0.67
+  },
+  {
+    "summary": "Photosynthesis as a Quantum Engine",
+    "tags": ["biology", "quantum", "energy"],
+    "payload": "Evidence that plants use quantum coherence to transport energy with near-perfect efficiency. Biology utilizing subatomic physics.",
+    "flags": 0,
+    "importance": 0.81
+  },
+  {
+    "summary": "The Tragedy of the Commons (Digital)",
+    "tags": ["economics", "internet", "sociology"],
+    "payload": "How open-source or public bandwidth decays when individual rational actors deplete shared resources. Economic logic applied to the web.",
+    "flags": 0,
+    "importance": 0.66
+  },
+  {
+    "summary": "Neural Darwinism",
+    "tags": ["neuroscience", "evolution", "AI"],
+    "payload": "Brain development as a selective process where neurons compete for survival. Biological natural selection acting within a single lifespan.",
+    "flags": 0,
+    "importance": 0.74
+  },
+  {
+    "summary": "Entropy in Human Languages",
+    "tags": ["language", "physics", "computation"],
+    "payload": "Measuring the predictability and information density of different tongues. Information theory meets historical linguistics.",
+    "flags": 0,
+    "importance": 0.72
+  },
+  {
+    "summary": "Cellular Automata in Urban Growth",
+    "tags": ["math", "urbanism", "simulation"],
+    "payload": "Predicting city sprawl using Conway-like rules. Mathematical emergence applied to real-world concrete and steel.",
+    "flags": 0,
+    "importance": 0.62
+  },
+  {
+    "summary": "Techno-Animism in Robotics",
+    "tags": ["robotics", "philosophy", "culture"],
+    "payload": "The tendency to attribute spirits or souls to machines. Intersection of advanced engineering and ancient belief systems.",
+    "flags": 0,
+    "importance": 0.58
+  },
+  {
+    "summary": "Biological Computation (DNA Computing)",
+    "tags": ["computation", "biology", "future"],
+    "payload": "Using DNA molecules to solve complex mathematical problems. Massive parallelism through organic matter.",
+    "flags": 0,
+    "importance": 0.79
+  },
+  {
+    "summary": "Social Network Topography (Small Worlds)",
+    "tags": ["network", "math", "social"],
+    "payload": "The 'Six Degrees of Separation' expressed as a mathematical graph. Analyzing the efficiency of human connectivity.",
+    "flags": 0,
+    "importance": 0.68
+  },
+  {
+    "summary": "Psychogeography of City Grids",
+    "tags": ["design", "psychology", "urbanism"],
+    "payload": "How the physical layout of streets influences the emotional state and behavior of pedestrians. Urbanism as mind-control.",
+    "flags": 0,
+    "importance": 0.56
+  },
+  {
+    "summary": "Non-Euclidean Geometry in Video Games",
+    "tags": ["geometry", "digital", "perception"],
+    "payload": "Spaces that defy 3D logic (e.g., recursive rooms). Mathematical subversion of the brain's spatial processing.",
+    "flags": 0,
+    "importance": 0.71
+  },
+  {
+    "summary": "The Fermi Paradox: The Zoo Hypothesis",
+    "tags": ["space", "aliens", "sociology"],
+    "payload": "Speculation that advanced civilizations deliberately avoid us to let us evolve naturally. Interstellar ethics and isolation.",
+    "flags": 0,
+    "importance": 0.77
+  },
+  {
+    "summary": "Digital Necromancy (AI Replicas)",
+    "tags": ["AI", "ethics", "history"],
+    "payload": "Using LLMs to recreate the personalities of deceased individuals. A collision between data science and the sanctity of death.",
+    "flags": 1,
+    "importance": 0.83
+  },
+  {
+    "summary": "Biosemiotics of Signal Signaling",
+    "tags": ["biology", "language", "communication"],
+    "payload": "Treating biological processes (like cell signaling) as a form of language. Life as a system of signs and interpretations.",
+    "flags": 0,
+    "importance": 0.65
+  },
+  {
+    "summary": "The Geometry of Musical Harmony",
+    "tags": ["math", "music", "visual"],
+    "payload": "Mapping chords as points in a multi-dimensional 'Orbifold'. Visualizing the mathematical beauty of Western tonality.",
+    "flags": 0,
+    "importance": 0.69
+  },
+  {
+    "summary": "Self-Organized Criticality in Sandpiles",
+    "tags": ["physics", "math", "geology"],
+    "payload": "How systems naturally evolve to the edge of chaos. One grain of sand causing a massive avalanche. The logic of cascades.",
+    "flags": 0,
+    "importance": 0.73
+  },
+  {
+    "summary": "Post-Humanism & Neural Lace",
+    "tags": ["future", "neuroscience", "engineering"],
+    "payload": "Integrating machines directly with the neocortex. The engineering challenge of merging biological and digital consciousness.",
+    "flags": 0,
+    "importance": 0.80
+  },
+  {
+    "summary": "The Aesthetic of Glitch Art",
+    "tags": ["art", "digital", "error"],
+    "payload": "Finding beauty in machine failure and data corruption. An artistic celebration of entropy in digital systems.",
+    "flags": 0,
+    "importance": 0.55
+  },
+  {
+    "summary": "Econophysics: Markets as Particles",
+    "tags": ["economics", "physics", "network"],
+    "payload": "Modeling stock market crashes using the same math as earthquakes and liquid phase transitions. Money as a physical force.",
+    "flags": 0,
+    "importance": 0.78
+  },
+  {
+    "summary": "The Unreasonable Effectiveness of Math",
+    "tags": ["philosophy", "math", "physics"],
+    "payload": "Why should abstract numbers describe the physical universe so perfectly? The deep mystery of the link between thought and reality.",
+    "flags": 0,
+    "importance": 0.84
+  },
+  {
+    "summary": "Cognitive Bias in LLM Training",
+    "tags": ["AI", "psychology", "ethics"],
+    "payload": "How human mental shortcuts are encoded into weights. The machine as a mirror of our own logical flaws.",
+    "flags": 0,
+    "importance": 0.75
+  },
+  {
+    "summary": "Biological rhythm & Blue light",
+    "tags": ["biology", "tech", "habit"],
+    "payload": "Short-wavelength light suppresses melatonin. A collision between ancient circadian circuitry and modern screen technology.",
+    "flags": 0,
+    "importance": 0.64
+  },
+  {
+    "summary": "The mathematics of shuffling cards",
+    "tags": ["math", "physics", "entropy"],
+    "payload": "It takes exactly seven riffle shuffles to randomize a deck. The transition from ordered state to maximum entropy.",
+    "flags": 0,
+    "importance": 0.58
+  },
+  {
+    "summary": "Placebo effect in UX design",
+    "tags": ["ui-ux", "psychology", "logic"],
+    "payload": "Progress bars that move faster at the end to satisfy user anxiety. Using psychological bias to mask technical latency.",
+    "flags": 0,
+    "importance": 0.61
+  },
+  {
+    "summary": "Algorithmic bias in facial recognition",
+    "tags": ["AI", "ethics", "sociology"],
+    "payload": "Training data imbalances lead to higher error rates for certain demographics. When societal prejudice is encoded into math.",
+    "flags": 1,
+    "importance": 0.82
+  },
+  {
+    "summary": "The topology of tangled headphones",
+    "tags": ["math", "physics", "daily-life"],
+    "payload": "Knot theory explains why cables inevitably tangle in pockets. Entropy favors disorder in restricted 3D spaces.",
+    "flags": 0,
+    "importance": 0.55
+  },
+  {
+    "summary": "Pareidolia: Faces in the void",
+    "tags": ["psychology", "evolution", "perception"],
+    "payload": "The brain's survival reflex to find patterns. Seeing a 'face' in a power outlet is a byproduct of ancient predator detection.",
+    "flags": 0,
+    "importance": 0.67
+  },
+  {
+    "summary": "Game theory of city traffic",
+    "tags": ["math", "urbanism", "behavior"],
+    "payload": "Braess's Paradox: Adding a road can actually slow down traffic. Individual rational choices leading to collective inefficiency.",
+    "flags": 0,
+    "importance": 0.73
+  },
+  {
+    "summary": "Digital minimalism & Dopamine fasting",
+    "tags": ["psychology", "tech", "lifestyle"],
+    "payload": "Intentional disconnection to reset the brain's reward system. A rebellion against the attention economy's architecture.",
+    "flags": 0,
+    "importance": 0.59
+  },
+  {
+    "summary": "Fractal geometry in broccoli and lungs",
+    "tags": ["math", "nature", "biology"],
+    "payload": "Self-similar patterns maximize surface area for gas exchange and light absorption. Nature's recursive efficiency.",
+    "flags": 0,
+    "importance": 0.71
+  },
+  {
+    "summary": "The linguistics of 'Internet Slang'",
+    "tags": ["language", "internet", "anthropology"],
+    "payload": "Emoji and acronyms evolving into a high-speed emotional shorthand. A rapid mutation of grammar in digital habitats.",
+    "flags": 0,
+    "importance": 0.57
+  },
+  {
+    "summary": "Cybernetic feedback in thermostats",
+    "tags": ["engineering", "systems", "logic"],
+    "payload": "The simplest form of goal-oriented behavior. A closed-loop system maintaining stability through constant correction.",
+    "flags": 0,
+    "importance": 0.63
+  },
+  {
+    "summary": "The chemistry of Maillard reaction",
+    "tags": ["chemistry", "food", "sensory"],
+    "payload": "Amino acids and sugars reacting under heat to create complex flavors. The bridge between molecular science and culinary art.",
+    "flags": 0,
+    "importance": 0.65
+  },
+  {
+    "summary": "Apophenia: Meaning in randomness",
+    "tags": ["psychology", "data-science", "philosophy"],
+    "payload": "The tendency to perceive meaningful connections between unrelated things. The dark side of pattern recognition.",
+    "flags": 0,
+    "importance": 0.68
+  },
+  {
+    "summary": "Quantum consciousness hypothesis",
+    "tags": ["physics", "neuroscience", "philosophy"],
+    "payload": "Speculation that microtubules in neurons utilize quantum effects. A controversial attempt to bridge mind and matter.",
+    "flags": 1,
+    "importance": 0.79
+  },
+  {
+    "summary": "The economics of 'Free-to-Play'",
+    "tags": ["economics", "psychology", "gaming"],
+    "payload": "Using 'Sunk Cost Fallacy' and 'Whale' dynamics to monetize engagement. Engineering addiction for profit.",
+    "flags": 0,
+    "importance": 0.74
+  },
+  {
+    "summary": "Crowd dynamics as fluid flow",
+    "tags": ["physics", "sociology", "safety"],
+    "payload": "Modeling high-density human movement using the Navier-Stokes equations. When individuals lose agency and act like particles.",
+    "flags": 0,
+    "importance": 0.76
+  },
+  {
+    "summary": "The 'Uncanny Valley' in AI avatars",
+    "tags": ["robotics", "psychology", "design"],
+    "payload": "The revulsion felt when a non-human entity looks 'almost' human. A glitch in our biological social-recognition software.",
+    "flags": 0,
+    "importance": 0.70
+  },
+  {
+    "summary": "Semantic saturation",
+    "tags": ["language", "brain", "perception"],
+    "payload": "Repeating a word until it loses all meaning and becomes a mere sound. A temporary disconnection between signifier and signified.",
+    "flags": 0,
+    "importance": 0.56
+  },
+  {
+    "summary": "The physics of a spinning coin",
+    "tags": ["physics", "math", "chance"],
+    "payload": "Euler's Disk: The rapid increase in vibration frequency as energy dissipates. A sensory demonstration of dynamical systems.",
+    "flags": 0,
+    "importance": 0.62
+  },
+  {
+    "summary": "Data debris & Digital decay",
+    "tags": ["tech", "entropy", "history"],
+    "payload": "Bit rot and obsolete file formats leading to a 'Digital Dark Age'. The struggle to preserve information against time.",
+    "flags": 0,
+    "importance": 0.77
+  },
+  {
+    "summary": "Quorum sensing in bacterial colonies",
+    "tags": ["biology", "communication", "distributed"],
+    "payload": "Bacteria coordinating behavior based on local population density. A biological example of decentralized consensus and signal transduction.",
+    "flags": 0,
+    "importance": 0.76
+  },
+  {
+    "summary": "The Lindy Effect on ideas",
+    "tags": ["math", "history", "probability"],
+    "payload": "The future life expectancy of non-perishable things is proportional to their current age. Probability applied to cultural longevity.",
+    "flags": 0,
+    "importance": 0.68
+  },
+  {
+    "summary": "Zipf's Law in human language",
+    "tags": ["linguistics", "math", "statistics"],
+    "payload": "The most frequent word occurs twice as often as the second most frequent. A mathematical pattern found in almost all human communication.",
+    "flags": 0,
+    "importance": 0.72
+  },
+  {
+    "summary": "Hysteresis in social systems",
+    "tags": ["physics", "sociology", "systems"],
+    "payload": "The dependence of a system's state on its history. Why social trends or economic scars persist long after the original cause is gone.",
+    "flags": 0,
+    "importance": 0.65
+  },
+  {
+    "summary": "Information Foraging Theory",
+    "tags": ["psychology", "ui-ux", "biology"],
+    "payload": "Humans navigate the web using the same optimal foraging strategies animals use to find food. Maximizing info-gain per unit of effort.",
+    "flags": 0,
+    "importance": 0.70
+  },
+  {
+    "summary": "The physics of sandpile collapses",
+    "tags": ["physics", "geology", "math"],
+    "payload": "Self-organized criticality where a single grain triggers a massive shift. A model for avalanches, forest fires, and stock market crashes.",
+    "flags": 0,
+    "importance": 0.74
+  },
+  {
+    "summary": "Conway's Law in software orgs",
+    "tags": ["programming", "sociology", "design"],
+    "payload": "Organizations design systems that mirror their own communication structures. The architecture of the code follows the architecture of the team.",
+    "flags": 0,
+    "importance": 0.62
+  },
+  {
+    "summary": "Bio-luminescence as signal logic",
+    "tags": ["biology", "nature", "engineering"],
+    "payload": "Chemical light production for camouflage or attraction. A high-efficiency energy conversion system evolved for deep-sea communication.",
+    "flags": 0,
+    "importance": 0.69
+  },
+  {
+    "summary": "The Chronos vs Kairos time perception",
+    "tags": ["philosophy", "psychology", "time"],
+    "payload": "Sequential quantitative time versus the qualitative 'right moment.' A conflict between the clock and human experience.",
+    "flags": 0,
+    "importance": 0.58
+  },
+  {
+    "summary": "Neural Entrainment to rhythm",
+    "tags": ["neuroscience", "music", "physics"],
+    "payload": "Brain waves synchronizing with external auditory pulses. The biological basis for the universal human response to a beat.",
+    "flags": 0,
+    "importance": 0.71
+  },
+  {
+    "summary": "Algorithmic gerrymandering",
+    "tags": ["math", "politics", "AI"],
+    "payload": "Using geometry and optimization to draw voting districts for partisan gain. Mathematics weaponized for structural power.",
+    "flags": 1,
+    "importance": 0.81
+  },
+  {
+    "summary": "The chemistry of the 'Old Book Smell'",
+    "tags": ["chemistry", "history", "sensory"],
+    "payload": "Degradation of cellulose and lignin into vanillin and other aromatics. A chemical fingerprint of time passing on paper.",
+    "flags": 0,
+    "importance": 0.55
+  },
+  {
+    "summary": "Technological momentum",
+    "tags": ["history", "engineering", "sociology"],
+    "payload": "The idea that large systems (like power grids) become autonomous and resistant to change as they grow. Infrastructure as destiny.",
+    "flags": 0,
+    "importance": 0.64
+  },
+  {
+    "summary": "Panopticon as digital architecture",
+    "tags": ["philosophy", "tech", "security"],
+    "payload": "Foucault's model of surveillance applied to modern data tracking. The psychological effect of knowing one *might* be observed.",
+    "flags": 1,
+    "importance": 0.78
+  },
+  {
+    "summary": "The aesthetics of Brutalist web design",
+    "tags": ["design", "culture", "digital"],
+    "payload": "A reaction against refined UI/UX. Raw, unpolished, and functionalist interfaces that prioritize honesty over comfort.",
+    "flags": 0,
+    "importance": 0.56
+  },
+  {
+    "summary": "Biological niche construction",
+    "tags": ["biology", "evolution", "urbanism"],
+    "payload": "Beavers building dams or humans building cities. Organisms actively changing their environment to alter selection pressures.",
+    "flags": 0,
+    "importance": 0.75
+  },
+  {
+    "summary": "Shannon Entropy in DNA sequences",
+    "tags": ["math", "genetics", "information"],
+    "payload": "Measuring the information density of the genome. DNA as a robust code for surviving noise and mutation over eons.",
+    "flags": 0,
+    "importance": 0.83
+  },
+  {
+    "summary": "The 'Overview Effect' in astronauts",
+    "tags": ["psychology", "space", "philosophy"],
+    "payload": "A cognitive shift reported by astronauts upon seeing Earth from orbit. The sudden realization of planetary fragility and unity.",
+    "flags": 0,
+    "importance": 0.67
+  },
+  {
+    "summary": "Digital twin synchronization",
+    "tags": ["engineering", "AI", "simulation"],
+    "payload": "Maintaining a real-time virtual model of a physical asset. A feedback loop between the material world and its digital ghost.",
+    "flags": 0,
+    "importance": 0.73
+  },
+  {
+    "summary": "The 'Is-Ought' problem in AI Alignment",
+    "tags": ["philosophy", "AI", "ethics"],
+    "payload": "Hume's gap: how do we derive what an AI *should* do from the data of what humans *actually* do? The fundamental wall in value learning.",
+    "flags": 0,
+    "importance": 0.84
+  },
+  {
+    "summary": "Proprioception & Virtual Avatars",
+    "tags": ["body", "neuroscience", "digital"],
+    "payload": "The brain's ability to map a digital limb as its own. How body schema expands to include non-biological tools through sensory feedback.",
+    "flags": 0,
+    "importance": 0.72
+  },
+  {
+    "summary": "Embodied Cognition: Thinking with the body",
+    "tags": ["cognition", "psychology", "philosophy"],
+    "payload": "The theory that intelligence is not just in the brain but emerges from physical interaction with the environment. Mind as a grounded process.",
+    "flags": 0,
+    "importance": 0.78
+  },
+  {
+    "summary": "Time Dilation in High-Flow States",
+    "tags": ["time", "psychology", "neuroscience"],
+    "payload": "The subjective slowing of time during intense focus or danger. Neural processing speed outstripping the objective ticking of the clock.",
+    "flags": 0,
+    "importance": 0.65
+  },
+  {
+    "summary": "Stigmergy in Social Insects & Wikipedia",
+    "tags": ["swarm-intelligence", "sociology", "distributed"],
+    "payload": "Indirect coordination through environmental traces. Ants use pheromones; humans use 'last edited' timestamps to organize collective labor.",
+    "flags": 0,
+    "importance": 0.81
+  },
+  {
+    "summary": "The 'Present Moment' in Relativity",
+    "tags": ["physics", "time", "philosophy"],
+    "payload": "Einstein's denial of a universal 'Now.' Simultaneous events for one observer are sequential for another, challenging the concept of a shared present.",
+    "flags": 0,
+    "importance": 0.83
+  },
+  {
+    "summary": "Haptic Memory & Muscle Memory",
+    "tags": ["body", "memory", "sensation"],
+    "payload": "Procedural knowledge stored in the motor cortex. The body 'remembering' a piano piece or a password that the conscious mind has forgotten.",
+    "flags": 0,
+    "importance": 0.61
+  },
+  {
+    "summary": "Emergent Leadership in Bird Flocks",
+    "tags": ["swarm-intelligence", "biology", "organization"],
+    "payload": "Complex maneuvers without a central commander. Local rules (alignment, cohesion, separation) producing global, sophisticated group behavior.",
+    "flags": 0,
+    "importance": 0.74
+  },
+  {
+    "summary": "Circadian Entropy",
+    "tags": ["biology", "time", "entropy"],
+    "payload": "The breakdown of biological rhythms in the absence of external cues (light/dark). The internal clock drifting toward its own idiosyncratic speed.",
+    "flags": 0,
+    "importance": 0.67
+  },
+  {
+    "summary": "The Extended Mind Thesis",
+    "tags": ["cognition", "tech", "philosophy"],
+    "payload": "The idea that smartphones and notebooks are not external tools but actual components of our cognitive architecture. Externalized memory.",
+    "flags": 0,
+    "importance": 0.79
+  },
+  {
+    "summary": "Thermodynamic Arrow of Time",
+    "tags": ["physics", "entropy", "time"],
+    "payload": "Time flows forward because entropy increases. The statistical inevitability of disorder providing the only directionality to the universe.",
+    "flags": 0,
+    "importance": 0.82
+  },
+  {
+    "summary": "Mirrored Movement & Social Sync",
+    "tags": ["body", "social", "psychology"],
+    "payload": "Subconscious mimicry of posture and gestures during conversation. A physical handshake between two nervous systems to build rapport.",
+    "flags": 0,
+    "importance": 0.58
+  },
+  {
+    "summary": "Dunbar's Number & Group Scaling",
+    "tags": ["sociology", "cognition", "organization"],
+    "payload": "The cognitive limit to the number of people with whom one can maintain stable social relationships. A bottleneck for organizational growth.",
+    "flags": 0,
+    "importance": 0.69
+  },
+  {
+    "summary": "Phantom Limb Sensation",
+    "tags": ["neuroscience", "body", "perception"],
+    "payload": "Feeling pain or itch in a non-existent limb. The brain's internal map persisting after the physical input has vanished.",
+    "flags": 0,
+    "importance": 0.70
+  },
+  {
+    "summary": "Digital Stigmergy in Open Source",
+    "tags": ["distributed", "tech", "organization"],
+    "payload": "Asynchronous collaboration where the work itself (the code) directs the next participant's action. Intelligence embedded in the artifact.",
+    "flags": 0,
+    "importance": 0.64
+  },
+  {
+    "summary": "Entropy of Boredom",
+    "tags": ["psychology", "time", "sensation"],
+    "payload": "The subjective expansion of time during low-stimulus periods. When the mind lacks input, it turns inward, making seconds feel like minutes.",
+    "flags": 0,
+    "importance": 0.60
+  },
+  {
+    "summary": "Collective Effervescence",
+    "tags": ["sociology", "body", "psychology"],
+    "payload": "The sense of energy and harmony felt when a group performs the same action at once (dancing, chanting). A physical dissolution of the ego.",
+    "flags": 0,
+    "importance": 0.66
+  },
+  {
+    "summary": "Neural Latency in Sensory Input",
+    "tags": ["neuroscience", "time", "body"],
+    "payload": "The 80ms delay between a physical event and our conscious perception of it. We live perpetually in the very recent past.",
+    "flags": 0,
+    "importance": 0.75
+  },
+  {
+    "summary": "The Wisdom of Crowds vs. Madness",
+    "tags": ["swarm-intelligence", "economics", "math"],
+    "payload": "When independent guesses average into truth versus when social pressure leads to informational cascades and market bubbles.",
+    "flags": 0,
+    "importance": 0.77
+  },
+  {
+    "summary": "Gravity's Effect on Time (GR)",
+    "tags": ["physics", "time", "space"],
+    "payload": "Time runs slower closer to a massive body. A clock on a mountain ticks faster than a clock at sea level. Spacetime as a fluid medium.",
+    "flags": 0,
+    "importance": 0.80
+  },
+  {
+    "summary": "Bio-Inspired Robotic Locomotion",
+    "tags": ["robotics", "body", "biology"],
+    "payload": "Designing robots that walk like insects or run like cheetahs. Solving movement through mechanical 'intelligence' rather than pure computation.",
+    "flags": 0,
+    "importance": 0.73
+  },
+
+  {
+    "summary": "Edge AI chip sales surge in 2026",
+    "tags": ["AI", "hardware", "trending", "2026"],
+    "payload": "On-device inference chips now outsell cloud GPU modules. Edge deployment is the new default for consumer AI products.",
+    "flags": 0,
+    "importance": 0.71
+  },
+  {
+    "summary": "Rust adoption hits mainstream tipping point",
+    "tags": ["rust", "programming", "emerging", "update"],
+    "payload": "Major cloud providers now mandate memory-safe languages for new infrastructure. Rust joins the short list of enterprise-approved systems languages.",
+    "flags": 0,
+    "importance": 0.68
+  },
+  {
+    "summary": "Viral math puzzle breaks social media",
+    "tags": ["mathematics", "social-media", "viral", "trending"],
+    "payload": "A deceptively simple arithmetic problem splits the internet into warring camps. Order of operations debates resurface every few years like clockwork.",
+    "flags": 0,
+    "importance": 0.42
+  },
+  {
+    "summary": "WebAssembly outside the browser gains momentum",
+    "tags": ["wasm", "infrastructure", "emerging", "latest"],
+    "payload": "Server-side WASM runtimes challenge containers for lightweight workloads. The compile-once-run-anywhere promise finds new ground beyond browsers.",
+    "flags": 0,
+    "importance": 0.65
+  },
+  {
+    "summary": "Breaking results in protein folding accuracy",
+    "tags": ["biology", "AI", "breaking", "2026"],
+    "payload": "New diffusion-based models exceed AlphaFold accuracy on disordered regions. Structural biology enters a phase of rapid experimental validation.",
+    "flags": 0,
+    "importance": 0.82
+  },
+  {
+    "summary": "Supply chain attacks on open-source registries",
+    "tags": ["security", "open-source", "current", "breaking"],
+    "payload": "Coordinated typosquatting campaigns hit npm and PyPI simultaneously. The trust model of public package registries faces its biggest stress test.",
+    "flags": 0,
+    "importance": 0.77
+  },
+
+  {
+    "summary": "Quick note on goroutine scheduling",
+    "tags": ["go", "concurrency", "note", "brief"],
+    "payload": "Go's M:N scheduler maps goroutines to OS threads. Work-stealing keeps cores busy. GOMAXPROCS controls parallelism ceiling.",
+    "flags": 0,
+    "importance": 0.38
+  },
+  {
+    "summary": "Memo on REST vs GraphQL tradeoffs",
+    "tags": ["api-design", "web", "memo"],
+    "payload": "REST is simpler for CRUD. GraphQL shines when clients need flexible queries. Neither is universally better; pick based on access patterns.",
+    "flags": 0,
+    "importance": 0.45
+  },
+  {
+    "summary": "Brief overview of consistent hashing",
+    "tags": ["distributed-systems", "algorithms", "overview", "brief"],
+    "payload": "Consistent hashing minimizes key redistribution when nodes join or leave. Virtual nodes smooth out load imbalance across the ring.",
+    "flags": 0,
+    "importance": 0.41
+  },
+  {
+    "summary": "Short sketch of actor model basics",
+    "tags": ["concurrency", "architecture", "sketch", "intro"],
+    "payload": "Actors communicate via messages, never share state. Each actor processes one message at a time. Supervision trees handle failures hierarchically.",
+    "flags": 0,
+    "importance": 0.35
+  },
+  {
+    "summary": "Fragment on the CAP theorem intuition",
+    "tags": ["distributed-systems", "networking", "fragment", "note"],
+    "payload": "During a network partition you must choose: either answer with possibly stale data (AP) or refuse to answer (CP). You cannot have both.",
+    "flags": 0,
+    "importance": 0.33
+  },
+  {
+    "summary": "Summary of common sorting complexity",
+    "tags": ["algorithms", "computer-science", "summary", "outline"],
+    "payload": "Comparison sorts are O(n log n) at best. Radix and counting sort beat this by exploiting structure. In practice, cache locality often matters more than big-O.",
+    "flags": 0,
+    "importance": 0.30
+  },
+
+  {
+    "summary": "IEEE 754 floating-point standard",
+    "tags": ["computing", "mathematics", "standard", "reference"],
+    "payload": "The universal encoding for real numbers in hardware. Sign, exponent, mantissa. 0.1 + 0.2 != 0.3 is not a bug but a consequence of binary fractions.",
+    "flags": 0,
+    "importance": 0.72
+  },
+  {
+    "summary": "RFC 2616 and the evolution of HTTP",
+    "tags": ["networking", "web", "standard", "official"],
+    "payload": "HTTP/1.1 defined the request-response model that built the web. Connection reuse, chunked transfer, and content negotiation were its key contributions.",
+    "flags": 0,
+    "importance": 0.69
+  },
+  {
+    "summary": "Peer-reviewed meta-analysis of spaced repetition",
+    "tags": ["learning", "cognitive-science", "peer-reviewed"],
+    "payload": "Systematic review across 29 studies confirms expanding intervals improve long-term retention over massed practice. Effect size is large and consistent.",
+    "flags": 0,
+    "importance": 0.74
+  },
+  {
+    "summary": "POSIX compliance and portable systems programming",
+    "tags": ["operating-systems", "unix", "standard", "reference"],
+    "payload": "POSIX defines the API contract between applications and Unix-like systems. Write to POSIX and your code runs on Linux, macOS, and BSDs without modification.",
+    "flags": 0,
+    "importance": 0.66
+  },
+  {
+    "summary": "W3C accessibility guidelines (WCAG)",
+    "tags": ["web", "accessibility", "official", "standard"],
+    "payload": "Four principles: perceivable, operable, understandable, robust. Level AA conformance is the practical target for most public-facing web applications.",
+    "flags": 0,
+    "importance": 0.63
+  },
+
+  {
+    "summary": "Ancient roots of the abacus",
+    "tags": ["mathematics", "history", "ancient", "timeless"],
+    "payload": "Counting boards predate written numerals by millennia. The abacus encodes place value physically, teaching arithmetic through muscle memory.",
+    "flags": 0,
+    "importance": 0.55
+  },
+  {
+    "summary": "Euclidean algorithm for GCD",
+    "tags": ["mathematics", "algorithms", "classic", "fundamental"],
+    "payload": "Repeatedly replace the larger number with the remainder of division. Terminates in O(log n) steps. Twenty-three centuries old and still the fastest known method.",
+    "flags": 0,
+    "importance": 0.70
+  },
+  {
+    "summary": "Principles of thermodynamic equilibrium",
+    "tags": ["physics", "thermodynamics", "fundamental", "enduring"],
+    "payload": "Isolated systems evolve toward maximum entropy. Equilibrium is not stillness but the state where all macroscopic flows have ceased. Time's arrow emerges here.",
+    "flags": 0,
+    "importance": 0.78
   }
+
 ]

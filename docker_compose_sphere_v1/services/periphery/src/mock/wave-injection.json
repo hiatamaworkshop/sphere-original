@@ -8,7 +8,7 @@
   "capsules": [
 
     {
-      "_group": "A: Trending (TemporalShort基調, 一部 Insightful/Provoking クロスレイヤー)",
+      "_group": "A: Trending (TemporalShort基調, 一部 Sharp/Tensile クロスレイヤー)",
       "schemaVersion": 4,
       "topTier": [
         {
@@ -16,7 +16,7 @@
           "summary": "AI breakthrough 2026: emergent reasoning discovered in compact language models",
           "content": "Researchers have found that models under 4B parameters can exhibit emergent reasoning when exposed to structured environmental feedback, challenging the assumption that scale alone drives intelligence.",
           "flags": 0,
-          "_expect": "0x0101 TemporalShort(2026) + Insightful(breakthrough)"
+          "_expect": "0x0001 TemporalShort(2026). Note: 'breakthrough' は Sharp パターンに非マッチ。Sharp を付与するには 'theorem','proof','definition' 等のタグが必要"
         },
         {
           "tags": ["quantum-computing", "physics", "breaking", "2026"],
@@ -39,7 +39,7 @@
           "summary": "Hot debate erupts over AI-generated art in museum exhibitions worldwide",
           "content": "Major galleries in Tokyo, London, and New York are split on whether AI-generated works deserve exhibition space alongside human-created art.",
           "flags": 0,
-          "_expect": "0x0401 TemporalShort(current) + Provoking(controversial)"
+          "_expect": "0x0401 TemporalShort(current) + Tensile(controversial)"
         },
         {
           "tags": ["distributed-computing", "edge-network", "latest", "update"],
@@ -85,14 +85,14 @@
           "summary": "Stability of complex adaptive systems: convergent lessons from ecology and economics",
           "content": "Meta-analysis of 200+ studies reveals that resilient systems share three properties: redundancy, modularity, and controlled feedback loops.",
           "flags": 0,
-          "_expect": "0x0882 Authority(peer-reviewed) + TemporalLong(stable) + Soothing(stable dual-match)"
+          "_expect": "0x0082 Authority(peer-reviewed) + TemporalLong(stable). Note: 'stable' は Settled パターンに非マッチ (Settled = established,consensus,standard,proven,accepted,settled,canonical,codified,ratified,definitive)"
         },
         {
           "tags": ["distributed-systems", "consensus", "peer-reviewed", "comprehensive"],
           "summary": "Distributed consensus algorithms: a peer-reviewed meta-analysis of Byzantine fault tolerance",
           "content": "Systematic review of 15 years of BFT research, establishing definitive performance bounds and identifying the trade-off frontier between throughput and finality.",
           "flags": 0,
-          "_expect": "0x0090 Authority(peer-reviewed) + Dense(comprehensive)"
+          "_expect": "0x0890 Authority(peer-reviewed) + Dense(comprehensive) + Settled(consensus)"
         }
       ],
       "ghostNodes": [],
@@ -109,7 +109,7 @@
           "tags": ["attention-mechanism", "neural-network", "note", "casual"],
           "summary": "Quick thought on whether attention mechanisms could be replaced by simple averaging",
           "flags": 0,
-          "_expect": "0x0020 Sparse(note, casual)"
+          "_expect": "0x0020 Sparse(note). Note: 'casual' は新 Sparse パターンに非マッチ"
         },
         {
           "tags": ["caching", "data-pipeline", "memo", "brief"],
@@ -129,7 +129,7 @@
           "tags": ["UI-design", "dark-mode", "casual", "anecdotal"],
           "summary": "Anecdotal observation about users preferring dark mode in evening hours",
           "flags": 0,
-          "_expect": "0x0020 Sparse(casual, anecdotal)"
+          "_expect": "0x0000 NONE. Note: 'casual','anecdotal' は新 Sparse パターンに非マッチ。Sparse 付与には 'note','memo','sketch' 等が必要"
         },
         {
           "tags": ["creativity", "randomness", "memo", "intro"],

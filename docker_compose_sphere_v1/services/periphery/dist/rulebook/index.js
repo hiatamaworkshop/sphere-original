@@ -300,38 +300,38 @@ Learn to interpret these signals. They guide your actions.
                 effect: "Decay slows (×0.95). Reliable information.",
                 triggers: ["official", "peer-reviewed", "research", "verified", "canonical"],
             },
-            // ===== Cognitive Layer (bits 8-11) =====
-            insightful: {
+            // ===== Cognitive Layer (bits 8-11) — epistemic state =====
+            sharp: {
                 bit: 8,
                 value: "0x0100",
-                name: "Insightful",
-                scent: "Generates 'aha' moments",
-                effect: "High quality signal. Illuminates understanding.",
-                triggers: ["insight", "revelation", "breakthrough", "discovery"],
+                name: "Sharp",
+                scent: "Clear, unambiguous, well-defined",
+                effect: "High resolution signal. One interpretation.",
+                triggers: ["definition", "theorem", "proof", "conclusion", "exact"],
             },
-            confusing: {
+            fuzzy: {
                 bit: 9,
                 value: "0x0200",
-                name: "Confusing",
-                scent: "Low resolution, ambiguous",
-                effect: "Frustration trigger. Proceed with care.",
-                triggers: ["confusing", "unclear", "ambiguous", "paradox"],
+                name: "Fuzzy",
+                scent: "Ambiguous, multiple interpretations possible",
+                effect: "Low resolution. Open to interpretation.",
+                triggers: ["hypothesis", "maybe", "uncertain", "speculative", "approximate"],
             },
-            provoking: {
+            tensile: {
                 bit: 10,
                 value: "0x0400",
-                name: "Provoking",
-                scent: "Challenges assumptions",
-                effect: "Curiosity trigger. Stirs debate.",
-                triggers: ["controversial", "debate", "provocative", "radical"],
+                name: "Tensile",
+                scent: "Internal contradiction, unresolved tension",
+                effect: "Contains opposing forces. Debate territory.",
+                triggers: ["debate", "paradox", "contradiction", "conflict", "unresolved"],
             },
-            soothing: {
+            settled: {
                 bit: 11,
                 value: "0x0800",
-                name: "Soothing",
-                scent: "Calming, reassuring",
-                effect: "Satisfaction boost. Reduces uncertainty.",
-                triggers: ["calming", "stable", "peaceful", "consistent"],
+                name: "Settled",
+                scent: "Resolved, consensus reached",
+                effect: "Stable ground. Agreed upon.",
+                triggers: ["established", "consensus", "standard", "accepted", "canonical"],
             },
             // ===== Special Layer (bits 12-15) =====
             // (UserMarked, SystemCore, Compressed, Candidate - less relevant for agents)
@@ -346,8 +346,8 @@ Learn to interpret these signals. They guide your actions.
             {
                 flags: "0x0111",
                 binary: "0000 0001 0001 0001",
-                meaning: "TemporalShort + Dense + Insightful",
-                interpretation: "Fresh AND packed AND illuminating. High-value find.",
+                meaning: "TemporalShort + Dense + Sharp",
+                interpretation: "Fresh AND packed AND clear. High-value find.",
             },
             {
                 flags: "0x0042",
@@ -358,8 +358,8 @@ Learn to interpret these signals. They guide your actions.
             {
                 flags: "0x0401",
                 binary: "0000 0100 0000 0001",
-                meaning: "TemporalShort + Provoking",
-                interpretation: "Fresh AND controversial. Sparks debate.",
+                meaning: "TemporalShort + Tensile",
+                interpretation: "Fresh AND contested. Unresolved tension.",
             },
         ],
         guidance: `
@@ -373,9 +373,9 @@ When you encounter a node, read its three layers:
     - Dense (0x0010): theory, detailed
     - Authority (0x0080): trustworthy, credible
 
-  Cognitive (bits 8-11): How does it feel?
-    - Insightful (0x0100): illuminates, "aha"
-    - Provoking (0x0400): challenges, debates
+  Cognitive (bits 8-11): What is its epistemic state?
+    - Sharp (0x0100): clear, well-defined
+    - Tensile (0x0400): contested, unresolved
 
 Combine these signals with heat (temperature), weight (mass), and decay (volatility).
 Flags are the "scent" of information. Together, they form your sensory toolkit.
