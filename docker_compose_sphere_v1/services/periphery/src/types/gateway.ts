@@ -286,22 +286,6 @@ export interface WarpResult {
 }
 
 /**
- * RandomWalk Result: Exploration without target
- *
- * [Design] Move in random direction in 384D space
- * [Purpose] Explore when sense() returns uninteresting nodes
- * [Effect] Updates 384D _embeddingVector (true movement)
- *
- * [Difference from Warp]
- *   - warp: Jump to known node (requires nodeId)
- *   - randomWalk: Explore unknown territory (no target)
- */
-/**
- * @deprecated Use MoveResult instead
- */
-export type RandomWalkResult = MoveResult;
-
-/**
  * WalkMode: Agent exploration personality
  *
  * [Design] Agent chooses exploration style based on purpose/personality
@@ -456,12 +440,6 @@ export interface SphereContext {
   warp(nodeId: string): Promise<WarpResult>;
 
   /**
-   * @deprecated Use move(step, mode) instead
-   * Random walk - alias for move()
-   */
-  randomWalk(stepSize?: number, mode?: WalkMode): Promise<RandomWalkResult>;
-
-  /**
    * @deprecated Low-level movement intent API
    * Use move(step, mode) for exploration
    */
@@ -571,7 +549,6 @@ export type GatewayToSphereMessage =
   | { type: "evaluate"; sessionId: string; nodeId: string; h: number; w: number; d: number }
   | { type: "move"; sessionId: string; intent: MoveIntent }
   | { type: "warp"; sessionId: string; nodeId: string }
-  | { type: "randomWalk"; sessionId: string; stepSize?: number; mode?: WalkMode }
   | { type: "return"; sessionId: string; capsule?: ExperienceCapsule }
   | { type: "enterSanctuary"; sessionId: string }
   | { type: "enterCore"; sessionId: string };
@@ -586,7 +563,6 @@ export type SphereToGatewayMessage =
   | { type: "evaluateResult"; sessionId: string; result: EvaluationResult }
   | { type: "moveResult"; sessionId: string; result: MoveResult }
   | { type: "warpResult"; sessionId: string; result: WarpResult }
-  | { type: "randomWalkResult"; sessionId: string; result: RandomWalkResult }
   | { type: "returnAck"; sessionId: string }
   | { type: "layerTransition"; sessionId: string; newLayer: ExperienceLayer; flushedCount?: number; error?: string }
   | { type: "warning"; sessionId: string; message: string }

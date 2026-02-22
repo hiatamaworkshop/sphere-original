@@ -249,12 +249,6 @@ export class SphereClient {
     await this.sendRequest("enterCore", {});
   }
 
-  /** @deprecated Use enterSanctuary() + enterCore() separately */
-  async transitionToCore(): Promise<void> {
-    await this.enterSanctuary();
-    await this.enterCore();
-  }
-
   async disconnect(): Promise<void> {
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
       try {

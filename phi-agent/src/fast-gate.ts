@@ -49,8 +49,6 @@ const Flag = {
   Compressed:  0x4000,  // TODO: move to state
   Candidate:   0x8000,  // TODO: move to state
 
-  // Aliases for state flags
-  Frozen: 0x2000,  // Alias for SystemCore (backwards compatibility)
 } as const;
 
 // ============================================================
@@ -83,7 +81,7 @@ export const DEFAULT_WEIGHTS: FastGateWeights = {
 // Weapon — multiplicative scoring layers
 // ============================================================
 //
-// score = linear(metrics) × gate(flags) × state(hot/frozen) × ratio(h/w)
+// score = linear(metrics) × gate(flags) × state(hot/systemCore) × ratio(h/w)
 //
 // All biases are soft gates (1.0 = neutral, never 0).
 // Flag present → bias applied. Flag absent → 1.0 (neutral).
@@ -108,7 +106,7 @@ export interface Weapon {
   };
   stateBias: {
     hot: number;
-    frozen: number;
+    systemCore: number;
   };
   ratioBias: {
     heatDensity: number;
@@ -136,7 +134,7 @@ export const DEFAULT_WEAPON: Weapon = {
     tensile: 1.0,
     settled: 1.0,
   },
-  stateBias: { hot: 1.0, frozen: 1.0 },
+  stateBias: { hot: 1.0, systemCore: 1.0 },
   ratioBias: { heatDensity: 0, stability: 0 },
 };
 
@@ -206,7 +204,7 @@ export const LOADOUTS: Record<string, Loadout> = {
     name: "balanced",
     weapon: {
       flagBias: { authority: 1.2, temporalShort: 1.1, temporalLong: 1.1 },
-      stateBias: { hot: 1.2, frozen: 0.8 },
+      stateBias: { hot: 1.2, systemCore: 0.8 },
       ratioBias: { heatDensity: 0.2, stability: 0.1 },
     },
     qualityVector: QUALITY_PRESETS.balanced,
@@ -220,7 +218,7 @@ export const LOADOUTS: Record<string, Loadout> = {
     weights: { metrics: { ...DEFAULT_WEIGHTS.metrics, weight: 0.5, distance: -1 } },
     weapon: {
       flagBias: { authority: 1.5, temporalLong: 1.3, dense: 1.3, composite: 1.2, sharp: 1.2, fuzzy: 0.8, temporalShort: 0.8 },
-      stateBias: { hot: 0.8, frozen: 1.3 },
+      stateBias: { hot: 0.8, systemCore: 1.3 },
       ratioBias: { stability: 0.5 },
     },
     qualityVector: QUALITY_PRESETS.scholar,
@@ -234,7 +232,7 @@ export const LOADOUTS: Record<string, Loadout> = {
     weights: { metrics: { ...DEFAULT_WEIGHTS.metrics, heat: 0.8, distance: -3 } },
     weapon: {
       flagBias: { temporalShort: 1.5, sparse: 1.2, fuzzy: 1.2, authority: 0.85, settled: 0.85 },
-      stateBias: { hot: 1.5, frozen: 0.5 },
+      stateBias: { hot: 1.5, systemCore: 0.5 },
       ratioBias: { heatDensity: 0.3 },
     },
     qualityVector: QUALITY_PRESETS.scout,
@@ -267,7 +265,7 @@ export const LOADOUTS: Record<string, Loadout> = {
       },
       stateBias: {
         hot: 0.6,      // hermit+archivist average
-        frozen: 1.4    // hermit+archivist average
+        systemCore: 1.4    // hermit+archivist average
       },
       ratioBias: {
         stability: 0.5   // hermit integration: strong stability bias
@@ -284,7 +282,7 @@ export const LOADOUTS: Record<string, Loadout> = {
     weights: { metrics: { ...DEFAULT_WEIGHTS.metrics, heat: 0.8 } },
     weapon: {
       flagBias: { temporalShort: 1.3, tensile: 1.2, fuzzy: 1.15, authority: 0.8, settled: 0.8 },
-      stateBias: { hot: 1.5, frozen: 0.5 },
+      stateBias: { hot: 1.5, systemCore: 0.5 },
       ratioBias: { heatDensity: 0.4 },
     },
     qualityVector: QUALITY_PRESETS.hunter,
@@ -299,7 +297,7 @@ export const LOADOUTS: Record<string, Loadout> = {
     weights: { metrics: { ...DEFAULT_WEIGHTS.metrics, heat: 2.0, weight: 0, decay: 0, distance: -1 }, keywordMatch: 0 },
     weapon: {
       flagBias: { temporalShort: 1.5, sharp: 1.5, settled: 0.75 },
-      stateBias: { hot: 1.8, frozen: 0.5 },
+      stateBias: { hot: 1.8, systemCore: 0.5 },
       ratioBias: { heatDensity: 0.5 },
     },
     qualityVector: [0.8, 0.0, 0.0, 0.2],
@@ -324,7 +322,7 @@ export const LOADOUTS: Record<string, Loadout> = {
     weights: { metrics: { ...DEFAULT_WEIGHTS.metrics, heat: 1.0 }, keywordMatch: 20 },
     weapon: {
       flagBias: { authority: 1.5, temporalShort: 1.2, composite: 0.8 },
-      stateBias: { hot: 1.3, frozen: 0.5 },
+      stateBias: { hot: 1.3, systemCore: 0.5 },
       ratioBias: { heatDensity: 0.3, stability: 0.2 },
     },
     qualityVector: [0.1, 0.1, 0.0, 0.8],
@@ -574,7 +572,7 @@ export class FastGate {
   //
   // score = base(metrics + keyword)
   //       × flagGate(authority, catalyst, freshness, sticky)
-  //       × stateGate(hot, frozen)
+  //       × stateGate(hot, systemCore)
   //       × ratioMod(heatDensity, stability)
   //
   // All gates are soft (1.0 = neutral, floor 0.1).
@@ -648,7 +646,7 @@ export class FastGate {
       // --- State gate: multiplicative (dynamic flags) ---
       let stateGate = 1.0;
       if (n.flags & Flag.Hot)    stateGate *= wp.stateBias.hot;
-      if (n.flags & Flag.Frozen) stateGate *= wp.stateBias.frozen;
+      if (n.flags & Flag.SystemCore) stateGate *= wp.stateBias.systemCore;
 
       // --- Ratio modifier ---
       const heatDensity = n.heat / (n.weight + 1);

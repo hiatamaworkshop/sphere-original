@@ -25,7 +25,6 @@ import type {
   MoveIntent,
   MoveResult,
   WarpResult,
-  RandomWalkResult,
   WalkMode,
   GatewaySession,
   DiveTicket,
@@ -957,13 +956,6 @@ export class SphereContextImpl implements SphereContext {
       distance: clampedStep,
       mode,
     };
-  }
-
-  /**
-   * @deprecated Use move(step, mode) instead
-   */
-  async randomWalk(stepSize: number = 0.3, mode: WalkMode = "random"): Promise<RandomWalkResult> {
-    return this.move(stepSize, mode);
   }
 
   /**

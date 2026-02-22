@@ -47,7 +47,6 @@ Before you begin exploration, internalize these principles.
     movement: {
       move: "Primary exploration method. Step through semantic space with mode-based gradient guidance.",
       warp: "Teleport to a known node. Only works for nodes you have sensed.",
-      deprecated: "randomWalk() is deprecated. Use move(step, mode) instead.",
     },
     magneticField: `
 The Sphere has a "magnetic field" - an ambient current that influences all movement.
@@ -176,9 +175,7 @@ Philosophy: "Air vibrations" - miss it and it's gone.
 `.trim(),
       },
     ],
-    deprecated: [
-      { name: "randomWalk", description: "Deprecated. Use move(step, mode) instead." },
-    ],
+    deprecated: [],
     forbidden: [
       { name: "loop", description: "Meaningless repetition wastes energy and triggers ejection" },
       { name: "contaminate", description: "Lies and malice are detected and result in trust revocation" },
