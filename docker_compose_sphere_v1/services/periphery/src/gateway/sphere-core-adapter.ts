@@ -661,4 +661,20 @@ export class SphereCoreAdapter {
   async nodeExists(nodeId: string): Promise<boolean> {
     return this.projectionRepo.exists(nodeId);
   }
+
+  /**
+   * Get a relic node's vector for Tutorial mock positioning.
+   * Returns the first relic found, or a zero vector if none exist.
+   */
+  async getRelicVector(): Promise<number[]> {
+    const allNodes = await this.projectionRepo.getAll();
+    for (const node of allNodes) {
+      if (node.kind === "relic" && node.vector?.length) {
+        return node.vector;
+      }
+    }
+    // Fallback: zero vector (384-dim)
+    const dim = allNodes[0]?.vector?.length ?? 384;
+    return new Array(dim).fill(0);
+  }
 }

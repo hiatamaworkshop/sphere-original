@@ -636,12 +636,8 @@ function handleDiveMessage(msg) {
       break;
 
     case 'processing':
-      addDiveLog('Processing entry...');
-      setDivePhase('processing');
-      break;
-
-    case 'positioned':
-      addDiveLog(`Positioned! Query: "${msg.query}", Time: ${msg.remainingTime ?? '?'}s`);
+      // [Entry Pipeline] Tutorial ready — SphereContext exists with relic vector
+      addDiveLog('Tutorial ready — exploring while query vectorizes...');
       setDivePhase('active');
       document.getElementById('diveActions').style.display = 'flex';
       document.getElementById('endDive').disabled = false;
@@ -649,12 +645,18 @@ function handleDiveMessage(msg) {
       diveEnergy = 100;
       document.getElementById('energyDisplay').style.display = 'inline';
       updateEnergyDisplay();
-      // Auto-transition: tutorial → sanctuary → core (sequential)
-      sendDiveAction('enterSanctuary', {}).then(() => sendDiveAction('enterCore', {}));
+      // Show Tutorial layer UI — manual progression
+      showLayerUI('tutorial');
+      break;
+
+    case 'positioned':
+      // Query vector ready — Sanctuary transition now allowed
+      addDiveLog(`Query ready: "${msg.query}", Time: ${msg.remainingTime ?? '?'}s`);
       break;
 
     case 'layerChanged':
       addDiveLog(`Layer: ${msg.layer}`);
+      showLayerUI(msg.layer);
       resolvePending(msg.requestId, msg);
       break;
 
@@ -874,6 +876,42 @@ document.getElementById('warpBtn').addEventListener('click', () => {
 document.getElementById('startDive').addEventListener('click', startDive);
 document.getElementById('endDive').addEventListener('click', () => { if (diveWs) sendDiveAction('return', {}); });
 
+// === Layer UI ===
+function showLayerUI(layer) {
+  const bar = document.getElementById('layerBar');
+  const tut = document.getElementById('layer-tutorial');
+  const san = document.getElementById('layer-sanctuary');
+  const cor = document.getElementById('layer-core');
+  const btnSan = document.getElementById('btnEnterSanctuary');
+  const btnCore = document.getElementById('btnEnterCore');
+
+  bar.style.display = 'flex';
+  // Reset classes
+  [tut, san, cor].forEach(el => el.classList.remove('layer-active', 'layer-done'));
+  btnSan.style.display = 'none';
+  btnCore.style.display = 'none';
+
+  if (layer === 'tutorial') {
+    tut.classList.add('layer-active');
+    btnSan.style.display = 'inline-block';
+  } else if (layer === 'sanctuary') {
+    tut.classList.add('layer-done');
+    san.classList.add('layer-active');
+    btnCore.style.display = 'inline-block';
+  } else if (layer === 'core') {
+    tut.classList.add('layer-done');
+    san.classList.add('layer-done');
+    cor.classList.add('layer-active');
+  }
+}
+
+document.getElementById('btnEnterSanctuary').addEventListener('click', () => {
+  sendDiveAction('enterSanctuary', {});
+});
+document.getElementById('btnEnterCore').addEventListener('click', () => {
+  sendDiveAction('enterCore', {});
+});
+
 // Action help modal
 document.getElementById('actionHelpBtn').addEventListener('click', () => {
   document.getElementById('actionHelpModal').style.display = 'flex';
@@ -932,6 +970,7 @@ function resetDive() {
   document.getElementById('diveAgentId').textContent = '';
   document.getElementById('warpNodeId').value = '';
   document.getElementById('energyDisplay').style.display = 'none';
+  document.getElementById('layerBar').style.display = 'none';
   diveEnergy = 100;
 }
 
@@ -994,12 +1033,15 @@ async function launchSwarmAgent(index, userQuery) {
           agent.phase = 'entering';
           break;
         case 'processing':
-          agent.phase = 'processing';
+          // Tutorial ready — sense relics while query vectorizes
+          agent.phase = 'tutorial';
+          agent.layer = 'tutorial';
+          setTimeout(() => {
+            ws.send(JSON.stringify({ type: 'sense', requestId: `s-${Date.now()}`, radius: 3 }));
+          }, 500);
           break;
         case 'positioned':
-          agent.phase = 'transitioning';
-          agent.layer = 'tutorial';
-          // Transition: tutorial → sanctuary → core (evaluations only work in core)
+          // Query vector ready — transition to sanctuary
           setTimeout(() => {
             ws.send(JSON.stringify({ type: 'enterSanctuary', requestId: `s-${Date.now()}` }));
           }, 500);
@@ -1007,9 +1049,14 @@ async function launchSwarmAgent(index, userQuery) {
         case 'layerChanged':
           agent.layer = msg.layer;
           if (msg.layer === 'sanctuary') {
+            agent.phase = 'sanctuary';
+            // Sanctuary: sense once, then transition to core
+            setTimeout(() => {
+              ws.send(JSON.stringify({ type: 'sense', requestId: `s-${Date.now()}`, radius: 3 }));
+            }, 500);
             setTimeout(() => {
               ws.send(JSON.stringify({ type: 'enterCore', requestId: `s-${Date.now()}` }));
-            }, 500);
+            }, 2000);
           } else if (msg.layer === 'core') {
             agent.phase = 'active';
             autoExplore(agent);

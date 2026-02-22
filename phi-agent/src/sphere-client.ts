@@ -116,6 +116,8 @@ export class SphereClient {
   private eventHandler: SphereEventHandler | null = null;
   private lastRequestTime = 0;
   private readonly minRequestInterval = 350; // ms — gateway rate limit: 3 actions/sec
+  private positionedResolve: (() => void) | null = null;
+  private positionedPromise: Promise<void> | null = null;
 
   constructor(config: Partial<SphereConfig> = {}) {
     this.config = { ...DEFAULT_CONFIG, ...config };
@@ -131,6 +133,10 @@ export class SphereClient {
 
   // --- Connection lifecycle ---
 
+  /**
+   * Connect to Sphere. Resolves when Tutorial is ready (processing received).
+   * Use waitForPositioned() to wait for query vector availability.
+   */
   async connect(query: string, tags: string[]): Promise<void> {
     // Step 1: Get ticket
     const ticketRes = await fetch(`${this.config.peripheryUrl}/dive/request`, {
@@ -144,6 +150,9 @@ export class SphereClient {
     if (!ticketData.success) {
       throw new Error("Ticket request rejected");
     }
+
+    // Set up positioned promise (resolved when query vector arrives)
+    this.positionedPromise = new Promise((res) => { this.positionedResolve = res; });
 
     // Step 2: WebSocket connect
     const token = ticketData.ticket.token;
@@ -170,7 +179,7 @@ export class SphereClient {
         reject(err);
       });
 
-      // Override handleMessage temporarily to catch welcome + positioned
+      // Override handleMessage temporarily to catch welcome + processing
       const originalHandler = this.handleMessage.bind(this);
       let welcomeReceived = false;
 
@@ -192,15 +201,20 @@ export class SphereClient {
           return;
         }
 
-        if (msg.type === "positioned") {
+        if (msg.type === "processing") {
+          // [Entry Pipeline] Tutorial is ready — SphereContext exists with relic vector
           clearTimeout(timeout);
           this.handleMessage = originalHandler;
           resolve();
           return;
         }
 
-        if (msg.type === "processing") {
-          return; // expected, ignore
+        if (msg.type === "positioned") {
+          // Query vector ready — resolve positioned promise
+          this.emit({ type: "positioned", position: msg.position ?? [] });
+          this.positionedResolve?.();
+          this.positionedResolve = null;
+          return;
         }
 
         // Fallthrough to normal handler
@@ -209,9 +223,28 @@ export class SphereClient {
     });
   }
 
-  async transitionToCore(): Promise<void> {
+  /**
+   * Wait for query vectorization to complete (positioned message).
+   * Call after tutorialExplore() to ensure Sanctuary transition is possible.
+   */
+  async waitForPositioned(): Promise<void> {
+    if (!this.positionedPromise) return;
+    await this.positionedPromise;
+    this.positionedPromise = null;
+  }
+
+  async enterSanctuary(): Promise<void> {
     await this.sendRequest("enterSanctuary", {});
+  }
+
+  async enterCore(): Promise<void> {
     await this.sendRequest("enterCore", {});
+  }
+
+  /** @deprecated Use enterSanctuary() + enterCore() separately */
+  async transitionToCore(): Promise<void> {
+    await this.enterSanctuary();
+    await this.enterCore();
   }
 
   async disconnect(): Promise<void> {
@@ -315,6 +348,12 @@ export class SphereClient {
     }
 
     switch (msg.type) {
+      case "positioned":
+        // Query vector ready (async, arrives after connect resolves)
+        this.emit({ type: "positioned", position: msg.position ?? [] });
+        this.positionedResolve?.();
+        this.positionedResolve = null;
+        break;
       case "layerChanged":
         this.emit({ type: "layerChanged", layer: msg.layer });
         break;

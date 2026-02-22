@@ -379,6 +379,84 @@ Core の評価は常に変動する
 
 ---
 
+## 12. Entry Pipeline 配線設計（Tutorial とベクトル化の並行）
+
+### 背景
+
+Tutorial はベクトル化待ちのバッファとして機能する設計だが、
+現状は `positioned`（ベクトル化完了）後に Tutorial が始まるため、
+待ち時間が無駄になっている。
+
+### 設計: relic ベクトルを仮リクエストベクトルとして使用
+
+```
+entry送信 → パーサーにベクトル化依頼（非同期）
+         → relic のベクトルを取得
+         → SphereContext(relicVector) で即座に生成
+         → Tutorial 開始（relic 近傍に配置、sense/focus/move 可能）
+
+         ... ベクトル化完了 ...
+
+         → context.reposition(queryVector) で本来の位置に差し替え
+         → "positioned" 送信（クエリベクトル確定通知）
+         → Sanctuary 遷移可能に
+```
+
+### なぜ relic ベクトルか
+
+- Tutorial では relic のみ可視（filterByLayer 既存）
+- relic のベクトル位置に配置 → sense で自然に relic が検出される
+- 特別なモック実装不要、既存の sense/focus/move がそのまま動作
+- energy multiplier tutorial=0 も既存のまま
+
+### 変更箇所（最小）
+
+| ファイル | 変更 |
+|---------|------|
+| `sphere-context.ts` | `reposition(newVector)` メソッド追加 — `_embeddingVector`, `_position`, `movementState` を差し替え |
+| `gateway-server.ts` | processing 開始時に relic ベクトル1件取得 → SphereContext 即生成 |
+| `gateway-server.ts` | ベクトル化完了時: `context.reposition(queryVector)` → `positioned` 送信 |
+| `gateway-server.ts` | `handleProcessingMessage` の sense TODO スタブ削除 → 本物の `context.sense()` を使用 |
+
+### ポイント
+
+- **SphereContext の生成タイミングが変わるだけ** — 既存の layer 状態管理、filterByLayer、
+  consumeEnergy は全て変更不要
+- `handleProcessingMessage` は processing 用の特殊 sense が不要になる。
+  SphereContext が存在するので active と同じハンドラに委譲可能
+  （ただし Tutorial layer なので relic のみ返る）
+- `positioned` メッセージの意味が「SphereContext 生成完了」から
+  「クエリベクトル確定（Sanctuary 遷移許可）」に変わる
+
+### フロー図
+
+```
+Client                          Server
+  │                               │
+  │─── entry(query, tags) ──────→│
+  │                               ├─ パーサーにベクトル化依頼（非同期）
+  │                               ├─ relic ベクトル取得
+  │                               ├─ SphereContext(relicVec) 生成
+  │←── processing ────────────────┤
+  │                               │
+  │─── sense ────────────────────→│ ← tutorial layer: relic のみ返る
+  │←── senseResult ──────────────┤
+  │─── focus(relicId) ──────────→│
+  │←── focusResult ──────────────┤
+  │                               │
+  │         ... ベクトル化完了 ... │
+  │                               ├─ context.reposition(queryVec)
+  │←── positioned(queryVec) ─────┤
+  │                               │
+  │─── enterSanctuary ──────────→│ ← クエリ位置から探索開始
+  │←── layerChanged(sanctuary) ──┤
+  │                               │
+  │─── enterCore ────────────────→│
+  │←── layerChanged(core) ───────┤
+```
+
+---
+
 ## 更新履歴
 
 | 日付 | 内容 |
@@ -387,3 +465,4 @@ Core の評価は常に変動する
 | 2026-01-31 | 聖域凍結の社会的意義を追加 |
 | 2026-01-31 | Sanctuary のオフライン・ポータブル性、CleanerFish 不在を追記 |
 | 2026-02-01 | Tutorial スキップ不可・即帰還可能の設計原則を確定 |
+| 2026-02-22 | Entry Pipeline 配線設計を追加（relic ベクトル仮配置 + reposition 方式） |

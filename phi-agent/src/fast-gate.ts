@@ -673,7 +673,7 @@ export class FastGate {
   // Ghost/fossil are the primary use case (sense-visible but not focusable),
   // but any unfocused sensed node is included.
   //
-  // Cost: eval only (no focus cost = -10 energy). Max 1 per cycle in agent.ts.
+  // Cost: eval only (no focus cost = -10 energy). Max 1 per session in agent.ts.
   // Wired in standardCycle() step 9.
 
   getEvalCandidates(nodes: NearbyNode[], focusTargetIndex: number): NearbyNode[] {

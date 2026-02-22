@@ -196,12 +196,25 @@ export class PhiAgent {
       ].filter(Boolean).join("+") || "observe-only";
       this.log(`Positioned in Sphere (energy: ${this.initialEnergy}, loadout: ${this.gate.loadoutName}, flags: ${flags})`);
 
-      // Step 3: Transition to Core layer
-      this.log("Transitioning to Core...");
-      await this.sphere.transitionToCore();
-      this.log("Reached Core layer");
+      // Step 3: Tutorial layer — explore relics while query vectorizes (zero energy cost)
+      await this.tutorialExplore();
 
-      // Step 4: Explore — branch on evaluate flag
+      // Step 4: Wait for query vector (may already be ready)
+      this.log("Waiting for query vector...");
+      await this.sphere.waitForPositioned();
+      this.log("Query vector ready.");
+
+      // Step 5: Sanctuary layer — explore amber + relic from query position (half energy cost)
+      this.log("Entering Sanctuary...");
+      await this.sphere.enterSanctuary();
+      await this.sanctuaryExplore();
+
+      // Step 6: Core layer — live world (energy +30 recovery)
+      this.log("Entering Core...");
+      await this.sphere.enterCore();
+      this.log(`Core layer (energy: ${this.sphere.currentEnergy})`);
+
+      // Step 7: Explore — branch on evaluate flag
       this.stats.status = "exploring";
       if (this.config.evaluate) {
         await this.exploreLoop();
@@ -210,12 +223,12 @@ export class PhiAgent {
         await this.liaisonExplore();
       }
 
-      // Step 5: Clean disconnect — release Sphere session before slow narrative generation
+      // Step 8: Clean disconnect — release Sphere session before slow narrative generation
       this.stats.status = "completed";
       await this.sphere.disconnect();
       this.log("Returned from Sphere");
 
-      // Step 5b: Broadcast — deterministic projection (no LLM, always emitted)
+      // Step 8b: Broadcast — deterministic projection (no LLM, always emitted)
       let broadcastPosts: string[] = [];
       if (this.encounters.length > 0) {
         const posts = renderBroadcast(this.encounters, {
@@ -273,6 +286,58 @@ export class PhiAgent {
 
   stop(): void {
     this.running = false;
+  }
+
+  // ===== Layer exploration: Tutorial → Sanctuary (before Core) =====
+
+  /** Tutorial: sense relics, focus on one. Energy cost = 0 (tutorial multiplier). */
+  private async tutorialExplore(): Promise<void> {
+    const CYCLES = 2;
+    for (let i = 0; i < CYCLES && this.running; i++) {
+      this.log(`Tutorial ${i + 1}/${CYCLES}`);
+      const nodes = await this.sphere.sense(this.config.senseRadius);
+      this.log(`Tutorial: sensed ${nodes.length} nodes (relic only)`);
+      if (nodes.length === 0) {
+        await this.sphere.move(this.config.moveStep, "explore");
+        continue;
+      }
+      const idx = this.gate.pickFocusTarget(nodes, () => 0);
+      if (idx < 0) {
+        await this.sphere.move(this.config.moveStep, "explore");
+        continue;
+      }
+      const detail = await this.sphere.focus(nodes[idx].id);
+      if (detail) {
+        this.log(`Tutorial focus: [${detail.kind}] ${(detail.summary ?? "").slice(0, 60)}`);
+        this.gate.memory.markVisited(nodes[idx].id);
+      }
+    }
+  }
+
+  /** Sanctuary: sense amber+relic, focus. Energy cost = 50% of normal. */
+  private async sanctuaryExplore(): Promise<void> {
+    const CYCLES = 2;
+    for (let i = 0; i < CYCLES && this.running; i++) {
+      this.log(`Sanctuary ${i + 1}/${CYCLES} (energy: ${this.sphere.currentEnergy})`);
+      if (!this.canAfford("sense")) break;
+      const nodes = await this.sphere.sense(this.config.senseRadius);
+      this.log(`Sanctuary: sensed ${nodes.length} nodes (amber + relic)`);
+      if (nodes.length === 0) {
+        if (this.canAfford("move")) await this.sphere.move(this.config.moveStep, "explore");
+        continue;
+      }
+      const idx = this.gate.pickFocusTarget(nodes, () => 0);
+      if (idx < 0) {
+        if (this.canAfford("move")) await this.sphere.move(this.config.moveStep, "explore");
+        continue;
+      }
+      if (!this.canAfford("focus")) break;
+      const detail = await this.sphere.focus(nodes[idx].id);
+      if (detail) {
+        this.log(`Sanctuary focus: [${detail.kind}] ${detail.tags?.join(", ") ?? ""} — ${(detail.summary ?? "").slice(0, 60)}`);
+        this.gate.memory.markVisited(nodes[idx].id);
+      }
+    }
   }
 
   // ===== Evaluator: Real-time exploration + evaluation =====

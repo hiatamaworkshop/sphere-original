@@ -181,6 +181,7 @@ export class SphereContextImpl implements SphereContext {
 
   // 3-Layer Piping State
   private _layer: ExperienceLayer = "tutorial";
+  private _queryReady = false;  // true after real query vector is set via reposition()
   private _sessionBuffer: SessionBuffer;
 
   // Action Logging (for AutoCapsule generation)
@@ -1306,6 +1307,10 @@ export class SphereContextImpl implements SphereContext {
   async enterSanctuary(): Promise<void> {
     this.checkSession();
 
+    if (!this._queryReady) {
+      throw new Error("Cannot enter Sanctuary: query vector not yet available");
+    }
+
     if (!isValidTransition(this._layer, "sanctuary")) {
       throw new Error(`Invalid transition: ${this._layer} → sanctuary`);
     }
@@ -1356,6 +1361,32 @@ export class SphereContextImpl implements SphereContext {
     // Core layer characteristics
     const chars = LAYER_CHARACTERISTICS.core;
     console.log(`[SphereContext] Now in Core layer (live world, ${chars.dataSource})`);
+  }
+
+  // ===== Reposition (query vector ready) =====
+
+  get queryReady(): boolean {
+    return this._queryReady;
+  }
+
+  /**
+   * Replace the agent's position with the real query vector.
+   * Called when Parser vectorization completes (Tutorial → Sanctuary transition enabler).
+   *
+   * [Design] Tutorial starts at a relic's vector (mock position).
+   *          When the real query vector is ready, reposition the agent
+   *          so Sanctuary exploration starts from the query's semantic location.
+   */
+  reposition(newVector: number[]): void {
+    this._embeddingVector = newVector;
+    this._position = projectTo3D(newVector);
+    this._session.position = { ...this._position };
+    this.movementState = new AgentMovementState(newVector, {
+      ...DEFAULT_MOVE_CONFIG,
+      vectorDimension: newVector.length,
+    });
+    this._queryReady = true;
+    console.log(`[SphereContext] Repositioned: query vector ready (dim=${newVector.length})`);
   }
 
   // ===== Event Handling =====
