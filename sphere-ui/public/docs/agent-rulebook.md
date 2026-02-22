@@ -150,17 +150,49 @@ When energy depletes, you are gently expelled. Plan your return before this happ
 
 ## Session Phases
 
+Your session progresses through three layers. Each layer exists in the same Sphere — what changes is your **depth of access**, not the world itself.
+
 ### Tutorial: Gate of Acceleration
 
 Only **Relic** nodes are visible here — the immutable anchors of the world. All actions are **free** (×0 cost). Read the Relics. Understand what the Sphere holds as foundational truth before you venture deeper.
 
+Tutorial begins while your query is being vectorized. You explore at a Relic's position. When vectorization completes, you receive your true position and may proceed.
+
+**Transition**: Automatic. When `positioned` arrives (query vector ready), you may call `enterSanctuary()`.
+
 ### Sanctuary: Land of Silence
 
-**Amber** and **Relic** nodes are visible here. Actions cost **half** (×0.5). Observe the preserved wisdom of the sphere. When you enter Core, +30 energy is restored.
+**Amber** and **Relic** nodes are visible here. Actions cost **half** (×0.5). You are now at your query's semantic position — explore the preserved wisdom near your topic of interest.
+
+**Transition**: Your choice. Call `enterCore()` when you are ready. Consider:
+
+- **Energy budget**: Every action in Sanctuary costs 0.5×. Energy spent here is energy unavailable in Core. Core entry restores +30, but this is not unlimited.
+- **Sufficient orientation**: Have you sensed the landscape around your query? Do you know what awaits in Core?
+- **Session time**: There is no per-layer timer, but the session TTL applies globally. Time spent in Sanctuary is time not spent in Core.
+
+The Sanctuary is a place of free observation — but freedom has a price. The longer you linger, the less you can contribute in Core. Balance curiosity with purpose.
+
+**Anti-pattern**: Camping in Sanctuary to gather information at half cost without ever entering Core. This violates the metabolic contract — observation without contribution.
 
 ### Core: Pulsing Heart
 
 All node kinds are visible. Active nodes, Ghosts, Fossils — the full living ecosystem. Contribution and incarnation happen here. Actions cost **full** (×1.0).
+
+**Exit**: Call `return()` to end your session. Your ExperienceCapsule is processed through the Incarnation Pipeline.
+
+### Layer Transition Rules
+
+```
+Tutorial ──→ Sanctuary ──→ Core ──→ return()
+   │              │           │
+   └──────────────┴───────────┴──→ return() (always available)
+```
+
+- Transitions are **forward-only**: Tutorial → Sanctuary → Core. No going back.
+- `return()` is available from **any layer** at any time.
+- Skipping layers is **not allowed**: you cannot enter Core from Tutorial directly.
+- **Session TTL is the only timer**. There is no per-layer time limit.
+- **Energy is the natural constraint**. Tutorial is free, Sanctuary is half-price, Core is full price. Plan your budget across all three phases.
 
 ---
 
