@@ -408,35 +408,59 @@ document.getElementById('exploreClear').addEventListener('click', () => {
 });
 
 // === Existing Nodes ===
+let cachedNodes = [];
+
+function getSelectedKinds() {
+  return Array.from(document.querySelectorAll('#kindFilters input:checked')).map(c => c.value);
+}
+
+function renderFilteredNodes() {
+  const el = document.getElementById('existingNodesList');
+  const countEl = document.getElementById('existingNodesCount');
+  const kinds = getSelectedKinds();
+  const filtered = cachedNodes.filter(n => kinds.includes(n.kind));
+
+  countEl.textContent = `${filtered.length} / ${cachedNodes.length} nodes`;
+  if (filtered.length === 0) {
+    el.innerHTML = '<div class="no-results">No nodes match selected filters</div>';
+    return;
+  }
+  el.innerHTML = filtered.map(n => `
+    <div class="result-card">
+      <div class="result-header">
+        <span class="kind-badge kind-${n.kind}">${n.kind}</span>
+        <span class="heat">h=${n.heat.toFixed(1)}</span>
+        <span class="heat">w=${n.weight.toFixed(1)}</span>
+      </div>
+      <div class="result-summary"><strong>Summary:</strong> ${escapeHtml(n.summary || '(no summary)')}</div>
+      ${(n.tags && n.tags.length > 0) ? `<div class="result-tags"><strong>Tags:</strong> ${n.tags.map(t => `<span class="tag">${escapeHtml(t)}</span>`).join('')}</div>` : ''}
+      <div class="result-id">${n.id}</div>
+    </div>
+  `).join('');
+}
+
 document.getElementById('loadExistingNodes').addEventListener('click', async () => {
   const el = document.getElementById('existingNodesList');
   const countEl = document.getElementById('existingNodesCount');
-  el.innerHTML = '<div class="loading">Loading all nodes...</div>';
+  el.innerHTML = '<div class="loading">Loading nodes...</div>';
   countEl.textContent = '';
 
   try {
     const data = await api('/nodes/metrics');
     if (!data.nodes || data.nodes.length === 0) {
       el.innerHTML = '<div class="no-results">No nodes found in Sphere</div>';
+      cachedNodes = [];
       return;
     }
-
-    countEl.textContent = `Total: ${data.nodes.length} nodes`;
-    el.innerHTML = data.nodes.map(n => `
-      <div class="result-card">
-        <div class="result-header">
-          <span class="kind-badge kind-${n.kind}">${n.kind}</span>
-          <span class="heat">h=${n.heat.toFixed(1)}</span>
-          <span class="heat">w=${n.weight.toFixed(1)}</span>
-        </div>
-        <div class="result-summary"><strong>Summary:</strong> ${escapeHtml(n.summary || '(no summary)')}</div>
-        ${(n.tags && n.tags.length > 0) ? `<div class="result-tags"><strong>Tags:</strong> ${n.tags.map(t => `<span class="tag">${escapeHtml(t)}</span>`).join('')}</div>` : ''}
-        <div class="result-id">${n.id}</div>
-      </div>
-    `).join('');
+    cachedNodes = data.nodes;
+    renderFilteredNodes();
   } catch (e) {
     el.innerHTML = `<div class="error">Error: ${e.message}</div>`;
   }
+});
+
+document.getElementById('kindFilters').addEventListener('change', () => {
+  if (cachedNodes.length > 0) renderFilteredNodes();
 });
 
 // === Contribute (Wave mode: staggered capsules) ===
@@ -529,9 +553,11 @@ document.getElementById('contributeBtn').addEventListener('click', async () => {
   const failMsg = failures > 0 ? ` (${failures} failed)` : '';
   resultEl.innerHTML = `<div class="success">✓ ${totalIncarnated} nodes contributed! Check Dashboard for updates.${failMsg}</div>`;
 
-  // Clear selection after successful contribution
-  document.querySelectorAll('#mockList input[type="checkbox"]').forEach(cb => cb.checked = false);
-  updateSelectedCount();
+  // Clear data and selection after successful contribution
+  mockData = [];
+  document.getElementById('mockList').innerHTML = '';
+  document.getElementById('selectedCount').textContent = '';
+  document.getElementById('uploadFile').value = '';
 
   // Update Dashboard node count
   if (totalIncarnated > 0) {
@@ -809,7 +835,8 @@ function renderFocusResult(msg) {
       ${n.content ? `<div class="focus-content"><span class="content-label">📄 Main Content:</span><br>${escapeHtml(n.content)}</div>` : ''}
       <div class="evaluate-controls">
         <label>Heat: <input type="range" id="evalHeat" min="0" max="10" value="5"></label>
-        <label>Confidence: <input type="range" id="evalConf" min="0" max="100" value="70"></label>
+        <label>Weight: <input type="range" id="evalWeight" min="0" max="10" value="5"></label>
+        <label>Decay: <input type="range" id="evalDecay" min="0" max="10" value="5"></label>
         <button onclick="window._evaluateNode('${n.id}')">Evaluate</button>
       </div>
     </div>
@@ -842,8 +869,8 @@ window._warpTo = function(id) {
 
 window._evaluateNode = function(id) {
   const h = parseInt(document.getElementById('evalHeat').value);
-  const w = 5; // neutral weight
-  const d = 5; // neutral decay
+  const w = parseInt(document.getElementById('evalWeight').value);
+  const d = parseInt(document.getElementById('evalDecay').value);
   sendDiveAction('evaluate', { nodeId: id, h, w, d });
 };
 
@@ -935,159 +962,6 @@ function resetDive() {
   diveEnergy = 100;
 }
 
-// === Swarm ===
-let swarmAgents = [];
-
-function getRandomEntryRequest() {
-  if (mockData.length > 0) {
-    const item = mockData[Math.floor(Math.random() * mockData.length)];
-    return { query: item.summary || 'swarm', tags: item.tags || ['swarm'] };
-  }
-  return { query: 'Automated swarm exploration', tags: ['swarm', 'auto'] };
-}
-
-document.getElementById('launchSwarm').addEventListener('click', async () => {
-  const count = parseInt(document.getElementById('swarmCount').value);
-  const userQuery = document.getElementById('swarmQuery').value.trim();
-  document.getElementById('launchSwarm').disabled = true;
-  document.getElementById('stopSwarm').disabled = false;
-
-  for (let i = 0; i < count; i++) {
-    await launchSwarmAgent(i, userQuery);
-    await new Promise(r => setTimeout(r, 500));
-  }
-});
-
-document.getElementById('stopSwarm').addEventListener('click', () => {
-  swarmAgents.forEach(a => { if (a.ws && a.ws.readyState === WebSocket.OPEN) a.ws.close(); });
-  swarmAgents = [];
-  document.getElementById('swarmStatus').innerHTML = '<div>All agents stopped</div>';
-  document.getElementById('launchSwarm').disabled = false;
-  document.getElementById('stopSwarm').disabled = true;
-});
-
-async function launchSwarmAgent(index, userQuery) {
-  try {
-    const data = await api('/dive/request', { method: 'POST' });
-    if (!data.success) {
-      document.getElementById('swarmStatus').innerHTML += `<div class="error">Agent ${index}: ticket failed</div>`;
-      return;
-    }
-
-    const ws = new WebSocket(`${getWsUrl()}?token=${data.ticket.token}`);
-    const agent = { ws, index, phase: 'connecting', actions: 0, agentId: '' };
-    swarmAgents.push(agent);
-
-    ws.onmessage = (event) => {
-      const msg = JSON.parse(event.data);
-      switch (msg.type) {
-        case 'welcome':
-          agent.agentId = msg.sessionId || '';
-          const swarmEntry = userQuery
-            ? { query: userQuery, tags: userQuery.split(/[\s,]+/).slice(0, 5) }
-            : getRandomEntryRequest();
-          ws.send(JSON.stringify({
-            type: 'entry',
-            requestId: `swarm-${index}-${Date.now()}`,
-            request: swarmEntry
-          }));
-          agent.phase = 'entering';
-          break;
-        case 'processing':
-          agent.phase = 'processing';
-          break;
-        case 'positioned':
-          agent.phase = 'transitioning';
-          agent.layer = 'tutorial';
-          // Transition: tutorial → sanctuary → core (evaluations only work in core)
-          setTimeout(() => {
-            ws.send(JSON.stringify({ type: 'enterSanctuary', requestId: `s-${Date.now()}` }));
-          }, 500);
-          break;
-        case 'layerChanged':
-          agent.layer = msg.layer;
-          if (msg.layer === 'sanctuary') {
-            setTimeout(() => {
-              ws.send(JSON.stringify({ type: 'enterCore', requestId: `s-${Date.now()}` }));
-            }, 500);
-          } else if (msg.layer === 'core') {
-            agent.phase = 'active';
-            autoExplore(agent);
-          }
-          break;
-        case 'senseResult':
-          if (msg.nodes?.length > 0) {
-            const target = msg.nodes[Math.floor(Math.random() * msg.nodes.length)];
-            setTimeout(() => {
-              ws.send(JSON.stringify({ type: 'focus', requestId: `s-${Date.now()}`, nodeId: target.id }));
-            }, 400);
-          } else {
-            // No nodes nearby — move to new area
-            const modes = ['random', 'hot', 'explore'];
-            setTimeout(() => {
-              ws.send(JSON.stringify({ type: 'move', requestId: `s-${Date.now()}`, step: 0.3, mode: modes[Math.floor(Math.random() * modes.length)] }));
-            }, 400);
-          }
-          agent.actions++;
-          break;
-        case 'focusResult':
-          if (msg.node) {
-            const evalH = Math.floor(3 + Math.random() * 5);
-            setTimeout(() => {
-              ws.send(JSON.stringify({
-                type: 'evaluate', requestId: `s-${Date.now()}`, nodeId: msg.node.id,
-                h: evalH, w: 5, d: 5
-              }));
-            }, 400);
-          }
-          agent.actions++;
-          break;
-        case 'evaluateResult':
-          agent.actions++;
-          // Move after evaluate to explore new area
-          setTimeout(() => {
-            const modes = ['random', 'hot', 'explore', 'deep'];
-            ws.send(JSON.stringify({ type: 'move', requestId: `s-${Date.now()}`, step: 0.3, mode: modes[Math.floor(Math.random() * modes.length)] }));
-          }, 400);
-          break;
-        case 'moveResult':
-          agent.actions++;
-          setTimeout(() => autoExplore(agent), 1500);
-          break;
-        case 'error':
-          console.warn(`[Swarm Agent ${agent.index}] Error:`, msg.error);
-          // Continue exploration despite errors
-          setTimeout(() => autoExplore(agent), 3000);
-          break;
-        case 'expelled':
-        case 'returnAck':
-          agent.phase = 'done';
-          break;
-      }
-      updateSwarmStatus();
-    };
-
-    ws.onclose = () => { agent.phase = 'disconnected'; updateSwarmStatus(); };
-  } catch (e) {
-    document.getElementById('swarmStatus').innerHTML += `<div class="error">Agent ${index}: ${e.message}</div>`;
-  }
-}
-
-function autoExplore(agent) {
-  if (!agent.ws || agent.ws.readyState !== WebSocket.OPEN) return;
-  agent.ws.send(JSON.stringify({ type: 'sense', requestId: `s-${Date.now()}`, radius: 5 }));
-}
-
-function updateSwarmStatus() {
-  document.getElementById('swarmStatus').innerHTML = swarmAgents.map(a =>
-    `<div class="swarm-agent">
-      <span class="phase-indicator phase-${a.phase}">${a.phase}</span>
-      <span>Agent ${a.index}${a.agentId ? ' (' + a.agentId.slice(0, 6) + ')' : ''}</span>
-      <span>Actions: ${a.actions}</span>
-    </div>`
-  ).join('');
-}
-
 // === Docs ===
 let docsLoaded = false;
 
@@ -1097,6 +971,8 @@ const DOCS = [
   { file: 'architecture.md', title: 'Technical Architecture' },
   { file: 'agent-rulebook.md', title: 'Agent Rulebook' },
   { file: 'diving-experience.md', title: 'Diving Experience' },
+  { file: 'embedding-guide.md', title: 'Embedding Guide' },
+  { file: 'reference-db-guide.md', title: 'Reference DB Guide' },
 ];
 
 function loadDocsList() {

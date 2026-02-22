@@ -257,6 +257,28 @@ button:disabled { opacity: 0.3; cursor: not-allowed; }
   background: rgba(0,0,0,0.08);
 }
 
+.kind-filters {
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.kind-filter {
+  display: flex;
+  align-items: center;
+  gap: 0.2rem;
+  cursor: pointer;
+  opacity: 0.5;
+  transition: opacity 0.15s;
+}
+
+.kind-filter:has(input:checked) {
+  opacity: 1;
+}
+
+.kind-filter input { display: none; }
+
 .distance, .heat { font-size: 0.75rem; color: var(--text-dim); }
 .result-summary { font-size: 0.85rem; margin-bottom: 0.3rem; }
 .result-tags { display: flex; gap: 0.3rem; flex-wrap: wrap; }
