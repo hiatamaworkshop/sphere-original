@@ -7,6 +7,7 @@
  */
 import express from "express";
 import rateLimit from "express-rate-limit";
+import { NodeFlag } from "@sphere/renal-core";
 import { getRulebookResponse, RULEBOOK_VERSION } from "./rulebook/index.js";
 import { getSchemasForAPI } from "./schema/index.js";
 import { TicketIssuer, DEFAULT_TICKET_CONFIG, GatewayServer, DEFAULT_GATEWAY_CONFIG } from "./gateway/index.js";
@@ -62,8 +63,9 @@ export class PeripheryServer {
     coreAdapter;
     globalFieldLayer;
     activeBusLayer;
+    spatialFields;
     app = express();
-    ticketIssuer = new TicketIssuer(DEFAULT_TICKET_CONFIG);
+    ticketIssuer;
     questStore;
     gatewayServer = null;
     nodeForge;
@@ -85,7 +87,7 @@ export class PeripheryServer {
             return 2;
         return 1 - dotProduct / (Math.sqrt(normA) * Math.sqrt(normB));
     }
-    constructor(incarnationPipeline, config, entryBuffer, projectionDB, bookkeeper, coreAdapter, globalFieldLayer, activeBusLayer) {
+    constructor(incarnationPipeline, config, entryBuffer, projectionDB, bookkeeper, coreAdapter, globalFieldLayer, activeBusLayer, spatialFields) {
         this.incarnationPipeline = incarnationPipeline;
         this.config = config;
         this.entryBuffer = entryBuffer;
@@ -94,6 +96,13 @@ export class PeripheryServer {
         this.coreAdapter = coreAdapter;
         this.globalFieldLayer = globalFieldLayer;
         this.activeBusLayer = activeBusLayer;
+        this.spatialFields = spatialFields;
+        // Initialize TicketIssuer with session TTL from config
+        const ticketConfig = {
+            ...DEFAULT_TICKET_CONFIG,
+            sessionTtl: config.session?.ttlSeconds ?? DEFAULT_TICKET_CONFIG.sessionTtl,
+        };
+        this.ticketIssuer = new TicketIssuer(ticketConfig);
         // Initialize QuestStore with config
         this.questStore = new QuestStore(config.questStore);
         // Initialize NodeForge with config (if available)
@@ -165,6 +174,7 @@ export class PeripheryServer {
                         "GET /nodes/metrics": "List all nodes with metrics (sorted by heat)",
                         "GET /nodes/stats": "Node statistics by kind",
                         "GET /nodes/:id": "Get specific node details",
+                        "GET /sphere/snapshot": "Complete state snapshot (for Digestor sphere_hash)",
                     },
                     exploration: {
                         "GET /sphere/explore": "Explore Sphere with a query (main entry point)",
@@ -302,7 +312,6 @@ export class PeripheryServer {
                 decay: node.metrics.d,
                 ttl: node.metrics.ttl,
                 flags: node.metrics.flg,
-                traversal: node.metrics.traversal ?? 0,
                 stayTime: node.metrics.stayTime ?? 0,
                 timestamp: node.timestamp,
                 summary: node.payload?.summary?.substring(0, 100),
@@ -356,6 +365,77 @@ export class PeripheryServer {
                 return;
             }
             res.json(node);
+        });
+        // ===== Sphere Snapshot Endpoint =====
+        // Returns complete state snapshot for Digestor sphere_hash computation
+        // [Design] One call captures all Sphere physics state for generation archiving
+        this.app.get("/sphere/snapshot", readLimiter, (_req, res) => {
+            if (!this.projectionDB) {
+                res.status(503).json({ error: "ProjectionDB not available" });
+                return;
+            }
+            // --- Node counts by kind ---
+            const counts = {
+                active: 0, amber: 0, ghost: 0, fossil: 0, relic: 0, environment: 0, total: 0,
+            };
+            // --- Distributions ---
+            const heats = [];
+            const weights = [];
+            const flagCounts = {};
+            // All defined flag bits for distribution
+            const flagBits = [
+                NodeFlag.TemporalShort, NodeFlag.TemporalLong, NodeFlag.TemporalCyclic, NodeFlag.Hot,
+                NodeFlag.Dense, NodeFlag.Sparse, NodeFlag.Composite, NodeFlag.Authority,
+                NodeFlag.Sharp, NodeFlag.Fuzzy, NodeFlag.Tensile, NodeFlag.Settled,
+                NodeFlag.UserMarked, NodeFlag.SystemCore, NodeFlag.Compressed, NodeFlag.Candidate,
+            ];
+            for (const node of this.projectionDB.values()) {
+                counts[node.kind] = (counts[node.kind] ?? 0) + 1;
+                counts.total++;
+                heats.push(node.metrics.h);
+                weights.push(node.metrics.w);
+                // Count each flag bit
+                for (const bit of flagBits) {
+                    if (node.metrics.flg & bit) {
+                        flagCounts[bit] = (flagCounts[bit] ?? 0) + 1;
+                    }
+                }
+            }
+            // --- Stats helper ---
+            const computeStats = (arr) => {
+                if (arr.length === 0)
+                    return { mean: 0, std: 0, min: 0, max: 0 };
+                const mean = arr.reduce((s, v) => s + v, 0) / arr.length;
+                const variance = arr.reduce((s, v) => s + (v - mean) ** 2, 0) / arr.length;
+                return {
+                    mean: Math.round(mean * 100) / 100,
+                    std: Math.round(Math.sqrt(variance) * 100) / 100,
+                    min: Math.round(Math.min(...arr) * 100) / 100,
+                    max: Math.round(Math.max(...arr) * 100) / 100,
+                };
+            };
+            // --- Fertility ---
+            let fertilityTotal = 0;
+            if (this.spatialFields) {
+                for (const field of this.spatialFields.values()) {
+                    fertilityTotal += field.fertility;
+                }
+            }
+            // --- Global field ---
+            const field = this.globalFieldLayer?.getGlobalField();
+            res.json({
+                timestamp: new Date().toISOString(),
+                nodeCount: counts,
+                heatDistribution: computeStats(heats),
+                weightDistribution: computeStats(weights),
+                flagDistribution: flagCounts,
+                fertility: { total: Math.round(fertilityTotal * 100) / 100 },
+                field: field ? {
+                    intensity: field.intensity,
+                    dominantFlags: field.dominantFlags,
+                    volatility: field.volatility,
+                } : null,
+            });
         });
         // ===== Sphere Exploration Endpoint =====
         // Main entry point for knowledge discovery
@@ -417,7 +497,10 @@ export class PeripheryServer {
         // ===== Agent Rulebook Endpoint =====
         // Provides rules, constraints, and guidance for agents
         this.app.get("/rulebook", (_req, res) => {
-            res.json(getRulebookResponse());
+            res.json(getRulebookResponse({
+                session: this.config.session,
+                energy: this.config.energy,
+            }));
         });
         // ===== Dive Ticket Request Endpoint =====
         // Entry point for Sphere access - issue a Dive Ticket
@@ -585,7 +668,9 @@ export class PeripheryServer {
             ? 0 // 0 = use HTTP server (same port)
             : (this.config.server.wsPort ?? DEFAULT_GATEWAY_CONFIG.port);
         this.gatewayServer = new GatewayServer(this.ticketIssuer, this.entryBuffer, { port: wsPort }, this.incarnationPipeline, this.questStore, this.coreAdapter, undefined, // amberCache
-        this.globalFieldLayer, this.activeBusLayer);
+        this.globalFieldLayer, this.activeBusLayer, this.config.session, // Session timeout config for external agents (phi-agent, etc.)
+        this.config.energy // Energy budget config
+        );
         const httpServer = this.app.listen(httpPort, () => {
             console.log(`[PeripheryServer] 🚀 Listening on port ${httpPort}`);
             console.log(`[PeripheryServer] ${SPHERE_NAME} v${SPHERE_VERSION}`);
@@ -597,6 +682,7 @@ export class PeripheryServer {
             console.log(`  GET  /nodes/metrics      - List all nodes with metrics`);
             console.log(`  GET  /nodes/stats        - Node statistics`);
             console.log(`  GET  /nodes/:id          - Get specific node`);
+            console.log(`  GET  /sphere/snapshot    - State snapshot (Digestor)`);
             console.log(`  GET  /sphere/explore     - Explore with query`);
             console.log(`  POST /sphere/contribute  - External data contribution`);
             console.log(`  POST /sphere/forge/env   - Generate Environmental Node`);
@@ -628,6 +714,10 @@ export class PeripheryServer {
      */
     setOnAgentCountChange(callback) {
         this.gatewayServer?.setOnAgentCountChange(callback);
+    }
+    /** Expel all connected agents (for Ephemeral reset) */
+    expelAll(reason) {
+        this.gatewayServer?.expelAll(reason);
     }
 }
 //# sourceMappingURL=server.js.map

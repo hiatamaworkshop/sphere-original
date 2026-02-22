@@ -135,13 +135,13 @@ export class Bookkeeper {
         for (const node of shouldAscend) {
             node.kind = "amber";
             node.metrics.h = Bookkeeper.AMBER_DEFAULT_HEAT; // heat リセット（sense/scanL1 支配防止）
-            node.metrics.flg |= NodeFlag.Frozen; // 代謝停止
+            node.metrics.flg |= NodeFlag.SystemCore; // 代謝停止 (Frozen metabolism)
             await this.projectionRepo.set(node.id, node);
         }
         // 2. Erosion: Amber → Active
         for (const node of shouldErode) {
             node.kind = "active";
-            node.metrics.flg &= ~NodeFlag.Frozen; // 代謝再開
+            node.metrics.flg &= ~NodeFlag.SystemCore; // 代謝再開
             await this.projectionRepo.set(node.id, node);
         }
         // 3. Revival: Fossil → Active
@@ -276,7 +276,8 @@ export class Bookkeeper {
     }
     /**
      * Apply decomposition results from cleaner fish
-     * [Principle] Delete from ProjDB, add fertility to SpatialField
+     * [Principle] Delete from both ProjDB and RefDB, add fertility to SpatialField
+     * [Design] decompose = 完全消去 — ProjDB (body) + RefDB (soul) 両方から削除
      *
      * @param decompositions Decomposition results from cleaner fish
      */
@@ -286,6 +287,10 @@ export class Bookkeeper {
         const nodeIds = decompositions.map((d) => d.nodeId);
         // Delete nodes from ProjDB
         await this.projectionRepo.batchDelete(nodeIds);
+        // Delete nodes from RefDB (decompose = complete erasure)
+        for (const id of nodeIds) {
+            await this.referenceRepo.delete(id);
+        }
         // Update fertility in SpatialFields
         const fertilityByCell = new Map();
         for (const d of decompositions) {
@@ -310,7 +315,7 @@ export class Bookkeeper {
                 });
             }
         }
-        console.log(`[Bookkeeper] decomposed nodes=${nodeIds.length} cells=${fertilityByCell.size}`);
+        console.log(`[Bookkeeper] decomposed nodes=${nodeIds.length} refdb=${nodeIds.length} cells=${fertilityByCell.size}`);
     }
     // Note: evaporateGhosts() removed - ghost evaporation is now handled by
     // CleanerFish.evaporate() → applyDecomposition() with fertilityGain=0

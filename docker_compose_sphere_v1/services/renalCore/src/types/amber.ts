@@ -20,26 +20,3 @@ export interface AmberRecord {
   ref_url?: string;
 }
 
-/**
- * SpectralLink: Amber間のリンク
- */
-export interface SpectralLink {
-  id: string;
-  source_id: string;
-  target_id: string;
-  weight: number;
-  traversal_count: number;
-  created_at: number;
-}
-
-/**
- * Constellation: Amber群の星座
- */
-export interface Constellation {
-  id: string;
-  name?: string;
-  amber_ids: string[];
-  centroid: number[];
-  total_weight: number;
-  created_at: number;
-}

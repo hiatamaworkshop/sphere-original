@@ -19,8 +19,6 @@ export type {
   SphereNode,
   NodeKind,
   AmberRecord,
-  SpectralLink,
-  Constellation,
   StableConfig,
   RenalCoreConfig,
   RenalCoreFlagsConfig,
@@ -98,7 +96,6 @@ export {
   decideAction,
   updateAgentState,
   createGhostPulse,
-  evaluateDestination,
 } from "./agent/agent.js";
 export {
   addNoise,

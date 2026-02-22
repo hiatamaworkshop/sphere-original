@@ -2,37 +2,44 @@
 setlocal enabledelayedexpansion
 
 REM ============================================================
-REM Sphere Project - Unified CLI
+REM Sphere Project - Docker Compose CLI
 REM ============================================================
 REM Usage: sphere.bat [command] [args]
 REM
 REM Commands:
-REM   start        - Start Periphery server
-REM   stop         - Stop all Sphere services
+REM   up           - Start all services (core + agents)
+REM   core         - Start core only (periphery + infra)
+REM   down         - Stop all services
+REM   build        - Rebuild all images
+REM   ps           - Show service status
+REM   logs [svc]   - Follow logs (optional: service name)
 REM   batch        - Inject test data (60 items)
-REM   contribute [n] - Inject test data (1/10/50 or custom)
-REM   wave [n] [ms]  - Wave inject (default: 50 items, 3s delay)
-REM   swarm [n]    - Run swarm agents (default: 3)
+REM   contribute n - Inject n items
+REM   wave [n] [ms]- Wave inject
 REM   explore      - Run 3-layer exploration
 REM   full         - batch + explore
-REM   status       - Show server endpoints
 REM ============================================================
 
 set "SPHERE_ROOT=%~dp0"
-set "PERIPHERY=%SPHERE_ROOT%docker_compose_sphere_v1\services\periphery"
+set "COMPOSE=%SPHERE_ROOT%docker_compose_sphere_v1"
+set DC=docker compose -f "%COMPOSE%\docker-compose.yml"
 
 if "%1"=="" goto interactive
 if "%1"=="help" goto help
 if "%1"=="-h" goto help
 if "%1"=="--help" goto help
 
-if "%1"=="start" goto start_server
-if "%1"=="stop" goto stop_server
-if "%1"=="status" goto show_status
+if "%1"=="reset" goto reset
+if "%1"=="up" goto up_all
+if "%1"=="core" goto up_core
+if "%1"=="down" goto down
+if "%1"=="build" goto build
+if "%1"=="ps" goto ps
+if "%1"=="status" goto ps
+if "%1"=="logs" goto logs
 if "%1"=="batch" goto batch
 if "%1"=="contribute" goto contribute
 if "%1"=="wave" goto wave
-if "%1"=="swarm" goto swarm
 if "%1"=="explore" goto explore
 if "%1"=="full" goto full
 
@@ -43,31 +50,37 @@ exit /b 1
 :interactive
 echo.
 echo ========================================
-echo   Sphere CLI - Interactive Mode
+echo   Sphere CLI (Docker Compose)
 echo ========================================
 echo.
-echo   [1] start       - Start Periphery server
-echo   [2] stop        - Stop all services
-echo   [3] batch       - Inject test data (60 items)
-echo   [4] contribute  - Inject test data (1/10/50/custom)
-echo   [5] wave        - Wave inject (staggered)
-echo   [6] swarm       - Run swarm agents
-echo   [7] explore     - Run 3-layer exploration
-echo   [8] full        - batch + explore
-echo   [0] status      - Show server status
+echo   [1] up         - Start all services
+echo   [2] core       - Start core only
+echo   [3] down       - Stop all services
+echo   [4] build      - Rebuild images
+echo   [5] batch      - Inject test data
+echo   [6] contribute - Inject custom count
+echo   [7] explore    - Run exploration
+echo   [8] full       - batch + explore
+echo   [0] ps         - Show status
+echo   [l] logs       - Follow logs
+echo   [r] reset      - Clean start (backup + reset data)
 echo   [q] quit
 echo.
-set /p choice="Select [0-8, q]: "
+set /p choice="Select: "
 
-if "%choice%"=="1" goto start_server
-if "%choice%"=="2" goto stop_server
-if "%choice%"=="3" goto batch
-if "%choice%"=="4" goto contribute
-if "%choice%"=="5" goto wave
-if "%choice%"=="6" goto swarm
+if "%choice%"=="1" goto up_all
+if "%choice%"=="2" goto up_core
+if "%choice%"=="3" goto down
+if "%choice%"=="4" goto build
+if "%choice%"=="5" goto batch
+if "%choice%"=="6" goto contribute
 if "%choice%"=="7" goto explore
 if "%choice%"=="8" goto full
-if "%choice%"=="0" goto show_status
+if "%choice%"=="r" goto reset
+if "%choice%"=="R" goto reset
+if "%choice%"=="0" goto ps
+if "%choice%"=="l" goto logs
+if "%choice%"=="L" goto logs
 if "%choice%"=="q" exit /b 0
 if "%choice%"=="Q" exit /b 0
 
@@ -77,84 +90,185 @@ goto interactive
 :help
 echo.
 echo ========================================
-echo   Sphere CLI
+echo   Sphere CLI (Docker Compose)
 echo ========================================
 echo.
-echo Commands:
-echo   start          Start Periphery server
-echo   stop           Stop all Sphere services
-echo   status         Show server endpoints
-echo   batch          Inject test data (60 items)
-echo   contribute [n] Inject test data (1/10/50 or specify count)
+echo Service commands:
+echo   up             Start all services (core + agent profile)
+echo   core           Start core only (periphery, postgres, redis, minio, nginx)
+echo   down           Stop all services
+echo   build          Rebuild all Docker images
+echo   ps             Show running services
+echo   logs [service] Follow logs (e.g., sphere logs phi-agent)
+echo.
+echo Data commands:
+echo   reset          Clean start: backup current data, reset to empty
+echo   batch          Inject all test data (60 items)
+echo   contribute [n] Inject n items (interactive if no count)
 echo   wave [n] [ms]  Wave inject (default: 50 items, 3000ms delay)
-echo   swarm [n]      Run swarm agents (default: 3)
 echo   explore        Run 3-layer exploration
 echo   full           batch + explore
 echo.
+echo Services:
+echo   periphery      Sphere core (HTTP :3001)
+echo   ollama         LLM inference (:11434)
+echo   phi-agent      Autonomous explorer (daemon)
+echo   explorers      Gradio UI (:7860)
+echo   digestor       Species memory (:5000)
+echo   pool-service   External intake (:4000)
+echo.
 echo Examples:
-echo   sphere start          Start the server
-echo   sphere contribute 1   Inject 1 item
-echo   sphere contribute 50  Inject 50 items
-echo   sphere swarm 10       Run 10 swarm agents
-echo   sphere wave 100 2000  Wave inject 100 items (2s delay)
-echo   sphere batch          Inject all test data
+echo   sphere up              Start everything
+echo   sphere logs phi-agent  Follow phi-agent logs
+echo   sphere contribute 10   Inject 10 items
+echo   sphere build           Rebuild after code changes
 echo.
 pause
 exit /b 0
 
-:start_server
-echo [Sphere] Checking dependencies...
-if not exist "%PERIPHERY%\node_modules" (
-    echo [Sphere] Installing dependencies...
-    cd /d "%PERIPHERY%"
-    call npm install
+:reset
+echo.
+echo ========================================
+echo   Clean Start - Generation Data Reset
+echo ========================================
+echo.
+echo This will:
+echo   1. Backup current data to phi-agent\data\archive\
+echo   2. Reset eval-log.jsonl (empty)
+echo   3. Reset species-profile.json (empty template)
+echo   4. Archive generations\ folder
+echo   5. Reset narrative-log.jsonl (empty)
+echo.
+echo Current data:
+set "DATA_DIR=%SPHERE_ROOT%phi-agent\data"
+if exist "%DATA_DIR%\eval-log.jsonl" (
+    for %%A in ("%DATA_DIR%\eval-log.jsonl") do echo   eval-log.jsonl: %%~zA bytes
+) else (
+    echo   eval-log.jsonl: not found
 )
-echo [Sphere] Starting Periphery server...
-cd /d "%PERIPHERY%"
-start "Sphere Periphery" cmd /k "npm run dev"
-timeout /t 3 /nobreak > nul
-goto show_status
+if exist "%DATA_DIR%\species-profile.json" (
+    for %%A in ("%DATA_DIR%\species-profile.json") do echo   species-profile.json: %%~zA bytes
+) else (
+    echo   species-profile.json: not found
+)
+echo.
+set /p confirm="Proceed with reset? [y/N]: "
+if /i not "%confirm%"=="y" (
+    echo Reset cancelled.
+    pause
+    exit /b 0
+)
 
-:stop_server
-echo [Sphere] Stopping services...
-taskkill /FI "WINDOWTITLE eq Sphere Periphery*" /F 2>nul
-taskkill /FI "WINDOWTITLE eq Mock Bot*" /F 2>nul
+REM Create archive directory with timestamp
+for /f "tokens=2 delims==" %%I in ('wmic os get localdatetime /value') do set datetime=%%I
+set "ARCHIVE=%DATA_DIR%\archive\%datetime:~0,8%-%datetime:~8,6%"
+mkdir "%ARCHIVE%" 2>nul
+mkdir "%ARCHIVE%\generations" 2>nul
+
+REM Backup current files
+echo.
+echo [1/5] Backing up to %ARCHIVE%...
+if exist "%DATA_DIR%\eval-log.jsonl" copy "%DATA_DIR%\eval-log.jsonl" "%ARCHIVE%\" >nul
+if exist "%DATA_DIR%\species-profile.json" copy "%DATA_DIR%\species-profile.json" "%ARCHIVE%\" >nul
+if exist "%DATA_DIR%\narrative-log.jsonl" copy "%DATA_DIR%\narrative-log.jsonl" "%ARCHIVE%\" >nul
+
+REM Backup generations
+echo [2/5] Archiving generations...
+if exist "%DATA_DIR%\generations\gen-*.json" (
+    copy "%DATA_DIR%\generations\gen-*.json" "%ARCHIVE%\generations\" >nul
+    del "%DATA_DIR%\generations\gen-*.json"
+)
+
+REM Reset eval-log
+echo [3/5] Resetting eval-log.jsonl...
+type nul > "%DATA_DIR%\eval-log.jsonl"
+
+REM Reset species-profile
+echo [4/5] Resetting species-profile.json...
+if exist "%DATA_DIR%\species-profile-empty.json" (
+    copy "%DATA_DIR%\species-profile-empty.json" "%DATA_DIR%\species-profile.json" >nul
+) else (
+    echo {"generated":"2026-01-01T00:00:00.000Z","totalEvaluations":0,"survivedEvaluations":0,"species":{}} > "%DATA_DIR%\species-profile.json"
+)
+
+REM Reset narrative-log
+echo [5/5] Resetting narrative-log.jsonl...
+type nul > "%DATA_DIR%\narrative-log.jsonl"
+
+echo.
+echo [Done] Clean start ready.
+echo   Archive: %ARCHIVE%
+echo   eval-log.jsonl: empty
+echo   species-profile.json: empty template
+echo   generations\: cleared
+echo   narrative-log.jsonl: empty
+echo.
+echo Run 'sphere batch' to inject initial data, then 'sphere up' to start.
+pause
+exit /b 0
+
+:up_all
+echo [Sphere] Starting all services...
+%DC% --profile agent up -d
+echo.
+echo [Sphere] Services:
+echo   Periphery:  http://localhost:3001
+echo   Explorers:  http://localhost:7860
+echo   Pool:       http://localhost:4000
+echo   Digestor:   http://localhost:5000
+echo   MinIO:      http://localhost:9001
+echo.
+pause
+exit /b 0
+
+:up_core
+echo [Sphere] Starting core services...
+%DC% up -d
+echo.
+echo [Sphere] Core ready: http://localhost:3001
+echo.
+pause
+exit /b 0
+
+:down
+echo [Sphere] Stopping all services...
+%DC% --profile agent down
 echo [Sphere] All services stopped.
 pause
 exit /b 0
 
-:show_status
+:build
+echo [Sphere] Rebuilding all images...
+%DC% --profile agent build
+echo [Sphere] Build complete.
+pause
+exit /b 0
+
+:ps
 echo.
-echo ========================================
-echo   Sphere Server Status
-echo ========================================
-echo.
-echo   HTTP:      http://localhost:3001
-echo   WebSocket: ws://localhost:8081
-echo.
-echo   Endpoints:
-echo     GET  /health            Health check
-echo     GET  /metrics           System metrics
-echo     GET  /nodes/metrics     List nodes with metrics
-echo     GET  /nodes/stats       Statistics
-echo     POST /sphere/contribute External contribution
-echo     POST /dive/request      Request Dive Ticket
+%DC% --profile agent ps
 echo.
 pause
 exit /b 0
 
+:logs
+if not "%2"=="" (
+    %DC% logs -f %2
+) else (
+    %DC% --profile agent logs -f --tail=50
+)
+exit /b 0
+
 :batch
-echo [Sphere] Injecting all test data (60 items)...
-cd /d "%PERIPHERY%"
-call npm run contribute:batch
+echo [Sphere] Injecting all test data...
+%DC% exec periphery node dist/mock/contribution.js batch
 pause
 exit /b 0
 
 :contribute
 if not "%2"=="" (
     echo [Sphere] Injecting %2 items...
-    cd /d "%PERIPHERY%"
-    call npx tsx src/mock/contribution.ts %2
+    %DC% exec periphery node dist/mock/contribution.js %2
     pause
     exit /b 0
 )
@@ -169,22 +283,14 @@ echo.
 set /p contrib_choice="Select [1-3, c, b]: "
 
 if "%contrib_choice%"=="1" (
-    echo [Sphere] Injecting 1 item...
-    cd /d "%PERIPHERY%"
-    call npx tsx src/mock/contribution.ts 1
+    %DC% exec periphery node dist/mock/contribution.js 1
 ) else if "%contrib_choice%"=="2" (
-    echo [Sphere] Injecting 10 items...
-    cd /d "%PERIPHERY%"
-    call npx tsx src/mock/contribution.ts 10
+    %DC% exec periphery node dist/mock/contribution.js 10
 ) else if "%contrib_choice%"=="3" (
-    echo [Sphere] Injecting 50 items...
-    cd /d "%PERIPHERY%"
-    call npx tsx src/mock/contribution.ts 50
+    %DC% exec periphery node dist/mock/contribution.js 50
 ) else if "%contrib_choice%"=="c" (
     set /p custom_count="Enter count: "
-    echo [Sphere] Injecting !custom_count! items...
-    cd /d "%PERIPHERY%"
-    call npx tsx src/mock/contribution.ts !custom_count!
+    %DC% exec periphery node dist/mock/contribution.js !custom_count!
 ) else if "%contrib_choice%"=="b" (
     goto interactive
 ) else (
@@ -195,37 +301,24 @@ pause
 exit /b 0
 
 :wave
-cd /d "%PERIPHERY%"
 if not "%2"=="" (
     if not "%3"=="" (
         echo [Sphere] Wave inject: %2 items, %3ms delay...
-        call npx tsx src/mock/contribution.ts wave %2 %3
+        %DC% exec periphery node dist/mock/contribution.js wave %2 %3
     ) else (
         echo [Sphere] Wave inject: %2 items, 3000ms delay...
-        call npx tsx src/mock/contribution.ts wave %2
+        %DC% exec periphery node dist/mock/contribution.js wave %2
     )
 ) else (
     echo [Sphere] Wave inject: 50 items, 3000ms delay...
-    call npx tsx src/mock/contribution.ts wave
-)
-pause
-exit /b 0
-
-:swarm
-echo [Sphere] Spawning agents...
-cd /d "%PERIPHERY%"
-if "%2"=="" (
-    call npm run swarm
-) else (
-    call npx tsx src/mock/swarm-agent.ts -n %2
+    %DC% exec periphery node dist/mock/contribution.js wave
 )
 pause
 exit /b 0
 
 :explore
 echo [Sphere] Running 3-layer exploration...
-cd /d "%PERIPHERY%"
-call npm run explore
+%DC% exec periphery node dist/mock/explore-agent.js
 pause
 exit /b 0
 
@@ -236,12 +329,11 @@ echo   Full Test Sequence
 echo ========================================
 echo.
 echo [1/2] Injecting test data...
-cd /d "%PERIPHERY%"
-call npm run contribute:batch
+%DC% exec periphery node dist/mock/contribution.js batch
 echo.
 echo [2/2] Running exploration...
 timeout /t 2 /nobreak > nul
-call npm run explore
+%DC% exec periphery node dist/mock/explore-agent.js
 echo.
 echo [Done] Full test sequence completed.
 pause

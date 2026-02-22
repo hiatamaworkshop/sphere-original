@@ -25,7 +25,6 @@ import type {
   MoveIntent,
   MoveResult,
   WarpResult,
-  RandomWalkResult,
   WalkMode,
   GatewaySession,
   DiveTicket,
@@ -86,6 +85,30 @@ const DEFAULT_ENERGY = {
     evaluate: 3,
   },
 };
+
+/**
+ * Layer-specific energy cost multipliers
+ * [Design] Tutorial = free exploration (vectorization wait time)
+ *          Sanctuary = low cost (encourage exploration, save energy for Core)
+ *          Core = full cost (live world, full metabolism)
+ */
+const LAYER_ENERGY_MULTIPLIER: Record<ExperienceLayer, number> = {
+  tutorial: 0,     // No energy cost — practice / vectorization wait
+  sanctuary: 0.5,  // Half cost — static view, encourage browsing
+  core: 1.0,       // Full cost — live world
+};
+
+/**
+ * Energy recovery on Core entry
+ * [Design] Reward efficient Sanctuary exploration with partial recovery
+ */
+const CORE_ENTRY_ENERGY_RECOVERY = 30;
+
+/** Node kinds visible in Sanctuary layer (amber + relic) */
+const SANCTUARY_VISIBLE_KINDS = new Set(["amber", "relic"]);
+
+/** Node kinds visible in Tutorial layer (relic only — amber is earned, not given) */
+const TUTORIAL_VISIBLE_KINDS = new Set(["relic"]);
 
 /** Max evaluations per session (prevents mass-evaluation spam) */
 const MAX_EVALUATIONS_PER_SESSION = 10;
@@ -157,6 +180,7 @@ export class SphereContextImpl implements SphereContext {
 
   // 3-Layer Piping State
   private _layer: ExperienceLayer = "tutorial";
+  private _queryReady = false;  // true after real query vector is set via reposition()
   private _sessionBuffer: SessionBuffer;
 
   // Action Logging (for AutoCapsule generation)
@@ -296,6 +320,9 @@ export class SphereContextImpl implements SphereContext {
       nodes = this.mockSense(r);
     }
 
+    // Layer access control: filter by node kind
+    nodes = this.filterByLayer(nodes);
+
     // Track visible nodes: only these can be focused/warped
     // [Design] Prevents "teleporting" to unseen nodes
     // [WalkMode] Stores info for gradient calculation (vector fetched on demand)
@@ -379,8 +406,10 @@ export class SphereContextImpl implements SphereContext {
     if (this.coreAdapter) {
       // Get raw nodes from adapter for scanning
       const nearbyNodes = await this.coreAdapter.sense(this._embeddingVector, 1.0);
+      // Layer access control: filter by node kind
+      const filtered = this.filterByLayer(nearbyNodes);
       // Convert NearbyNode to SphereNode-like structure for movement system
-      nodes = nearbyNodes.map((n) => ({
+      nodes = filtered.map((n) => ({
         id: n.id,
         vector: [], // Will be fetched by adapter if needed
         kind: n.kind,
@@ -406,7 +435,10 @@ export class SphereContextImpl implements SphereContext {
     console.log(`[SphereContext] scanL1(radius=${r})`);
 
     if (this.coreAdapter) {
-      const results = await this.coreAdapter.scanL1(this._embeddingVector, r);
+      const rawResults = await this.coreAdapter.scanL1(this._embeddingVector, r);
+
+      // Layer access control: filter by node kind
+      const results = this.filterByLayer(rawResults);
 
       // Track scanned nodes as known (evaluate-eligible, warp-eligible)
       // [Design] Does NOT clear existing visibleNodes — scan supplements sense
@@ -446,6 +478,15 @@ export class SphereContextImpl implements SphereContext {
     // [Design] scan gives IDs but not proximity — focus requires sense()
     if (this._sensedNodeIds.size > 0 && !this._sensedNodeIds.has(nodeId)) {
       throw new Error(`Node ${nodeId} not reachable - call sense() first to discover nearby nodes`);
+    }
+
+    // Layer kind guard: sanctuary/tutorial can only focus amber + relic
+    // [Design] Defensive — sense/scan already filter, but guard against direct ID access
+    if (this._layer !== "core") {
+      const nodeInfo = this._visibleNodes.get(nodeId);
+      if (nodeInfo && !SANCTUARY_VISIBLE_KINDS.has(nodeInfo.kind)) {
+        throw new Error(`Node ${nodeId} not accessible in ${this._layer} layer`);
+      }
     }
 
     // End previous focus if any (with action log)
@@ -918,13 +959,6 @@ export class SphereContextImpl implements SphereContext {
   }
 
   /**
-   * @deprecated Use move(step, mode) instead
-   */
-  async randomWalk(stepSize: number = 0.3, mode: WalkMode = "random"): Promise<RandomWalkResult> {
-    return this.move(stepSize, mode);
-  }
-
-  /**
    * Calculate magnetic field direction based on WalkMode
    *
    * [Design] Mode determines which aspect of the field to follow:
@@ -1171,11 +1205,25 @@ export class SphereContextImpl implements SphereContext {
 
   // ===== Return =====
 
+  /**
+   * Forced return for expelled sessions (energy exhaustion / TTL expiry).
+   * Bypasses checkSession() since session state is already "expired".
+   * Ensures AutoCapsule + buffered evaluations flow through the pipeline.
+   */
+  async returnOnExpelled(): Promise<void> {
+    if (this._ended) return;  // already returned normally
+    console.log(`[SphereContext] returnOnExpelled() - session ${this._sessionId}`);
+    return this._processReturn();
+  }
+
   async return(capsule?: ExperienceCapsule): Promise<void> {
     this.checkSession();
-    this._ended = true;
-
     console.log(`[SphereContext] return() - session ${this._sessionId}`);
+    return this._processReturn(capsule);
+  }
+
+  private async _processReturn(capsule?: ExperienceCapsule): Promise<void> {
+    this._ended = true;
 
     // End any current focus (with action log)
     this.endCurrentFocus();
@@ -1251,6 +1299,10 @@ export class SphereContextImpl implements SphereContext {
   async enterSanctuary(): Promise<void> {
     this.checkSession();
 
+    if (!this._queryReady) {
+      throw new Error("Cannot enter Sanctuary: query vector not yet available");
+    }
+
     if (!isValidTransition(this._layer, "sanctuary")) {
       throw new Error(`Invalid transition: ${this._layer} → sanctuary`);
     }
@@ -1287,6 +1339,12 @@ export class SphereContextImpl implements SphereContext {
       console.log(`[SphereContext] Carrying ${bufferedCount} buffered evaluations into Core (will be processed on return)`);
     }
 
+    // Partial energy recovery on Core entry
+    // [Design] Reward efficient Sanctuary exploration — not full recovery
+    const before = this._energy;
+    this._energy = Math.min(this._energyConfig.initial, this._energy + CORE_ENTRY_ENERGY_RECOVERY);
+    console.log(`[SphereContext] Core entry energy recovery: +${this._energy - before} (${before} → ${this._energy})`);
+
     // Update layer (buffer is preserved, not cleared)
     this._layer = "core";
     this._session.layer = "core";
@@ -1295,6 +1353,32 @@ export class SphereContextImpl implements SphereContext {
     // Core layer characteristics
     const chars = LAYER_CHARACTERISTICS.core;
     console.log(`[SphereContext] Now in Core layer (live world, ${chars.dataSource})`);
+  }
+
+  // ===== Reposition (query vector ready) =====
+
+  get queryReady(): boolean {
+    return this._queryReady;
+  }
+
+  /**
+   * Replace the agent's position with the real query vector.
+   * Called when Parser vectorization completes (Tutorial → Sanctuary transition enabler).
+   *
+   * [Design] Tutorial starts at a relic's vector (mock position).
+   *          When the real query vector is ready, reposition the agent
+   *          so Sanctuary exploration starts from the query's semantic location.
+   */
+  reposition(newVector: number[]): void {
+    this._embeddingVector = newVector;
+    this._position = projectTo3D(newVector);
+    this._session.position = { ...this._position };
+    this.movementState = new AgentMovementState(newVector, {
+      ...DEFAULT_MOVE_CONFIG,
+      vectorDimension: newVector.length,
+    });
+    this._queryReady = true;
+    console.log(`[SphereContext] Repositioned: query vector ready (dim=${newVector.length})`);
   }
 
   // ===== Event Handling =====
@@ -1341,15 +1425,21 @@ export class SphereContextImpl implements SphereContext {
    * @returns true if action can proceed, false if insufficient energy
    */
   private consumeEnergy(action: keyof typeof DEFAULT_ENERGY.costs): boolean {
-    const cost = this._energyConfig.costs[action];
+    const baseCost = this._energyConfig.costs[action];
+    const multiplier = LAYER_ENERGY_MULTIPLIER[this._layer];
+    const cost = Math.round(baseCost * multiplier);
+
+    // Tutorial layer: zero cost, always proceed
+    if (cost === 0) return true;
+
     if (this._energy < cost) {
-      console.log(`[SphereContext] ⚡ ${action} blocked: energy ${this._energy} < cost ${cost}`);
+      console.log(`[SphereContext] ⚡ ${action} blocked: energy ${this._energy} < cost ${cost} (layer=${this._layer})`);
       return false;
     }
 
     const before = this._energy;
     this._energy -= cost;
-    console.log(`[SphereContext] ⚡ ${action}: -${cost} energy (${before} → ${this._energy})`)
+    console.log(`[SphereContext] ⚡ ${action}: -${cost} energy (${before} → ${this._energy}, layer=${this._layer})`)
 
     // Check for low energy warning (once per session)
     const threshold = this._energyConfig.initial * (this._energyConfig.warningThreshold / 100);
@@ -1367,6 +1457,18 @@ export class SphereContextImpl implements SphereContext {
     }
 
     return true;
+  }
+
+  /**
+   * Filter nodes by current layer's access control
+   * [Design] Tutorial: relic only (amber is earned through exploration)
+   *          Sanctuary: amber + relic visible (reward for progression)
+   *          Core: no filter (full access)
+   */
+  private filterByLayer<T extends { kind: string }>(nodes: T[]): T[] {
+    if (this._layer === "core") return nodes;
+    if (this._layer === "tutorial") return nodes.filter(n => TUTORIAL_VISIBLE_KINDS.has(n.kind));
+    return nodes.filter(n => SANCTUARY_VISIBLE_KINDS.has(n.kind));
   }
 
   private setupTimers(): void {
@@ -1533,15 +1635,3 @@ export function createSphereContext(options: CreateSphereContextOptions): Sphere
   );
 }
 
-/**
- * Create SphereContext with default zero vector (for testing/mock)
- */
-export function createMockSphereContext(
-  ticket: DiveTicket,
-  sessionId: string,
-  vectorDim: number = 384,
-  pipeline?: IIncarnationPipeline
-): SphereContextImpl {
-  const zeroVector = new Array(vectorDim).fill(0);
-  return new SphereContextImpl(ticket, sessionId, zeroVector, pipeline);
-}

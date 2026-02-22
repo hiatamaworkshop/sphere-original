@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   # ============================================================================
   # Infrastructure Layer
@@ -8,8 +6,8 @@ services:
   # Reverse Proxy / API Gateway
   nginx:
     build:
-      context: ./services/nginx
-      dockerfile: Dockerfile
+      context: ..
+      dockerfile: docker_compose_sphere_v1/services/nginx/Dockerfile
     container_name: sphere-nginx
     ports:
       - "80:80"
@@ -84,11 +82,14 @@ services:
   # Periphery - Entry Point Layer
   periphery:
     build:
-      context: ./services/periphery
-      dockerfile: Dockerfile
+      context: ./services
+      dockerfile: periphery/Dockerfile
     container_name: sphere-periphery
     environment:
       NODE_ENV: production
+      PORT: "3001"
+      WS_URL: ws://localhost:3001
+      SPHERE_CONFIG: /app/sphere.config.json
       REDIS_HOST: redis
       REDIS_PORT: 6379
       POSTGRES_HOST: postgres
@@ -116,73 +117,155 @@ services:
       - sphere-network
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3001/health"]
+      test: ["CMD-SHELL", "node -e \"fetch('http://localhost:3001/health').then(r=>{process.exit(r.ok?0:1)}).catch(()=>process.exit(1))\""]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  # ============================================================================
+  # Agent Layer (activate with: docker-compose --profile agent up)
+  # ============================================================================
+
+  # Ollama - Local LLM inference server
+  ollama:
+    image: ollama/ollama:latest
+    container_name: sphere-ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ../ollama-models:/root/.ollama
+    networks:
+      - sphere-network
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 8G
+        reservations:
+          memory: 4G
+    healthcheck:
+      test: ["CMD-SHELL", "ollama list || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 120s
+    profiles:
+      - agent
+
+  # Phi Agent - Autonomous Sphere explorer (phi via ollama)
+  # Scalable: docker compose --profile agent up --scale phi-agent=3
+  phi-agent:
+    image: phi-agent:latest
+    build:
+      context: ../phi-agent
+      dockerfile: Dockerfile
+    environment:
+      OLLAMA_HOST: http://ollama:11434
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-phi3:mini}
+      SPHERE_URL: http://periphery:3001
+      SPHERE_WS: ws://periphery:3001
+      LOADOUT: random
+      DAEMON: "true"
+      DAEMON_SLEEP_MS: "10000"
+      RESPONSE: "false"
+      DIGESTOR_URL: http://digestor:5000
+    volumes:
+      - ../phi-agent/data:/app/data
+    depends_on:
+      periphery:
+        condition: service_healthy
+      ollama:
+        condition: service_healthy
+      digestor:
+        condition: service_healthy
+    networks:
+      - sphere-network
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+    profiles:
+      - agent
+
+  # Digestor - Species memory metabolism + IO Gateway (Agent Cluster の窓口)
+  digestor:
+    build:
+      context: ../digestor
+      dockerfile: Dockerfile
+    container_name: sphere-digestor
+    environment:
+      DATA_DIR: /app/data
+      DIGEST_INTERVAL_MS: "${DIGEST_INTERVAL_MS:-10800000}"
+      HALF_LIFE_HOURS: "${HALF_LIFE_HOURS:-72}"
+      MIN_EVALS: "50"
+      MIN_PER_SPECIES: "20"
+      GATEWAY_PORT: "5000"
+    ports:
+      - "5000:5000"
+    volumes:
+      - ../phi-agent/data:/app/data
+    networks:
+      - sphere-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:5000/health || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
+      start_period: 10s
+    profiles:
+      - agent
 
-  # RenalCore - Metabolism Engine (Optional standalone service)
-  # Currently integrated into Periphery, but can be run independently
-  # renalcore:
-  #   build:
-  #     context: ./services/renalCore
-  #     dockerfile: Dockerfile
-  #   container_name: sphere-renalcore
-  #   environment:
-  #     NODE_ENV: production
-  #   volumes:
-  #     - ./sphere.config.json:/app/sphere.config.json:ro
-  #   networks:
-  #     - sphere-network
-  #   restart: unless-stopped
-
-  # Agents - Autonomous Explorers (Future implementation)
-  # agents:
-  #   build:
-  #     context: ./services/agents
-  #     dockerfile: Dockerfile
-  #   container_name: sphere-agents
-  #   environment:
-  #     PERIPHERY_URL: http://periphery:3001
-  #   depends_on:
-  #     - periphery
-  #   networks:
-  #     - sphere-network
-  #   restart: unless-stopped
-
-  # Observatory UI - Visualization Interface (Future implementation)
-  # observatory_ui:
-  #   build:
-  #     context: ./services/observatory_ui
-  #     dockerfile: Dockerfile
-  #   container_name: sphere-observatory
-  #   networks:
-  #     - sphere-network
-  #   restart: unless-stopped
-
-  # ============================================================================
-  # Testing & Development
-  # ============================================================================
-
-  # Test Runner - For integration and E2E tests
-  test-runner:
+  # Pool Service - External data intake gateway (LLM scoring + Weapon pipeline)
+  pool-service:
     build:
-      context: ./services/periphery
+      context: ../pool-service
       dockerfile: Dockerfile
-    container_name: sphere-test-runner
+    container_name: sphere-pool-service
     environment:
-      NODE_ENV: test
-      PERIPHERY_URL: http://periphery:3001
-    volumes:
-      - ./services/periphery:/app
-      - /app/node_modules
+      SPHERE_URL: http://periphery:3001/sphere/contribute
+      OLLAMA_URL: http://ollama:11434
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-phi3:mini}
+      POOL_PORT: "4000"
+    ports:
+      - "4000:4000"
     depends_on:
-      - periphery
+      periphery:
+        condition: service_healthy
+      ollama:
+        condition: service_healthy
     networks:
       - sphere-network
-    command: npm run mock-bot
+    restart: unless-stopped
     profiles:
-      - testing
+      - agent
+
+  # Explorers - Sphere Perception UI (Gradio)
+  explorers:
+    build:
+      context: ../explorers
+      dockerfile: Dockerfile
+    container_name: sphere-explorers
+    environment:
+      SPHERE_URL: http://periphery:3001
+      OLLAMA_HOST: http://ollama:11434
+    ports:
+      - "7860:7860"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ../phi-agent/data:/app/data
+    depends_on:
+      periphery:
+        condition: service_healthy
+      ollama:
+        condition: service_healthy
+    networks:
+      - sphere-network
+    restart: unless-stopped
+    profiles:
+      - agent
 
 # ============================================================================
 # Networks
@@ -204,3 +287,4 @@ volumes:
     name: sphere-minio-data
   periphery-logs:
     name: sphere-periphery-logs
+  # ollama-models: now local at ../ollama-models

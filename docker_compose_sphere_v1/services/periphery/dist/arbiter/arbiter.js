@@ -38,124 +38,18 @@ export function computeAscensionScore(h, w) {
 /**
  * Arbiter: ProjDB を監視し、状態遷移を判定・検出する
  *
- * Usage (Immediate):
+ * Usage:
  *   const arbiter = new Arbiter(config);
  *   const queue = arbiter.observe(projDB, { isPaused });  // 即時判定
  *   await bookkeeper.applyTransitions(queue);              // 実行
- *
- * Usage (Deferred):
- *   const arbiter = new Arbiter(config);
- *   arbiter.onObserve(async (queue) => {
- *     await bookkeeper.applyTransitions(queue);
- *   });
- *   arbiter.scheduleObserve(projDB, { isPaused });  // 遅延キューイング
- *   // ... 後でまとめて実行される
  */
 export class Arbiter {
     config;
-    // === Deferred Observation State ===
-    pendingObserve = null;
-    observeTimer = null;
-    lastObserveTime = 0;
-    observeCallbacks = [];
     // === Candidate Store (Ascension 冷却期間管理) ===
     // Key: nodeId
     candidateStore = new Map();
     constructor(config) {
         this.config = config;
-    }
-    // =========================================================================
-    // Deferred Observation API
-    // =========================================================================
-    /**
-     * Register callback for deferred observation results
-     *
-     * [Design] Multiple callbacks can be registered
-     * [Usage] Bookkeeper registers to apply transitions
-     */
-    onObserve(callback) {
-        this.observeCallbacks.push(callback);
-    }
-    /**
-     * Schedule deferred observation (throttle + debounce)
-     *
-     * [Design] Combines throttle and idle timeout:
-     *   - If called within throttleMs of last execution, delays
-     *   - Waits for idleTimeoutMs of inactivity before executing
-     *   - Latest projDB/options are used (overwrites pending)
-     *
-     * @param projDB - Current projection database
-     * @param options - Observation options
-     */
-    scheduleObserve(projDB, options = {}) {
-        // Update pending observation (latest wins)
-        this.pendingObserve = { projDB, options };
-        // Clear existing timer
-        if (this.observeTimer) {
-            clearTimeout(this.observeTimer);
-            this.observeTimer = null;
-        }
-        // Calculate delay
-        const now = Date.now();
-        const timeSinceLastObserve = now - this.lastObserveTime;
-        const throttleRemaining = Math.max(0, this.config.observeThrottleMs - timeSinceLastObserve);
-        const delay = Math.max(throttleRemaining, this.config.observeIdleTimeoutMs);
-        // Schedule execution
-        this.observeTimer = setTimeout(() => {
-            this.executeDeferred();
-        }, delay);
-    }
-    /**
-     * Execute pending deferred observation immediately
-     *
-     * [Usage] Force execution without waiting for timeout
-     */
-    async flushObserve() {
-        if (this.observeTimer) {
-            clearTimeout(this.observeTimer);
-            this.observeTimer = null;
-        }
-        return this.executeDeferred();
-    }
-    /**
-     * Cancel pending deferred observation
-     */
-    cancelObserve() {
-        if (this.observeTimer) {
-            clearTimeout(this.observeTimer);
-            this.observeTimer = null;
-        }
-        this.pendingObserve = null;
-    }
-    /**
-     * Check if there's a pending observation
-     */
-    hasPendingObserve() {
-        return this.pendingObserve !== null;
-    }
-    /**
-     * Execute deferred observation and notify callbacks
-     */
-    async executeDeferred() {
-        if (!this.pendingObserve) {
-            return null;
-        }
-        const { projDB, options } = this.pendingObserve;
-        this.pendingObserve = null;
-        this.observeTimer = null;
-        this.lastObserveTime = Date.now();
-        // Execute observation
-        const queue = this.observe(projDB, options);
-        // Notify all callbacks
-        for (const callback of this.observeCallbacks) {
-            try {
-                await callback(queue);
-            }
-            catch (error) {
-                console.error("[Arbiter] Callback error:", error);
-            }
-        }
-        return queue;
     }
     /**
      * Take a snapshot of current node states
@@ -187,7 +81,6 @@ export class Arbiter {
      *
      * @param projDB - Current projection database
      * @param options.isPaused - Whether Sphere is paused
-     * @param options.linkCounts - Map of nodeId → link count (for Hub/Isolated detection)
      */
     observe(projDB, options = {}) {
         const queue = {
@@ -220,7 +113,7 @@ export class Arbiter {
                 }
             }
             // 4. Dynamic Flags 更新判定
-            const flagUpdate = this.computeFlagUpdate(node, options.linkCounts);
+            const flagUpdate = this.computeFlagUpdate(node);
             if (flagUpdate) {
                 queue.flagUpdates.push(flagUpdate);
             }
@@ -405,16 +298,6 @@ export class Arbiter {
         }
         return false;
     }
-    /**
-     * Ascension 判定: Active → Amber
-     */
-    shouldAscend(node) {
-        if (node.kind !== "active")
-            return false;
-        const effectiveWeight = this.computeEffectiveWeight(node);
-        return (node.metrics.h > this.config.amberHeatThreshold &&
-            effectiveWeight > this.config.amberWeightThreshold);
-    }
     // =========================================================================
     // Dynamic Flags 判定
     // =========================================================================
@@ -423,12 +306,13 @@ export class Arbiter {
      *
      * [Dynamic Flags]
      *   - Hot: heat > hotHeatThreshold
-     *   - Hub: linkCount > hubLinkThreshold
-     *   - Isolated: linkCount <= isolatedLinkThreshold
+     *
+     * Hub/Isolated dynamic flags removed — linkCounts never supplied.
+     * Static Hub/Isolated via Tagger keyword matching is unaffected.
      *
      * @returns FlagUpdate if any changes needed, null otherwise
      */
-    computeFlagUpdate(node, linkCounts) {
+    computeFlagUpdate(node) {
         let add = 0;
         let remove = 0;
         // === Hot Flag ===
@@ -440,29 +324,6 @@ export class Arbiter {
         else if (!isHot && hasHot) {
             remove |= NodeFlag.Hot;
         }
-        // === Hub / Isolated Flags ===
-        if (linkCounts) {
-            const linkCount = linkCounts.get(node.id) ?? 0;
-            // Hub: many connections
-            const isHub = linkCount > this.config.hubLinkThreshold;
-            const hasHub = this.hasFlag(node, NodeFlag.Hub);
-            if (isHub && !hasHub) {
-                add |= NodeFlag.Hub;
-            }
-            else if (!isHub && hasHub) {
-                remove |= NodeFlag.Hub;
-            }
-            // Isolated: no connections (mutually exclusive with Hub)
-            const isIsolated = linkCount <= this.config.isolatedLinkThreshold;
-            const hasIsolated = this.hasFlag(node, NodeFlag.Isolated);
-            if (isIsolated && !isHub && !hasIsolated) {
-                add |= NodeFlag.Isolated;
-            }
-            else if ((!isIsolated || isHub) && hasIsolated) {
-                remove |= NodeFlag.Isolated;
-            }
-        }
-        // Return update only if there are changes
         if (add === 0 && remove === 0) {
             return null;
         }
@@ -481,13 +342,6 @@ export class Arbiter {
      */
     static applyFlagUpdate(currentFlags, update) {
         return (currentFlags | update.add) & ~update.remove;
-    }
-    computeEffectiveWeight(node) {
-        let weight = node.metrics.w;
-        if (this.hasFlag(node, NodeFlag.Hub)) {
-            weight *= 1.1;
-        }
-        return weight;
     }
     logQueue(queue) {
         const total = queue.shouldAscend.length +

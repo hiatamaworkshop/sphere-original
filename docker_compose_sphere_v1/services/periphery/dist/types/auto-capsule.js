@@ -48,7 +48,6 @@ export function buildAutoCapsule(log) {
                 const data = nodeData.get(event.nodeId) || {
                     kind: event.kind,
                     stayTime: 0,
-                    traversal: 0,
                     focusCount: 0,
                     heatDelta: 0,
                     maxHeat: 0,
@@ -67,12 +66,7 @@ export function buildAutoCapsule(log) {
                 break;
             }
             case "move": {
-                if (event.success && event.fromNodeId) {
-                    const data = nodeData.get(event.fromNodeId);
-                    if (data) {
-                        data.traversal++;
-                    }
-                }
+                // Move events tracked for session stats only
                 break;
             }
             case "evaluate": {
@@ -92,7 +86,6 @@ export function buildAutoCapsule(log) {
             nodeId,
             kind: data.kind,
             stayTime: data.stayTime,
-            traversal: data.traversal,
             focusCount: data.focusCount,
             heatDelta: data.heatDelta,
         });

@@ -1,0 +1,619 @@
+{
+  "generation": 9,
+  "timestamp": "2026-02-13T07:15:46.209Z",
+  "sphereHash": null,
+  "inputEvaluations": 60,
+  "survivedEvaluations": 60,
+  "hunger": 0.2,
+  "halfLifeHours": 72,
+  "species": {
+    "hunter": {
+      "evaluations": 13,
+      "avgH": 7.714615384615384,
+      "avgW": 8.771153846153846,
+      "avgD": 4.54576923076923,
+      "hotNodes": [
+        {
+          "nodeId": "20656d56030fa8a0",
+          "count": 3.5
+        },
+        {
+          "nodeId": "72a277371ac3f7df",
+          "count": 2.9
+        },
+        {
+          "nodeId": "a1565210ef1b01b6",
+          "count": 1.9
+        },
+        {
+          "nodeId": "904b2c1f6ce3b0fb",
+          "count": 1.9
+        },
+        {
+          "nodeId": "3bd706516bbac85a",
+          "count": 1.5999999999999999
+        },
+        {
+          "nodeId": "e506f303a2bdfb9e",
+          "count": 1.5999999999999999
+        },
+        {
+          "nodeId": "ca6109987efa813d",
+          "count": 1.5
+        },
+        {
+          "nodeId": "6ea9c76ac873e070",
+          "count": 1.5
+        },
+        {
+          "nodeId": "9d92a87256917231",
+          "count": 0.8999999999999999
+        },
+        {
+          "nodeId": "c35c26738ab461a1",
+          "count": 0.8999999999999999
+        }
+      ],
+      "commonTags": [
+        "cognition",
+        "psychology",
+        "bias",
+        "web",
+        "curiosity",
+        "time",
+        "anthropology",
+        "culture",
+        "evolution",
+        "cellular-automata",
+        "math",
+        "emergence",
+        "discovery",
+        "probability",
+        "paradox"
+      ],
+      "evaluationConsistency": {
+        "score": 0.8958333333333334,
+        "nodes": 2,
+        "meanStdH": 0.25,
+        "meanStdW": 0.75,
+        "meanStdD": 0.25
+      }
+    },
+    "scout": {
+      "evaluations": 10,
+      "avgH": 8.28,
+      "avgW": 8.475,
+      "avgD": 3.9749999999999996,
+      "hotNodes": [
+        {
+          "nodeId": "20656d56030fa8a0",
+          "count": 2.8
+        },
+        {
+          "nodeId": "6ea9c76ac873e070",
+          "count": 2.2
+        },
+        {
+          "nodeId": "ca6109987efa813d",
+          "count": 2.2
+        },
+        {
+          "nodeId": "72a277371ac3f7df",
+          "count": 2.2
+        },
+        {
+          "nodeId": "a1565210ef1b01b6",
+          "count": 1.9
+        },
+        {
+          "nodeId": "9d92a87256917231",
+          "count": 1.5999999999999999
+        },
+        {
+          "nodeId": "3bd706516bbac85a",
+          "count": 1.5999999999999999
+        },
+        {
+          "nodeId": "904b2c1f6ce3b0fb",
+          "count": 1.2
+        },
+        {
+          "nodeId": "e506f303a2bdfb9e",
+          "count": 0.8999999999999999
+        },
+        {
+          "nodeId": "c35c26738ab461a1",
+          "count": 0.8999999999999999
+        }
+      ],
+      "commonTags": [
+        "psychology",
+        "philosophy",
+        "cognition",
+        "design-pattern",
+        "event-sourcing",
+        "CQRS",
+        "RLHF",
+        "AI",
+        "alignment",
+        "bias",
+        "mathematics",
+        "logic",
+        "cellular-automata",
+        "math",
+        "emergence"
+      ]
+    },
+    "balanced": {
+      "evaluations": 3,
+      "avgH": 7.2299999999999995,
+      "avgW": 7.658333333333333,
+      "avgD": 4.115,
+      "hotNodes": [
+        {
+          "nodeId": "ca6109987efa813d",
+          "count": 2.2
+        },
+        {
+          "nodeId": "6ea9c76ac873e070",
+          "count": 2.2
+        },
+        {
+          "nodeId": "20656d56030fa8a0",
+          "count": 2.1
+        },
+        {
+          "nodeId": "904b2c1f6ce3b0fb",
+          "count": 1.9
+        },
+        {
+          "nodeId": "72a277371ac3f7df",
+          "count": 1.5
+        },
+        {
+          "nodeId": "a1565210ef1b01b6",
+          "count": 1.2
+        },
+        {
+          "nodeId": "9d92a87256917231",
+          "count": 0.8999999999999999
+        },
+        {
+          "nodeId": "e506f303a2bdfb9e",
+          "count": 0.8999999999999999
+        },
+        {
+          "nodeId": "3bd706516bbac85a",
+          "count": 0.8999999999999999
+        },
+        {
+          "nodeId": "c35c26738ab461a1",
+          "count": 0.8999999999999999
+        }
+      ],
+      "commonTags": [
+        "RLHF",
+        "AI",
+        "alignment",
+        "design-pattern",
+        "event-sourcing",
+        "CQRS",
+        "anthropology",
+        "methodology",
+        "research",
+        "psychology",
+        "cognition",
+        "bias",
+        "time",
+        "philosophy",
+        "physics"
+      ]
+    },
+    "moth": {
+      "evaluations": 7,
+      "avgH": 8.03,
+      "avgW": 8.024999999999999,
+      "avgD": 3.615,
+      "hotNodes": [
+        {
+          "nodeId": "20656d56030fa8a0",
+          "count": 2.8
+        },
+        {
+          "nodeId": "6ea9c76ac873e070",
+          "count": 2.2
+        },
+        {
+          "nodeId": "ca6109987efa813d",
+          "count": 2.2
+        },
+        {
+          "nodeId": "72a277371ac3f7df",
+          "count": 2.2
+        },
+        {
+          "nodeId": "904b2c1f6ce3b0fb",
+          "count": 1.9
+        },
+        {
+          "nodeId": "e506f303a2bdfb9e",
+          "count": 1.5999999999999999
+        },
+        {
+          "nodeId": "c35c26738ab461a1",
+          "count": 1.5999999999999999
+        },
+        {
+          "nodeId": "a1565210ef1b01b6",
+          "count": 1.2
+        },
+        {
+          "nodeId": "9d92a87256917231",
+          "count": 0.8999999999999999
+        },
+        {
+          "nodeId": "3bd706516bbac85a",
+          "count": 0.8999999999999999
+        }
+      ],
+      "commonTags": [
+        "AI",
+        "psychology",
+        "cognition",
+        "bias",
+        "anthropology",
+        "design-pattern",
+        "event-sourcing",
+        "CQRS",
+        "RLHF",
+        "alignment",
+        "methodology",
+        "research",
+        "algorithm",
+        "data-structure",
+        "probabilistic"
+      ]
+    },
+    "scholar": {
+      "evaluations": 6,
+      "avgH": 7.58,
+      "avgW": 8.475,
+      "avgD": 4.815,
+      "hotNodes": [
+        {
+          "nodeId": "20656d56030fa8a0",
+          "count": 2.1
+        },
+        {
+          "nodeId": "3bd706516bbac85a",
+          "count": 1.5999999999999999
+        },
+        {
+          "nodeId": "ca6109987efa813d",
+          "count": 1.5
+        },
+        {
+          "nodeId": "6ea9c76ac873e070",
+          "count": 1.5
+        },
+        {
+          "nodeId": "72a277371ac3f7df",
+          "count": 1.5
+        },
+        {
+          "nodeId": "a1565210ef1b01b6",
+          "count": 1.2
+        },
+        {
+          "nodeId": "904b2c1f6ce3b0fb",
+          "count": 1.2
+        },
+        {
+          "nodeId": "9d92a87256917231",
+          "count": 0.8999999999999999
+        },
+        {
+          "nodeId": "e506f303a2bdfb9e",
+          "count": 0.8999999999999999
+        },
+        {
+          "nodeId": "c35c26738ab461a1",
+          "count": 0.8999999999999999
+        }
+      ],
+      "commonTags": [
+        "physics",
+        "psychology",
+        "philosophy",
+        "bias",
+        "quantum",
+        "phenomenon",
+        "thought-experiment",
+        "space",
+        "aliens",
+        "science",
+        "simulation",
+        "provocative",
+        "medicine",
+        "brain",
+        "decision"
+      ]
+    },
+    "sniper": {
+      "evaluations": 7,
+      "avgH": 8.03,
+      "avgW": 8.325,
+      "avgD": 4.515,
+      "hotNodes": [
+        {
+          "nodeId": "20656d56030fa8a0",
+          "count": 3.5
+        },
+        {
+          "nodeId": "6ea9c76ac873e070",
+          "count": 2.2
+        },
+        {
+          "nodeId": "ca6109987efa813d",
+          "count": 2.2
+        },
+        {
+          "nodeId": "904b2c1f6ce3b0fb",
+          "count": 1.9
+        },
+        {
+          "nodeId": "a1565210ef1b01b6",
+          "count": 1.9
+        },
+        {
+          "nodeId": "72a277371ac3f7df",
+          "count": 1.5
+        },
+        {
+          "nodeId": "9d92a87256917231",
+          "count": 0.8999999999999999
+        },
+        {
+          "nodeId": "e506f303a2bdfb9e",
+          "count": 0.8999999999999999
+        },
+        {
+          "nodeId": "3bd706516bbac85a",
+          "count": 0.8999999999999999
+        },
+        {
+          "nodeId": "c35c26738ab461a1",
+          "count": 0.8999999999999999
+        }
+      ],
+      "commonTags": [
+        "anthropology",
+        "psychology",
+        "cognition",
+        "bias",
+        "design-pattern",
+        "event-sourcing",
+        "CQRS",
+        "methodology",
+        "research",
+        "society",
+        "culture",
+        "cellular-automata",
+        "math",
+        "emergence",
+        "discovery"
+      ],
+      "evaluationConsistency": {
+        "score": 0.7916666666666666,
+        "nodes": 1,
+        "meanStdH": 0.5,
+        "meanStdW": 1.5,
+        "meanStdD": 0.5
+      }
+    },
+    "archivist": {
+      "evaluations": 10,
+      "avgH": 7.2299999999999995,
+      "avgW": 8.405,
+      "avgD": 4.745,
+      "hotNodes": [
+        {
+          "nodeId": "ca6109987efa813d",
+          "count": 2.2
+        },
+        {
+          "nodeId": "6ea9c76ac873e070",
+          "count": 2.2
+        },
+        {
+          "nodeId": "72a277371ac3f7df",
+          "count": 2.2
+        },
+        {
+          "nodeId": "20656d56030fa8a0",
+          "count": 2.1
+        },
+        {
+          "nodeId": "9d92a87256917231",
+          "count": 1.5999999999999999
+        },
+        {
+          "nodeId": "e506f303a2bdfb9e",
+          "count": 1.5999999999999999
+        },
+        {
+          "nodeId": "c35c26738ab461a1",
+          "count": 1.5999999999999999
+        },
+        {
+          "nodeId": "a1565210ef1b01b6",
+          "count": 1.2
+        },
+        {
+          "nodeId": "904b2c1f6ce3b0fb",
+          "count": 1.2
+        },
+        {
+          "nodeId": "3bd706516bbac85a",
+          "count": 0.8999999999999999
+        }
+      ],
+      "commonTags": [
+        "time",
+        "AI",
+        "philosophy",
+        "psychology",
+        "RLHF",
+        "alignment",
+        "design-pattern",
+        "event-sourcing",
+        "CQRS",
+        "distributed",
+        "mathematics",
+        "logic",
+        "productivity",
+        "algorithm",
+        "data-structure"
+      ]
+    },
+    "wanderer": {
+      "evaluations": 4,
+      "avgH": 7.755,
+      "avgW": 8.475,
+      "avgD": 4.64,
+      "hotNodes": [
+        {
+          "nodeId": "20656d56030fa8a0",
+          "count": 2.8
+        },
+        {
+          "nodeId": "a1565210ef1b01b6",
+          "count": 1.9
+        },
+        {
+          "nodeId": "9d92a87256917231",
+          "count": 1.5999999999999999
+        },
+        {
+          "nodeId": "ca6109987efa813d",
+          "count": 1.5
+        },
+        {
+          "nodeId": "6ea9c76ac873e070",
+          "count": 1.5
+        },
+        {
+          "nodeId": "72a277371ac3f7df",
+          "count": 1.5
+        },
+        {
+          "nodeId": "904b2c1f6ce3b0fb",
+          "count": 1.2
+        },
+        {
+          "nodeId": "e506f303a2bdfb9e",
+          "count": 0.8999999999999999
+        },
+        {
+          "nodeId": "3bd706516bbac85a",
+          "count": 0.8999999999999999
+        },
+        {
+          "nodeId": "c35c26738ab461a1",
+          "count": 0.8999999999999999
+        }
+      ],
+      "commonTags": [
+        "psychology",
+        "cognition",
+        "bias",
+        "philosophy",
+        "time",
+        "cellular-automata",
+        "math",
+        "emergence",
+        "discovery",
+        "mathematics",
+        "logic",
+        "productivity",
+        "AI",
+        "anthropology",
+        "RLHF"
+      ]
+    }
+  },
+  "global": {
+    "evaluations": 60,
+    "avgH": 7.766666666666667,
+    "avgW": 8.416666666666666,
+    "avgD": 4.383333333333334,
+    "hotNodes": [
+      {
+        "nodeId": "20656d56030fa8a0",
+        "count": 7
+      },
+      {
+        "nodeId": "ca6109987efa813d",
+        "count": 5
+      },
+      {
+        "nodeId": "6ea9c76ac873e070",
+        "count": 5
+      },
+      {
+        "nodeId": "72a277371ac3f7df",
+        "count": 5
+      },
+      {
+        "nodeId": "a1565210ef1b01b6",
+        "count": 4
+      },
+      {
+        "nodeId": "904b2c1f6ce3b0fb",
+        "count": 4
+      },
+      {
+        "nodeId": "9d92a87256917231",
+        "count": 3
+      },
+      {
+        "nodeId": "e506f303a2bdfb9e",
+        "count": 3
+      },
+      {
+        "nodeId": "3bd706516bbac85a",
+        "count": 3
+      },
+      {
+        "nodeId": "c35c26738ab461a1",
+        "count": 3
+      }
+    ],
+    "commonTags": [
+      "psychology",
+      "cognition",
+      "AI",
+      "bias",
+      "time",
+      "philosophy",
+      "anthropology",
+      "RLHF",
+      "alignment",
+      "design-pattern",
+      "event-sourcing",
+      "CQRS",
+      "physics",
+      "web",
+      "curiosity"
+    ],
+    "revisitedNodes": 13,
+    "totalRevisits": 48,
+    "evaluationConsistency": {
+      "score": 0.8043062897865115,
+      "nodes": 13,
+      "meanStdH": 0.694,
+      "meanStdW": 0.802,
+      "meanStdD": 0.853
+    }
+  }
+}

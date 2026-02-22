@@ -125,13 +125,13 @@ export class PulseBroadcaster {
     }
 
     const nodeCount = projectionDB.size;
-    const totalFertility = [...spatialFields.values()].reduce(
-      (sum, f) => sum + f.fertility, 0
+    const totalFlux = [...spatialFields.values()].reduce(
+      (sum, f) => sum + f.flux, 0
     );
 
     // Signal 計算
     const sig = {
-      a: totalFertility + amberHeat,                              // Attractant
+      a: totalFlux + amberHeat,                              // Attractant
       r: ghostCount / Math.max(nodeCount, 1),                     // Repellent (Ghost比率)
       d: activeRelicCount,                                        // Density
       f: (nodeCount - this.lastNodeCount) / Math.max(this.lastNodeCount, 1), // Flow
@@ -189,15 +189,6 @@ export class PulseBroadcaster {
       if (err) {
         console.error("[PulseBroadcaster] Broadcast error:", err);
       }
-      // [Telemetry] Pulse broadcast成功ログ - intervalTicks毎にUDP送信した環境信号
-      // a=誘引物質, r=忌避物質(Ghost比率), d=密度(Active+Relic数), f=流量, flg=状態フラグ
-      // else {
-      //   console.log(
-      //     `[PulseBroadcaster] tick=${packet.tick} ` +
-      //     `a=${packet.sig.a.toFixed(2)} r=${packet.sig.r.toFixed(3)} ` +
-      //     `d=${packet.sig.d} f=${packet.sig.f.toFixed(3)} flg=0x${packet.flg.toString(16)}`
-      //   );
-      // }
     });
   }
 }

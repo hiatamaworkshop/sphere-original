@@ -6,15 +6,10 @@
  */
 
 export type { SphereNode, NodeKind } from "./sphere_node.js";
-export type { AmberRecord, SpectralLink, Constellation } from "./amber.js";
+export type { AmberRecord } from "./amber.js";
 export type {
   StableConfig,
   PhysicalConstants,
-  MetabolismSettings,
-  CrystallizationLogic,
-  LinguisticMembrane,
-  ImmersiveTraining,
-  InterfaceHint,
   ActiveBus,
   RenalCoreConfig,
   RenalCoreFlagsConfig,

@@ -63,20 +63,21 @@ export declare class ReturnHandler {
     /**
      * Process agent return
      *
-     * [Design Decision]
-     *   - AutoCapsule is always generated (server truth)
-     *   - proposedCapsule is optional (agent claim)
-     *   - First phase: Use proposedCapsule if valid, else generate from AutoCapsule
-     *   - Second phase: Capsule差分評価 (not implemented yet)
+     * [Design Decision — Stigmergic Model]
+     *   - AutoCapsule is always generated (server truth, audit log)
+     *   - Evaluations (pheromone) are the primary output of agent sessions
+     *   - NodeSeed incarnation is ONLY for agents that explicitly propose a capsule
+     *     (powerful external agents, not standard phi-agent)
+     *   - Default return = evaluations-only (no auto-generated NodeSeeds)
+     *
+     * [Rationale]
+     *   Agents are sensory organs — they evaluate existing nodes (deposit pheromone).
+     *   Node creation (incarnation) is the responsibility of:
+     *     - pool-service (external data intake)
+     *     - humans (Capsule tab / Dive)
+     *     - external agents that explicitly submit proposedCapsule
      */
     processReturn(autoCapsule: AutoCapsule, proposedCapsule?: ExperienceCapsule): Promise<ReturnResult>;
-    /**
-     * Generate ExperienceCapsule from AutoCapsule
-     *
-     * [Design] Minimal capsule - only what was actually explored
-     * [Principle] まず記録、意味は後
-     */
-    private generateCapsuleFromAuto;
 }
 /**
  * Create ReturnHandler instance

@@ -387,8 +387,7 @@ interface WizardCheckpoint {
 │  [Step 3] Validate Records                                  │ │
 │           - tags: string[]                                  │ │
 │           - summary: string                                 │ │
-│           - payload?: string                                │ │
-│           - initialHeat: number                             │ │
+│           - content?: string  (v3: "payload")               │ │
 │           - flags: number                                   │ │
 │                                                             │ │
 │  [Step 4] Batch Embedding ──────────────────────────────── │ │
@@ -508,21 +507,21 @@ ExperienceCapsuleより平坦な形式（bulk用）。
 interface SeedRecord {
   // === 必須 ===
   tags: string[];           // → vectorized
-  summary: string;          // L1: headline
-  initialHeat: number;      // 0-100
+  summary: string;          // L2: headline
   flags: number;            // 16-bit NodeFlag
 
-  // === 任意 ===
-  payload?: string;         // L3: detail
+  // === optional ===
+  content?: string;         // L3: detail (v3: "payload")
   sourceNodeId?: string;    // knowledge lineage
-  tier?: "top" | "normal" | "ghost";  // auto from initialHeat if omitted
+  // Note: initialHeat removed in v4 — heat starts from config.baseHeat
+  // Note: tier determined by importance field in source data
 }
 ```
 
 ### JSONL形式（推奨）
 ```jsonl
-{"tags":["AI","ethics"],"summary":"AI safety principles","initialHeat":80,"flags":2}
-{"tags":["physics","quantum"],"summary":"Quantum entanglement basics","initialHeat":60,"flags":0}
+{"tags":["AI","ethics"],"summary":"AI safety principles","content":"Detailed text here","flags":2,"importance":0.9}
+{"tags":["physics","quantum"],"summary":"Quantum entanglement basics","flags":0,"importance":0.6}
 ```
 
 ---
@@ -602,16 +601,15 @@ AI安全性原則,AIシステムの安全な設計について,AI/倫理,high
 
 **変換後（SeedRecord形式 JSONL）:**
 ```jsonl
-{"tags":["AI","倫理","安全性"],"summary":"AI安全性原則","payload":"AIシステムの安全な設計について","initialHeat":80,"flags":2}
-{"tags":["物理","量子","入門"],"summary":"量子もつれ入門","payload":"量子物理学の基礎概念","initialHeat":50,"flags":0}
+{"tags":["AI","倫理","安全性"],"summary":"AI安全性原則","content":"AIシステムの安全な設計について","flags":2,"importance":0.9}
+{"tags":["物理","量子","入門"],"summary":"量子もつれ入門","content":"量子物理学の基礎概念","flags":0,"importance":0.5}
 ```
 
 **変換ロジック（外部サービスが実装）:**
 - `category` → `tags`（スラッシュ区切りを配列に）
 - `title` → `summary`
-- `description` → `payload`
-- `importance` → `initialHeat`（high=80, medium=50, low=20）
-- tier未指定 → initialHeatから自動判定（80+: top, 30-79: normal, <30: ghost）
+- `description` → `content` (v3: "payload")
+- `importance` → 0.0-1.0 float（0.85+: topTier, 0.5-0.84: normal, <0.5: ghost）
 
 ### Step 3: Model ダウンロード
 

@@ -6,5 +6,5 @@
  * - diff(): 事後の状態変化を検出
  */
 export { Arbiter } from "./arbiter.js";
-export type { ArbiterConfig, StateSnapshot, TransitionQueue, StateChanges, FlagUpdate, DeferredObserveOptions, ObserveCallback, } from "./arbiter.js";
+export type { ArbiterConfig, StateSnapshot, TransitionQueue, StateChanges, FlagUpdate, } from "./arbiter.js";
 //# sourceMappingURL=index.d.ts.map

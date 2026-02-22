@@ -12,6 +12,4 @@ export type {
   TransitionQueue,
   StateChanges,
   FlagUpdate,
-  DeferredObserveOptions,
-  ObserveCallback,
 } from "./arbiter.js";

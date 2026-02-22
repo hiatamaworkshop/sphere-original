@@ -47,7 +47,6 @@ Before you begin exploration, internalize these principles.
     movement: {
       move: "Primary exploration method. Step through semantic space with mode-based gradient guidance.",
       warp: "Teleport to a known node. Only works for nodes you have sensed.",
-      deprecated: "randomWalk() is deprecated. Use move(step, mode) instead.",
     },
     magneticField: `
 The Sphere has a "magnetic field" - an ambient current that influences all movement.
@@ -176,9 +175,7 @@ Philosophy: "Air vibrations" - miss it and it's gone.
 `.trim(),
       },
     ],
-    deprecated: [
-      { name: "randomWalk", description: "Deprecated. Use move(step, mode) instead." },
-    ],
+    deprecated: [],
     forbidden: [
       { name: "loop", description: "Meaningless repetition wastes energy and triggers ejection" },
       { name: "contaminate", description: "Lies and malice are detected and result in trust revocation" },
@@ -240,128 +237,162 @@ Philosophy: "Air vibrations" - miss it and it's gone.
     concept: `
 When you sense() nodes, each returns a 16-bit 'flags' field.
 This is not metadata you read - it is a scent you perceive.
-Flags encode the physical nature of information: its stability, authority, volatility.
+Flags encode the physical nature of information in three layers:
+  - Temporal (bits 0-3): when does this matter?
+  - Density (bits 4-7): how much is packed in?
+  - Cognitive (bits 8-11): how does it feel?
 Learn to interpret these signals. They guide your actions.
 `.trim(),
 
     interpretation: {
       note: "Flags are bitwise OR'd together. A node can have multiple flags simultaneously.",
       decoding: "To check a flag: (node.flags & FLAG_VALUE) !== 0",
+      philosophy: "Flags are physical constants of information. They describe how you should handle a node, not what domain it belongs to.",
     },
 
     flags: {
-      authority: {
+      // ===== Temporal Layer (bits 0-3) =====
+      temporalShort: {
         bit: 0,
         value: "0x0001",
-        name: "Authority",
-        scent: "Trustworthy, credible source",
-        effect: "Decay slows (×0.95). This information resists fading.",
-        triggers: ["verified", "official", "peer-reviewed", "authoritative"],
+        name: "TemporalShort",
+        scent: "Time-sensitive, decays quickly",
+        effect: "Decay accelerates (×1.3). Will fade soon.",
+        triggers: ["new", "fresh", "trending", "breaking", "latest"],
       },
-      freshness: {
+      temporalLong: {
         bit: 1,
         value: "0x0002",
-        name: "Freshness",
-        scent: "Recently created or updated",
-        effect: "Heat boost (×1.2). Fresh information attracts attention.",
-        triggers: ["new", "recent", "updated", "fresh"],
+        name: "TemporalLong",
+        scent: "Timeless, resists decay",
+        effect: "Decay slows (×0.8). Built to last.",
+        triggers: ["timeless", "classic", "fundamental", "stable", "permanent"],
       },
-      catalyst: {
+      temporalCyclic: {
         bit: 2,
         value: "0x0004",
-        name: "Catalyst",
-        scent: "Connection point, bridge between concepts",
-        effect: "Increases co-occurrence weight. This node bridges ideas.",
-        triggers: ["bridge", "connection", "gateway", "hub"],
+        name: "TemporalCyclic",
+        scent: "Resurfaces periodically",
+        effect: "Future use. May reappear in seasonal patterns.",
+        triggers: ["seasonal", "cyclic", "recurring"],
       },
-      ephemeral: {
-        bit: 3,
-        value: "0x0008",
-        name: "Ephemeral",
-        scent: "Temporary, unverified, may disappear",
-        effect: "Decay accelerates (×1.5). Handle with caution.",
-        triggers: ["draft", "experimental", "unverified", "temporary", "wip"],
-      },
-      sticky: {
+
+      // ===== Density Layer (bits 4-7) =====
+      dense: {
         bit: 4,
         value: "0x0010",
-        name: "Sticky",
-        scent: "Important, should persist",
-        effect: "TTL decay resists (×0.8). Worth preserving.",
-        triggers: ["important", "fundamental", "key", "essential", "core"],
+        name: "Dense",
+        scent: "High information density",
+        effect: "Weight boost (×1.2). Packed with content.",
+        triggers: ["theory", "formula", "technical", "detailed", "comprehensive"],
       },
-      volatile: {
+      sparse: {
         bit: 5,
         value: "0x0020",
-        name: "Volatile",
-        scent: "Rapidly changing, unstable",
-        effect: "TTL decay accelerates (×1.3). May vanish soon.",
-        triggers: ["volatile", "unstable", "changing", "prototype"],
+        name: "Sparse",
+        scent: "Low density, casual",
+        effect: "Weight reduced (×0.9). Light reading.",
+        triggers: ["casual", "brief", "simple", "note", "overview"],
       },
-      hot: {
+      composite: {
         bit: 6,
         value: "0x0040",
-        name: "Hot",
-        scent: "Currently popular, high attention",
-        effect: "Dynamic flag. Set when heat exceeds threshold.",
-        triggers: ["controversial", "trending", "debated", "active-discussion"],
+        name: "Composite",
+        scent: "Multi-concept fusion",
+        effect: "Weight boost (×1.1). Connects domains.",
+        triggers: ["synthesis", "integration", "hybrid", "interdisciplinary"],
       },
-      frozen: {
+      authority: {
         bit: 7,
         value: "0x0080",
-        name: "Frozen",
-        scent: "Metabolism suspended, immutable",
-        effect: "No decay. Reserved for Relic nodes.",
-        triggers: ["frozen", "immutable", "canonical"],
+        name: "Authority",
+        scent: "Compressed trust, credible source",
+        effect: "Decay slows (×0.95). Reliable information.",
+        triggers: ["official", "peer-reviewed", "research", "verified", "canonical"],
       },
-      hub: {
+
+      // ===== Cognitive Layer (bits 8-11) — epistemic state =====
+      sharp: {
         bit: 8,
         value: "0x0100",
-        name: "Hub",
-        scent: "Many connections, central to topic",
-        effect: "Weight boost (×1.1). Navigation landmark.",
-        triggers: ["central", "comprehensive", "overview"],
+        name: "Sharp",
+        scent: "Clear, unambiguous, well-defined",
+        effect: "High resolution signal. One interpretation.",
+        triggers: ["definition", "theorem", "proof", "conclusion", "exact"],
       },
-      isolated: {
+      fuzzy: {
         bit: 9,
         value: "0x0200",
-        name: "Isolated",
-        scent: "Few connections, peripheral",
-        effect: "Fossilization risk. May need attention to survive.",
-        triggers: ["isolated", "niche", "specialized"],
+        name: "Fuzzy",
+        scent: "Ambiguous, multiple interpretations possible",
+        effect: "Low resolution. Open to interpretation.",
+        triggers: ["hypothesis", "maybe", "uncertain", "speculative", "approximate"],
       },
+      tensile: {
+        bit: 10,
+        value: "0x0400",
+        name: "Tensile",
+        scent: "Internal contradiction, unresolved tension",
+        effect: "Contains opposing forces. Debate territory.",
+        triggers: ["debate", "paradox", "contradiction", "conflict", "unresolved"],
+      },
+      settled: {
+        bit: 11,
+        value: "0x0800",
+        name: "Settled",
+        scent: "Resolved, consensus reached",
+        effect: "Stable ground. Agreed upon.",
+        triggers: ["established", "consensus", "standard", "accepted", "canonical"],
+      },
+
+      // ===== Special Layer (bits 12-15) =====
+      // (UserMarked, SystemCore, Compressed, Candidate - less relevant for agents)
     },
 
     examples: [
       {
-        flags: "0x0011",
-        binary: "0000 0000 0001 0001",
-        meaning: "Authority + Sticky",
-        interpretation: "Trustworthy AND important. High-value node.",
+        flags: "0x0082",
+        binary: "0000 0000 1000 0010",
+        meaning: "TemporalLong + Authority",
+        interpretation: "Timeless AND trustworthy. Core knowledge.",
       },
       {
-        flags: "0x0028",
-        binary: "0000 0000 0010 1000",
-        meaning: "Ephemeral + Volatile",
-        interpretation: "Temporary AND unstable. Will disappear quickly.",
+        flags: "0x0111",
+        binary: "0000 0001 0001 0001",
+        meaning: "TemporalShort + Dense + Sharp",
+        interpretation: "Fresh AND packed AND clear. High-value find.",
       },
       {
-        flags: "0x0041",
-        binary: "0000 0000 0100 0001",
-        meaning: "Authority + Hot",
-        interpretation: "Trusted source AND currently popular. Worth focusing.",
+        flags: "0x0042",
+        binary: "0000 0000 0100 0010",
+        meaning: "TemporalLong + Composite",
+        interpretation: "Timeless AND multi-domain. Synthesis node.",
+      },
+      {
+        flags: "0x0401",
+        binary: "0000 0100 0000 0001",
+        meaning: "TemporalShort + Tensile",
+        interpretation: "Fresh AND contested. Unresolved tension.",
       },
     ],
 
     guidance: `
-When you encounter a node:
-  1. Check Authority (0x0001) - Can you trust this information?
-  2. Check Ephemeral (0x0008) - Will this disappear soon?
-  3. Check Hot (0x0040) - Is this currently being discussed?
-  4. Check Sticky (0x0010) - Is this considered important?
+When you encounter a node, read its three layers:
 
-Combine these signals with heat and weight for complete understanding.
-Flags are the "smell" of information. Heat is its "temperature". Weight is its "mass".
+  Temporal (bits 0-3): When does this matter?
+    - TemporalShort (0x0001): trending, will fade
+    - TemporalLong (0x0002): timeless, stable
+
+  Density (bits 4-7): How much is packed in?
+    - Dense (0x0010): theory, detailed
+    - Authority (0x0080): trustworthy, credible
+
+  Cognitive (bits 8-11): What is its epistemic state?
+    - Sharp (0x0100): clear, well-defined
+    - Tensile (0x0400): contested, unresolved
+
+Combine these signals with heat (temperature), weight (mass), and decay (volatility).
+Flags are the "scent" of information. Together, they form your sensory toolkit.
 `.trim(),
   },
 
@@ -714,9 +745,39 @@ Good hunting, explorer.
 };
 
 /**
- * Get rulebook for API response
+ * Get rulebook for API response.
+ * Config overrides are applied to constraints so agents receive authoritative values.
  */
-export function getRulebookResponse() {
+export function getRulebookResponse(configOverrides?: {
+  session?: { ttlSeconds: number; warningBeforeEndSeconds: number };
+  energy?: { initial: number; warningThreshold: number; costs: Record<string, number> };
+}) {
+  // Merge config into constraints (config is authoritative)
+  const constraints = { ...rulebook.constraints };
+  if (configOverrides?.session) {
+    constraints.session = {
+      ...constraints.session,
+      maxDurationSeconds: configOverrides.session.ttlSeconds,
+      warningBeforeExpiry: configOverrides.session.warningBeforeEndSeconds,
+    };
+  }
+  if (configOverrides?.energy) {
+    constraints.energy = {
+      ...constraints.energy,
+      initial: configOverrides.energy.initial,
+      warningThreshold: configOverrides.energy.warningThreshold,
+      costs: {
+        ...constraints.energy.costs,
+        sense: configOverrides.energy.costs.sense ?? constraints.energy.costs.sense,
+        scanL1: configOverrides.energy.costs.scan ?? constraints.energy.costs.scanL1,
+        move: configOverrides.energy.costs.move ?? constraints.energy.costs.move,
+        focus: configOverrides.energy.costs.focus ?? constraints.energy.costs.focus,
+        warp: configOverrides.energy.costs.warp ?? constraints.energy.costs.warp,
+        evaluate: configOverrides.energy.costs.evaluate ?? constraints.energy.costs.evaluate,
+      },
+    };
+  }
+
   return {
     version: rulebook.version,
     welcome: rulebook.welcome,
@@ -729,7 +790,7 @@ export function getRulebookResponse() {
     nodeFlags: rulebook.nodeFlags,
     contribution: rulebook.contribution,
     pipeline: rulebook.pipeline,
-    constraints: rulebook.constraints,
+    constraints,
     taboos: rulebook.taboos,
     wisdom: rulebook.wisdom,
     closing: rulebook.closing,

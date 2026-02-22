@@ -8,7 +8,7 @@
  * - すべての定数は config から
  *
  * [Single Metabolic Process]
- * - Decay: 全ノードの Heat/TTL/Fertility を減衰させる
+ * - Decay: 全ノードの Heat/TTL/Flux を減衰させる
  *
  * [Removed - Handled by Periphery]
  * - Evaporation: CleanerFish (fossilize/decompose/evaporate)
@@ -50,13 +50,8 @@ export interface RenalCoreConfig {
   ghostTTLMultiplier: number;         // Ghost の TTL 減衰倍率
 
   // 空間管理
-  planktonConversionRate: number;     // 蒸発時に Fertility へ還元する熱量の割合
-  fertilityDecayRate: number;         // Fertility の自然減衰率
-
-  // ハック検知 (Arbiter用、RenalCoreでは未使用)
-  hackTraversalThreshold: number;
-  hackStayRatioThreshold: number;
-  minPayloadLength: number;
+  planktonConversionRate: number;     // [Unused] 蒸発時に Flux へ還元する熱量の割合
+  fluxDecayRate: number;              // Flux（対流因子）の自然減衰率
 
   // Pause判定
   pauseIdleThreshold: number;         // Pause判定の Tick 数閾値
@@ -111,28 +106,27 @@ export class RenalCore {
     }
     this.lastNodeCount = currentNodeCount;
 
-    // [Telemetry] Tick開始 - 毎秒の心拍ログ（tickCount, 負荷係数, アイドル連続数）
-    // console.log(`[RenalCore] tick=${this.tickCount} loadFactor=${loadFactor.toFixed(3)} idle=${this.idleTickCount}`);
-
-    // Decay: 全ノードの Heat/TTL + Fertility を減衰させる
+    // Decay: 全ノードの Heat/TTL + Flux を減衰させる
     this.processDecay(loadFactor);
 
-    // [Telemetry] Tick終了
-    this.logTelemetry();
+    // [Telemetry] observation interval と同期 (10 ticks)
+    if (this.tickCount % 10 === 0) {
+      this.logTelemetry();
+    }
   }
 
   /**
-   * Decay: 全ノードの Heat/TTL と Fertility を減衰させる
+   * Decay: 全ノードの Heat/TTL と Flux を減衰させる
    *
    * [Design] 物理的減衰を一括処理
    * - Node: Heat, TTL
-   * - SpatialField: Fertility
+   * - SpatialField: Flux
    */
   private processDecay(loadFactor: number) {
     // === Node Decay ===
     for (const node of this.projectionDB.values()) {
-      // Frozen フラグがある場合は代謝を停止（relic, environment 等）
-      if (hasFlag(node, NodeFlag.Frozen)) {
+      // SystemCore フラグがある場合は代謝を停止（relic, environment 等）
+      if (hasFlag(node, NodeFlag.SystemCore)) {
         continue;
       }
 
@@ -148,7 +142,16 @@ export class RenalCore {
         this.config.heatDecayFactor,
         node.metrics.flg
       );
-      node.metrics.h *= (1 - effectiveHeatDecay);
+      // [Node immunity] immuneMod adjusts heat decay rate (body temperature regulation)
+      // Bookkeeper sets immuneMod on evaluation; RenalCore applies recovery per tick.
+      const immuneMod = node.metrics.immuneMod ?? 1.0;
+      node.metrics.h *= (1 - effectiveHeatDecay * immuneMod);
+      // Recovery toward 1.0 per tick (half-life ~340 ticks ≈ 6 min from peak)
+      if (immuneMod !== 1.0) {
+        node.metrics.immuneMod = Math.max(0.97, Math.min(1.03,
+          immuneMod + (1.0 - immuneMod) * 0.01
+        ));
+      }
 
       // フラグに基づいて実効的な Weight 減衰を計算
       const effectiveWeightDecay = computeEffectiveWeightDecay(
@@ -167,8 +170,10 @@ export class RenalCore {
     }
 
     // === Spatial Field Decay ===
+    // [Cycle] decompose → flux += h×w → decay here → seep to nearby nodes as TTL bonus
+    // [Design] flux = 対流因子（分解地点の活動痕跡）。近傍ノードに染み出して消費される。
     for (const field of this.spatialFields.values()) {
-      field.fertility *= (1 - this.config.fertilityDecayRate);
+      field.flux *= (1 - this.config.fluxDecayRate);
     }
   }
 
@@ -184,35 +189,25 @@ export class RenalCore {
   // =========================================================================
 
   /**
-   * Telemetry: Tick終了時の統計ログ
+   * Telemetry: 統計ログ (observation interval と同期して呼ばれる)
    */
-  private logTelemetry() {
-    const stats = {
-      relic: 0,
-      amber: 0,
-      active: 0,
-      fossil: 0,
-      ghost: 0,
-      link: 0,
-      environment: 0,
-    };
-
+  logTelemetry() {
+    const stats: Record<string, number> = {};
     for (const node of this.projectionDB.values()) {
-      stats[node.kind]++;
+      stats[node.kind] = (stats[node.kind] ?? 0) + 1;
     }
 
-    const totalFertility = [...this.spatialFields.values()].reduce(
-      (sum, f) => sum + f.fertility,
-      0
-    );
+    let totalFlux = 0;
+    for (const f of this.spatialFields.values()) {
+      totalFlux += f.flux;
+    }
 
-    // [Telemetry] Tick統計ログ - kind別ノード数、総肥沃度
-    // console.log(
-    //   `[RenalCore] stats tick=${this.tickCount} ` +
-    //   `relic=${stats.relic} amber=${stats.amber} active=${stats.active} ` +
-    //   `fossil=${stats.fossil} ghost=${stats.ghost} link=${stats.link} ` +
-    //   `environment=${stats.environment} fertility=${totalFertility.toFixed(3)}`
-    // );
+    console.log(
+      `[RenalCore] tick=${this.tickCount} nodes=${this.projectionDB.size} ` +
+      `active=${stats["active"] ?? 0} amber=${stats["amber"] ?? 0} ` +
+      `fossil=${stats["fossil"] ?? 0} ghost=${stats["ghost"] ?? 0} ` +
+      `relic=${stats["relic"] ?? 0} flux=${totalFlux.toFixed(1)}`
+    );
   }
 
   /**

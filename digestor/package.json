@@ -1,0 +1,17 @@
+{
+  "name": "@sphere/digestor",
+  "version": "0.1.0",
+  "description": "Species memory metabolism — prune eval-log, produce species-profile",
+  "type": "module",
+  "main": "dist/digestor.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/digestor.js"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.3.0"
+  },
+  "author": "Sphere Project",
+  "license": "MIT"
+}

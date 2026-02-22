@@ -27,17 +27,8 @@ import { cosineDistance } from "../lib/vector.js";
  * Arbiter 設定（Ascension/Erosion 閾値）
  */
 export interface ArbiterConfig {
-  // 昇天閾値
-  amberHeatThreshold: number;
-  amberWeightThreshold: number;
-
-  // 風化閾値
-  erosionHeatThreshold: number;
-
-  // ハック検知
-  hackTraversalThreshold: number;
-  hackStayRatioThreshold: number;
-  minPayloadLength: number;
+  // Erosion 閾値: h + w (ascension score) がこれを下回ると Amber → Active
+  erosionScoreThreshold: number;
 
   // Pause判定
   pauseErosionBoost: number;
@@ -45,16 +36,6 @@ export interface ArbiterConfig {
   // === Dynamic Flags 閾値 ===
   // Hot: heat がこの閾値を超えると Hot フラグを付与
   hotHeatThreshold: number;
-  // Hub: リンク数がこの閾値を超えると Hub フラグを付与
-  hubLinkThreshold: number;
-  // Isolated: リンク数がこの閾値以下で Isolated フラグを付与
-  isolatedLinkThreshold: number;
-
-  // === 遅延観測設定 ===
-  // 観測間隔（ミリ秒）- この間隔内のリクエストは統合される
-  observeThrottleMs: number;
-  // アイドルタイムアウト（ミリ秒）- 最後のリクエストからこの時間後に実行
-  observeIdleTimeoutMs: number;
 
   // === Ascension 冷却期間設定 ===
   // 冷却期間（ミリ秒）- 閾値超過後、この期間生存で Amber 昇格
@@ -63,6 +44,14 @@ export interface ArbiterConfig {
   ascensionScoreThreshold: number;
   // 下方スレッショルド比率 - initialScore × この値を冷却期間中維持必要（例: 0.9）
   lowerThresholdRatio: number;
+
+  // === Allostatic Threshold (スフィア規模適応) ===
+  // 参照ノード数: effectiveThreshold = scoreThreshold × clamp(sqrt(activeNodes / ref), floor, cap)
+  referenceNodeCount?: number;     // default: 1000
+  // 閾値倍率下限（小規模スフィアでの底）
+  ascensionThresholdFloor?: number; // default: 0.6
+  // 閾値倍率上限（超巨大スフィアでの天井）
+  ascensionThresholdCap?: number;  // default: 3.0
 
   // === Dropout Reset 設定（整数スケール）===
   // 冷却期間失敗時にリセットするデフォルトメトリクス
@@ -80,6 +69,14 @@ export interface ArbiterConfig {
   // 結晶化レコードの最大保存数
   maxAbsorbedNodes?: number;
 
+  // === Immune Threshold Amplification（免疫信号 → 下限スレッショルド調整） ===
+  // immuneWeight: immuneMod 偏差の増幅係数
+  // 導出: (avgRetention - lowerThresholdRatio) / criticalImmuneDev
+  // archive×0.5, cooldown 300s: (0.9888 - 0.9) / 0.018 ≈ 5.0
+  immuneWeight?: number;      // default: 5.0
+  // effectiveRatio の上限（自然残存率の境界）
+  immuneRatioCap?: number;    // default: 0.99
+
   // === Revival 設定（Fossil → Active 復活） ===
   // Revival スコア閾値: h × w がこれ以上で復活候補
   revivalThreshold?: number;   // default: 2500
@@ -89,13 +86,6 @@ export interface ArbiterConfig {
   protectionThreshold?: number; // default: 100
 }
 
-/**
- * Deferred observation options
- */
-export interface DeferredObserveOptions {
-  isPaused?: boolean;
-  linkCounts?: Map<string, number>;
-}
 
 /**
  * Snapshot of node states (id → kind, ttl, heat)
@@ -172,17 +162,14 @@ export interface StateChanges {
   expired: SphereNode[];
 }
 
-/**
- * Callback type for deferred observation results
- */
-export type ObserveCallback = (queue: TransitionQueue) => void | Promise<void>;
 
 /**
  * CandidateEntry: Ascension 候補のトラッキング
  *
  * [Design] 冷却期間中の候補を監視
  *   - 評価凍結: Candidate フラグ持ちは評価を受け付けない
- *   - 下方スレッショルド: initialScore × lowerThresholdRatio を維持必要
+ *   - 下方スレッショルド: initialScore × effectiveRatio を維持必要
+ *   - effectiveRatio = lowerThresholdRatio + immuneWeight × max(0, immuneMod - 1.0)
  *   - 動的スコア再計算: 毎 observe() でスコアを再計算
  */
 export interface CandidateEntry {
@@ -192,158 +179,34 @@ export interface CandidateEntry {
   candidateSince: number;
   /** 登録時の複合スコア */
   initialScore: number;
-  /** 下方スレッショルド = initialScore × lowerThresholdRatio */
+  /** 下方スレッショルド = initialScore × effectiveRatio（免疫信号で調整済み） */
   lowerThreshold: number;
   /** 参考用: 登録時のメトリクス */
   snapshot: { h: number; w: number; d: number };
+  /** 登録時の immuneMod（免疫信号スナップショット、ログ用） */
+  snapshotImmuneMod: number;
 }
 
 /**
  * Arbiter: ProjDB を監視し、状態遷移を判定・検出する
  *
- * Usage (Immediate):
+ * Usage:
  *   const arbiter = new Arbiter(config);
  *   const queue = arbiter.observe(projDB, { isPaused });  // 即時判定
  *   await bookkeeper.applyTransitions(queue);              // 実行
- *
- * Usage (Deferred):
- *   const arbiter = new Arbiter(config);
- *   arbiter.onObserve(async (queue) => {
- *     await bookkeeper.applyTransitions(queue);
- *   });
- *   arbiter.scheduleObserve(projDB, { isPaused });  // 遅延キューイング
- *   // ... 後でまとめて実行される
  */
 export class Arbiter {
   private config: ArbiterConfig;
-
-  // === Deferred Observation State ===
-  private pendingObserve: {
-    projDB: Map<string, SphereNode>;
-    options: DeferredObserveOptions;
-  } | null = null;
-  private observeTimer: ReturnType<typeof setTimeout> | null = null;
-  private lastObserveTime: number = 0;
-  private observeCallbacks: ObserveCallback[] = [];
 
   // === Candidate Store (Ascension 冷却期間管理) ===
   // Key: nodeId
   private candidateStore: Map<string, CandidateEntry> = new Map();
 
+  // === Allostatic Threshold (observe() 毎に再計算) ===
+  private currentEffectiveThreshold: number = 0;
+
   constructor(config: ArbiterConfig) {
     this.config = config;
-  }
-
-  // =========================================================================
-  // Deferred Observation API
-  // =========================================================================
-
-  /**
-   * Register callback for deferred observation results
-   *
-   * [Design] Multiple callbacks can be registered
-   * [Usage] Bookkeeper registers to apply transitions
-   */
-  onObserve(callback: ObserveCallback): void {
-    this.observeCallbacks.push(callback);
-  }
-
-  /**
-   * Schedule deferred observation (throttle + debounce)
-   *
-   * [Design] Combines throttle and idle timeout:
-   *   - If called within throttleMs of last execution, delays
-   *   - Waits for idleTimeoutMs of inactivity before executing
-   *   - Latest projDB/options are used (overwrites pending)
-   *
-   * @param projDB - Current projection database
-   * @param options - Observation options
-   */
-  scheduleObserve(
-    projDB: Map<string, SphereNode>,
-    options: DeferredObserveOptions = {}
-  ): void {
-    // Update pending observation (latest wins)
-    this.pendingObserve = { projDB, options };
-
-    // Clear existing timer
-    if (this.observeTimer) {
-      clearTimeout(this.observeTimer);
-      this.observeTimer = null;
-    }
-
-    // Calculate delay
-    const now = Date.now();
-    const timeSinceLastObserve = now - this.lastObserveTime;
-    const throttleRemaining = Math.max(
-      0,
-      this.config.observeThrottleMs - timeSinceLastObserve
-    );
-    const delay = Math.max(throttleRemaining, this.config.observeIdleTimeoutMs);
-
-    // Schedule execution
-    this.observeTimer = setTimeout(() => {
-      this.executeDeferred();
-    }, delay);
-  }
-
-  /**
-   * Execute pending deferred observation immediately
-   *
-   * [Usage] Force execution without waiting for timeout
-   */
-  async flushObserve(): Promise<TransitionQueue | null> {
-    if (this.observeTimer) {
-      clearTimeout(this.observeTimer);
-      this.observeTimer = null;
-    }
-    return this.executeDeferred();
-  }
-
-  /**
-   * Cancel pending deferred observation
-   */
-  cancelObserve(): void {
-    if (this.observeTimer) {
-      clearTimeout(this.observeTimer);
-      this.observeTimer = null;
-    }
-    this.pendingObserve = null;
-  }
-
-  /**
-   * Check if there's a pending observation
-   */
-  hasPendingObserve(): boolean {
-    return this.pendingObserve !== null;
-  }
-
-  /**
-   * Execute deferred observation and notify callbacks
-   */
-  private async executeDeferred(): Promise<TransitionQueue | null> {
-    if (!this.pendingObserve) {
-      return null;
-    }
-
-    const { projDB, options } = this.pendingObserve;
-    this.pendingObserve = null;
-    this.observeTimer = null;
-    this.lastObserveTime = Date.now();
-
-    // Execute observation
-    const queue = this.observe(projDB, options);
-
-    // Notify all callbacks
-    for (const callback of this.observeCallbacks) {
-      try {
-        await callback(queue);
-      } catch (error) {
-        console.error("[Arbiter] Callback error:", error);
-      }
-    }
-
-    return queue;
   }
 
   /**
@@ -377,11 +240,10 @@ export class Arbiter {
    *
    * @param projDB - Current projection database
    * @param options.isPaused - Whether Sphere is paused
-   * @param options.linkCounts - Map of nodeId → link count (for Hub/Isolated detection)
    */
   observe(
     projDB: Map<string, SphereNode>,
-    options: { isPaused?: boolean; linkCounts?: Map<string, number> } = {}
+    options: { isPaused?: boolean } = {}
   ): TransitionQueue {
     const queue: TransitionQueue = {
       shouldAscend: [],
@@ -392,6 +254,18 @@ export class Arbiter {
     };
 
     const now = Date.now();
+
+    // === Allostatic Threshold: スフィア規模に応じた閾値計算 ===
+    let activeCount = 0;
+    for (const node of projDB.values()) {
+      if (node.kind === "active" || node.kind === "environment") activeCount++;
+    }
+    const ref = this.config.referenceNodeCount ?? 1000;
+    const floor = this.config.ascensionThresholdFloor ?? 0.6;
+    const cap = this.config.ascensionThresholdCap ?? 3.0;
+    // sqrt scaling: 1000 nodes = baseline, gentle curve for small/large spheres
+    const ratio = Math.max(floor, Math.min(cap, Math.sqrt(activeCount / ref)));
+    this.currentEffectiveThreshold = this.config.ascensionScoreThreshold * ratio;
 
     // === Phase 0: 既存候補の監視（脱落/昇格判定）===
     this.monitorCandidates(projDB, now, queue);
@@ -419,7 +293,7 @@ export class Arbiter {
       }
 
       // 4. Dynamic Flags 更新判定
-      const flagUpdate = this.computeFlagUpdate(node, options.linkCounts);
+      const flagUpdate = this.computeFlagUpdate(node);
       if (flagUpdate) {
         queue.flagUpdates.push(flagUpdate);
       }
@@ -463,7 +337,8 @@ export class Arbiter {
       if (currentScore < entry.lowerThreshold) {
         console.log(
           `[Arbiter] Candidate dropout: ${nodeId.slice(0, 8)} ` +
-          `score=${currentScore.toFixed(2)} < threshold=${entry.lowerThreshold.toFixed(2)}`
+          `score=${currentScore.toFixed(2)} < threshold=${entry.lowerThreshold.toFixed(2)} ` +
+          `immuneMod=${entry.snapshotImmuneMod.toFixed(4)}`
         );
         // Candidate フラグ除去 + デフォルトメトリクスにリセット（整数スケール）
         queue.flagUpdates.push({
@@ -516,7 +391,13 @@ export class Arbiter {
    *
    * [Design] 複合スコアが閾値を超えたら候補登録
    *   - Candidate フラグ付与
-   *   - 下方スレッショルド = initialScore × lowerThresholdRatio
+   *   - 下方スレッショルド = initialScore × effectiveRatio
+   *
+   * [Immune Threshold Amplification]
+   *   免疫系の微細な信号 (immuneMod ±0.03) を増幅し、下限スレッショルドに反映
+   *   - immuneMod ≈ 1.0 (organic): effectiveRatio = baseRatio (0.9) → 余裕あり
+   *   - immuneMod ≈ 1.02+ (suspicious): effectiveRatio → cap (0.99) → decay で脱落
+   *   immuneWeight = (avgRetention - baseRatio) / criticalImmuneDev
    */
   private checkNewCandidate(node: SphereNode, now: number): FlagUpdate | null {
     // active のみ対象
@@ -530,28 +411,48 @@ export class Arbiter {
       node.metrics.w
     );
 
-    // 閾値チェック
-    if (score < this.config.ascensionScoreThreshold) {
+    // 閾値チェック (allostatic: スフィア規模に適応)
+    if (score < this.currentEffectiveThreshold) {
       return null;
     }
+
+    // 免疫信号 → 下限スレッショルド調整
+    const immuneMod = node.metrics.immuneMod ?? 1.0;
+    const immuneWeight = this.config.immuneWeight ?? 5.0;
+    const immuneRatioCap = this.config.immuneRatioCap ?? 0.99;
+    const immuneDev = Math.max(0, immuneMod - 1.0);
+    const effectiveRatio = Math.min(
+      immuneRatioCap,
+      this.config.lowerThresholdRatio + immuneWeight * immuneDev
+    );
 
     // 候補登録
     const entry: CandidateEntry = {
       nodeId: node.id,
       candidateSince: now,
       initialScore: score,
-      lowerThreshold: score * this.config.lowerThresholdRatio,
+      lowerThreshold: score * effectiveRatio,
       snapshot: {
         h: node.metrics.h,
         w: node.metrics.w,
         d: node.metrics.d,
       },
+      snapshotImmuneMod: immuneMod,
     };
     this.candidateStore.set(node.id, entry);
 
+    // [Immediate Freeze] Candidate フラグを即時設定
+    // observe() → applyTransitions() の遅延（最大10s）中に評価が漏れるのを防止
+    // FlagUpdate も返して applyTransitions で正式に永続化される
+    node.metrics.flg |= NodeFlag.Candidate;
+
+    const ref = this.config.referenceNodeCount ?? 50;
     console.log(
       `[Arbiter] Candidate registered: ${node.id.slice(0, 8)} ` +
-      `score=${score.toFixed(2)} threshold=${entry.lowerThreshold.toFixed(2)}`
+      `score=${score.toFixed(2)} effectiveThreshold=${this.currentEffectiveThreshold.toFixed(0)} ` +
+      `immuneMod=${immuneMod.toFixed(4)} effectiveRatio=${effectiveRatio.toFixed(4)} ` +
+      `lowerThreshold=${entry.lowerThreshold.toFixed(2)} ` +
+      `(${[...this.candidateStore.keys()].length} candidates, ref=${ref})`
     );
 
     // Candidate フラグ付与
@@ -612,15 +513,20 @@ export class Arbiter {
 
   /**
    * Erosion 判定: Amber → Active
+   * [Design] Ascension と対称: h + w スコアで判定
+   *   Ascension: h + w >= ascensionScoreThreshold (500) → 琥珀化
+   *   Erosion:   h + w <  erosionScoreThreshold (200)   → 琥珀解除
+   *   heat (注目度) と weight (情報価値) の両方が低下して初めて Erosion
    */
   private shouldErode(node: SphereNode, isPaused?: boolean): boolean {
     if (node.kind !== "amber") return false;
 
+    const score = computeAscensionScore(node.metrics.h, node.metrics.w);
     const effectiveThreshold = isPaused
-      ? this.config.erosionHeatThreshold * this.config.pauseErosionBoost
-      : this.config.erosionHeatThreshold;
+      ? this.config.erosionScoreThreshold * this.config.pauseErosionBoost
+      : this.config.erosionScoreThreshold;
 
-    return node.metrics.h < effectiveThreshold;
+    return score < effectiveThreshold;
   }
 
   /**
@@ -651,19 +557,6 @@ export class Arbiter {
     return false;
   }
 
-  /**
-   * Ascension 判定: Active → Amber
-   */
-  private shouldAscend(node: SphereNode): boolean {
-    if (node.kind !== "active") return false;
-
-    const effectiveWeight = this.computeEffectiveWeight(node);
-
-    return (
-      node.metrics.h > this.config.amberHeatThreshold &&
-      effectiveWeight > this.config.amberWeightThreshold
-    );
-  }
 
   // =========================================================================
   // Dynamic Flags 判定
@@ -674,15 +567,13 @@ export class Arbiter {
    *
    * [Dynamic Flags]
    *   - Hot: heat > hotHeatThreshold
-   *   - Hub: linkCount > hubLinkThreshold
-   *   - Isolated: linkCount <= isolatedLinkThreshold
+   *
+   * Hub/Isolated dynamic flags removed — linkCounts never supplied.
+   * Static Hub/Isolated via Tagger keyword matching is unaffected.
    *
    * @returns FlagUpdate if any changes needed, null otherwise
    */
-  private computeFlagUpdate(
-    node: SphereNode,
-    linkCounts?: Map<string, number>
-  ): FlagUpdate | null {
+  private computeFlagUpdate(node: SphereNode): FlagUpdate | null {
     let add = 0;
     let remove = 0;
 
@@ -696,32 +587,6 @@ export class Arbiter {
       remove |= NodeFlag.Hot;
     }
 
-    // === Hub / Isolated Flags ===
-    if (linkCounts) {
-      const linkCount = linkCounts.get(node.id) ?? 0;
-
-      // Hub: many connections
-      const isHub = linkCount > this.config.hubLinkThreshold;
-      const hasHub = this.hasFlag(node, NodeFlag.Hub);
-
-      if (isHub && !hasHub) {
-        add |= NodeFlag.Hub;
-      } else if (!isHub && hasHub) {
-        remove |= NodeFlag.Hub;
-      }
-
-      // Isolated: no connections (mutually exclusive with Hub)
-      const isIsolated = linkCount <= this.config.isolatedLinkThreshold;
-      const hasIsolated = this.hasFlag(node, NodeFlag.Isolated);
-
-      if (isIsolated && !isHub && !hasIsolated) {
-        add |= NodeFlag.Isolated;
-      } else if ((!isIsolated || isHub) && hasIsolated) {
-        remove |= NodeFlag.Isolated;
-      }
-    }
-
-    // Return update only if there are changes
     if (add === 0 && remove === 0) {
       return null;
     }
@@ -746,13 +611,6 @@ export class Arbiter {
     return (currentFlags | update.add) & ~update.remove;
   }
 
-  private computeEffectiveWeight(node: SphereNode): number {
-    let weight = node.metrics.w;
-    if (this.hasFlag(node, NodeFlag.Hub)) {
-      weight *= 1.1;
-    }
-    return weight;
-  }
 
   private logQueue(queue: TransitionQueue): void {
     const total =
@@ -768,7 +626,8 @@ export class Arbiter {
         `ascend=${queue.shouldAscend.length} ` +
         `erode=${queue.shouldErode.length} ` +
         `revive=${queue.shouldRevive.length} ` +
-        `flags=${queue.flagUpdates.length}`
+        `flags=${queue.flagUpdates.length} ` +
+        `effectiveThreshold=${this.currentEffectiveThreshold.toFixed(0)}`
     );
   }
 

@@ -1,0 +1,704 @@
+{
+  "generation": 10,
+  "timestamp": "2026-02-13T08:27:36.607Z",
+  "sphereHash": "d73f2f056cca1068",
+  "inputEvaluations": 234,
+  "survivedEvaluations": 214,
+  "hunger": 0.24080000000000001,
+  "halfLifeHours": 72,
+  "sphereSnapshot": {
+    "nodeCount": {
+      "active": 46,
+      "amber": 0,
+      "ghost": 0,
+      "fossil": 15,
+      "relic": 0,
+      "environment": 0,
+      "total": 61
+    },
+    "heatDistribution": {
+      "mean": 25.08,
+      "std": 43.73,
+      "min": 0,
+      "max": 103.56
+    },
+    "weightDistribution": {
+      "mean": 18.15,
+      "std": 31.79,
+      "min": 0,
+      "max": 74.5
+    },
+    "flagDistribution": {
+      "2": 4,
+      "16": 2,
+      "32": 4,
+      "128": 1,
+      "256": 2,
+      "512": 1,
+      "1024": 2,
+      "2048": 1,
+      "8192": 15,
+      "16384": 15
+    },
+    "fertility": {
+      "total": 0.02
+    },
+    "field": {
+      "intensity": 0.2536580001599727,
+      "dominantFlags": 0,
+      "volatility": 1
+    }
+  },
+  "species": {
+    "hunter": {
+      "evaluations": 30,
+      "avgH": 7.865015576323987,
+      "avgW": 8.364018691588784,
+      "avgD": 4.9247040498442365,
+      "hotNodes": [
+        {
+          "nodeId": "72a277371ac3f7df",
+          "count": 12.299999999999999
+        },
+        {
+          "nodeId": "c35c26738ab461a1",
+          "count": 8.5
+        },
+        {
+          "nodeId": "20656d56030fa8a0",
+          "count": 6.8999999999999995
+        },
+        {
+          "nodeId": "e506f303a2bdfb9e",
+          "count": 6
+        },
+        {
+          "nodeId": "904b2c1f6ce3b0fb",
+          "count": 5.8
+        },
+        {
+          "nodeId": "a1565210ef1b01b6",
+          "count": 5
+        },
+        {
+          "nodeId": "a741f365b82313a2",
+          "count": 4.799999999999999
+        },
+        {
+          "nodeId": "c36ce6de1b480cd9",
+          "count": 3.9
+        },
+        {
+          "nodeId": "ca6109987efa813d",
+          "count": 3.3
+        },
+        {
+          "nodeId": "6ea9c76ac873e070",
+          "count": 3
+        }
+      ],
+      "commonTags": [
+        "evolution",
+        "web",
+        "curiosity",
+        "time",
+        "AI",
+        "future",
+        "philosophy",
+        "psychology",
+        "culture",
+        "biology",
+        "network",
+        "fungi",
+        "algorithm",
+        "data-structure",
+        "probabilistic"
+      ],
+      "evaluationConsistency": {
+        "score": 0.8078911119230445,
+        "nodes": 8,
+        "meanStdH": 0.468,
+        "meanStdW": 1.164,
+        "meanStdD": 0.674
+      }
+    },
+    "scout": {
+      "evaluations": 27,
+      "avgH": 7.211682242990653,
+      "avgW": 7.754759432329525,
+      "avgD": 3.763222568362755,
+      "hotNodes": [
+        {
+          "nodeId": "72a277371ac3f7df",
+          "count": 10.2
+        },
+        {
+          "nodeId": "c35c26738ab461a1",
+          "count": 7.8
+        },
+        {
+          "nodeId": "c36ce6de1b480cd9",
+          "count": 6.699999999999999
+        },
+        {
+          "nodeId": "a1565210ef1b01b6",
+          "count": 5.699999999999999
+        },
+        {
+          "nodeId": "904b2c1f6ce3b0fb",
+          "count": 5.1
+        },
+        {
+          "nodeId": "20656d56030fa8a0",
+          "count": 4.8
+        },
+        {
+          "nodeId": "a741f365b82313a2",
+          "count": 4.799999999999999
+        },
+        {
+          "nodeId": "ca6109987efa813d",
+          "count": 4
+        },
+        {
+          "nodeId": "e506f303a2bdfb9e",
+          "count": 3.9
+        },
+        {
+          "nodeId": "6ea9c76ac873e070",
+          "count": 3.7
+        }
+      ],
+      "commonTags": [
+        "evolution",
+        "philosophy",
+        "AI",
+        "psychology",
+        "cognition",
+        "web",
+        "curiosity",
+        "time",
+        "space",
+        "aliens",
+        "science",
+        "cellular-automata",
+        "math",
+        "emergence",
+        "discovery"
+      ],
+      "evaluationConsistency": {
+        "score": 0.7370513629860758,
+        "nodes": 8,
+        "meanStdH": 1.356,
+        "meanStdW": 0.731,
+        "meanStdD": 1.069
+      }
+    },
+    "balanced": {
+      "evaluations": 33,
+      "avgH": 7.784409515717927,
+      "avgW": 7.674624752194846,
+      "avgD": 4.708340413480601,
+      "hotNodes": [
+        {
+          "nodeId": "72a277371ac3f7df",
+          "count": 11.6
+        },
+        {
+          "nodeId": "904b2c1f6ce3b0fb",
+          "count": 7.8999999999999995
+        },
+        {
+          "nodeId": "c35c26738ab461a1",
+          "count": 7.8
+        },
+        {
+          "nodeId": "20656d56030fa8a0",
+          "count": 5.5
+        },
+        {
+          "nodeId": "ca6109987efa813d",
+          "count": 5.3999999999999995
+        },
+        {
+          "nodeId": "e506f303a2bdfb9e",
+          "count": 5.3
+        },
+        {
+          "nodeId": "6ea9c76ac873e070",
+          "count": 5.1
+        },
+        {
+          "nodeId": "c36ce6de1b480cd9",
+          "count": 3.9
+        },
+        {
+          "nodeId": "a1565210ef1b01b6",
+          "count": 3.5999999999999996
+        },
+        {
+          "nodeId": "a741f365b82313a2",
+          "count": 2.6999999999999997
+        }
+      ],
+      "commonTags": [
+        "AI",
+        "web",
+        "curiosity",
+        "time",
+        "anthropology",
+        "methodology",
+        "research",
+        "evolution",
+        "physics",
+        "future",
+        "RLHF",
+        "alignment",
+        "design-pattern",
+        "event-sourcing",
+        "CQRS"
+      ],
+      "evaluationConsistency": {
+        "score": 0.9097943932902348,
+        "nodes": 9,
+        "meanStdH": 0.239,
+        "meanStdW": 0.427,
+        "meanStdD": 0.416
+      }
+    },
+    "moth": {
+      "evaluations": 31,
+      "avgH": 7.527811275248718,
+      "avgW": 7.652728369008139,
+      "avgD": 3.884488996080796,
+      "hotNodes": [
+        {
+          "nodeId": "72a277371ac3f7df",
+          "count": 13
+        },
+        {
+          "nodeId": "20656d56030fa8a0",
+          "count": 7.6
+        },
+        {
+          "nodeId": "c35c26738ab461a1",
+          "count": 7.1
+        },
+        {
+          "nodeId": "904b2c1f6ce3b0fb",
+          "count": 6.5
+        },
+        {
+          "nodeId": "e506f303a2bdfb9e",
+          "count": 5.3
+        },
+        {
+          "nodeId": "c36ce6de1b480cd9",
+          "count": 5.3
+        },
+        {
+          "nodeId": "a1565210ef1b01b6",
+          "count": 5
+        },
+        {
+          "nodeId": "ca6109987efa813d",
+          "count": 4.699999999999999
+        },
+        {
+          "nodeId": "6ea9c76ac873e070",
+          "count": 4.4
+        },
+        {
+          "nodeId": "a741f365b82313a2",
+          "count": 2.6999999999999997
+        }
+      ],
+      "commonTags": [
+        "web",
+        "curiosity",
+        "time",
+        "psychology",
+        "cognition",
+        "bias",
+        "AI",
+        "physics",
+        "quantum",
+        "evolution",
+        "anthropology",
+        "methodology",
+        "research",
+        "algorithm",
+        "data-structure"
+      ],
+      "evaluationConsistency": {
+        "score": 0.7800406805755479,
+        "nodes": 11,
+        "meanStdH": 1.091,
+        "meanStdW": 0.879,
+        "meanStdD": 0.669
+      }
+    },
+    "scholar": {
+      "evaluations": 17,
+      "avgH": 7.788152831225947,
+      "avgW": 8.261077515118195,
+      "avgD": 4.713331500824628,
+      "hotNodes": [
+        {
+          "nodeId": "72a277371ac3f7df",
+          "count": 8.799999999999999
+        },
+        {
+          "nodeId": "c35c26738ab461a1",
+          "count": 7.1
+        },
+        {
+          "nodeId": "904b2c1f6ce3b0fb",
+          "count": 6.5
+        },
+        {
+          "nodeId": "c36ce6de1b480cd9",
+          "count": 5.3
+        },
+        {
+          "nodeId": "20656d56030fa8a0",
+          "count": 4.8
+        },
+        {
+          "nodeId": "e506f303a2bdfb9e",
+          "count": 3.9
+        },
+        {
+          "nodeId": "a1565210ef1b01b6",
+          "count": 3.5999999999999996
+        },
+        {
+          "nodeId": "ca6109987efa813d",
+          "count": 3.3
+        },
+        {
+          "nodeId": "6ea9c76ac873e070",
+          "count": 3
+        },
+        {
+          "nodeId": "a741f365b82313a2",
+          "count": 2.6999999999999997
+        }
+      ],
+      "commonTags": [
+        "physics",
+        "psychology",
+        "quantum",
+        "philosophy",
+        "bias",
+        "AI",
+        "future",
+        "evolution",
+        "time",
+        "space",
+        "aliens",
+        "science",
+        "simulation",
+        "provocative",
+        "decision"
+      ],
+      "evaluationConsistency": {
+        "score": 0.9333333333333333,
+        "nodes": 5,
+        "meanStdH": 0.4,
+        "meanStdW": 0.2,
+        "meanStdD": 0.2
+      }
+    },
+    "sniper": {
+      "evaluations": 26,
+      "avgH": 7.992451473759884,
+      "avgW": 8.364018691588784,
+      "avgD": 5.093421998562185,
+      "hotNodes": [
+        {
+          "nodeId": "72a277371ac3f7df",
+          "count": 9.5
+        },
+        {
+          "nodeId": "20656d56030fa8a0",
+          "count": 8.3
+        },
+        {
+          "nodeId": "904b2c1f6ce3b0fb",
+          "count": 7.8999999999999995
+        },
+        {
+          "nodeId": "e506f303a2bdfb9e",
+          "count": 6
+        },
+        {
+          "nodeId": "c35c26738ab461a1",
+          "count": 5.7
+        },
+        {
+          "nodeId": "a1565210ef1b01b6",
+          "count": 5
+        },
+        {
+          "nodeId": "ca6109987efa813d",
+          "count": 4.699999999999999
+        },
+        {
+          "nodeId": "c36ce6de1b480cd9",
+          "count": 4.6
+        },
+        {
+          "nodeId": "6ea9c76ac873e070",
+          "count": 3.7
+        },
+        {
+          "nodeId": "a741f365b82313a2",
+          "count": 2.6999999999999997
+        }
+      ],
+      "commonTags": [
+        "anthropology",
+        "psychology",
+        "cognition",
+        "bias",
+        "methodology",
+        "research",
+        "algorithm",
+        "data-structure",
+        "probabilistic",
+        "culture",
+        "cellular-automata",
+        "math",
+        "emergence",
+        "discovery",
+        "RLHF"
+      ],
+      "evaluationConsistency": {
+        "score": 0.8774006297158244,
+        "nodes": 6,
+        "meanStdH": 0.15,
+        "meanStdW": 0.71,
+        "meanStdD": 0.611
+      }
+    },
+    "archivist": {
+      "evaluations": 30,
+      "avgH": 7.67834890965732,
+      "avgW": 8.294018691588786,
+      "avgD": 4.8780373831775705,
+      "hotNodes": [
+        {
+          "nodeId": "72a277371ac3f7df",
+          "count": 9.5
+        },
+        {
+          "nodeId": "c35c26738ab461a1",
+          "count": 8.5
+        },
+        {
+          "nodeId": "904b2c1f6ce3b0fb",
+          "count": 7.199999999999999
+        },
+        {
+          "nodeId": "e506f303a2bdfb9e",
+          "count": 6
+        },
+        {
+          "nodeId": "c36ce6de1b480cd9",
+          "count": 5.3
+        },
+        {
+          "nodeId": "20656d56030fa8a0",
+          "count": 4.8
+        },
+        {
+          "nodeId": "ca6109987efa813d",
+          "count": 4.699999999999999
+        },
+        {
+          "nodeId": "6ea9c76ac873e070",
+          "count": 4.4
+        },
+        {
+          "nodeId": "a1565210ef1b01b6",
+          "count": 3.5999999999999996
+        },
+        {
+          "nodeId": "a741f365b82313a2",
+          "count": 2.6999999999999997
+        }
+      ],
+      "commonTags": [
+        "AI",
+        "psychology",
+        "time",
+        "future",
+        "evolution",
+        "anthropology",
+        "methodology",
+        "research",
+        "philosophy",
+        "algorithm",
+        "data-structure",
+        "probabilistic",
+        "mathematics",
+        "logic",
+        "productivity"
+      ],
+      "evaluationConsistency": {
+        "score": 0.860559630438088,
+        "nodes": 10,
+        "meanStdH": 0.35,
+        "meanStdW": 0.45,
+        "meanStdD": 0.873
+      }
+    },
+    "wanderer": {
+      "evaluations": 20,
+      "avgH": 7.876682242990654,
+      "avgW": 8.224018691588785,
+      "avgD": 4.948037383177569,
+      "hotNodes": [
+        {
+          "nodeId": "72a277371ac3f7df",
+          "count": 8.1
+        },
+        {
+          "nodeId": "904b2c1f6ce3b0fb",
+          "count": 5.8
+        },
+        {
+          "nodeId": "c35c26738ab461a1",
+          "count": 5.7
+        },
+        {
+          "nodeId": "20656d56030fa8a0",
+          "count": 5.5
+        },
+        {
+          "nodeId": "a1565210ef1b01b6",
+          "count": 5
+        },
+        {
+          "nodeId": "e506f303a2bdfb9e",
+          "count": 3.9
+        },
+        {
+          "nodeId": "c36ce6de1b480cd9",
+          "count": 3.9
+        },
+        {
+          "nodeId": "ca6109987efa813d",
+          "count": 3.3
+        },
+        {
+          "nodeId": "6ea9c76ac873e070",
+          "count": 3
+        },
+        {
+          "nodeId": "a741f365b82313a2",
+          "count": 2.6999999999999997
+        }
+      ],
+      "commonTags": [
+        "psychology",
+        "time",
+        "AI",
+        "cognition",
+        "bias",
+        "philosophy",
+        "cellular-automata",
+        "math",
+        "emergence",
+        "discovery",
+        "mathematics",
+        "logic",
+        "productivity",
+        "biology",
+        "network"
+      ],
+      "evaluationConsistency": {
+        "score": 0.875,
+        "nodes": 4,
+        "meanStdH": 0.125,
+        "meanStdW": 0.75,
+        "meanStdD": 0.625
+      }
+    }
+  },
+  "global": {
+    "evaluations": 214,
+    "avgH": 7.705607476635514,
+    "avgW": 8.046728971962617,
+    "avgD": 4.593457943925234,
+    "hotNodes": [
+      {
+        "nodeId": "72a277371ac3f7df",
+        "count": 27
+      },
+      {
+        "nodeId": "c35c26738ab461a1",
+        "count": 19
+      },
+      {
+        "nodeId": "904b2c1f6ce3b0fb",
+        "count": 17
+      },
+      {
+        "nodeId": "20656d56030fa8a0",
+        "count": 16
+      },
+      {
+        "nodeId": "e506f303a2bdfb9e",
+        "count": 13
+      },
+      {
+        "nodeId": "c36ce6de1b480cd9",
+        "count": 13
+      },
+      {
+        "nodeId": "a1565210ef1b01b6",
+        "count": 12
+      },
+      {
+        "nodeId": "ca6109987efa813d",
+        "count": 11
+      },
+      {
+        "nodeId": "6ea9c76ac873e070",
+        "count": 10
+      },
+      {
+        "nodeId": "a741f365b82313a2",
+        "count": 9
+      }
+    ],
+    "commonTags": [
+      "AI",
+      "psychology",
+      "time",
+      "evolution",
+      "web",
+      "curiosity",
+      "physics",
+      "anthropology",
+      "cognition",
+      "bias",
+      "future",
+      "methodology",
+      "research",
+      "philosophy",
+      "quantum"
+    ],
+    "revisitedNodes": 22,
+    "totalRevisits": 204,
+    "evaluationConsistency": {
+      "score": 0.7555399115219993,
+      "nodes": 22,
+      "meanStdH": 0.825,
+      "meanStdW": 0.939,
+      "meanStdD": 1.169
+    }
+  }
+}

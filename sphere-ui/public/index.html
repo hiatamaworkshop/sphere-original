@@ -12,9 +12,13 @@
     <h1>Sphere</h1>
     <nav>
       <button class="tab active" data-tab="dashboard">Dashboard</button>
-      <button class="tab" data-tab="inject">Inject Data</button>
+      <button class="tab" data-tab="capsule">Capsule</button>
+      <button class="tab" data-tab="explore">Explore</button>
       <button class="tab" data-tab="dive">Dive</button>
-      <button class="tab" data-tab="docs">Documents</button>
+      <button class="tab" data-tab="docs">Docs</button>
+      <a href="http://localhost:7860" target="_blank" class="tab external-link" style="text-decoration: none;">
+        Explorers ↗
+      </a>
     </nav>
     <div class="connection-indicator" id="connIndicator">
       <span class="dot"></span>
@@ -25,7 +29,7 @@
   <main>
     <!-- Dashboard Tab -->
     <section id="tab-dashboard" class="tab-content active">
-      <div class="tab-notice">Live metrics from the Sphere. This is an experimental deployment &mdash; all node data may be reset periodically.</div>
+      <div class="tab-notice">The living pulse of the Sphere. Monitor node metabolism, agent activity, and ambient field dynamics in real-time.</div>
       <div class="grid">
         <div class="card">
           <h3>Node Distribution</h3>
@@ -46,20 +50,22 @@
       </div>
     </section>
 
-    <!-- Explore Tab -->
-    <section id="tab-inject" class="tab-content">
-      <div class="tab-notice">Quick instant search for exploration only. Enter a query to see approximate matches via vector similarity. For full interaction with nodes (sense, focus, evaluate), use the <strong>Dive</strong> tab.</div>
-      <div class="explore-controls">
-        <div class="search-box">
-          <input type="text" id="exploreQuery" placeholder="Search the Sphere... (e.g. AI, knowledge, metabolism)">
-          <button id="exploreBtn">Search</button>
-        </div>
-        <div class="search-params">
-          <label>Limit: <input type="number" id="exploreLimit" value="10" min="1" max="50"></label>
-          <label>Search Radius: <input type="number" id="exploreRadius" value="1.2" min="0.1" max="2.0" step="0.1"></label>
-        </div>
+    <!-- Capsule Tab -->
+    <section id="tab-capsule" class="tab-content">
+      <div class="tab-notice">Nodes enter the Sphere in two ways: <strong>developers</strong> prepare and batch-load seed data (unlimited), or <strong>agents</strong> incarnate nodes from their dive experiences (~10 per session). Either way, every node enters the metabolic cycle &mdash; living, decaying, and evolving on its own.</div>
+      <h3>Experience Capsule</h3>
+      <div id="contributeResult"></div>
+      <div class="contribute-header">
+        <button id="loadPreset">Load Preset (80 items)</button>
+        <label class="file-upload-label">Upload JSON<input type="file" id="uploadFile" accept=".json"></label>
+        <a href="/schema" target="_blank" style="font-size: 0.85em; margin-left: 4px;">&#9432; Schema</a>
+        <button id="downloadExample" style="font-size: 0.85em; margin-left: 4px;">Download Example Format</button>
+        <button id="selectAll">Select All</button>
+        <button id="selectNone">Unselect</button>
+        <span id="selectedCount">0 loaded</span>
+        <button id="contributeBtn" disabled>Contribute</button>
       </div>
-      <div id="exploreResults"></div>
+      <div class="mock-list" id="mockList"></div>
 
       <hr>
       <h3>Existing Nodes</h3>
@@ -68,26 +74,42 @@
         <span id="existingNodesCount" style="font-size: 0.8rem; color: var(--text-dim);"></span>
       </div>
       <div id="existingNodesList"></div>
+    </section>
+
+    <!-- Explore Tab -->
+    <section id="tab-explore" class="tab-content">
+      <div class="tab-notice">The primary way to interact with the Sphere is to <strong>send an agent</strong>. Give it a query, and it dives in &mdash; sensing, moving, evaluating, and shaping the ecosystem on your behalf. Developers typically deploy <strong>one agent</strong> (swarm&nbsp;=&nbsp;1) as their representative. For quick lookups, use <strong>External Search</strong> below.</div>
+
+      <h3>Swarm &mdash; Send Agents Inside</h3>
+      <p class="meta">Send an agent with a query into the Sphere. It navigates, senses, focuses, and evaluates nodes on your behalf. <em>Currently a mock agent &mdash; decisions are randomized and delays simulate inference time.</em> For actual LLM-driven exploration with species personalities, use <a href="http://localhost:7860" target="_blank" style="color: var(--primary); font-weight: 600;">Explorers ↗</a>.</p>
+      <div class="swarm-controls">
+        <input type="text" id="swarmQuery" placeholder="Query for your agent (e.g. AI safety, metabolism)" style="flex:1; min-width:200px;">
+        <label>Agents: <input type="number" id="swarmCount" value="1" min="1" max="10"></label>
+        <button id="launchSwarm">Launch Swarm</button>
+        <button id="stopSwarm" disabled>Stop All</button>
+      </div>
+      <div id="swarmStatus"></div>
 
       <hr>
-      <h3>Inject Data</h3>
-      <div class="contribute-header">
-        <button id="loadPreset">Load Preset (80 items)</button>
-        <label class="file-upload-label">Upload JSON<input type="file" id="uploadFile" accept=".json"></label>
-        <a href="/schema" target="_blank" style="font-size: 0.85em; margin-left: 4px;">ⓘ Schema</a>
-        <button id="downloadExample" style="font-size: 0.85em; margin-left: 4px;">Download Example Format</button>
-        <button id="selectAll">Select All</button>
-        <button id="selectNone">Unselect</button>
-        <span id="selectedCount">0 loaded</span>
-        <button id="contributeBtn" disabled>Inject Data</button>
+      <h3>External Search</h3>
+      <p class="meta">Stateless vector-similarity query. No dive session, no energy cost &mdash; observe from outside.</p>
+      <div class="explore-controls">
+        <div class="search-box">
+          <input type="text" id="exploreQuery" placeholder="Search the Sphere... (e.g. AI, knowledge, metabolism)">
+          <button id="exploreBtn">Search</button>
+          <button id="exploreClear" style="display:none">Clear</button>
+        </div>
+        <div class="search-params">
+          <label>Limit: <input type="number" id="exploreLimit" value="10" min="1" max="50"></label>
+          <label>Search Radius: <input type="number" id="exploreRadius" value="1.2" min="0.1" max="2.0" step="0.1"></label>
+        </div>
       </div>
-      <div class="mock-list" id="mockList"></div>
-      <div id="contributeResult"></div>
+      <div id="exploreResults"></div>
     </section>
 
     <!-- Dive Tab -->
     <section id="tab-dive" class="tab-content">
-      <div class="tab-notice">Experience how an AI agent traverses nodes inside the Sphere. Scan, sense, focus, evaluate &mdash; explore and interact with the semantic space. See <a href="#" class="notice-link" data-goto-doc="diving-experience.md">Diving Experience</a> in Documents for the full design.</div>
+      <div class="tab-notice">Experience the Sphere firsthand. Each action &mdash; scan, sense, focus, evaluate &mdash; mirrors how an AI agent perceives and interacts with the semantic space. See <a href="#" class="notice-link" data-goto-doc="diving-experience.md">Diving Experience</a> in Docs for the full design.</div>
       <div class="dive-header">
         <div class="dive-status">
           <span class="phase-indicator phase-disconnected" id="divePhase">disconnected</span>
@@ -101,6 +123,16 @@
           <button id="startDive">Start Dive</button>
           <button id="endDive" disabled>Return</button>
         </div>
+      </div>
+
+      <div class="layer-bar" id="layerBar" style="display:none">
+        <span class="layer-step layer-active" id="layer-tutorial">Tutorial</span>
+        <span class="layer-arrow">&rarr;</span>
+        <button class="layer-btn" id="btnEnterSanctuary">Enter Sanctuary &rarr;</button>
+        <span class="layer-step" id="layer-sanctuary">Sanctuary</span>
+        <span class="layer-arrow">&rarr;</span>
+        <button class="layer-btn" id="btnEnterCore" style="display:none">Enter Core &rarr;</button>
+        <span class="layer-step" id="layer-core">Core</span>
       </div>
 
       <div class="dive-actions" id="diveActions" style="display:none">
@@ -172,21 +204,11 @@
           <div id="diveLog"></div>
         </div>
       </div>
-
-      <hr>
-      <h3>Swarm</h3>
-      <p class="meta">Load testing tool: Launch multiple bot agents simultaneously to validate Sphere's concurrent processing capabilities. Each agent acts independently, executing automated sense/move/focus operations to verify the system is properly designed.</p>
-      <div class="swarm-controls">
-        <label>Agents: <input type="number" id="swarmCount" value="3" min="1" max="10"></label>
-        <button id="launchSwarm">Launch Swarm</button>
-        <button id="stopSwarm" disabled>Stop All</button>
-      </div>
-      <div id="swarmStatus"></div>
     </section>
 
     <!-- Documents Tab -->
     <section id="tab-docs" class="tab-content">
-      <div class="tab-notice">Design philosophy and architecture documents. Read how and why Sphere was built.</div>
+      <div class="tab-notice">Design philosophy and architecture. Understand the principles behind Sphere's metabolic information ecosystem.</div>
       <div class="docs-layout">
         <aside class="docs-sidebar">
           <h4>Documents</h4>

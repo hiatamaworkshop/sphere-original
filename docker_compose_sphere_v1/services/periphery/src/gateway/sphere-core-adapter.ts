@@ -178,7 +178,7 @@ export class SphereCoreAdapter {
    * Check if node is Amber (frozen, cacheable)
    */
   private isAmber(node: SphereNode): boolean {
-    return node.kind === "amber" && (node.metrics.flg & NodeFlag.Frozen) !== 0;
+    return node.kind === "amber" && (node.metrics.flg & NodeFlag.SystemCore) !== 0;  // Frozen metabolism
   }
 
   /**
@@ -301,7 +301,7 @@ export class SphereCoreAdapter {
     const candidates = await this.projectionRepo.queryNearby(
       agentVector,
       dynamicLimit * 2,  // Get extra candidates for filtering
-      perceptionRadius * 2,             // Extended radius for hot nodes
+      perceptionRadius * 2,  // Extended radius for heat-based filtering
       sampleRatio
     );
 
@@ -476,9 +476,8 @@ export class SphereCoreAdapter {
     this.focusState.set(sessionId, { nodeId, startTime: Date.now() });
 
     // Update metrics only for non-frozen nodes
-    // Amber nodes are frozen - no metabolism updates
-    if (!this.isAmber(node)) {
-      node.metrics.traversal = (node.metrics.traversal ?? 0) + 1;
+    // Amber (SystemCore) and Candidate (cooldown) are frozen
+    if (!this.isAmber(node) && !(node.metrics.flg & NodeFlag.Candidate)) {
       node.metrics.h += this.config.focusHeatBoost;
       await this.projectionRepo.set(nodeId, node);
     }
@@ -617,45 +616,6 @@ export class SphereCoreAdapter {
   }
 
   // ============================================================
-  // Evaluation: evaluate() - DEPRECATED
-  // ============================================================
-
-  /**
-   * Record evaluation on an existing node
-   *
-   * @deprecated This method is no longer used in the 2-layer evaluation architecture.
-   *
-   * [New Design] Evaluations are:
-   *   1. Accumulated in session buffer (sphere-context.ts)
-   *   2. Included in ExperienceCapsule.evaluations at return time
-   *   3. Processed by Bookkeeper.applyEvaluations() with coefficients
-   *
-   * [Why Deprecated]
-   *   - Real-time ProjDB writes removed for unified evaluation path
-   *   - Session accumulation → batch ProjDB reflection at return time
-   *   - Bookkeeper handles 2-layer coefficient application (h×10, w×5, d×0.01)
-   *
-   * @param nodeId Target node ID
-   * @param score Evaluation score (-1 to 1) - OLD FORMAT
-   */
-  async evaluate(nodeId: string, score: number): Promise<boolean> {
-    console.warn(
-      `[SphereCoreAdapter] evaluate() is DEPRECATED. ` +
-      `Evaluations should be buffered in session and processed by Bookkeeper at return time.`
-    );
-
-    const node = await this.projectionRepo.get(nodeId);
-    if (!node) return false;
-
-    // Legacy behavior (kept for compatibility, not recommended)
-    const heatDelta = score * 5;  // -5 to +5 range
-    node.metrics.h = Math.max(0, Math.min(100, node.metrics.h + heatDelta));
-
-    await this.projectionRepo.set(nodeId, node);
-    return true;
-  }
-
-  // ============================================================
   // Movement: move()
   // ============================================================
 
@@ -700,5 +660,21 @@ export class SphereCoreAdapter {
    */
   async nodeExists(nodeId: string): Promise<boolean> {
     return this.projectionRepo.exists(nodeId);
+  }
+
+  /**
+   * Get a relic node's vector for Tutorial mock positioning.
+   * Returns the first relic found, or a zero vector if none exist.
+   */
+  async getRelicVector(): Promise<number[]> {
+    const allNodes = await this.projectionRepo.getAll();
+    for (const node of allNodes) {
+      if (node.kind === "relic" && node.vector?.length) {
+        return node.vector;
+      }
+    }
+    // Fallback: zero vector (384-dim)
+    const dim = allNodes[0]?.vector?.length ?? 384;
+    return new Array(dim).fill(0);
   }
 }

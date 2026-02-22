@@ -43,12 +43,11 @@ export const DEFAULT_PERIPHERY_CONFIG = {
         standardDecayCoefficient: 1000, // d baseline
         // @deprecated - Use nodeFlags.tierFlags instead (below)
         tierFlags: {
-            top: 0x0002, // Freshness flag
+            top: 0x0002, // TemporalLong (top-tier persists longer)
             normal: 0x0000,
             ghost: 0x0000,
         },
         initialMetrics: {
-            traversal: 0,
             stayTime: 0,
         },
     },
@@ -133,15 +132,13 @@ export const DEFAULT_PERIPHERY_CONFIG = {
     nodeFlags: {
         // Static flags assigned at node creation (by Packer)
         tierFlags: {
-            top: 0x0002, // Freshness - top tier nodes get visibility boost
+            top: 0x0002, // TemporalLong - top tier nodes persist longer
             normal: 0x0000, // No special flags
             ghost: 0x0000, // No special flags (Ephemeral could be added)
         },
         // Dynamic flag thresholds (by Arbiter)
         dynamicThresholds: {
-            hotHeatThreshold: 80, // heat > 80 → Hot flag
-            hubLinkThreshold: 5, // links > 5 → Hub flag
-            isolatedLinkThreshold: 0, // links == 0 → Isolated flag
+            hotHeatThreshold: 150, // heat > 150 → Hot flag
         },
     },
 };

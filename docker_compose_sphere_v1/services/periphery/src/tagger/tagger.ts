@@ -1,16 +1,20 @@
 /**
- * Sphere Project - Tagger
+ * Sphere Project - Tagger (Domain Adapter)
  *
- * [Role] Semantic Classification (16bitTechnique)
+ * [Role] Domain Adapter — 生データを情報物理空間に投射する変換器
+ *   現行: text gate (NLP/regex による tags → 16bit flags 変換)
+ *   将来: numeric, signal, graph, vision の各 gate type に差し替え可能
+ *
  * [Function]
  *   1. Classify nodes by tier (top/normal/ghost)
- *   2. Compute 16bit flags from tags (semantic classification)
+ *   2. Compute 16bit flags from tags (domain-specific → domain-independent)
  *   3. Pass through evaluations unchanged
  *
- * [Design] 16bitTechnique
- *   - Input: tags[] (keyword array)
- *   - Output: 16bit flags (NodeFlag combination)
- *   - NOT vectorization (that's Parser's job)
+ * [Design] Gate Type Architecture (FLAG_SYSTEM_REDESIGN.md)
+ *   - Input: tags[] (keyword array) — text gate 固有
+ *   - Output: 16bit flags (NodeFlag combination) — 全 gate type 共通
+ *   - FastGate scoring は gate type を知らない (ビット × 係数の汎用演算)
+ *   - Tagger が変わっても Sphere の物理法則は変わらない
  *
  * [Philosophy] Tags describe WHAT the node IS, not WHERE it is
  *   - Parser: summary → vector (WHERE in space)
@@ -33,86 +37,126 @@ import type {
 import { NodeFlag } from "@sphere/renal-core";
 
 /**
- * Tag patterns for 16bit classification
+ * Tag patterns for 16bit classification (3-layer + Special)
  *
- * [Design] Map tag keywords to NodeFlag combinations
- * [Coverage] Authority, Freshness, Catalyst, Ephemeral, Sticky, Volatile,
- *            Hot, Hub, Spectral, Constellation, UserMarked, SystemCore
+ * [Design] FLAG_SYSTEM_REDESIGN.md
+ *   - Temporal (bits 0-3): when does this matter?     — ユニバーサル
+ *   - Density (bits 4-7): how much is packed in?      — ユニバーサル
+ *   - Cognitive (bits 8-11): epistemic state            — ドメイン固有 (text gate)
+ *   - Special (bits 12-15): system/user metadata       — ユニバーサル
  *
- * [Note] Dynamic flags (Frozen, Isolated, Candidate, Compressed) are set by Arbiter
+ * [Cognitive Layer — Domain Specific]
+ *   text gate:    Sharp / Fuzzy / Tensile / Settled
+ *   numeric gate: Precise / Noisy / Volatile / Stable (将来)
+ *   signal gate:  Coherent / Distorted / Transient / Steady (将来)
+ *   → ビット位置は共通、意味テーブルのみ差し替え
+ *
+ * [Philosophy] Sparse patterns. Agents compensate via Loadout.
+ * [Principle] ビットポジションの確定が本質。物理効果は後から配線できる。
+ *   - Temporal/Special: 物理配線済み
+ *   - Density: Authority のみ配線。Dense/Sparse/Composite の物理効果は未確定
+ *   - Cognitive: 物理効果なし (FastGate scoring のみ — 意図通り)
+ *
+ * [Dynamic flags — Arbiter/Bookkeeper 管轄, Tagger は付与しない]
+ *   - Hot (0x0008): h >= hotHeatThreshold で Arbiter が付与
+ *   - SystemCore (0x2000): Relic seed / Amber ascension で Bookkeeper が付与 (代謝凍結)
+ *   - Compressed (0x4000): Fossil 化時に Arbiter が付与
+ *   - Candidate (0x8000): Ascension 冷却期間中に Arbiter が付与
+ *   ※ Candidate/Compressed は将来 state field へ移行予定 (types.ts TODO)
+ *   ※ SystemCore を Tagger で付与すると active ノードの代謝が停止するバグが発生した (2026-02)
+ *
+ * [Known Behaviors]
+ *   - "stable" → TemporalLong の単独マッチ (Settled は "established" 等で検出)
+ *   - tierFlags.top = 0x0002 (config) → topTier に TemporalLong 自動付与 (Packer 側)
+ *     trending topTier は TemporalShort + TemporalLong が共存する
  */
 const TAG_FLAG_PATTERNS: { pattern: RegExp; flags: number }[] = [
-  // Authority (0x0001): Official sources, academic rigor, or specifications
+  // --- Temporal Layer (bits 0-3) ---
+
+  // TemporalShort (0x0001): time-sensitive, decays quickly
   {
-    pattern: /\b(official|authoritative|source|reference|standard|canonical|spec|specification|documentation|doc|peer-reviewed|research|paper|thesis|verified|proven|original)\b/i,
+    pattern: /\b(new|latest|breaking|recent|fresh|trending|viral|hot|today|now|current|update|modern|live|just-in)\b/i,
+    flags: NodeFlag.TemporalShort,
+  },
+
+  // TemporalLong (0x0002): timeless, resists decay
+  {
+    pattern: /\b(timeless|classic|fundamental|proven|stable|reliable|legacy|permanent|long-term|enduring|fixed|anchor)\b/i,
+    flags: NodeFlag.TemporalLong,
+  },
+
+  // TemporalCyclic (0x0004): resurfaces periodically (future use)
+  // {
+  //   pattern: /\b(seasonal|cyclic|recurring|periodic)\b/i,
+  //   flags: NodeFlag.TemporalCyclic,
+  // },
+
+  // --- Density Layer (bits 4-7) ---
+
+  // Dense (0x0010): high information density
+  {
+    pattern: /\b(theory|formula|rigorous|technical|dense|detailed|comprehensive|in-depth|academic|formal|mathematical)\b/i,
+    flags: NodeFlag.Dense,
+  },
+
+  // Sparse (0x0020): low density
+  {
+    pattern: /\b(short|minimal|low-detail|sketch|outline|brief|note|memo|overview|intro|summary|snippet|fragment)\b/i,
+    flags: NodeFlag.Sparse,
+  },
+
+  // Composite (0x0040): multi-concept fusion
+  {
+    pattern: /\b(synthesis|integration|combination|hybrid|composite|fusion|interdisciplinary|cross-domain)\b/i,
+    flags: NodeFlag.Composite,
+  },
+
+  // Authority (0x0080): compressed trust
+  {
+    pattern: /\b(official|authoritative|peer-reviewed|research|paper|verified|canonical|standard|specification|reference|doc|documentation)\b/i,
     flags: NodeFlag.Authority,
   },
 
-  // Freshness (0x0002): Recent updates, current timeframes, or breaking info
+  // --- Cognitive Layer (bits 8-11) --- ドメイン固有 (text gate)
+  // Conservative start: regex-detectable patterns only
+  // Future: LLM-based Tagger, or entirely different gate type (numeric/signal/graph)
+  // Bit positions (0x0100-0x0800) are universal; semantic meaning changes per gate type
+
+  // Sharp (0x0100): 明確、一意的解釈、境界明瞭
   {
-    pattern: /\b(new|fresh|latest|recent|breaking|update|revised|modern|upcoming|2024|2025|2026|today|now|current|realtime|live|just-in)\b/i,
-    flags: NodeFlag.Freshness,
+    pattern: /\b(definition|theorem|proof|conclusion|precisely|exact|formula|axiom|law)\b/i,
+    flags: NodeFlag.Sharp,
   },
 
-  // Catalyst (0x0004): Intermediaries, structural foundations, or integration points
+  // Fuzzy (0x0200): 曖昧、複数解釈可能、未確定
   {
-    pattern: /\b(hub|central|core|foundation|base|link|connect|bridge|relation|integration|interface|gateway|junction|middleware|api|glue|nexus|pipeline)\b/i,
-    flags: NodeFlag.Catalyst,
+    pattern: /\b(hypothesis|maybe|perhaps|unclear|ambiguous|uncertain|speculative|conjecture|tentative|approximate)\b/i,
+    flags: NodeFlag.Fuzzy,
   },
 
-  // Ephemeral (0x0008): Short-lived, experimental, or draft-state content
+  // Tensile (0x0400): 内部対立・矛盾を内包、未解決
   {
-    pattern: /\b(temporary|ephemeral|transient|short-term|brief|draft|wip|experimental|prototype|test|beta|trial|random|thought|note|memo|volatile|fleeting)\b/i,
-    flags: NodeFlag.Ephemeral,
+    pattern: /\b(debate|controversy|paradox|contradiction|versus|conflict|unresolved|dilemma|tension|disputed)\b/i,
+    flags: NodeFlag.Tensile,
   },
 
-  // Sticky (0x0010): Essential, stable, or long-term foundational knowledge
+  // Settled (0x0800): 決着済み、合意形成済み、収束
   {
-    pattern: /\b(important|critical|essential|fundamental|key|permanent|stable|reliable|proven|fixed|legacy|anchor|root|main|major|primary|vital)\b/i,
-    flags: NodeFlag.Sticky,
+    pattern: /\b(established|consensus|standard|proven|accepted|settled|canonical|codified|ratified|definitive)\b/i,
+    flags: NodeFlag.Settled,
   },
 
-  // Volatile (0x0020): Fast-changing, unstable, or frequently mutating content
-  {
-    pattern: /\b(unstable|changing|mutable|dynamic|flux|shifting|evolving|fluid|variable|fluctuating|turbulent|chaotic)\b/i,
-    flags: NodeFlag.Volatile,
-  },
+  // --- Special Layer (bits 12-15) ---
 
-  // Hot (0x0040): High activity, trending topics, or controversial debate
-  {
-    pattern: /\b(trending|popular|viral|hot|active|discussion|debate|controversial|shout|alert|emergency|attention|boom|hype|burst)\b/i,
-    flags: NodeFlag.Hot,
-  },
-
-  // Hub (0x0100): Structural summaries, navigational aids, or collections
-  {
-    pattern: /\b(overview|summary|index|catalog|collection|guide|tutorial|introduction|101|map|portal|archive|list|directory|atlas|handbook)\b/i,
-    flags: NodeFlag.Hub,
-  },
-
-  // Spectral (0x0400): Refined, curated, or high-tier qualitative content
-  {
-    pattern: /\b(curated|selected|best|top|recommended|master|elite|prime|pure|refined|gold|pearl|special|exclusive|ultimate|premium|insight|analysis|deep-dive)\b/i,
-    flags: NodeFlag.Spectral,
-  },
-
-  // Constellation (0x0800): Grouped, clustered, or bundled content
-  {
-    pattern: /\b(cluster|group|bundle|package|suite|family|series|set|batch|ensemble|constellation|network|web|mesh|graph)\b/i,
-    flags: NodeFlag.Constellation,
-  },
-
-  // UserMarked (0x1000): User-indicated importance or bookmarks
+  // UserMarked (0x1000): user bookmarks
   {
     pattern: /\b(favorite|bookmark|starred|pinned|saved|marked|flagged|remember|keep|preserved|highlighted)\b/i,
     flags: NodeFlag.UserMarked,
   },
 
-  // SystemCore (0x2000): System infrastructure, configuration, or architecture
-  {
-    pattern: /\b(system|config|settings|internal|kernel|infrastructure|architecture|framework|schema|model|engine|runtime|bootstrap)\b/i,
-    flags: NodeFlag.SystemCore,
-  },
+  // SystemCore (0x2000): 付与禁止 — 代謝凍結フラグのため Tagger が付与してはならない
+  // Relic seed data と Bookkeeper (Amber ascension) のみが管理する
+  // See: Dynamic flags コメント (上記)
 ];
 
 /**

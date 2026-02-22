@@ -3,5 +3,5 @@
  *
  * 掃除魚 = 性格を持つガベージコレクション
  */
-export { CleanerFish, CleanerFishPool, DEFAULT_CLEANER_FISH_CONFIG, type CleanerFishConfig, type CleanerFishPersonality, type FossilizationResult, type DecompositionResult, } from "./cleaner-fish.js";
+export { CleanerFishPool, DEFAULT_CLEANER_FISH_CONFIG, DEFAULT_TRANSITION_THRESHOLDS, type CleanerFishConfig, type EnvironmentState, type TransitionThresholds, type ProcessResult, } from "./cleaner-fish.js";
 //# sourceMappingURL=index.d.ts.map

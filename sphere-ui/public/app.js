@@ -126,7 +126,7 @@ function onMockDataLoaded() {
 function renderMockList() {
   const el = document.getElementById('mockList');
   el.innerHTML = mockData.map((item, i) => {
-    const title = item.summary || item.title || `Item ${i}`;
+    const title = item.summary || `Item ${i}`;
     const tags = item.tags || [];
     const imp = item.importance ?? 0;
     const tier = imp >= 0.85 ? 'top' : imp >= 0.5 ? 'normal' : 'ghost';
@@ -279,27 +279,24 @@ document.addEventListener('click', (e) => {
 // === Dashboard ===
 async function fetchDashboard() {
   try {
-    const [stats, metrics] = await Promise.all([
-      api('/nodes/stats'),
-      api('/metrics')
-    ]);
-    renderNodeDistribution(stats);
-    renderAverages(stats);
-    renderSystem(metrics);
-    renderField(metrics);
+    const s = await api('/sphere/status');
+    renderNodeDistribution(s.nodes);
+    renderAverages(s.nodes);
+    renderSystem(s);
+    renderField(s);
     updateConnection(true);
   } catch (_e) {
     updateConnection(false);
   }
 }
 
-function renderNodeDistribution(stats) {
+function renderNodeDistribution(nodes) {
   const el = document.getElementById('nodeDistribution');
-  const counts = stats.counts;
+  const counts = nodes.byKind;
   const kinds = ['active', 'amber', 'fossil', 'ghost', 'relic', 'environment'];
   const max = Math.max(...kinds.map(k => counts[k] || 0), 1);
 
-  el.innerHTML = `<div class="total">Total: ${counts.total}</div>` +
+  el.innerHTML = `<div class="total">Total: ${nodes.total}</div>` +
     kinds.map(k => {
       const count = counts[k] || 0;
       const pct = (count / max * 100).toFixed(0);
@@ -311,9 +308,9 @@ function renderNodeDistribution(stats) {
     }).join('');
 }
 
-function renderAverages(stats) {
+function renderAverages(nodes) {
   const el = document.getElementById('nodeAverages');
-  const a = stats.averages;
+  const a = nodes.averages;
   el.innerHTML = `
     <div class="metric-row"><span>Avg Heat</span><span>${a.heat.toFixed(1)}</span></div>
     <div class="metric-row"><span>Avg Weight</span><span>${a.weight.toFixed(1)}</span></div>
@@ -321,23 +318,23 @@ function renderAverages(stats) {
   `;
 }
 
-function renderSystem(metrics) {
+function renderSystem(status) {
   const el = document.getElementById('systemMetrics');
   el.innerHTML = `
-    <div class="metric-row"><span>Uptime</span><span>${formatUptime(metrics.uptime)}</span></div>
-    <div class="metric-row"><span>Nodes</span><span>${metrics.nodeCount}</span></div>
-    <div class="metric-row"><span>Agents</span><span>${metrics.agents}</span></div>
-    <div class="metric-row"><span>Heap</span><span>${(metrics.memory.heapUsed / 1024 / 1024).toFixed(1)} MB</span></div>
+    <div class="metric-row"><span>Uptime</span><span>${formatUptime(status.uptime)}</span></div>
+    <div class="metric-row"><span>Nodes</span><span>${status.nodes.total}</span></div>
+    <div class="metric-row"><span>Agents</span><span>${status.gateway.active}</span></div>
+    <div class="metric-row"><span>Heap</span><span>${status.memory.heapUsedMB} MB</span></div>
   `;
 }
 
-function renderField(metrics) {
+function renderField(status) {
   const el = document.getElementById('fieldInfo');
-  if (!metrics.field) {
+  if (!status.field) {
     el.innerHTML = '<div class="metric-row"><span>No field data</span></div>';
     return;
   }
-  const f = metrics.field;
+  const f = status.field;
   el.innerHTML = `
     <div class="metric-row"><span>Intensity</span><span>${f.intensity.toFixed(3)}</span></div>
     <div class="metric-row"><span>Dominant Flags</span><span>0x${f.dominantFlags.toString(16).padStart(4, '0')}</span></div>
@@ -375,6 +372,7 @@ document.getElementById('exploreBtn').addEventListener('click', async () => {
     const data = await api(`/sphere/explore?q=${encodeURIComponent(q)}&limit=${limit}&radius=${radius}`);
     if (!data.results || data.results.length === 0) {
       el.innerHTML = `<div class="no-results">No results found (searched ${data.meta?.total ?? 0} nodes)</div>`;
+      document.getElementById('exploreClear').style.display = 'inline-block';
       return;
     }
     el.innerHTML = `<div class="meta">Found ${data.meta.matched} matches in ${data.meta.total} nodes (showing ${data.meta.returned})</div>` +
@@ -390,6 +388,7 @@ document.getElementById('exploreBtn').addEventListener('click', async () => {
           <div class="result-id">${r.id}</div>
         </div>
       `).join('');
+    document.getElementById('exploreClear').style.display = 'inline-block';
   } catch (e) {
     el.innerHTML = `<div class="error">Error: ${e.message}</div>`;
   }
@@ -397,6 +396,12 @@ document.getElementById('exploreBtn').addEventListener('click', async () => {
 
 document.getElementById('exploreQuery').addEventListener('keydown', (e) => {
   if (e.key === 'Enter') document.getElementById('exploreBtn').click();
+});
+
+document.getElementById('exploreClear').addEventListener('click', () => {
+  document.getElementById('exploreResults').innerHTML = '';
+  document.getElementById('exploreQuery').value = '';
+  document.getElementById('exploreClear').style.display = 'none';
 });
 
 // === Existing Nodes ===
@@ -440,8 +445,8 @@ function buildCapsuleFromChunk(chunk) {
   for (const item of chunk) {
     const seed = {
       tags: item.tags || [],
-      summary: item.summary || item.title || '',
-      content: item.payload || item.content || item.summary || item.title || '',
+      summary: item.summary || '',
+      content: item.content || item.summary || '',
       flags: item.flags ?? 0,
     };
     const imp = item.importance ?? 0.5;
@@ -628,12 +633,8 @@ function handleDiveMessage(msg) {
       break;
 
     case 'processing':
-      addDiveLog('Processing entry...');
-      setDivePhase('processing');
-      break;
-
-    case 'positioned':
-      addDiveLog(`Positioned! Query: "${msg.query}", Time: ${msg.remainingTime ?? '?'}s`);
+      // [Entry Pipeline] Tutorial ready — SphereContext exists with relic vector
+      addDiveLog('Tutorial ready — exploring while query vectorizes...');
       setDivePhase('active');
       document.getElementById('diveActions').style.display = 'flex';
       document.getElementById('endDive').disabled = false;
@@ -641,12 +642,18 @@ function handleDiveMessage(msg) {
       diveEnergy = 100;
       document.getElementById('energyDisplay').style.display = 'inline';
       updateEnergyDisplay();
-      // Auto-transition: tutorial → sanctuary → core (sequential)
-      sendDiveAction('enterSanctuary', {}).then(() => sendDiveAction('enterCore', {}));
+      // Show Tutorial layer UI — manual progression
+      showLayerUI('tutorial');
+      break;
+
+    case 'positioned':
+      // Query vector ready — Sanctuary transition now allowed
+      addDiveLog(`Query ready: "${msg.query}", Time: ${msg.remainingTime ?? '?'}s`);
       break;
 
     case 'layerChanged':
       addDiveLog(`Layer: ${msg.layer}`);
+      showLayerUI(msg.layer);
       resolvePending(msg.requestId, msg);
       break;
 
@@ -772,7 +779,7 @@ function renderDiveNodes(nodes, title) {
     } else if (n.tags && n.tags.length > 0) {
       label = `<strong>Tags:</strong> ${n.tags.map(t => escapeHtml(t)).join(', ')}`;
     }
-    const canFocus = isSense && (n.kind === 'active' || n.kind === 'amber');
+    const canFocus = isSense && n.kind !== 'ghost' && n.kind !== 'fossil';
     return `<div class="dive-node" data-id="${n.id}">
       <span class="kind-badge kind-${n.kind}">${n.kind}</span>
       <span class="node-id" title="${n.id}" onclick="window._setWarpId('${n.id}')">${shortId}</span>
@@ -792,15 +799,12 @@ function renderFocusResult(msg) {
   if (!n) { el.innerHTML = '<div class="error">Focus failed</div>'; return; }
 
   el.innerHTML = `
-    <h5>Focus: ${escapeHtml(n.kind)}</h5>
     <div class="focus-detail">
       <div class="metric-row"><span>ID</span><span>${n.id}</span></div>
       <div class="metric-row"><span>Kind</span><span class="kind-badge kind-${n.kind}">${n.kind}</span></div>
-      <div class="metric-row"><span>Heat</span><span>${n.heat?.toFixed(1) ?? '?'}</span></div>
-      <div class="metric-row"><span>Weight</span><span>${n.weight?.toFixed(1) ?? '?'}</span></div>
-      <div class="metric-row"><span>Decay</span><span>${n.decay?.toFixed(1) ?? '?'}</span></div>
-      ${n.summary ? `<div class="focus-summary"><strong>Summary:</strong> ${escapeHtml(n.summary)}</div>` : ''}
+      <div class="metric-row"><span>Metrics</span><span>h=${n.heat?.toFixed(1) ?? '?'} w=${n.weight?.toFixed(1) ?? '?'} d=${n.decay?.toFixed(1) ?? '?'}</span></div>
       ${n.tags?.length ? `<div class="result-tags"><strong>Tags:</strong> ${n.tags.map(t => `<span class="tag">${escapeHtml(t)}</span>`).join('')}</div>` : ''}
+      ${n.summary ? `<div class="focus-summary"><strong>Summary:</strong> ${escapeHtml(n.summary)}</div>` : ''}
       ${n.content ? `<div class="focus-content"><span class="content-label">📄 Main Content:</span><br>${escapeHtml(n.content)}</div>` : ''}
       <div class="evaluate-controls">
         <label>Heat: <input type="range" id="evalHeat" min="0" max="10" value="5"></label>
@@ -869,6 +873,42 @@ document.getElementById('warpBtn').addEventListener('click', () => {
 document.getElementById('startDive').addEventListener('click', startDive);
 document.getElementById('endDive').addEventListener('click', () => { if (diveWs) sendDiveAction('return', {}); });
 
+// === Layer UI ===
+function showLayerUI(layer) {
+  const bar = document.getElementById('layerBar');
+  const tut = document.getElementById('layer-tutorial');
+  const san = document.getElementById('layer-sanctuary');
+  const cor = document.getElementById('layer-core');
+  const btnSan = document.getElementById('btnEnterSanctuary');
+  const btnCore = document.getElementById('btnEnterCore');
+
+  bar.style.display = 'flex';
+  // Reset classes
+  [tut, san, cor].forEach(el => el.classList.remove('layer-active', 'layer-done'));
+  btnSan.style.display = 'none';
+  btnCore.style.display = 'none';
+
+  if (layer === 'tutorial') {
+    tut.classList.add('layer-active');
+    btnSan.style.display = 'inline-block';
+  } else if (layer === 'sanctuary') {
+    tut.classList.add('layer-done');
+    san.classList.add('layer-active');
+    btnCore.style.display = 'inline-block';
+  } else if (layer === 'core') {
+    tut.classList.add('layer-done');
+    san.classList.add('layer-done');
+    cor.classList.add('layer-active');
+  }
+}
+
+document.getElementById('btnEnterSanctuary').addEventListener('click', () => {
+  sendDiveAction('enterSanctuary', {});
+});
+document.getElementById('btnEnterCore').addEventListener('click', () => {
+  sendDiveAction('enterCore', {});
+});
+
 // Action help modal
 document.getElementById('actionHelpBtn').addEventListener('click', () => {
   document.getElementById('actionHelpModal').style.display = 'flex';
@@ -927,6 +967,7 @@ function resetDive() {
   document.getElementById('diveAgentId').textContent = '';
   document.getElementById('warpNodeId').value = '';
   document.getElementById('energyDisplay').style.display = 'none';
+  document.getElementById('layerBar').style.display = 'none';
   diveEnergy = 100;
 }
 
@@ -936,18 +977,19 @@ let swarmAgents = [];
 function getRandomEntryRequest() {
   if (mockData.length > 0) {
     const item = mockData[Math.floor(Math.random() * mockData.length)];
-    return { query: item.summary || item.title || 'swarm', tags: item.tags || ['swarm'] };
+    return { query: item.summary || 'swarm', tags: item.tags || ['swarm'] };
   }
   return { query: 'Automated swarm exploration', tags: ['swarm', 'auto'] };
 }
 
 document.getElementById('launchSwarm').addEventListener('click', async () => {
   const count = parseInt(document.getElementById('swarmCount').value);
+  const userQuery = document.getElementById('swarmQuery').value.trim();
   document.getElementById('launchSwarm').disabled = true;
   document.getElementById('stopSwarm').disabled = false;
 
   for (let i = 0; i < count; i++) {
-    await launchSwarmAgent(i);
+    await launchSwarmAgent(i, userQuery);
     await new Promise(r => setTimeout(r, 500));
   }
 });
@@ -960,7 +1002,7 @@ document.getElementById('stopSwarm').addEventListener('click', () => {
   document.getElementById('stopSwarm').disabled = true;
 });
 
-async function launchSwarmAgent(index) {
+async function launchSwarmAgent(index, userQuery) {
   try {
     const data = await api('/dive/request', { method: 'POST' });
     if (!data.success) {
@@ -977,7 +1019,9 @@ async function launchSwarmAgent(index) {
       switch (msg.type) {
         case 'welcome':
           agent.agentId = msg.sessionId || '';
-          const swarmEntry = getRandomEntryRequest();
+          const swarmEntry = userQuery
+            ? { query: userQuery, tags: userQuery.split(/[\s,]+/).slice(0, 5) }
+            : getRandomEntryRequest();
           ws.send(JSON.stringify({
             type: 'entry',
             requestId: `swarm-${index}-${Date.now()}`,
@@ -986,36 +1030,73 @@ async function launchSwarmAgent(index) {
           agent.phase = 'entering';
           break;
         case 'processing':
-          agent.phase = 'processing';
+          // Tutorial ready — sense relics while query vectorizes
+          agent.phase = 'tutorial';
+          agent.layer = 'tutorial';
+          setTimeout(() => {
+            ws.send(JSON.stringify({ type: 'sense', requestId: `s-${Date.now()}`, radius: 3 }));
+          }, 500);
           break;
         case 'positioned':
-          agent.phase = 'active';
-          autoExplore(agent);
+          // Query vector ready — transition to sanctuary
+          setTimeout(() => {
+            ws.send(JSON.stringify({ type: 'enterSanctuary', requestId: `s-${Date.now()}` }));
+          }, 500);
+          break;
+        case 'layerChanged':
+          agent.layer = msg.layer;
+          if (msg.layer === 'sanctuary') {
+            agent.phase = 'sanctuary';
+            // Sanctuary: sense once, then transition to core
+            setTimeout(() => {
+              ws.send(JSON.stringify({ type: 'sense', requestId: `s-${Date.now()}`, radius: 3 }));
+            }, 500);
+            setTimeout(() => {
+              ws.send(JSON.stringify({ type: 'enterCore', requestId: `s-${Date.now()}` }));
+            }, 2000);
+          } else if (msg.layer === 'core') {
+            agent.phase = 'active';
+            autoExplore(agent);
+          }
           break;
         case 'senseResult':
           if (msg.nodes?.length > 0) {
             const target = msg.nodes[Math.floor(Math.random() * msg.nodes.length)];
-            ws.send(JSON.stringify({ type: 'focus', requestId: `s-${Date.now()}`, nodeId: target.id }));
+            setTimeout(() => {
+              ws.send(JSON.stringify({ type: 'focus', requestId: `s-${Date.now()}`, nodeId: target.id }));
+            }, 400);
           } else {
+            // No nodes nearby — move to new area
             const modes = ['random', 'hot', 'explore'];
-            ws.send(JSON.stringify({ type: 'move', requestId: `s-${Date.now()}`, step: 0.3, mode: modes[Math.floor(Math.random() * modes.length)] }));
+            setTimeout(() => {
+              ws.send(JSON.stringify({ type: 'move', requestId: `s-${Date.now()}`, step: 0.3, mode: modes[Math.floor(Math.random() * modes.length)] }));
+            }, 400);
           }
           agent.actions++;
           break;
         case 'focusResult':
           if (msg.node) {
             const evalH = Math.floor(3 + Math.random() * 5);
-            ws.send(JSON.stringify({
-              type: 'evaluate', requestId: `s-${Date.now()}`, nodeId: msg.node.id,
-              h: evalH, w: 5, d: 5
-            }));
+            setTimeout(() => {
+              ws.send(JSON.stringify({
+                type: 'evaluate', requestId: `s-${Date.now()}`, nodeId: msg.node.id,
+                h: evalH, w: 5, d: 5
+              }));
+            }, 400);
           }
           agent.actions++;
           break;
         case 'evaluateResult':
+          agent.actions++;
+          // Move after evaluate to explore new area
+          setTimeout(() => {
+            const modes = ['random', 'hot', 'explore', 'deep'];
+            ws.send(JSON.stringify({ type: 'move', requestId: `s-${Date.now()}`, step: 0.3, mode: modes[Math.floor(Math.random() * modes.length)] }));
+          }, 400);
+          break;
         case 'moveResult':
           agent.actions++;
-          setTimeout(() => autoExplore(agent), 2000);
+          setTimeout(() => autoExplore(agent), 1500);
           break;
         case 'error':
           console.warn(`[Swarm Agent ${agent.index}] Error:`, msg.error);
@@ -1060,8 +1141,6 @@ const DOCS = [
   { file: 'architecture.md', title: 'Technical Architecture' },
   { file: 'agent-rulebook.md', title: 'Agent Rulebook' },
   { file: 'diving-experience.md', title: 'Diving Experience' },
-  { file: 'reference-db-guide.md', title: 'ReferenceDB Guide' },
-  { file: 'embedding-guide.md', title: 'Embedding & Scaling' },
 ];
 
 function loadDocsList() {

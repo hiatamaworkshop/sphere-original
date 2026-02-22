@@ -7,7 +7,7 @@
  */
 import type { PeripheryConfig } from "./types/config.js";
 import type { IIncarnationPipeline } from "./incarnation/pipeline.js";
-import type { SphereNode } from "@sphere/renal-core";
+import type { SphereNode, SpatialField } from "@sphere/renal-core";
 import type { Bookkeeper } from "./bookkeeper/bookkeeper.js";
 import type { EntryBuffer } from "./parser/buffer.js";
 import type { SphereCoreAdapter } from "./gateway/sphere-core-adapter.js";
@@ -22,6 +22,7 @@ export declare class PeripheryServer {
     private coreAdapter?;
     private globalFieldLayer?;
     private activeBusLayer?;
+    private spatialFields?;
     private app;
     private ticketIssuer;
     private questStore;
@@ -31,7 +32,7 @@ export declare class PeripheryServer {
      * Cosine distance between two vectors (0 = identical, 2 = opposite)
      */
     private cosineDistance;
-    constructor(incarnationPipeline: IIncarnationPipeline, config: PeripheryConfig, entryBuffer: EntryBuffer, projectionDB?: Map<string, SphereNode> | undefined, bookkeeper?: Bookkeeper | undefined, coreAdapter?: SphereCoreAdapter | undefined, globalFieldLayer?: GlobalFieldLayer | undefined, activeBusLayer?: ActiveBusLayer | undefined);
+    constructor(incarnationPipeline: IIncarnationPipeline, config: PeripheryConfig, entryBuffer: EntryBuffer, projectionDB?: Map<string, SphereNode> | undefined, bookkeeper?: Bookkeeper | undefined, coreAdapter?: SphereCoreAdapter | undefined, globalFieldLayer?: GlobalFieldLayer | undefined, activeBusLayer?: ActiveBusLayer | undefined, spatialFields?: Map<string, SpatialField> | undefined);
     private setupRoutes;
     start(): void;
     stop(): void;
@@ -40,5 +41,7 @@ export declare class PeripheryServer {
      * [Design] Pass-through to GatewayServer
      */
     setOnAgentCountChange(callback: (count: number) => void): void;
+    /** Expel all connected agents (for Ephemeral reset) */
+    expelAll(reason: string): void;
 }
 //# sourceMappingURL=server.d.ts.map

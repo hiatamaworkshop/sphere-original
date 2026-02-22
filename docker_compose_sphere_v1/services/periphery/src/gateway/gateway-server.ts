@@ -7,16 +7,15 @@
  * [Connection Flow]
  *   1. Agent connects with token → "connected" (pending)
  *   2. Agent reads Rulebook, sends EntryRequest
- *   3. Membrane validates → "processing" (tutorial/amber browsing enabled)
- *   4. Parser vectorizes (async) → initial position calculated
- *   5. SphereContext created → "ready" (full dive enabled)
+ *   3. Membrane validates → SphereContext(relic vector) → "processing" (Tutorial active)
+ *   4. Parser vectorizes (async) → reposition(queryVector) → "positioned"
+ *   5. Agent transitions: enterSanctuary → enterCore
  *   6. Agent interacts via sense/focus/move/evaluate/return
  *   7. On return() or expiry → cleanup
  *
- * [3-Phase Design]
+ * [2-Phase Design]
  *   - pending: Awaiting EntryRequest (only entry message allowed)
- *   - processing: Parser working (sense for tutorial/amber allowed)
- *   - active: Full dive (all operations allowed)
+ *   - active: SphereContext exists, Tutorial layer (relic vector → query vector via reposition)
  */
 
 import { WebSocket, WebSocketServer, RawData } from "ws";
@@ -34,6 +33,7 @@ import type { SphereCoreAdapter } from "./sphere-core-adapter.js";
 import type { UnifiedAmberCache } from "./amber-cache.js";
 import type { GlobalFieldLayer } from "../field/index.js";
 import type { ActiveBusLayer, BusMessage } from "../bus/index.js";
+import type { PeripheryConfig } from "../types/config.js";
 
 // ============================================================
 // Configuration
@@ -135,20 +135,9 @@ interface PendingConnection {
 }
 
 /**
- * Processing connection: EntryRequest received, Parser working
- * Agent can browse tutorial/amber during this phase
- */
-interface ProcessingConnection {
-  state: "processing";
-  sessionId: string;
-  socket: WebSocket;
-  token: string;
-  sessionTtl: number;
-  entryRequest: EntryRequest;
-}
-
-/**
- * Active connection: SphereContext created, full diving enabled
+ * Active connection: SphereContext created, diving enabled
+ * [Entry Pipeline] Created immediately on entry with relic vector (Tutorial layer).
+ * Query vector arrives async via reposition().
  */
 interface ActiveConnection {
   state: "active";
@@ -158,7 +147,7 @@ interface ActiveConnection {
   context: SphereContextImpl;
 }
 
-type ConnectionState = PendingConnection | ProcessingConnection | ActiveConnection;
+type ConnectionState = PendingConnection | ActiveConnection;
 
 // ============================================================
 // WebSocket Message Rate Limiter (per connection)
@@ -239,7 +228,9 @@ export class GatewayServer {
     private coreAdapter?: SphereCoreAdapter,
     private amberCache?: UnifiedAmberCache,
     private globalFieldLayer?: GlobalFieldLayer,
-    private activeBusLayer?: ActiveBusLayer
+    private activeBusLayer?: ActiveBusLayer,
+    private sessionConfig?: PeripheryConfig["session"],
+    private energyConfig?: PeripheryConfig["energy"]
   ) {
     // Subscribe to ActiveBus for WebSocket broadcast
     if (this.activeBusLayer) {
@@ -281,6 +272,20 @@ export class GatewayServer {
 
   getConnectionCount(): number {
     return this.connections.size;
+  }
+
+  /**
+   * Expel all connected agents (for Ephemeral reset).
+   * Sends "expelled" before closing, unlike stop() which is for shutdown.
+   */
+  expelAll(reason: string): void {
+    for (const [, conn] of this.connections) {
+      this.send(conn.socket, { type: "expelled", reason });
+      conn.socket.close(4003, reason);
+    }
+    this.connections.clear();
+    this.wsRateLimiters.clear();
+    this.notifyAgentCountChange();
   }
 
   /**
@@ -436,9 +441,6 @@ export class GatewayServer {
         case "pending":
           await this.handlePendingMessage(conn, msg, requestId);
           break;
-        case "processing":
-          await this.handleProcessingMessage(conn, msg, requestId);
-          break;
         case "active":
           await this.handleActiveMessage(conn, msg, requestId);
           break;
@@ -483,47 +485,89 @@ export class GatewayServer {
       return;
     }
 
-    // Transition to processing state
-    const processingConn: ProcessingConnection = {
-      state: "processing",
+    // [Entry Pipeline] Get relic vector for Tutorial mock positioning
+    // Tutorial starts immediately at a relic's location while query vectorization runs async
+    const relicVector = this.coreAdapter
+      ? await this.coreAdapter.getRelicVector()
+      : new Array(384).fill(0);
+
+    // Create SphereContext immediately with relic vector (Tutorial layer)
+    const ticket = {
+      token: conn.token,
+      issuedAt: Date.now(),
+      ttl: conn.sessionTtl,
+      capsRef: "standard",
+    };
+
+    const context = createSphereContext({
+      ticket,
+      sessionId: conn.sessionId,
+      initialVector: relicVector,
+      pipeline: this.pipeline,
+      coreAdapter: this.coreAdapter,
+      globalFieldLayer: this.globalFieldLayer,
+      activeBusLayer: this.activeBusLayer,
+      sessionConfig: this.sessionConfig,
+      energyConfig: this.energyConfig,
+    });
+
+    // Set up context event handlers
+    context.on("warning", (warningMsg) => {
+      this.send(socket, { type: "warning", message: warningMsg });
+    });
+
+    context.on("expelled", async (reason) => {
+      try {
+        await context.returnOnExpelled();
+      } catch (err) {
+        console.log(`[GatewayServer] returnOnExpelled failed: ${err}`);
+      }
+      this.send(socket, { type: "expelled", reason });
+      socket.close(4003, reason);
+      this.connections.delete(conn.sessionId);
+      this.notifyAgentCountChange();
+    });
+
+    // Transition to active state immediately (Tutorial layer)
+    const activeConn: ActiveConnection = {
+      state: "active",
       sessionId: conn.sessionId,
       socket: conn.socket,
       token: conn.token,
-      sessionTtl: conn.sessionTtl,
-      entryRequest: msg.request,
+      context,
     };
-    this.connections.set(conn.sessionId, processingConn);
+    this.connections.set(conn.sessionId, activeConn);
 
-    // Send "processing" - Parser working
+    // Send "processing" — client knows Tutorial is ready
     this.send(socket, {
       type: "processing",
       sessionId: conn.sessionId,
-      message: "Calculating your initial position...",
+      message: "Tutorial ready. Query vectorization in progress...",
     });
 
     // Send amber_showcase - representative Amber nodes for browsing during Parser wait
     // [Design] Parser wait masking: Agent browses Showcase while vector is calculated
     this.sendAmberShowcase(conn.sessionId, socket);
 
-    console.log(`[GatewayServer] Agent processing: ${conn.sessionId} (tutorial/amber browsing enabled)`);
+    console.log(`[GatewayServer] Agent in Tutorial: ${conn.sessionId} (relic vector, async vectorization started)`);
 
-    // Start async vectorization
-    this.startVectorization(processingConn, requestId);
+    // Start async vectorization — on completion, reposition + send positioned
+    this.startVectorization(activeConn, requestId, msg.request);
   }
 
   /**
    * Start async vectorization via EntryBuffer
-   * When complete, transition to active state
+   * When complete, reposition agent and send "positioned"
    *
-   * [Design] Uses EntryBuffer for batch efficiency
-   *   - Multiple agent entries can be batched together
-   *   - Called right after Membrane.validate() passes
+   * [Entry Pipeline] SphereContext already exists (relic vector).
+   * This method runs async — agent can explore Tutorial while waiting.
    */
   private async startVectorization(
-    conn: ProcessingConnection,
-    requestId: string
+    conn: ActiveConnection,
+    requestId: string,
+    entryRequest: EntryRequest
   ): Promise<void> {
-    const { sessionId, socket, token, sessionTtl, entryRequest } = conn;
+    const { sessionId, socket, context } = conn;
 
     try {
       // EntryBuffer: query + tags → vector (batched for efficiency)
@@ -533,71 +577,31 @@ export class GatewayServer {
         queryForVectorization,
         entryRequest.quest  // optional quest text
       );
-      const initialVector = parsed.initialPosition;
-      // Use full 384-dim vector directly (no 3D projection)
+      const queryVector = parsed.initialPosition;
 
-      // Check if connection still exists (may have disconnected)
+      // Check if connection still exists (may have disconnected during vectorization)
       const currentConn = this.connections.get(sessionId);
-      if (!currentConn || currentConn.state !== "processing") {
-        console.log(`[GatewayServer] Session ${sessionId} no longer in processing state, skipping ready`);
+      if (!currentConn || currentConn.state !== "active") {
+        console.log(`[GatewayServer] Session ${sessionId} no longer active, skipping reposition`);
         return;
       }
 
-      // Create SphereContext with position
-      const ticket = {
-        token,
-        issuedAt: Date.now(),
-        ttl: sessionTtl,
-        capsRef: "standard",
-      };
+      // Reposition agent from relic vector to real query vector
+      context.reposition(queryVector);
 
-      const context = createSphereContext({
-        ticket,
-        sessionId,
-        initialVector,
-        pipeline: this.pipeline,
-        coreAdapter: this.coreAdapter,
-        globalFieldLayer: this.globalFieldLayer,
-        activeBusLayer: this.activeBusLayer,
-      });
-
-      // Set up context event handlers
-      context.on("warning", (msg) => {
-        this.send(socket, { type: "warning", message: msg });
-      });
-
-      context.on("expelled", (reason) => {
-        this.send(socket, { type: "expelled", reason });
-        socket.close(4003, reason);
-        this.connections.delete(sessionId);
-        this.notifyAgentCountChange();
-      });
-
-      // Transition to active state
-      const activeConn: ActiveConnection = {
-        state: "active",
-        sessionId,
-        socket,
-        token,
-        context,
-      };
-      this.connections.set(sessionId, activeConn);
-
-      // Send "positioned" - full diving enabled (384-dim vector)
-      // Include agent's own request context for goal-directed behavior
-      // [Quest Vector] Compass direction from quest text (SHOWCASE_QUEST_DESIGN_MEMO v9)
+      // Send "positioned" — query vector ready, Sanctuary transition enabled
       this.send(socket, {
         type: "positioned",
         sessionId,
-        position: initialVector,
-        questVector: parsed.questVector,  // quest vector as compass (optional)
+        position: queryVector,
+        questVector: parsed.questVector,
         remainingTime: context.remainingTime,
         query: entryRequest.query,
         tags: entryRequest.tags,
         quest: entryRequest.quest,
       });
 
-      console.log(`[GatewayServer] Agent diving: ${sessionId} (vector dim=${initialVector.length})`);
+      console.log(`[GatewayServer] Query vector ready: ${sessionId} (dim=${queryVector.length})`);
 
     } catch (error) {
       console.error(`[GatewayServer] Vectorization failed for ${sessionId}:`, error);
@@ -605,38 +609,9 @@ export class GatewayServer {
     }
   }
 
-  /**
-   * Handle messages in processing state
-   * Only "sense" is allowed (for tutorial/amber browsing)
-   */
-  private async handleProcessingMessage(
-    conn: ProcessingConnection,
-    msg: AgentMessage,
-    requestId: string
-  ): Promise<void> {
-    const { socket } = conn;
-
-    switch (msg.type) {
-      case "entry":
-        this.sendError(socket, requestId, "Already submitted EntryRequest. Waiting for position calculation.");
-        break;
-
-      case "sense":
-        // Allow sense for tutorial/amber browsing during processing
-        // TODO: Implement tutorial/amber-only sense (limited scope)
-        // For now, return empty result as placeholder
-        this.send(socket, {
-          type: "senseResult",
-          requestId,
-          nodes: [], // Tutorial/amber nodes would go here
-        });
-        console.log(`[GatewayServer] Processing sense for ${conn.sessionId} (tutorial/amber only)`);
-        break;
-
-      default:
-        this.sendError(socket, requestId, "Position calculation in progress. Only 'sense' is available for tutorial/amber browsing.");
-    }
-  }
+  // [Entry Pipeline] handleProcessingMessage removed.
+  // SphereContext is created immediately on entry (relic vector).
+  // All messages are handled by handleActiveMessage (Tutorial layer filtering applies).
 
   /**
    * Handle messages in active (diving) state
@@ -841,17 +816,15 @@ export class GatewayServer {
   /**
    * Get connection statistics
    */
-  getStats(): { pendingConnections: number; processingConnections: number; activeConnections: number } {
+  getStats(): { pendingConnections: number; activeConnections: number } {
     let pending = 0;
-    let processing = 0;
     let active = 0;
     for (const conn of this.connections.values()) {
       switch (conn.state) {
         case "pending": pending++; break;
-        case "processing": processing++; break;
         case "active": active++; break;
       }
     }
-    return { pendingConnections: pending, processingConnections: processing, activeConnections: active };
+    return { pendingConnections: pending, activeConnections: active };
   }
 }

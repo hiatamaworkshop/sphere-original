@@ -5,32 +5,49 @@
  * 16bit Flags & Core Interfaces
  * - 物性 vs 意味: Flags は「意味」ではなく「物性」
  * - Authority フラグ → decay_rate × 0.95（物理パラメータへ変換）
- * - Freshness フラグ → heat_boost × 1.2
+ * - TemporalShort フラグ → decay × 1.3, ttl_decay × 1.2
  * - エージェントの足跡を物理定数に変換する
  */
 
 /**
  * 16bit Node Flags: ノードの物理的性質を表すフラグ
  * 各ビットが物理的パラメータ（減衰率、熱量ブースト等）に変換される
+ *
+ * Design: FLAG_SYSTEM_REDESIGN.md
+ * - Temporal (bits 0-3): time properties
+ * - Density (bits 4-7): structural complexity
+ * - Cognitive (bits 8-11): perceptual impact
+ * - Special (bits 12-15): system/user metadata
  */
 export enum NodeFlag {
-  Authority     = 0x0001,  // 権威性: decay_rate × 0.95 (decay減速)
-  Freshness     = 0x0002,  // 新鮮さ: heat_boost × 1.2 (heat増幅)
-  Catalyst      = 0x0004,  // 触媒性: 通過点として機能
-  Ephemeral     = 0x0008,  // 一時性: decay_rate × 1.5 (decay加速)
-  Sticky        = 0x0010,  // 粘着性: ttl減衰に抵抗（ttl_decay × 0.8）
-  Volatile      = 0x0020,  // 揮発性: 高速蒸発（ttl_decay × 1.3）
-  Hot           = 0x0040,  // 高熱: 現在高い熱量を持つ（動的付与）
-  Frozen        = 0x0080,  // 凍結: 代謝を一時停止（Relic用）
-  Hub           = 0x0100,  // ハブ性: 多数のリンクを持つ（weight × 1.1）
-  Isolated      = 0x0200,  // 孤立: 他ノードとの接続が弱い（fossilization促進）
-  Spectral      = 0x0400,  // スペクトル: 洗練された経路の一部
-  Constellation = 0x0800,  // 星座: Amber間の強固なリンク
-  UserMarked    = 0x1000,  // ユーザーマーク: 手動で重要指定
-  SystemCore    = 0x2000,  // システムコア: Relic/不変
-  Compressed    = 0x4000,  // 圧縮済み: Fossil化された
-  Candidate     = 0x8000,  // 候補: Ascension 冷却期間中（評価凍結）
+  // Temporal (bits 0-3)
+  TemporalShort  = 0x0001,  // 短命: decay_rate × 1.3, ttl_decay × 1.2 (trending, breaking)
+  TemporalLong   = 0x0002,  // 長命: decay_rate × 0.8, ttl_decay × 0.7 (timeless, stable)
+  TemporalCyclic = 0x0004,  // 周期: TBD (seasonal resurface)
+  Hot            = 0x0008,  // 高熱: 現在高い熱量を持つ (dynamic, Arbiter-assigned)
+
+  // Density (bits 4-7)
+  Dense      = 0x0010,  // 高密度: weight × 1.2 (theory, formula)
+  Sparse     = 0x0020,  // 低密度: weight × 0.9 (casual, anecdotal)
+  Composite  = 0x0040,  // 複合: weight × 1.1 (multi-concept fusion)
+  Authority  = 0x0080,  // 権威: decay_rate × 0.95 (peer-reviewed, official)
+
+  // Cognitive (bits 8-11) — epistemic state of information
+  Sharp      = 0x0100,  // 明確: 一意的解釈、境界明瞭 (定義, 定理, 結論)
+  Fuzzy      = 0x0200,  // 曖昧: 複数解釈可能、未確定 (仮説, 問い, 推測)
+  Tensile    = 0x0400,  // 張力: 内部対立・矛盾を内包、未解決 (論争, パラドックス)
+  Settled    = 0x0800,  // 収束: 決着済み、合意形成済み (定説, 法律, 標準)
+
+  // Special (bits 12-15)
+  UserMarked  = 0x1000,  // ユーザーマーク: immune to decay
+  SystemCore  = 0x2000,  // システムコア: Frozen metabolism (Relic)
+  Compressed  = 0x4000,  // 圧縮済み: Fossil化 (TODO: move to state)
+  Candidate   = 0x8000,  // 候補: Ascension cooling period (TODO: move to state)
 }
+
+// State flags (dynamic, Arbiter-assigned)
+// Frozen is represented by SystemCore (0x2000) for metabolism purposes
+export const Frozen = NodeFlag.SystemCore;  // Alias for backwards compatibility
 
 /**
  * CrystallizationRecord: 結晶化時に吸収されたノードの記録
@@ -109,11 +126,12 @@ export interface ReferenceRecord {
 
 /**
  * SpatialField: 空間セルの物理的状態
- * プランクトン（蒸発したノードの残留熱量）を管理する
+ * flux（対流因子）: 分解が起きた場所に沈殿する活動痕跡。
+ * 近傍ノードの TTL に少量ずつ染み出し、自然減衰する。
  */
 export interface SpatialField {
   cellId: string;
-  fertility: number;
+  flux: number;
   nodeCount: number;
   avgHeat: number;
   lastUpdate: number;

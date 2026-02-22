@@ -20,16 +20,6 @@ export interface PeripheryConfig {
     modelId?: string;              // Model ID for local provider (optional)
   };
 
-  // === Gatekeeper (DEPRECATED) ===
-  // NOTE: Gatekeeper now uses Rulebook constraints directly
-  // See: services/periphery/src/rulebook/index.ts
-  gatekeeper: {
-    maxNodesPerCapsule: number;    // DEPRECATED - use Rulebook
-    maxTopTierPerCapsule: number;  // DEPRECATED - use Rulebook
-    maxGhostRatio: number;         // DEPRECATED - use Rulebook
-    maxSummaryLength: number;      // DEPRECATED - use Rulebook
-  };
-
   // === Tagger ===
   tagger: {
     topTierCount: number;          // Number of nodes to mark as top-tier
@@ -42,6 +32,7 @@ export interface PeripheryConfig {
       top: number;                 // Top-tier weight
       normal: number;              // Normal-tier weight
       ghost: number;               // Ghost-tier weight
+      relic?: number;              // Relic weight (optional, falls back to normal)
     };
     tierTTLs: {
       top: number;                 // Top-tier TTL in seconds
@@ -59,7 +50,6 @@ export interface PeripheryConfig {
       ghost: number;               // Flags for ghost-tier
     };
     initialMetrics: {
-      traversal: number;           // Initial traversal count
       stayTime: number;            // Initial stay time
     };
   };
@@ -187,23 +177,27 @@ export interface PeripheryConfig {
   // [Principle] All flag-related settings in one place
   // [Consumers] Tagger, Packer, Arbiter, Physics
   //
-  // Flag values (from @sphere/renal-core NodeFlag enum):
-  //   0x0001 = Authority   - Decay slows (×0.95)
-  //   0x0002 = Freshness   - Heat boost (×1.2)
-  //   0x0004 = Catalyst    - Promotes Link formation
-  //   0x0008 = Ephemeral   - Decay accelerates (×1.5)
-  //   0x0010 = Sticky      - TTL decay resists (×0.8)
-  //   0x0020 = Volatile    - TTL decay accelerates (×1.3)
-  //   0x0040 = Hot         - Dynamic: heat > threshold
-  //   0x0080 = Frozen      - Metabolism suspended (Relic)
-  //   0x0100 = Hub         - Dynamic: linkCount > threshold
-  //   0x0200 = Isolated    - Dynamic: linkCount <= threshold
-  //   0x0400 = Spectral    - Refined path (Ascension)
-  //   0x0800 = Constellation - Amber cluster
-  //   0x1000 = UserMarked  - Manual importance
-  //   0x2000 = SystemCore  - Relic/immutable
-  //   0x4000 = Compressed  - Fossilized
-  //   0x8000 = Candidate   - Ascension cooling period
+  // 16-bit Flag values (FLAG_SYSTEM_REDESIGN.md / @sphere/renal-core NodeFlag):
+  //   Temporal (bits 0-3):
+  //     0x0001 = TemporalShort  - decay ×1.3, ttl_decay ×1.2 (trending)
+  //     0x0002 = TemporalLong   - decay ×0.8, ttl_decay ×0.7 (timeless)
+  //     0x0004 = TemporalCyclic - TBD (seasonal)
+  //     0x0008 = Hot            - Dynamic: heat > threshold (Arbiter)
+  //   Density (bits 4-7):
+  //     0x0010 = Dense          - weight ×1.2 (theory, formula)
+  //     0x0020 = Sparse         - weight ×0.9 (casual, brief)
+  //     0x0040 = Composite      - weight ×1.1 (multi-concept)
+  //     0x0080 = Authority      - decay ×0.95 (peer-reviewed, official)
+  //   Cognitive (bits 8-11):
+  //     0x0100 = Sharp           - FastGate scoring only (明確、一意的解釈)
+  //     0x0200 = Fuzzy           - FastGate scoring only (曖昧、複数解釈可能)
+  //     0x0400 = Tensile         - FastGate scoring only (内部対立、未解決)
+  //     0x0800 = Settled         - FastGate scoring only (決着済み、収束)
+  //   Special (bits 12-15):
+  //     0x1000 = UserMarked     - immune to decay
+  //     0x2000 = SystemCore     - Frozen metabolism (Relic)
+  //     0x4000 = Compressed     - Fossilized
+  //     0x8000 = Candidate      - Ascension cooling period
   // =========================================================================
   nodeFlags?: {
     /**
@@ -211,7 +205,7 @@ export interface PeripheryConfig {
      * [Usage] tierFlags.top is OR'd with Tagger's classificationFlags
      */
     tierFlags: {
-      top: number;      // Default: 0x0002 (Freshness)
+      top: number;      // Default: 0x0002 (TemporalLong — top-tier persists longer)
       normal: number;   // Default: 0x0000
       ghost: number;    // Default: 0x0000
     };
@@ -219,14 +213,11 @@ export interface PeripheryConfig {
     /**
      * Dynamic flag thresholds (Arbiter)
      * [Usage] Arbiter sets/clears flags based on node state
+     * Hub/Isolated removed — linkCounts never supplied. Static flags via Tagger unaffected.
      */
     dynamicThresholds: {
       /** heat > this → Hot flag ON, heat <= this → Hot flag OFF */
-      hotHeatThreshold: number;       // Default: 80
-      /** linkCount > this → Hub flag ON */
-      hubLinkThreshold: number;       // Default: 5
-      /** linkCount <= this → Isolated flag ON (mutually exclusive with Hub) */
-      isolatedLinkThreshold: number;  // Default: 0
+      hotHeatThreshold: number;       // Default: 150
     };
   };
 }
@@ -261,22 +252,17 @@ export const DEFAULT_PERIPHERY_CONFIG: PeripheryConfig = {
     vectorDimension: 384,  // all-MiniLM-L6-v2 default
     modelId: "Xenova/all-MiniLM-L6-v2",
   },
-  gatekeeper: {
-    maxNodesPerCapsule: 50,
-    maxTopTierPerCapsule: 5,
-    maxGhostRatio: 0.4,
-    maxSummaryLength: 512,
-  },
   tagger: {
     topTierCount: 3,
   },
   packer: {
     // Integer scale: h/w threshold 1000, d baseline 1000
-    baseHeat: 750,  // All nodes start with same baseline heat
+    baseHeat: 500,  // All nodes start with same baseline heat
     tierWeights: {
       top: 800,
       normal: 500,
       ghost: 200,
+      relic: 300,
     },
     tierTTLs: {
       top: 172800,   // 2 days
@@ -286,12 +272,11 @@ export const DEFAULT_PERIPHERY_CONFIG: PeripheryConfig = {
     standardDecayCoefficient: 1000,  // d baseline
     // @deprecated - Use nodeFlags.tierFlags instead (below)
     tierFlags: {
-      top: 0x0002,    // Freshness flag
+      top: 0x0002,    // TemporalLong (top-tier persists longer)
       normal: 0x0000,
       ghost: 0x0000,
     },
     initialMetrics: {
-      traversal: 0,
       stayTime: 0,
     },
   },
@@ -377,15 +362,13 @@ export const DEFAULT_PERIPHERY_CONFIG: PeripheryConfig = {
   nodeFlags: {
     // Static flags assigned at node creation (by Packer)
     tierFlags: {
-      top: 0x0002,      // Freshness - top tier nodes get visibility boost
+      top: 0x0002,      // TemporalLong - top tier nodes persist longer
       normal: 0x0000,   // No special flags
       ghost: 0x0000,    // No special flags (Ephemeral could be added)
     },
     // Dynamic flag thresholds (by Arbiter)
     dynamicThresholds: {
-      hotHeatThreshold: 80,       // heat > 80 → Hot flag
-      hubLinkThreshold: 5,        // links > 5 → Hub flag
-      isolatedLinkThreshold: 0,   // links == 0 → Isolated flag
+      hotHeatThreshold: 150,      // heat > 150 → Hot flag
     },
   },
 };
