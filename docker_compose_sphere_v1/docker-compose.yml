@@ -167,8 +167,8 @@ services:
       SPHERE_WS: ws://periphery:3001
       LOADOUT: random
       DAEMON: "true"
-      DAEMON_SLEEP_MS: "30000"
-      RESPONSE: "true"
+      DAEMON_SLEEP_MS: "10000"
+      RESPONSE: "false"
       DIGESTOR_URL: http://digestor:5000
     volumes:
       - ../phi-agent/data:/app/data
