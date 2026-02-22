@@ -806,7 +806,7 @@ function renderDiveNodes(nodes, title) {
     } else if (n.tags && n.tags.length > 0) {
       label = `<strong>Tags:</strong> ${n.tags.map(t => escapeHtml(t)).join(', ')}`;
     }
-    const canFocus = isSense && (n.kind === 'active' || n.kind === 'amber');
+    const canFocus = isSense && n.kind !== 'ghost' && n.kind !== 'fossil';
     return `<div class="dive-node" data-id="${n.id}">
       <span class="kind-badge kind-${n.kind}">${n.kind}</span>
       <span class="node-id" title="${n.id}" onclick="window._setWarpId('${n.id}')">${shortId}</span>
