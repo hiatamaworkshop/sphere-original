@@ -668,6 +668,24 @@ export class FastGate {
     return bestScore === -Infinity ? -1 : bestIndex;
   }
 
+  // --- Eval-only candidates: sensed but not focused ---
+  //
+  // Returns nodes from sense results that can be evaluated without focusing.
+  // Ghost/fossil are the primary use case (sense-visible but not focusable),
+  // but any unfocused sensed node is included.
+  //
+  // Cost: eval only (no focus cost). Agent decides how many to eval.
+  // Currently structural — agent.ts wiring is a future step.
+
+  getEvalCandidates(nodes: NearbyNode[], focusTargetIndex: number): NearbyNode[] {
+    return nodes.filter((n, i) => {
+      if (i === focusTargetIndex) return false;
+      if (this.memory.wasVisited(n.id)) return false;
+      if (n.tags && n.tags.includes("auto-generated")) return false;
+      return true;
+    });
+  }
+
   // --- Action selection: feelings → next cycle behavior ---
   //
   // Instead of a fixed pipeline, feelings modulate the cycle:
