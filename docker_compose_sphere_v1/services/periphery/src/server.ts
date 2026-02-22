@@ -208,9 +208,9 @@ export class PeripheryServer {
           info: {
             "GET /": "Sphere information (this endpoint)",
             "GET /health": "Health check",
+            "GET /sphere/status": "Unified status (dashboard)",
             "GET /sanctification": "Sanctification neuron triangle status",
             "GET /metrics": "System metrics (monitoring)",
-            "GET /stats": "System statistics",
           },
           observation: {
             "GET /nodes/metrics": "List all nodes with metrics (sorted by heat)",
@@ -358,17 +358,94 @@ export class PeripheryServer {
           volatility: field.volatility,
         } : null,
         memory: {
-          rss: process.memoryUsage.rss(),
+          rss: process.memoryUsage().rss,
           heapUsed: process.memoryUsage().heapUsed,
         },
       });
     });
 
-    // Stats endpoint (legacy, kept for compatibility)
-    this.app.get("/stats", (_req, res) => {
+    // ===== Unified Status Endpoint =====
+    // Single fetch for dashboard — aggregates all subsystem states
+    this.app.get("/sphere/status", readLimiter, (_req, res) => {
+      // --- Nodes (single iteration) ---
+      const byKind: Record<string, number> = {
+        active: 0, amber: 0, fossil: 0, ghost: 0, relic: 0, environment: 0,
+      };
+      let totalHeat = 0, totalWeight = 0, totalTTL = 0, total = 0;
+
+      if (this.projectionDB) {
+        for (const node of this.projectionDB.values()) {
+          total++;
+          byKind[node.kind] = (byKind[node.kind] ?? 0) + 1;
+          totalHeat += node.metrics.h;
+          totalWeight += node.metrics.w;
+          totalTTL += node.metrics.ttl;
+        }
+      }
+
+      // --- Gateway ---
+      const gw = this.gatewayServer?.getStats();
+
+      // --- Tickets ---
+      const tk = this.ticketIssuer.getStats();
+
+      // --- Bus ---
+      const busStats = this.activeBusLayer?.getStats();
+
+      // --- Field ---
+      const field = this.globalFieldLayer?.getGlobalField();
+
+      // --- Sanctification ---
+      const sanct = this.sanctificationNeuron?.getStatus();
+
+      // --- Memory ---
+      const mem = process.memoryUsage();
+
       res.json({
-        service: "periphery",
+        timestamp: new Date().toISOString(),
         uptime: process.uptime(),
+
+        gateway: gw
+          ? { pending: gw.pendingConnections, active: gw.activeConnections }
+          : { pending: 0, active: 0 },
+
+        nodes: {
+          total,
+          byKind,
+          averages: {
+            heat: total > 0 ? Math.round(totalHeat / total * 100) / 100 : 0,
+            weight: total > 0 ? Math.round(totalWeight / total * 100) / 100 : 0,
+            ttl: total > 0 ? Math.round(totalTTL / total) : 0,
+          },
+        },
+
+        tickets: tk,
+
+        bus: busStats ? {
+          enabled: busStats.enabled,
+          currentMessages: busStats.currentSize,
+          totalMessages: busStats.totalMessages,
+          subscribers: busStats.subscriberCount,
+        } : null,
+
+        field: field ? {
+          intensity: field.intensity,
+          volatility: field.volatility,
+          dominantFlags: field.dominantFlags,
+          sampleCount: field.sampleCount,
+        } : null,
+
+        sanctification: sanct ? {
+          epoch: sanct.epoch,
+          health: sanct.soft.health,
+          metabolicMode: sanct.metabolicMode,
+          dormancy: sanct.dormancy,
+        } : null,
+
+        memory: {
+          heapUsedMB: Math.round(mem.heapUsed / 1048576 * 10) / 10,
+          rssMB: Math.round(mem.rss / 1048576 * 10) / 10,
+        },
       });
     });
 
@@ -868,9 +945,9 @@ export class PeripheryServer {
       console.log(`[PeripheryServer] Endpoints:`);
       console.log(`  GET  /                   - Sphere information`);
       console.log(`  GET  /health             - Health check`);
+      console.log(`  GET  /sphere/status      - Unified status (dashboard)`);
       console.log(`  GET  /sanctification     - Neuron triangle status`);
       console.log(`  GET  /metrics            - System metrics (monitoring)`);
-      console.log(`  GET  /stats              - System stats`);
       console.log(`  GET  /nodes/metrics      - List all nodes with metrics`);
       console.log(`  GET  /nodes/stats        - Node statistics`);
       console.log(`  GET  /nodes/:id          - Get specific node`);

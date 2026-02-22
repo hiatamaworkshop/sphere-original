@@ -816,7 +816,7 @@ export class GatewayServer {
   /**
    * Get connection statistics
    */
-  getStats(): { pendingConnections: number; processingConnections: number; activeConnections: number } {
+  getStats(): { pendingConnections: number; activeConnections: number } {
     let pending = 0;
     let active = 0;
     for (const conn of this.connections.values()) {
@@ -825,7 +825,6 @@ export class GatewayServer {
         case "active": active++; break;
       }
     }
-    // processingConnections always 0 (processing is now part of active/tutorial)
-    return { pendingConnections: pending, processingConnections: 0, activeConnections: active };
+    return { pendingConnections: pending, activeConnections: active };
   }
 }

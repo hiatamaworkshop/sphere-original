@@ -279,27 +279,24 @@ document.addEventListener('click', (e) => {
 // === Dashboard ===
 async function fetchDashboard() {
   try {
-    const [stats, metrics] = await Promise.all([
-      api('/nodes/stats'),
-      api('/metrics')
-    ]);
-    renderNodeDistribution(stats);
-    renderAverages(stats);
-    renderSystem(metrics);
-    renderField(metrics);
+    const s = await api('/sphere/status');
+    renderNodeDistribution(s.nodes);
+    renderAverages(s.nodes);
+    renderSystem(s);
+    renderField(s);
     updateConnection(true);
   } catch (_e) {
     updateConnection(false);
   }
 }
 
-function renderNodeDistribution(stats) {
+function renderNodeDistribution(nodes) {
   const el = document.getElementById('nodeDistribution');
-  const counts = stats.counts;
+  const counts = nodes.byKind;
   const kinds = ['active', 'amber', 'fossil', 'ghost', 'relic', 'environment'];
   const max = Math.max(...kinds.map(k => counts[k] || 0), 1);
 
-  el.innerHTML = `<div class="total">Total: ${counts.total}</div>` +
+  el.innerHTML = `<div class="total">Total: ${nodes.total}</div>` +
     kinds.map(k => {
       const count = counts[k] || 0;
       const pct = (count / max * 100).toFixed(0);
@@ -311,9 +308,9 @@ function renderNodeDistribution(stats) {
     }).join('');
 }
 
-function renderAverages(stats) {
+function renderAverages(nodes) {
   const el = document.getElementById('nodeAverages');
-  const a = stats.averages;
+  const a = nodes.averages;
   el.innerHTML = `
     <div class="metric-row"><span>Avg Heat</span><span>${a.heat.toFixed(1)}</span></div>
     <div class="metric-row"><span>Avg Weight</span><span>${a.weight.toFixed(1)}</span></div>
@@ -321,23 +318,23 @@ function renderAverages(stats) {
   `;
 }
 
-function renderSystem(metrics) {
+function renderSystem(status) {
   const el = document.getElementById('systemMetrics');
   el.innerHTML = `
-    <div class="metric-row"><span>Uptime</span><span>${formatUptime(metrics.uptime)}</span></div>
-    <div class="metric-row"><span>Nodes</span><span>${metrics.nodeCount}</span></div>
-    <div class="metric-row"><span>Agents</span><span>${metrics.agents}</span></div>
-    <div class="metric-row"><span>Heap</span><span>${(metrics.memory.heapUsed / 1024 / 1024).toFixed(1)} MB</span></div>
+    <div class="metric-row"><span>Uptime</span><span>${formatUptime(status.uptime)}</span></div>
+    <div class="metric-row"><span>Nodes</span><span>${status.nodes.total}</span></div>
+    <div class="metric-row"><span>Agents</span><span>${status.gateway.active}</span></div>
+    <div class="metric-row"><span>Heap</span><span>${status.memory.heapUsedMB} MB</span></div>
   `;
 }
 
-function renderField(metrics) {
+function renderField(status) {
   const el = document.getElementById('fieldInfo');
-  if (!metrics.field) {
+  if (!status.field) {
     el.innerHTML = '<div class="metric-row"><span>No field data</span></div>';
     return;
   }
-  const f = metrics.field;
+  const f = status.field;
   el.innerHTML = `
     <div class="metric-row"><span>Intensity</span><span>${f.intensity.toFixed(3)}</span></div>
     <div class="metric-row"><span>Dominant Flags</span><span>0x${f.dominantFlags.toString(16).padStart(4, '0')}</span></div>
