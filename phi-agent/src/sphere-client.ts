@@ -41,6 +41,14 @@ export interface NodeDetail {
   ref_url?: string;
 }
 
+export interface ScanNode {
+  id: string;
+  distance: number;
+  tags: string[];
+  kind: string;
+  flags: number;
+}
+
 export interface SphereConfig {
   peripheryUrl: string;    // HTTP base URL (e.g. http://localhost:3001)
   wsUrl: string;           // WebSocket URL (e.g. ws://localhost:3001)
@@ -282,6 +290,18 @@ export class SphereClient {
   async move(step: number = 0.3, mode: WalkMode = "random"): Promise<boolean> {
     const result = await this.sendRequest<{ result: { success: boolean } }>("move", { step, mode });
     this.consumeEnergy(this.costs.move);
+    return result.result?.success ?? false;
+  }
+
+  async scanL1(radius?: number): Promise<ScanNode[]> {
+    const result = await this.sendRequest<{ nodes: ScanNode[] }>("scan", { radius });
+    this.consumeEnergy(this.costs.scanL1);
+    return result.nodes || [];
+  }
+
+  async warp(nodeId: string): Promise<boolean> {
+    const result = await this.sendRequest<{ result: { success: boolean } }>("warp", { nodeId });
+    this.consumeEnergy(this.costs.warp);
     return result.result?.success ?? false;
   }
 

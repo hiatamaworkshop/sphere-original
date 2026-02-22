@@ -134,7 +134,7 @@ services:
     ports:
       - "11434:11434"
     volumes:
-      - ollama-models:/root/.ollama
+      - ../ollama-models:/root/.ollama
     networks:
       - sphere-network
     restart: unless-stopped
@@ -287,5 +287,4 @@ volumes:
     name: sphere-minio-data
   periphery-logs:
     name: sphere-periphery-logs
-  ollama-models:
-    name: sphere-ollama-models
+  # ollama-models: now local at ../ollama-models

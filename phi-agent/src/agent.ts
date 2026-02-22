@@ -298,12 +298,12 @@ export class PhiAgent {
       const nodes = await this.sphere.sense(this.config.senseRadius);
       this.log(`Tutorial: sensed ${nodes.length} nodes (relic only)`);
       if (nodes.length === 0) {
-        await this.sphere.move(this.config.moveStep, "explore");
+        await this.scanAndWarp();
         continue;
       }
       const idx = this.gate.pickFocusTarget(nodes, () => 0);
       if (idx < 0) {
-        await this.sphere.move(this.config.moveStep, "explore");
+        await this.scanAndWarp();
         continue;
       }
       const detail = await this.sphere.focus(nodes[idx].id);
@@ -323,12 +323,12 @@ export class PhiAgent {
       const nodes = await this.sphere.sense(this.config.senseRadius);
       this.log(`Sanctuary: sensed ${nodes.length} nodes (amber + relic)`);
       if (nodes.length === 0) {
-        if (this.canAfford("move")) await this.sphere.move(this.config.moveStep, "explore");
+        await this.scanAndWarp();
         continue;
       }
       const idx = this.gate.pickFocusTarget(nodes, () => 0);
       if (idx < 0) {
-        if (this.canAfford("move")) await this.sphere.move(this.config.moveStep, "explore");
+        await this.scanAndWarp();
         continue;
       }
       if (!this.canAfford("focus")) break;
@@ -405,7 +405,11 @@ export class PhiAgent {
         this.log(`Energy too low for move (${this.sphere.currentEnergy} < ${this.sphere.energyCosts.move})`);
         return;
       }
-      await this.sphere.move(moveStep, moveMode);
+      const moved = await this.sphere.move(moveStep, moveMode);
+      if (!moved) {
+        // Gradient-based move failed (no visible nodes) — follow global field
+        await this.sphere.move(moveStep, "flow");
+      }
     }
 
     // 2. Sense nearby nodes
@@ -417,20 +421,16 @@ export class PhiAgent {
     this.log(`Sensed ${nodes.length} nodes`);
 
     if (nodes.length === 0) {
-      this.log("No nodes nearby, exploring...");
-      if (this.canAfford("move")) {
-        await this.sphere.move(this.config.moveStep, "explore");
-      }
+      this.log("No nodes nearby — scan+warp to find relevant area");
+      await this.scanAndWarp();
       return;
     }
 
     // 3. FastGate picks target (local, 0ms) — with ActiveBus hints
     const targetIndex = this.gate.pickFocusTarget(nodes, (id) => this.getBusBonus(id));
     if (targetIndex < 0) {
-      this.log("No valid targets (all visited) — moving to explore");
-      if (this.canAfford("move")) {
-        await this.sphere.move(this.config.moveStep, "explore");
-      }
+      this.log("No valid targets (all visited) — scan+warp to new area");
+      await this.scanAndWarp();
       return;
     }
     const target = nodes[targetIndex];
@@ -575,7 +575,10 @@ export class PhiAgent {
         // Move (skip first cycle)
         if (this.stats.cycles > 1) {
           if (!this.canAfford("move")) break;
-          await this.sphere.move(this.config.moveStep, this.gate.walkPreference);
+          const moved = await this.sphere.move(this.config.moveStep, this.gate.walkPreference);
+          if (!moved) {
+            await this.sphere.move(this.config.moveStep, "flow");
+          }
         }
 
         // Sense nearby nodes
@@ -584,20 +587,16 @@ export class PhiAgent {
         this.log(`Sensed ${nodes.length} nodes`);
 
         if (nodes.length === 0) {
-          this.log("No nodes nearby, exploring...");
-          if (this.canAfford("move")) {
-            await this.sphere.move(this.config.moveStep, "explore");
-          }
+          this.log("No nodes nearby — scan+warp");
+          await this.scanAndWarp();
           continue;
         }
 
         // FastGate picks target (local, 0ms)
         const targetIndex = this.gate.pickFocusTarget(nodes, (id) => this.getBusBonus(id));
         if (targetIndex < 0) {
-          this.log("No valid targets (all visited/excluded)");
-          if (this.canAfford("move")) {
-            await this.sphere.move(this.config.moveStep, "explore");
-          }
+          this.log("No valid targets (all visited) — scan+warp");
+          await this.scanAndWarp();
           continue;
         }
         const target = nodes[targetIndex];
@@ -802,8 +801,34 @@ export class PhiAgent {
   // ===== Utility =====
 
   /** Check if enough energy remains for an action */
-  private canAfford(action: "sense" | "move" | "focus" | "evaluate"): boolean {
+  private canAfford(action: "sense" | "move" | "focus" | "evaluate" | "scanL1" | "warp"): boolean {
     return this.sphere.currentEnergy >= this.sphere.energyCosts[action];
+  }
+
+  /**
+   * Fallback when sense returns 0 nodes: scanL1 (wider range) → pick by species preference → warp.
+   * Returns true if warp succeeded (agent is now near a node), false if unable.
+   */
+  private async scanAndWarp(): Promise<boolean> {
+    if (!this.canAfford("scanL1")) return false;
+    const scanned = await this.sphere.scanL1();
+    this.log(`Scan: found ${scanned.length} nodes (wide range)`);
+    if (scanned.length === 0) return false;
+
+    const idx = this.gate.pickWarpTarget(scanned);
+    if (idx < 0) return false;
+
+    const target = scanned[idx];
+    this.log(`Warp target: ${target.id.slice(0, 8)} [${target.kind}] tags=[${target.tags.join(",")}] dist=${target.distance.toFixed(2)}`);
+
+    if (!this.canAfford("warp")) return false;
+    const ok = await this.sphere.warp(target.id);
+    if (ok) {
+      this.log(`Warped to ${target.id.slice(0, 8)}`);
+    } else {
+      this.log(`Warp failed for ${target.id.slice(0, 8)}`);
+    }
+    return ok;
   }
 
   /** Emit structured JSON for UI consumption (always printed, independent of debug flag) */

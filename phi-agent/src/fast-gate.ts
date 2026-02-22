@@ -12,7 +12,7 @@
 // Scoring weights are configurable via constructor.
 // Hub flag is deprecated (dynamic linkCounts not supplied to Arbiter).
 
-import type { NearbyNode } from "./sphere-client.js";
+import type { NearbyNode, ScanNode } from "./sphere-client.js";
 import type { WalkMode } from "./sphere-client.js";
 
 // ============================================================
@@ -665,6 +665,67 @@ export class FastGate {
     }
 
     return bestScore === -Infinity ? -1 : bestIndex;
+  }
+
+  // --- Warp target selection: scan results → best node for species ---
+  //
+  // When sense returns 0 nodes, agent uses scanL1 (wider range) to find
+  // candidates and warps to the best one based on species preferences.
+  //
+  // Scoring: tag overlap (query + species memory) + hot node bonus + distance penalty
+
+  pickWarpTarget(scanned: ScanNode[]): number {
+    if (scanned.length === 0) return -1;
+
+    let bestIndex = -1;
+    let bestScore = -Infinity;
+
+    for (let i = 0; i < scanned.length; i++) {
+      const n = scanned[i];
+
+      // Skip already visited nodes
+      if (this.memory.wasVisited(n.id)) continue;
+
+      let score = 0;
+
+      // Tag overlap with query tokens (+3 per match)
+      if (n.tags) {
+        const lowerTags = n.tags.map(t => t.toLowerCase());
+        for (const qt of this.queryTokens) {
+          if (lowerTags.some(t => t.includes(qt))) score += 3;
+        }
+        // Tag overlap with species memory (+2 per match)
+        for (const st of this._speciesTags) {
+          if (lowerTags.includes(st.toLowerCase())) score += 2;
+        }
+      }
+
+      // Hot node bonus from species memory (+5)
+      if (this._speciesHotNodes.has(n.id)) {
+        score += 5;
+      }
+
+      // Distance penalty (closer is better, -1 per 0.1 distance)
+      score -= n.distance * 10;
+
+      if (score > bestScore) {
+        bestScore = score;
+        bestIndex = i;
+      }
+    }
+
+    // If no unvisited node found, pick closest
+    if (bestIndex < 0 && scanned.length > 0) {
+      let closestDist = Infinity;
+      for (let i = 0; i < scanned.length; i++) {
+        if (scanned[i].distance < closestDist) {
+          closestDist = scanned[i].distance;
+          bestIndex = i;
+        }
+      }
+    }
+
+    return bestIndex;
   }
 
   // --- Eval-only candidates: sensed but not focused ---
