@@ -594,9 +594,8 @@ export class FastGate {
       // Hard exclude: already focused
       if (this.memory.wasVisited(n.id)) continue;
 
-      // Hard exclude: Ghost/Fossil — sense-visible but not focusable
-      // Ghost: tags+summary readable in sense results (L1+L2), but no L3 content
-      // Fossil: Compressed flag, L1 only
+      // Hard exclude from focus: Ghost/Fossil have no L3 content
+      // (eval-only path via getEvalCandidates() handles these)
       if (n.kind === "ghost" || n.kind === "fossil") continue;
       if (n.flags & Flag.Compressed) continue;
 
@@ -674,8 +673,8 @@ export class FastGate {
   // Ghost/fossil are the primary use case (sense-visible but not focusable),
   // but any unfocused sensed node is included.
   //
-  // Cost: eval only (no focus cost). Agent decides how many to eval.
-  // Currently structural — agent.ts wiring is a future step.
+  // Cost: eval only (no focus cost = -10 energy). Max 1 per cycle in agent.ts.
+  // Wired in standardCycle() step 9.
 
   getEvalCandidates(nodes: NearbyNode[], focusTargetIndex: number): NearbyNode[] {
     return nodes.filter((n, i) => {

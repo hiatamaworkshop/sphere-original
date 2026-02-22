@@ -104,6 +104,7 @@ export class PhiAgent {
   private busHints: Map<string, BusHint> = new Map();
   private busEmitCount = 0;
   private busRecvCount = 0;
+  private evalOnlyUsed = false;
 
   /** Nodes encountered during exploration — what the agent "saw" */
   private encounters: Array<{
@@ -442,6 +443,35 @@ export class PhiAgent {
       h, w, d,
       reason: (evalAction.reason ?? "").slice(0, 100),
     });
+
+    // 9. Eval-only candidates: sense-area nodes not focused (ghost/fossil included)
+    //    Once per session — bonus evaluation, not a regular pipeline step.
+    if (!this.evalOnlyUsed && this.canAfford("evaluate")) {
+      const candidates = this.gate.getEvalCandidates(nodes, targetIndex);
+      if (candidates.length > 0) {
+        this.evalOnlyUsed = true;
+        const pick = candidates[0];
+        const senseDetail = {
+          id: pick.id, tags: pick.tags ?? [], summary: pick.summary,
+          content: "", heat: pick.heat, weight: pick.weight, ttl: 0, kind: pick.kind,
+        };
+        const lightPrompt = this.prompt.evaluateNode(senseDetail, this.gate.evalFocus);
+        const lightResp = await this.ollama.generate(lightPrompt, this.prompt.systemPrompt);
+        const lightEval = parseAction(lightResp);
+        if (lightEval.action === "evaluate") {
+          const lh = lightEval.h ?? 5, lw = lightEval.w ?? 5, ld = lightEval.d ?? 5;
+          const ok = await this.sphere.evaluate(pick.id, lh, lw, ld);
+          if (ok) {
+            this.stats.evaluations++;
+            this.stats.totalHeatDelta += (lh - 5);
+            this.log(`Eval-only [${pick.kind}]: ${pick.summary.slice(0, 40)} → h=${lh} w=${lw} d=${ld}`);
+          }
+          this.gate.memory.record(pick.id, lh, lw, ld, pick.tags ?? [], lightEval.expression);
+        } else {
+          this.gate.memory.markVisited(pick.id);
+        }
+      }
+    }
   }
 
   /** Scout cycle: move → sense only (no focus, no eval, saves energy) */
