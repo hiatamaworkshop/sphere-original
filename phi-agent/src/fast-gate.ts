@@ -10,7 +10,6 @@
 // phi is ONLY used for evaluate (content understanding).
 //
 // Scoring weights are configurable via constructor.
-// Hub flag is deprecated (dynamic linkCounts not supplied to Arbiter).
 
 import type { NearbyNode, ScanNode } from "./sphere-client.js";
 import type { WalkMode } from "./sphere-client.js";
@@ -46,8 +45,8 @@ const Flag = {
   // Special (bits 12-15)
   UserMarked:  0x1000,
   SystemCore:  0x2000,
-  Compressed:  0x4000,  // TODO: move to state
-  Candidate:   0x8000,  // TODO: move to state
+  Compressed:  0x4000,
+  Candidate:   0x8000,
 
 } as const;
 
@@ -603,9 +602,9 @@ export class FastGate {
       // --- Base: linear(metrics) + keyword ---
       let base = n.heat * mw.heat + n.weight * mw.weight + n.decay * mw.decay + n.distance * mw.distance;
 
-      const text = (n.summary + " " + (n.tags ?? []).join(" ")).toLowerCase();
+      const searchText = (n.summary + " " + (n.tags ?? []).join(" ")).toLowerCase();
       for (const token of this.queryTokens) {
-        if (text.includes(token)) base += this.weights.keywordMatch;
+        if (searchText.includes(token)) base += this.weights.keywordMatch;
       }
 
       // --- Species memory: familiarity bonus for known nodes ---
@@ -616,7 +615,7 @@ export class FastGate {
 
       // --- Species memory: inherited vocabulary extends search ---
       for (const tag of this._speciesTags) {
-        if (text.includes(tag)) base += SPECIES_TAG_BONUS;
+        if (searchText.includes(tag)) base += SPECIES_TAG_BONUS;
       }
 
       // --- ActiveBus: other agents flagged this node ---
@@ -692,9 +691,9 @@ export class FastGate {
         for (const qt of this.queryTokens) {
           if (lowerTags.some(t => t.includes(qt))) score += 3;
         }
-        // Tag overlap with species memory (+2 per match)
+        // Tag overlap with species memory (+2 per match, substring)
         for (const st of this._speciesTags) {
-          if (lowerTags.includes(st.toLowerCase())) score += 2;
+          if (lowerTags.some(t => t.includes(st.toLowerCase()))) score += 2;
         }
       }
 
@@ -831,42 +830,28 @@ export class FastGate {
     const count = this.memory.cycleCount;
     if (count < this._minCycles) return false;
 
-    const desire = this.computeReturnDesire(energyRatio);
+    const { desire } = this.computeFeelings(energyRatio);
     const returnProb = Math.max(0, Math.min(1, (desire - 0.5) * 2));
     return Math.random() < returnProb;
   }
 
-  /** Compute return desire (feelings · returnWeights). Exposed for debug. */
-  private computeReturnDesire(energyRatio: number): number {
-    // Satisfaction: quality profile × quality vector
-    const qp = this.memory.qualityProfile;
-    const qv = this.qualityVector;
-    const satisfaction = qp[0] * qv[0] + qp[1] * qv[1] + qp[2] * qv[2] + qp[3] * qv[3];
-
-    // Frustration: miss rate
-    const frustration = this.memory.frustration;
-
-    // Stamina: energy pressure (linear)
-    const stamina = Math.max(0, 1 - energyRatio);
-
-    // Staleness: pattern convergence (1 - entropy)
-    const staleness = this.memory.staleness;
-
-    // Feelings × personality
-    const rw = this.returnWeights;
-    return satisfaction * rw[0] + frustration * rw[1] + stamina * rw[2] + staleness * rw[3];
-  }
-
-  /** For debug logging */
-  feelingsDebug(energyRatio: number = 1.0): string {
+  /** Compute 4D feelings + return desire (feelings · returnWeights). */
+  private computeFeelings(energyRatio: number): { sat: number; frust: number; stam: number; stale: number; desire: number } {
     const qp = this.memory.qualityProfile;
     const qv = this.qualityVector;
     const sat = qp[0] * qv[0] + qp[1] * qv[1] + qp[2] * qv[2] + qp[3] * qv[3];
     const frust = this.memory.frustration;
     const stam = Math.max(0, 1 - energyRatio);
     const stale = this.memory.staleness;
-    const desire = this.computeReturnDesire(energyRatio);
-    const prob = Math.max(0, Math.min(1, (desire - 0.5) * 2));
-    return `F=[sat:${sat.toFixed(2)},frust:${frust.toFixed(2)},stam:${stam.toFixed(2)},stale:${stale.toFixed(2)}] desire=${desire.toFixed(3)} → ${(prob * 100).toFixed(0)}%`;
+    const rw = this.returnWeights;
+    const desire = sat * rw[0] + frust * rw[1] + stam * rw[2] + stale * rw[3];
+    return { sat, frust, stam, stale, desire };
+  }
+
+  /** For debug logging */
+  feelingsDebug(energyRatio: number = 1.0): string {
+    const f = this.computeFeelings(energyRatio);
+    const prob = Math.max(0, Math.min(1, (f.desire - 0.5) * 2));
+    return `F=[sat:${f.sat.toFixed(2)},frust:${f.frust.toFixed(2)},stam:${f.stam.toFixed(2)},stale:${f.stale.toFixed(2)}] desire=${f.desire.toFixed(3)} → ${(prob * 100).toFixed(0)}%`;
   }
 }

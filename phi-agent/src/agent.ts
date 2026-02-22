@@ -380,13 +380,13 @@ export class PhiAgent {
         break;
       }
 
-      // Feelings check (4D feelings × personality vector)
-      const postRatio = this.initialEnergy > 0
+      // Feelings check after cycle (energy may have changed)
+      const currentRatio = this.initialEnergy > 0
         ? this.sphere.currentEnergy / this.initialEnergy
         : 1.0;
-      this.log(`Feelings: ${this.gate.feelingsDebug(postRatio)}`);
+      this.log(`Feelings: ${this.gate.feelingsDebug(currentRatio)}`);
       this.log(`DeltaProfile: ${this.gate.memory.deltaDebug()}`);
-      if (this.gate.shouldReturn(postRatio)) {
+      if (this.gate.shouldReturn(currentRatio)) {
         this.log(`Satisfied — returning`);
         break;
       }
@@ -812,7 +812,7 @@ export class PhiAgent {
   private async scanAndWarp(): Promise<boolean> {
     if (!this.canAfford("scanL1")) return false;
     const scanned = await this.sphere.scanL1();
-    this.log(`Scan: found ${scanned.length} nodes (wide range)`);
+    this.log(`Scan: found ${scanned.length} nodes`);
     if (scanned.length === 0) return false;
 
     const idx = this.gate.pickWarpTarget(scanned);
