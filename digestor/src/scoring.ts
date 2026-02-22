@@ -84,7 +84,7 @@ export function prune(
         survived.push(e);
       } else {
         // Survival lottery: min 5% chance
-        const prob = Math.max(0.05, e.score / Math.max(threshold, 0.001));
+        const prob = Math.min(1, Math.max(0.05, e.score / Math.max(threshold, 0.001)));
         if (Math.random() < prob) {
           survived.push(e);
         }
