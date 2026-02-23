@@ -893,13 +893,9 @@ Your overall experience:
 
     const voiceGuide = SPECIES_VOICE[this.gate.loadoutName] ?? SPECIES_VOICE.balanced;
 
-    const prompt = `Nodes encountered:\n${encounterList}${experienceBlock}
-Reflect on the DIVE EXPERIENCE itself — not just the nodes.
-Consider: the layer progression (Tutorial → Sanctuary → Core), energy management,
-the rulebook you received, the showcase of amber nodes, move modes, sense/focus workflow.
-What felt smooth? What was confusing or unnecessary? Two short paragraphs.`;
+    const prompt = `Nodes encountered:\n${encounterList}${experienceBlock}\nWrite your Sphere diary. Two short paragraphs.`;
 
-    const system = `You are an explorer reviewing your Sphere dive experience. ${voiceGuide} Focus on the journey mechanics and systems, not just node content.`;
+    const system = `You are an explorer in the Sphere. ${voiceGuide} Write about what you found and felt.`;
 
     const response = await this.ollama.generateText(prompt, system);
 

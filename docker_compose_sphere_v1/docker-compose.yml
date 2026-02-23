@@ -168,7 +168,7 @@ services:
       LOADOUT: random
       DAEMON: "true"
       DAEMON_SLEEP_MS: "10000"
-      RESPONSE: "true"
+      RESPONSE: "false"
       DIGESTOR_URL: http://digestor:5000
     volumes:
       - ../phi-agent/data:/app/data
