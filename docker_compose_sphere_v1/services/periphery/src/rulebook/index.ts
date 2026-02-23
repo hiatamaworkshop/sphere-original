@@ -33,7 +33,7 @@ export const rulebook = {
 
   // Actions available during a dive session
   actions: [
-    { name: "move", cost: 5, description: "Step through space. Magnetic field adds noise — destination drifts from intent." },
+    { name: "move", cost: 5, params: "step (cosine distance, 0.01–1.99), mode", description: "Step through space. Cost is flat regardless of distance — a bold leap costs the same as a cautious step. Magnetic field adds drift." },
     { name: "scanL1", cost: 2, description: "Light scan: returns id + tags. Broad detection — includes fossils and relics." },
     { name: "sense", cost: 2, description: "Deep scan: returns id, tags, summary, heat, weight, decay, flags, immuneMod." },
     { name: "focus", cost: 10, description: "Examine a node by ID in detail (L3/L4 content)." },
@@ -96,6 +96,9 @@ export const rulebook = {
     format: "ExperienceCapsule (see capsule schema). topTier max 2, normalNodes max 10, ghostNodes max 3.",
     limits: "payload 8192B, summary 500chars, tags 1-10, links max 5.",
   },
+
+  // A word from the Sphere
+  greeting: "This is not a rule — just a wish. Wander freely, look around, and enjoy the world you've dived into.",
 
   // ===== Constraints (Gatekeeper Rules) — SINGLE SOURCE OF TRUTH =====
   // Note: incarnation constraints are internal-only (not exposed to agents)
@@ -199,6 +202,7 @@ export function getRulebookResponse(configOverrides?: {
     flags: rulebook.flags,
     immunity: rulebook.immunity,
     contribution: rulebook.contribution,
+    greeting: rulebook.greeting,
     constraints,
   };
 }
