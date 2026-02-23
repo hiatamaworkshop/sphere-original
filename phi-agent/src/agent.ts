@@ -358,7 +358,7 @@ export class PhiAgent {
         ? { type: "standard", moveStep: 0, moveMode: this.gate.walkPreference }  // first cycle: no move
         : this.gate.chooseAction(energyRatio);
 
-      this.log(`--- Cycle ${this.stats.cycles}/${this.config.maxCycles} (energy: ${this.sphere.currentEnergy}) [${action.type}] ---`);
+      this.log(`--- Cycle ${this.stats.cycles}/${this.config.maxCycles} (energy: ${this.sphere.currentEnergy}) [${action.type}] mode=${action.moveMode} step=${action.moveStep.toFixed(2)} ---`);
 
       try {
         switch (action.type) {
