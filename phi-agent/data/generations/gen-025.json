@@ -1,7 +1,10 @@
 {
-  "generated": "2026-02-23T01:06:49.079Z",
-  "totalEvaluations": 450,
+  "generation": 25,
+  "timestamp": "2026-02-23T01:06:49.090Z",
+  "inputEvaluations": 450,
   "survivedEvaluations": 430,
+  "hunger": 0.5,
+  "halfLifeHours": 72,
   "species": {
     "sniper": {
       "evaluations": 56,

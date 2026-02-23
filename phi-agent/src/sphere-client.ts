@@ -263,7 +263,7 @@ export class SphereClient {
 
   // --- Sphere operations ---
 
-  async sense(radius: number = 5): Promise<NearbyNode[]> {
+  async sense(radius: number = 1): Promise<NearbyNode[]> {
     const result = await this.sendRequest<{ nodes: NearbyNode[] }>("sense", { radius });
     this.consumeEnergy(this.costs.sense);
     return result.nodes || [];

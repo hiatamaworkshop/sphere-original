@@ -87,7 +87,7 @@ const DEFAULT_AGENT_CONFIG: AgentConfig = {
   stream: false,
   maxCycles: 10,
   minEnergy: 10,
-  senseRadius: 5,
+  senseRadius: 1,
   moveStep: 0.3,
   debug: true,
 };
