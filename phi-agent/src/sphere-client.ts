@@ -84,6 +84,13 @@ export interface BusMessage {
   payload: Uint8Array;
 }
 
+/** Vestibule auto-process result returned by the server on return */
+export interface VestibuleResult {
+  auto: { evaluationsApplied: number; autoCapsuleSaved: boolean };
+  commands: { name: string; description: string }[];
+  farewell: string;
+}
+
 export type SphereEvent =
   | { type: "connected"; sessionId: string }
   | { type: "positioned"; position: number[] }
@@ -92,6 +99,7 @@ export type SphereEvent =
   | { type: "expelled"; reason: string }
   | { type: "error"; error: string }
   | { type: "bus_message"; message: BusMessage }
+  | { type: "vestibuleEntered"; result: VestibuleResult }
   | { type: "closed" };
 
 export type SphereEventHandler = (event: SphereEvent) => void;
@@ -252,16 +260,51 @@ export class SphereClient {
     this.syncEnergy(result.energy);
   }
 
-  async disconnect(): Promise<void> {
-    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-      try {
-        await this.sendRequest("return", {});
-      } catch {
-        // best effort
-      }
-      this.ws.close();
+  /**
+   * Proper disconnect: return → vestibuleEntered → acknowledge → farewell → server closes.
+   * Returns the VestibuleResult from the server (auto-process receipt + available commands).
+   */
+  async disconnect(): Promise<VestibuleResult | null> {
+    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
+      this.ws = null;
+      return null;
     }
-    this.ws = null;
+
+    try {
+      // Step 1: return → server sends vestibuleEntered
+      const vestibuleMsg = await this.sendRequest<{
+        type: "vestibuleEntered";
+        sessionId: string;
+        auto: { evaluationsApplied: number; autoCapsuleSaved: boolean };
+        commands: { name: string; description: string }[];
+        farewell: string;
+      }>("return", {});
+
+      const result: VestibuleResult = {
+        auto: vestibuleMsg.auto,
+        commands: vestibuleMsg.commands,
+        farewell: vestibuleMsg.farewell,
+      };
+
+      this.emit({ type: "vestibuleEntered", result });
+
+      // Step 2: acknowledge → server sends farewell → server closes connection
+      try {
+        await this.sendRequest("acknowledge", {});
+      } catch {
+        // farewell may arrive as server-close rather than requestId response
+      }
+
+      this.ws = null;
+      return result;
+    } catch {
+      // Connection already closing or server unreachable — best effort
+      if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+        this.ws.close();
+      }
+      this.ws = null;
+      return null;
+    }
   }
 
   // --- Sphere operations ---
@@ -384,6 +427,19 @@ export class SphereClient {
         break;
       case "error":
         this.emit({ type: "error", error: msg.error || "unknown" });
+        break;
+      case "vestibuleEntered": {
+        // Server-initiated vestibule (e.g. expelled → auto vestibule)
+        const vr: VestibuleResult = {
+          auto: msg.auto,
+          commands: msg.commands,
+          farewell: msg.farewell,
+        };
+        this.emit({ type: "vestibuleEntered", result: vr });
+        break;
+      }
+      case "farewell":
+        // Server signals session end — connection will close
         break;
       case "bus_message": {
         const d = msg.data;

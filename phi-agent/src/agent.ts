@@ -223,9 +223,12 @@ export class PhiAgent {
         await this.liaisonExplore();
       }
 
-      // Step 8: Clean disconnect — release Sphere session before slow narrative generation
+      // Step 8: Vestibule — proper return protocol
       this.stats.status = "completed";
-      await this.sphere.disconnect();
+      const vestibuleResult = await this.sphere.disconnect();
+      if (vestibuleResult) {
+        this.log(`Vestibule: ${vestibuleResult.auto.evaluationsApplied} evaluations applied, capsule=${vestibuleResult.auto.autoCapsuleSaved}`);
+      }
       this.log("Returned from Sphere");
 
       // Step 8b: Broadcast — deterministic projection (no LLM, always emitted)
@@ -893,18 +896,9 @@ Your overall experience:
 
     const voiceGuide = SPECIES_VOICE[this.gate.loadoutName] ?? SPECIES_VOICE.balanced;
 
-    const prompt = `After exploring ${this.encounters.length} nodes, you entered the Vestibule — the exit membrane. Your ${this.encounters.length > 0 ? this.encounters.length : "zero"} evaluations were auto-flushed immediately.
+    const prompt = `Nodes encountered:\n${encounterList}${experienceBlock}\nWrite your Sphere diary. Two short paragraphs.`;
 
-Available commands were:
-- submitCapsule: contribute new nodes to the Sphere
-- viewReceipt: see which evaluations were applied and their metabolic impact
-- viewTrail: review your exploration trajectory
-- viewDiscoveries: see notable nodes ranked by focus count
-- acknowledge: signal done and disconnect
-
-Which commands did you execute? Which did you skip and why? What did the receipt show? Did you submit a capsule or not? Two short paragraphs about your Vestibule decisions.`;
-
-    const system = `You are an explorer who just entered the Vestibule after a dive. ${voiceGuide} Describe your concrete actions: which Vestibule commands you ran, what you saw in the results, and what you chose not to do. Be specific about your decisions.`;
+    const system = `You are an explorer in the Sphere. ${voiceGuide} Write about what you found and felt.`;
 
     const response = await this.ollama.generateText(prompt, system);
 
