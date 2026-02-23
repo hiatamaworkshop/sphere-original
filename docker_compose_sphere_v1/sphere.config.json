@@ -158,6 +158,12 @@
         }
       },
 
+      "erosion": {
+        "_comment": "Erosion cooldown: amber → active delayed by cooldown period. No eval freeze — other agents can save the node.",
+        "scoreThreshold": 200,
+        "cooldownMs": 300000
+      },
+
       "revival": {
         "_comment": "Fossil → Active revival conditions (h×w product + d stability gate)",
         "threshold": 2500,
