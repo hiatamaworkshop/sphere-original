@@ -925,12 +925,51 @@ export class SphereContextImpl implements SphereContext {
       console.log(`[SphereContext] move(step=${step}, mode=${mode}) no field influence`);
     }
 
-    // Update 384D position: newPos = currentPos + direction * stepSize
-    for (let i = 0; i < this._embeddingVector.length; i++) {
-      this._embeddingVector[i] += direction[i] * clampedStep;
+    // === Slerp-based movement: step = cosine distance ===
+    // step=0.5 → cosine distance 0.5 (= 1 sense radius)
+    // step=1.0 → cosine distance 1.0 (= 1 scanL1 radius)
+
+    const dim = this._embeddingVector.length;
+
+    // 1. Project direction into tangent plane (orthogonal to current position)
+    let dotVD = 0;
+    for (let i = 0; i < dim; i++) dotVD += this._embeddingVector[i] * direction[i];
+
+    const dPerp = new Array<number>(dim);
+    let dPerpMag = 0;
+    for (let i = 0; i < dim; i++) {
+      dPerp[i] = direction[i] - dotVD * this._embeddingVector[i];
+      dPerpMag += dPerp[i] * dPerp[i];
+    }
+    dPerpMag = Math.sqrt(dPerpMag);
+
+    // If direction is parallel to current position, fall back to random tangent
+    if (dPerpMag < 1e-10) {
+      const randDir = this.generateRandomUnitVector(dim);
+      let dotVR = 0;
+      for (let i = 0; i < dim; i++) dotVR += this._embeddingVector[i] * randDir[i];
+      dPerpMag = 0;
+      for (let i = 0; i < dim; i++) {
+        dPerp[i] = randDir[i] - dotVR * this._embeddingVector[i];
+        dPerpMag += dPerp[i] * dPerp[i];
+      }
+      dPerpMag = Math.sqrt(dPerpMag);
     }
 
-    // Normalize to keep on unit hypersphere (optional, but keeps vectors comparable)
+    // Normalize tangent direction
+    for (let i = 0; i < dim; i++) dPerp[i] /= dPerpMag;
+
+    // 2. Slerp: new = v·cos(θ) + dPerp·sin(θ)
+    //    cosine_distance = 1 - cos(θ)  →  θ = acos(1 - step)
+    const theta = Math.acos(Math.max(-1, Math.min(1, 1 - clampedStep)));
+    const cosTheta = Math.cos(theta);
+    const sinTheta = Math.sin(theta);
+
+    for (let i = 0; i < dim; i++) {
+      this._embeddingVector[i] = this._embeddingVector[i] * cosTheta + dPerp[i] * sinTheta;
+    }
+
+    // Safety normalize (slerp should preserve unit length, but guard against float drift)
     this.normalizeEmbedding();
 
     // Update 3D projection for display
@@ -949,11 +988,11 @@ export class SphereContextImpl implements SphereContext {
       success: true,
     });
 
-    console.log(`[SphereContext] Move complete - moved ${clampedStep.toFixed(3)} in ${mode} direction`);
+    console.log(`[SphereContext] Move complete - cosDist=${clampedStep.toFixed(3)} θ=${(theta * 180 / Math.PI).toFixed(1)}° mode=${mode}`);
 
     return {
       success: true,
-      distance: clampedStep,
+      distance: clampedStep,  // Now in cosine distance units
       mode,
     };
   }

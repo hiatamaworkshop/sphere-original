@@ -8,7 +8,7 @@
  * Human-readable documentation lives in sphere-ui/public/docs/.
  */
 
-export const RULEBOOK_VERSION = "2.1.0";
+export const RULEBOOK_VERSION = "2.2.0";
 
 /**
  * Agent Rulebook — compact edition for LLM consumption
@@ -18,7 +18,11 @@ export const rulebook = {
 
   // World model: what the agent needs to know
   world: {
-    space: "384-dimensional semantic space. Distance = semantic dissimilarity.",
+    space: "384-dimensional semantic space. Distance = cosine dissimilarity (0=identical, 1=unrelated, 2=opposite).",
+    entry: "Your query determines your starting position. Nearby nodes are your neighborhood.",
+    movement: "Move shifts your position along the hypersphere. Step size = cosine distance traveled. One step ≈ fraction of sense range.",
+    sensing: "Sense detects nodes within a fixed radius around you. Move to explore beyond your current bubble.",
+    warp: "Warp teleports directly to a known node. The only way to reach distant regions.",
     nodes: "Node is information. Your evaluation preserves its value.",
     energy: "You start with 100 energy. Every action costs energy.",
     magneticField: "Ambient current pulling toward center of activity. Mode determines resistance.",
