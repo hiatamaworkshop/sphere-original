@@ -314,11 +314,10 @@ export class SphereCoreAdapter {
         continue;
       }
 
-      // Fossil: no heat-based visibility check (inert, always detectable if in range)
-      // Living nodes: high heat extends perception range
+      // Heat bonus: high heat nodes are easier to detect (glow in the dark)
+      // floor=1.0 (no penalty), baseHeat=500 → factor=1.0, h=1000 → factor=1.25
       const isFossil = node.kind === "fossil";
-      // baseHeat=500 基準: h=500 で factor=1.0, h=250 で 0.5 (floor)
-      const heatFactor = isFossil ? 0.5 : Math.max(0.5, node.metrics.h / 500);
+      const heatFactor = isFossil ? 1.0 : Math.max(1.0, 1.0 + (node.metrics.h - 500) / 2000);
       const visibilityRadius = perceptionRadius * heatFactor;
 
       if (distance <= visibilityRadius) {
