@@ -857,8 +857,9 @@ export class SphereContextImpl implements SphereContext {
       return { success: false, distance: 0, mode, blocked: "insufficient_energy" };
     }
 
-    // Clamp step to valid range
-    const clampedStep = Math.max(0.01, Math.min(1.0, step));
+    // Clamp step to valid range (cosine distance units)
+    // Max 1.99: just under scanL1_radius × 2 — new scan barely catches old scan's far edge
+    const clampedStep = Math.max(0.01, Math.min(1.99, step));
 
     // For gradient modes, require visible nodes from sense()
     // (flow uses GlobalField, random needs nothing)

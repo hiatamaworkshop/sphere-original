@@ -1,7 +1,10 @@
 {
-  "generated": "2026-02-23T10:55:21.089Z",
-  "totalEvaluations": 379,
+  "generation": 31,
+  "timestamp": "2026-02-23T10:55:21.109Z",
+  "inputEvaluations": 379,
   "survivedEvaluations": 366,
+  "hunger": 0.4148,
+  "halfLifeHours": 72,
   "species": {
     "balanced": {
       "evaluations": 50,
