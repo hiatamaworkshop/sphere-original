@@ -1,7 +1,7 @@
 # Vestibule Layer Design
 
 Date: 2026-02-23
-Status: Design (未実装)
+Status: Implemented (実装済み)
 
 ## 背景
 
@@ -214,17 +214,27 @@ socket.on("close", () => {
 });
 ```
 
-## Quest 処理 (別途議論)
+## 実装状況
 
-Vestibule はクエスト完了判定・報酬処理の自然な場所になる可能性がある。
-詳細は別途設計。
+| 機能 | 状態 | 備考 |
+|------|------|------|
+| ExperienceLayer 型追加 | ✅ 完了 | "vestibule" 追加 |
+| SphereContext.enterVestibule() | ✅ 完了 | evaluations 自動 flush |
+| Vestibule コマンド | ✅ 完了 | submitCapsule, view*, acknowledge |
+| close ハンドラ (serverside) | ✅ 完了 | silent disconnect 時の evaluations 救済 |
+| expelled → Vestibule | ✅ 完了 | 即断切断ではなく Vestibule 経由 |
+| Vestibule TTL | ✅ 完了 | config.vestibule.ttlSeconds (default: 120) |
+| ReturnHandler 廃止 | ✅ 完了 | Vestibule に吸収、二重 Gatekeeper 解消 |
+
+Note: Quest システムは廃止済み (2026-02-23)。
 
 ## 関連ファイル
 
 | ファイル | 変更内容 |
 |---------|---------|
-| `gateway-server.ts` | return/expelled/close ハンドラ書き換え、Vestibule コマンド追加 |
-| `sphere-context.ts` | enterVestibule(), finalize() 追加、_processReturn() 廃止 |
+| `types/experience-layer.ts` | "vestibule" 型追加、LAYER_CHARACTERISTICS、VALID_TRANSITIONS |
+| `types/config.ts` | vestibule config 追加 (ttlSeconds) |
+| `gateway-server.ts` | return/expelled/close ハンドラ書き換え、Vestibule コマンド追加、TTL 管理 |
+| `sphere-context.ts` | enterVestibule(), submitCapsule(), view メソッド追加、ReturnHandler 削除 |
 | `return-handler.ts` | 削除 (Vestibule に吸収) |
-| `rulebook/index.ts` | phases 更新、Vestibule セクション追加 |
-| `sphere.config.json` | vestibule TTL 設定 |
+| `server.ts` | GatewayServer に vestibuleConfig パス |

@@ -441,15 +441,13 @@ export interface SphereContext {
    */
   moveIntent(intent: MoveIntent): Promise<MoveResult>;
 
-  // ===== Return =====
+  // ===== Return → Vestibule =====
 
   /**
-   * End session and return with experience capsule
-   * Agent submits ExperienceCapsule → Gatekeeper validation → Pipeline
+   * End exploration and enter Vestibule (exit membrane)
+   * Evaluations are auto-flushed. Optional capsule stored for submitCapsule.
    *
-   * [Design] Trust the agent - they create their own capsule
-   *
-   * @param capsule Experience to bring back (optional - can return empty-handed)
+   * @param capsule Experience to bring back (optional)
    */
   return(capsule?: ExperienceCapsule): Promise<void>;
 

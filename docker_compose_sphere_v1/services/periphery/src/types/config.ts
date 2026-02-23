@@ -111,6 +111,12 @@ export interface PeripheryConfig {
     };
   };
 
+  // === Vestibule (Exit Membrane) ===
+  vestibule?: {
+    /** Vestibule 滞在上限 (秒) - デフォルト: 120 */
+    ttlSeconds: number;
+  };
+
   // === Amber Cache (Unified Showcase + Dynamic) ===
   amberCache?: {
     /** 合計キャッシュサイズ (default: 100) */
@@ -300,6 +306,9 @@ export const DEFAULT_PERIPHERY_CONFIG: PeripheryConfig = {
       warp: 15,
       evaluate: 3,
     },
+  },
+  vestibule: {
+    ttlSeconds: 120,  // 2 minutes in vestibule before forced disconnect
   },
   amberCache: {
     maxSize: 100,

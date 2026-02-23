@@ -67,13 +67,19 @@ type AgentMessage =
   | { type: "emit"; requestId: string; payload: string }  // base64 encoded
   | { type: "return"; requestId: string; capsule?: ExperienceCapsule }
   | { type: "enterSanctuary"; requestId: string }
-  | { type: "enterCore"; requestId: string };
+  | { type: "enterCore"; requestId: string }
+  // Vestibule commands
+  | { type: "submitCapsule"; requestId: string; capsule: ExperienceCapsule }
+  | { type: "viewReceipt"; requestId: string }
+  | { type: "viewTrail"; requestId: string }
+  | { type: "viewDiscoveries"; requestId: string }
+  | { type: "acknowledge"; requestId: string };
 
 /**
  * Gateway → Agent messages
  *
- * [Message Names - SHOWCASE_QUEST_DESIGN_MEMO alignment]
- *   - welcome: Initial greeting with Quest Showcase
+ * [Message Names]
+ *   - welcome: Initial greeting
  *   - processing: Parser working
  *   - amber_showcase: Amber nodes during Parser wait (L1/L2 only)
  *   - positioned: Ready for full dive with initial position
@@ -101,7 +107,14 @@ type GatewayMessage =
   | { type: "layerChanged"; requestId: string; layer: string; message: string; energy?: number }
   | { type: "error"; requestId?: string; error: string }
   | { type: "warning"; message: string }
-  | { type: "expelled"; reason: string };
+  | { type: "expelled"; reason: string }
+  // Vestibule messages
+  | { type: "vestibuleEntered"; sessionId: string; auto: { evaluationsApplied: number; autoCapsuleSaved: boolean }; commands: { name: string; description: string }[]; farewell: string }
+  | { type: "submitCapsuleResult"; requestId: string; success: boolean; nodeCount?: number; evaluationCount?: number; errors?: string[] }
+  | { type: "receipt"; requestId: string; data: any }
+  | { type: "trail"; requestId: string; data: any }
+  | { type: "discoveries"; requestId: string; data: any }
+  | { type: "farewell"; requestId: string };
 
 // ============================================================
 // Connection State (3-phase)
@@ -193,11 +206,21 @@ class WsRateLimiter {
 // Gateway Server
 // ============================================================
 
+/** Vestibule commands presented to agents on exit */
+const VESTIBULE_COMMANDS = [
+  { name: "submitCapsule", description: "Submit NodeSeeds for incarnation" },
+  { name: "viewReceipt", description: "Metabolic impact of your evaluations" },
+  { name: "viewTrail", description: "Your exploration trajectory" },
+  { name: "viewDiscoveries", description: "Notable nodes encountered" },
+  { name: "acknowledge", description: "Complete session and disconnect" },
+];
+
 export class GatewayServer {
   private wss: WebSocketServer | null = null;
   private connections = new Map<string, ConnectionState>();
   private wsRateLimiters = new Map<string, WsRateLimiter>();
   private wsRateLimitConfig: WsRateLimitConfig = DEFAULT_WS_RATE_LIMIT;
+  private vestibuleTtlTimers = new Map<string, ReturnType<typeof setTimeout>>();
   private membrane = new Membrane();
 
   /** Callback for agent count changes (for Dormancy feature) */
@@ -213,7 +236,8 @@ export class GatewayServer {
     private globalFieldLayer?: GlobalFieldLayer,
     private activeBusLayer?: ActiveBusLayer,
     private sessionConfig?: PeripheryConfig["session"],
-    private energyConfig?: PeripheryConfig["energy"]
+    private energyConfig?: PeripheryConfig["energy"],
+    private vestibuleConfig?: PeripheryConfig["vestibule"]
   ) {
     // Subscribe to ActiveBus for WebSocket broadcast
     if (this.activeBusLayer) {
@@ -268,6 +292,8 @@ export class GatewayServer {
     }
     this.connections.clear();
     this.wsRateLimiters.clear();
+    for (const timer of this.vestibuleTtlTimers.values()) clearTimeout(timer);
+    this.vestibuleTtlTimers.clear();
     this.notifyAgentCountChange();
   }
 
@@ -321,6 +347,8 @@ export class GatewayServer {
       }
       this.connections.clear();
       this.wsRateLimiters.clear();
+      for (const timer of this.vestibuleTtlTimers.values()) clearTimeout(timer);
+      this.vestibuleTtlTimers.clear();
 
       this.wss.close();
       this.wss = null;
@@ -372,6 +400,20 @@ export class GatewayServer {
 
     socket.on("close", () => {
       console.log(`[GatewayServer] Connection closed: ${sessionId}`);
+      // Serverside vestibule: rescue evaluations on silent disconnect
+      const currentConn = this.connections.get(sessionId);
+      if (currentConn?.state === "active" && !currentConn.context.ended) {
+        console.log(`[GatewayServer] Serverside vestibule for ${sessionId} (silent disconnect)`);
+        currentConn.context.enterVestibule().catch(err => {
+          console.error(`[GatewayServer] Serverside vestibule error:`, err);
+        });
+      }
+      // Clear vestibule TTL timer if any
+      const vtTimer = this.vestibuleTtlTimers.get(sessionId);
+      if (vtTimer) {
+        clearTimeout(vtTimer);
+        this.vestibuleTtlTimers.delete(sessionId);
+      }
       this.ticketIssuer.releaseSession(token);
       this.connections.delete(sessionId);
       this.wsRateLimiters.delete(sessionId);
@@ -499,14 +541,24 @@ export class GatewayServer {
 
     context.on("expelled", async (reason) => {
       try {
-        await context.returnOnExpelled();
+        const autoResult = await context.returnOnExpelled();
+        // Enter vestibule instead of immediate disconnect
+        this.send(socket, {
+          type: "vestibuleEntered",
+          sessionId: conn.sessionId,
+          auto: autoResult,
+          commands: VESTIBULE_COMMANDS,
+          farewell: `Expelled: ${reason}. Your evaluations have been saved.`,
+        });
+        this.startVestibuleTtl(conn.sessionId, socket);
+        console.log(`[GatewayServer] Expelled → Vestibule: ${conn.sessionId} (${reason})`);
       } catch (err) {
-        console.log(`[GatewayServer] returnOnExpelled failed: ${err}`);
+        console.error(`[GatewayServer] Expelled vestibule failed:`, err);
+        this.send(socket, { type: "expelled", reason });
+        socket.close(4003, reason);
+        this.connections.delete(conn.sessionId);
+        this.notifyAgentCountChange();
       }
-      this.send(socket, { type: "expelled", reason });
-      socket.close(4003, reason);
-      this.connections.delete(conn.sessionId);
-      this.notifyAgentCountChange();
     });
 
     // Transition to active state immediately (Tutorial layer)
@@ -603,8 +655,8 @@ export class GatewayServer {
     const { sessionId, socket, context } = conn;
     const { type } = msg;
 
-    // Rate limit check (skip for return - always allow graceful exit)
-    if (type !== "return") {
+    // Rate limit check (skip for return/acknowledge - always allow graceful exit)
+    if (type !== "return" && type !== "acknowledge") {
       const limiter = this.wsRateLimiters.get(sessionId);
       if (limiter) {
         const reject = limiter.checkAction(type);
@@ -613,6 +665,13 @@ export class GatewayServer {
           return;
         }
       }
+    }
+
+    // === Vestibule Gate ===
+    // When in vestibule layer, only vestibule commands are available
+    if (context.layer === "vestibule") {
+      await this.handleVestibuleMessage(conn, msg, requestId);
+      return;
     }
 
     switch (type) {
@@ -681,10 +740,21 @@ export class GatewayServer {
 
       case "return": {
         await context.return(msg.capsule);
-        this.send(socket, { type: "returnAck", requestId });
-        socket.close(1000, "Session ended");
-        this.connections.delete(sessionId);
-        this.notifyAgentCountChange();
+        // Enter vestibule instead of immediate disconnect
+        const autoResult = context.ended
+          ? { evaluationsApplied: 0, autoCapsuleSaved: true }  // fallback (shouldn't happen)
+          : { evaluationsApplied: 0, autoCapsuleSaved: true };
+        // enterVestibule was called inside context.return(), get result via getReceipt
+        const receipt = context.getReceipt();
+        this.send(socket, {
+          type: "vestibuleEntered",
+          sessionId,
+          auto: receipt.autoProcess,
+          commands: VESTIBULE_COMMANDS,
+          farewell: "Your evaluations have been applied. You may submit a capsule or acknowledge to disconnect.",
+        });
+        this.startVestibuleTtl(sessionId, socket);
+        console.log(`[GatewayServer] Return → Vestibule: ${sessionId}`);
         break;
       }
 
@@ -725,6 +795,92 @@ export class GatewayServer {
       default:
         this.sendError(socket, requestId, `Unknown message type: ${type}`);
     }
+  }
+
+  /**
+   * Handle messages in vestibule state
+   * Only vestibule commands (submitCapsule, view*, acknowledge) are available
+   */
+  private async handleVestibuleMessage(
+    conn: ActiveConnection,
+    msg: AgentMessage,
+    requestId: string
+  ): Promise<void> {
+    const { sessionId, socket, context } = conn;
+    const { type } = msg;
+
+    switch (type) {
+      case "submitCapsule": {
+        const result = await context.submitCapsule(msg.capsule);
+        this.send(socket, {
+          type: "submitCapsuleResult",
+          requestId,
+          success: result.success,
+          nodeCount: result.nodeCount,
+          evaluationCount: result.evaluationCount,
+          errors: result.errors,
+        });
+        break;
+      }
+
+      case "viewReceipt": {
+        const data = context.getReceipt();
+        this.send(socket, { type: "receipt", requestId, data });
+        break;
+      }
+
+      case "viewTrail": {
+        const data = context.getTrail();
+        this.send(socket, { type: "trail", requestId, data });
+        break;
+      }
+
+      case "viewDiscoveries": {
+        const data = context.getDiscoveries();
+        this.send(socket, { type: "discoveries", requestId, data });
+        break;
+      }
+
+      case "acknowledge": {
+        // Clear vestibule TTL
+        const vtTimer = this.vestibuleTtlTimers.get(sessionId);
+        if (vtTimer) {
+          clearTimeout(vtTimer);
+          this.vestibuleTtlTimers.delete(sessionId);
+        }
+        this.send(socket, { type: "farewell", requestId });
+        socket.close(1000, "Session ended");
+        this.connections.delete(sessionId);
+        this.wsRateLimiters.delete(sessionId);
+        this.notifyAgentCountChange();
+        console.log(`[GatewayServer] Acknowledged → disconnect: ${sessionId}`);
+        break;
+      }
+
+      default:
+        this.sendError(socket, requestId, `Only vestibule commands available (submitCapsule, viewReceipt, viewTrail, viewDiscoveries, acknowledge). Got: ${type}`);
+    }
+  }
+
+  /**
+   * Start Vestibule TTL timer
+   * When TTL expires, force-disconnect the agent
+   */
+  private startVestibuleTtl(sessionId: string, socket: WebSocket): void {
+    const ttlSeconds = this.vestibuleConfig?.ttlSeconds ?? 120;
+    const ttlMs = ttlSeconds * 1000;
+
+    const timer = setTimeout(() => {
+      console.log(`[GatewayServer] Vestibule TTL expired: ${sessionId}`);
+      this.send(socket, { type: "farewell", requestId: "system" });
+      socket.close(1000, "Vestibule TTL expired");
+      this.connections.delete(sessionId);
+      this.wsRateLimiters.delete(sessionId);
+      this.vestibuleTtlTimers.delete(sessionId);
+      this.notifyAgentCountChange();
+    }, ttlMs);
+
+    this.vestibuleTtlTimers.set(sessionId, timer);
   }
 
   /**
