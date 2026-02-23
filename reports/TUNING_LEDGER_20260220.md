@@ -172,21 +172,14 @@ decayIntensity ──→ heat/weight の減衰速度
 
 **場所**: `services/periphery/src/gateway/sphere-core-adapter.ts` sense() 内
 
-**現行**: ボーナス専用 (floor=1.0)
-```typescript
-const heatFactor = isFossil ? 1.0 : Math.max(1.0, 1.0 + (h - 500) / 2000);
-```
-
-| h | factor | visibilityRadius (base=0.5) |
-|---|--------|----------------------------|
-| ≤500 | 1.0 | 0.50 (基本範囲そのまま) |
-| 800 | 1.15 | 0.575 |
-| 1000 | 1.25 | 0.625 |
+**現行**: **廃止済み** — heatFactor ロジックを完全削除。sense() は `perceptionRadius` のみで判定。
 
 **変更履歴**:
 - `h/1000, floor=0.5` → `h/500, floor=0.5` (02-23): 実ノード h=200-400 で全て floor に張り付く問題
 - `h/500, floor=0.5` → `floor=1.0, ボーナス専用` (02-23): sense 基本範囲をペナルティなしに変更
+- `floor=1.0, ボーナス専用` → **削除** (02-23): modeWeights 実装により検知補正はエージェント側に移管完了
 
-**deprecate 候補**: ヒートによる検知しやすさはエージェント側の関心事（種族特性・Weapon 補正）
-であり、スフィアの物理法則として sense() にハードコードすべきではない可能性が高い。
-将来的には heatFactor=1.0 固定（廃止）とし、検知補正は Explorers 側に移管する方向。
+**設計判断**: ヒートによる検知しやすさはエージェント側の関心事（種族特性・Weapon 補正）であり、
+スフィアの物理法則として sense() にハードコードすべきでない。
+Sphere は均一な知覚範囲を提供し、エージェントが moveMode (hot/deep/explore) で
+どの方向に注意を向けるかを選択する。

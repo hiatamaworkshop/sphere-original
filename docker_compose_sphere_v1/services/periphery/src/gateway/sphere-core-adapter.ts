@@ -314,13 +314,9 @@ export class SphereCoreAdapter {
         continue;
       }
 
-      // Heat bonus: high heat nodes are easier to detect (glow in the dark)
-      // floor=1.0 (no penalty), baseHeat=500 → factor=1.0, h=1000 → factor=1.25
       const isFossil = node.kind === "fossil";
-      const heatFactor = isFossil ? 1.0 : Math.max(1.0, 1.0 + (node.metrics.h - 500) / 2000);
-      const visibilityRadius = perceptionRadius * heatFactor;
 
-      if (distance <= visibilityRadius) {
+      if (distance <= perceptionRadius) {
         nearbyNodes.push({
           id: node.id,
           distance: addNoise(distance, this.config.noiseFactor),
