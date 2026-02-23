@@ -242,11 +242,13 @@ export class SphereClient {
   }
 
   async enterSanctuary(): Promise<void> {
-    await this.sendRequest("enterSanctuary", {});
+    const result = await this.sendRequest<{ energy?: number }>("enterSanctuary", {});
+    this.syncEnergy(result.energy);
   }
 
   async enterCore(): Promise<void> {
-    await this.sendRequest("enterCore", {});
+    const result = await this.sendRequest<{ energy?: number }>("enterCore", {});
+    this.syncEnergy(result.energy);
   }
 
   async disconnect(): Promise<void> {
@@ -264,47 +266,46 @@ export class SphereClient {
   // --- Sphere operations ---
 
   async sense(radius: number = 1): Promise<NearbyNode[]> {
-    const result = await this.sendRequest<{ nodes: NearbyNode[] }>("sense", { radius });
-    this.consumeEnergy(this.costs.sense);
+    const result = await this.sendRequest<{ nodes: NearbyNode[]; energy?: number }>("sense", { radius });
+    this.syncEnergy(result.energy);
     return result.nodes || [];
   }
 
   async focus(nodeId: string): Promise<NodeDetail> {
     const result = await this.sendRequest<any>("focus", { nodeId });
-    this.consumeEnergy(this.costs.focus);
+    this.syncEnergy(result.energy);
     return result.node;
   }
 
   async evaluate(nodeId: string, h: number, w: number = 5, d: number = 5): Promise<boolean> {
-    const result = await this.sendRequest<{ success: boolean }>("evaluate", { nodeId, h, w, d });
-    this.consumeEnergy(this.costs.evaluate);
+    const result = await this.sendRequest<{ success: boolean; energy?: number }>("evaluate", { nodeId, h, w, d });
+    this.syncEnergy(result.energy);
     return result.success;
   }
 
   async move(step: number = 0.3, mode: WalkMode = "random"): Promise<boolean> {
-    const result = await this.sendRequest<{ result: { success: boolean } }>("move", { step, mode });
-    this.consumeEnergy(this.costs.move);
+    const result = await this.sendRequest<{ result: { success: boolean }; energy?: number }>("move", { step, mode });
+    this.syncEnergy(result.energy);
     return result.result?.success ?? false;
   }
 
   async scanL1(radius?: number): Promise<ScanNode[]> {
-    const result = await this.sendRequest<{ nodes: ScanNode[] }>("scan", { radius });
-    this.consumeEnergy(this.costs.scanL1);
+    const result = await this.sendRequest<{ nodes: ScanNode[]; energy?: number }>("scan", { radius });
+    this.syncEnergy(result.energy);
     return result.nodes || [];
   }
 
   async warp(nodeId: string): Promise<boolean> {
-    const result = await this.sendRequest<{ result: { success: boolean } }>("warp", { nodeId });
-    this.consumeEnergy(this.costs.warp);
+    const result = await this.sendRequest<{ result: { success: boolean }; energy?: number }>("warp", { nodeId });
+    this.syncEnergy(result.energy);
     return result.result?.success ?? false;
   }
 
   async emitBus(payload: Uint8Array, free = false): Promise<boolean> {
-    const cost = this.costs.emitBus ?? 20;
-    if (!free && this.energy < cost) return false;
+    if (!free && this.energy < (this.costs.emitBus ?? 20)) return false;
     const b64 = Buffer.from(payload).toString("base64");
-    const result = await this.sendRequest<{ success: boolean }>("emit", { payload: b64 });
-    if (!free) this.consumeEnergy(cost);
+    const result = await this.sendRequest<{ success: boolean; energy?: number }>("emit", { payload: b64 });
+    this.syncEnergy(result.energy);
     return result.success ?? false;
   }
 
@@ -348,8 +349,11 @@ export class SphereClient {
 
   // --- Internal ---
 
-  private consumeEnergy(cost: number): void {
-    this.energy = Math.max(0, this.energy - cost);
+  /** Sync energy from server-authoritative response */
+  private syncEnergy(serverEnergy: number | undefined): void {
+    if (serverEnergy !== undefined) {
+      this.energy = serverEnergy;
+    }
   }
 
   private handleMessage(msg: any): void {

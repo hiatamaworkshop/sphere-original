@@ -645,13 +645,13 @@ export class GatewayServer {
 
       case "sense": {
         const nodes = await context.sense(msg.radius);
-        this.send(socket, { type: "senseResult", requestId, nodes });
+        this.send(socket, { type: "senseResult", requestId, nodes, energy: context.energy });
         break;
       }
 
       case "scan": {
         const nodes = await context.scanL1(msg.radius);
-        this.send(socket, { type: "scanResult", requestId, nodes });
+        this.send(socket, { type: "scanResult", requestId, nodes, energy: context.energy });
         break;
       }
 
@@ -663,6 +663,7 @@ export class GatewayServer {
           requestId,
           node: focusResult.node,
           nearbyGhosts: focusResult.nearbyGhosts,
+          energy: context.energy,
         });
         break;
       }
@@ -674,6 +675,7 @@ export class GatewayServer {
           requestId,
           success: result.success,
           reason: !result.success ? result.reason : undefined,
+          energy: context.energy,
         });
         break;
       }
@@ -681,13 +683,13 @@ export class GatewayServer {
       case "move": {
         // move(step, mode) - 384D semantic space movement
         const result = await context.move(msg.step, msg.mode);
-        this.send(socket, { type: "moveResult", requestId, result });
+        this.send(socket, { type: "moveResult", requestId, result, energy: context.energy });
         break;
       }
 
       case "warp": {
         const result = await context.warp(msg.nodeId);
-        this.send(socket, { type: "warpResult", requestId, result });
+        this.send(socket, { type: "warpResult", requestId, result, energy: context.energy });
         break;
       }
 
@@ -695,7 +697,7 @@ export class GatewayServer {
         // Decode base64 payload
         const payload = Buffer.from(msg.payload, "base64");
         const success = await context.emitBus(new Uint8Array(payload));
-        this.send(socket, { type: "emitResult", requestId, success });
+        this.send(socket, { type: "emitResult", requestId, success, energy: context.energy });
         break;
       }
 
@@ -716,6 +718,7 @@ export class GatewayServer {
             requestId,
             layer: "sanctuary",
             message: "Entered Sanctuary - read-only exploration enabled",
+            energy: context.energy,
           });
         } catch (error) {
           const msg = error instanceof Error ? error.message : "Failed to enter Sanctuary";
@@ -732,6 +735,7 @@ export class GatewayServer {
             requestId,
             layer: "core",
             message: "Entered Core - evaluations will be incarnated",
+            energy: context.energy,
           });
         } catch (error) {
           const msg = error instanceof Error ? error.message : "Failed to enter Core";
