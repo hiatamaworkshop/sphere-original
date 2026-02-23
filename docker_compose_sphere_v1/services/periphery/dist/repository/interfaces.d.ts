@@ -117,7 +117,7 @@ export interface IProjectionRepository {
 /**
  * Spatial Field Repository Interface
  *
- * Manages fertility and plankton distribution
+ * Manages flux（対流因子）distribution across spatial cells
  */
 export interface ISpatialFieldRepository {
     /**

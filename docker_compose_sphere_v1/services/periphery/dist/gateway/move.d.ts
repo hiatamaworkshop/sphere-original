@@ -12,7 +12,7 @@
  *   Layer 2: toNode - revisiting known node
  */
 import type { SphereNode } from "@sphere/renal-core";
-import type { MoveIntent, ScanResult, ScanConfig, MoveConfig, MoveResultInternal, DistanceLevel, HeatLevel, DriftMode } from "../types/movement.js";
+import type { MoveIntent, ScanResult, MoveConfig, MoveResultInternal } from "../types/movement.js";
 /**
  * Signature Registry: manages temporary identifiers for movement
  *
@@ -44,42 +44,6 @@ export declare class SignatureRegistry {
      */
     clear(): void;
 }
-/**
- * Quantize cosine distance to perception level
- */
-export declare function quantizeDistance(distance: number, config?: MoveConfig): DistanceLevel;
-/**
- * Quantize heat value to perception level
- */
-export declare function quantizeHeat(heat: number, config?: MoveConfig): HeatLevel;
-/**
- * Scan nearby nodes and return quantized results (movement system internal)
- *
- * [Note] Gateway の "scan" メッセージは知覚層 scanL1() を使用する。
- *        この関数は移動システム内部用で、量子化された ScanResult (distance/heat/signature) を返す。
- *        現在 Gateway からは呼ばれないが、signature ベース移動の基盤として残置。
- *
- * [Design] Hot nodes are visible from further away (heatBoost)
- * [Design] Cold nodes are invisible (minHeat filter)
- * [Design] Results are capped (maxResults)
- */
-export declare function scan(agentVector: number[], nodes: SphereNode[], signatureRegistry: SignatureRegistry, config?: ScanConfig, moveConfig?: MoveConfig): ScanResult[];
-/**
- * Calculate drift direction based on mode
- *
- * [Modes]
- *   wander: random + slight gravity
- *   follow: gravity dominant
- *   orbit: perpendicular to gravity (not fully implemented)
- */
-export declare function calculateDrift(agentVector: number[], mode: DriftMode, nodes: SphereNode[], velocity: number[], config?: MoveConfig): number[];
-/**
- * Execute movement based on intent
- *
- * [Design] moveBatch: steps > 1 executes as single calculation
- * [Principle] 384-dim resolution happens once, not per step
- */
-export declare function executeMove(agentVector: number[], velocity: number[], intent: MoveIntent, nodes: SphereNode[], signatureRegistry: SignatureRegistry, config?: MoveConfig): MoveResultInternal;
 /**
  * Agent movement state holder
  *

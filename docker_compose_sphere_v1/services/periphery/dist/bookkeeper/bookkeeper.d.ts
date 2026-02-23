@@ -17,11 +17,52 @@ import type { SphereNode } from "@sphere/renal-core";
 import type { NodeEvaluation } from "../types/capsule.js";
 import type { IReferenceRepository, IProjectionRepository, ISpatialFieldRepository } from "../repository/index.js";
 import { type TransitionQueue, type CrystallizationResult } from "../arbiter/arbiter.js";
+/**
+ * Evaluation Config (2-Layer Architecture)
+ *
+ * [Design] Agent provides intuitive 0-10 scores, computation layer adjusts impact
+ *   - coefficients: delta = (input - neutral) × coefficient
+ *   - maturityPreWeight: lifecycle-based multiplier on coefficients (future)
+ */
+export interface EvaluationConfig {
+    neutral: number;
+    coefficients: {
+        h: number;
+        w: number;
+        d: number;
+    };
+    amberMaxHeat: number;
+    maturityPreWeight?: {
+        young?: {
+            h: number;
+            w: number;
+            d: number;
+        };
+        mature?: {
+            h: number;
+            w: number;
+            d: number;
+        };
+        elder?: {
+            h: number;
+            w: number;
+            d: number;
+        };
+    };
+}
 export declare class Bookkeeper {
     private projectionRepo;
     private referenceRepo;
     private spatialRepo;
-    constructor(projectionRepo: IProjectionRepository, referenceRepo: IReferenceRepository, spatialRepo: ISpatialFieldRepository);
+    private evalConfig;
+    private static readonly SEEP_RATE;
+    private static readonly SEEP_SAMPLE_N;
+    private static readonly SEEP_DECAY;
+    private static readonly SEEP_MIN_FLUX;
+    private static readonly SEEP_RADIUS;
+    private fluxPool;
+    private static readonly DEFAULT_EVAL_CONFIG;
+    constructor(projectionRepo: IProjectionRepository, referenceRepo: IReferenceRepository, spatialRepo: ISpatialFieldRepository, evalConfig?: EvaluationConfig);
     /**
      * Ingest nodes: RefDB first, then ProjDB projection
      * [Principle 1] All incarnation starts from RefDB
@@ -44,17 +85,12 @@ export declare class Bookkeeper {
      */
     private static readonly REVIVAL_TTL;
     /**
-     * Default heat for Amber nodes
-     * [Design] Amber は sense/scanL1 を支配しないよう、昇格時に heat をリセット
-     * erosionHeat (100) より余裕を持たせ、1回の低評価で即 Erosion を防ぐ
+     * Default heat for Amber nodes (on ascension)
+     * [Design] Relic (baseHeat×0.4 ≈ 300) より高い初期値で発見されやすく
+     * ただし floor ではない — 低評価で erosionHeatThreshold (100) まで落ちれば Erosion 発動
+     * 代謝凍結 (SystemCore) により自然減衰はない。heat 変動は評価のみ
      */
     private static readonly AMBER_DEFAULT_HEAT;
-    /**
-     * Maximum heat for Amber nodes
-     * [Design] 評価で heat が上がりすぎると sense/scanL1 を支配してしまう
-     * 上限を設けることで Amber が Active より目立たないようにする
-     */
-    private static readonly AMBER_MAX_HEAT;
     applyTransitions(queue: TransitionQueue): Promise<void>;
     /**
      * Record ascensions: Update RefDB when nodes become Amber
@@ -76,6 +112,7 @@ export declare class Bookkeeper {
         projectionNodes: number;
         referenceRecords: number;
         spatialCells: number;
+        fluxPoolSize: number;
     }>;
     /**
      * Apply ghostification results from cleaner fish
@@ -101,27 +138,46 @@ export declare class Bookkeeper {
     applyFossilization(fossilNodes: SphereNode[]): Promise<void>;
     /**
      * Apply decomposition results from cleaner fish
-     * [Principle] Delete from both ProjDB and RefDB, add fertility to SpatialField
+     * [Principle] Delete from both ProjDB and RefDB, add flux to SpatialField
      * [Design] decompose = 完全消去 — ProjDB (body) + RefDB (soul) 両方から削除
+     * [Design] flux = 対流因子（分解地点の活動痕跡）。近傍ノードの TTL に染み出す。
      *
      * @param decompositions Decomposition results from cleaner fish
      */
     applyDecomposition(decompositions: {
         nodeId: string;
         cellId: string;
-        fertilityGain: number;
+        fluxGain: number;
+        position: number[];
     }[]): Promise<void>;
     /**
-     * Evaluation Coefficients (2-Layer Architecture, Integer Scale)
+     * Flux Seep: fluxPool から近傍ノードの TTL にわずかずつ染み出す
      *
-     * [Design] Agent provides intuitive 0-10 scores, computation layer adjusts impact
-     *   - h, w: Primary metrics for Ascension (threshold 1000)
-     *   - d: TTL decay speed control (baseline 1000, high = early death)
+     * [Cycle] decompose → fluxPool += { position, amount }
+     *         → processFluxSeep (毎 observation) → nearby node.TTL += drip
+     *         → pool 自然蒸発 → pool < threshold → エントリ削除
      *
-     * [Tuning] Adjust these values to balance evaluation impact
+     * [Performance] O(poolSize × queryNearby) — poolSize は数十〜数百に収束
+     *   queryNearby は sampleRatio=0.3 で O(n) コストを軽減
      */
-    private static readonly EVAL_COEFFICIENTS;
-    private static readonly EVAL_NEUTRAL;
+    processFluxSeep(): Promise<void>;
+    /**
+     * Node Immunity Tracker — Bloom Filter based evaluator diversity detection
+     *
+     * [Design] reports/SANCTIFICATION_NEURON_DESIGN.md §Node免疫
+     * [Principle] Semantic blind: hashes eval delta patterns, never agent identity.
+     *
+     * Bloom Filter (32bit, 3 hashes):
+     *   Input: Δh × Δw bucketed into 6×6 = 36 patterns
+     *   Window: OBS_WINDOW observations, then reset
+     *   Trigger: saturation < MIN_DIVERSITY → stress spike → immuneMod rise
+     *
+     * immuneMod (on node struct, persisted in projectionDB):
+     *   1.0 = baseline, clamp [0.97, 1.03]
+     *   Rise: bookkeeper applies stress spike each observation
+     *   Recovery: RenalCore applies 1% per tick toward 1.0 (~6 min half-life)
+     */
+    private readonly immunityTracker;
     /**
      * Apply evaluations to existing nodes
      *

@@ -301,30 +301,100 @@ feelings [4D] ──────┼→ · returnWeights   → return 判定     
 
 ---
 
-## 実装優先度
+## 実装状態
 
-| 項目 | Tier | 影響 | コスト | 優先 |
-|------|------|------|--------|------|
-| modeWeights (感情内積→moveMode) | 1 | **大** | 中 | ★★★ |
-| stepScale (種族歩幅差) | 2 | 中 | 小 | ★★ |
-| actionThreshold (感情閾値の種族化) | 2 | 中 | 小 | ★★ |
-| tutorialCycles / sanctuaryCycles | 2 | 小 | 極小 | ★ |
-| busEmitMinH | 2 | 小 | 極小 | ★ |
-| flow フォールバックのログ | — | 小 | 極小 | ★★★ |
-| warpWeights / speciesMemoryScale | 3 | 中 | 中 | ★ (将来) |
-| actionType の内積化 | 3 | 中 | 中 | ★ (将来) |
-| Weapon 補正 | — | 大 | 大 | ★ (Explorers) |
+| 項目 | Tier | 状態 | 変更ファイル |
+|------|------|------|-------------|
+| modeWeights (感情内積→moveMode) | 1 | ✅ 完了 | fast-gate.ts |
+| stepScale (種族歩幅差) | 2 | ✅ 完了 | fast-gate.ts |
+| actionThreshold (感情閾値の種族化) | 2 | ✅ 完了 | fast-gate.ts |
+| flow フォールバックのログ | — | ✅ 完了 | agent.ts |
+| エネルギー同期 (server-authoritative) | 前提 | ✅ 完了 | gateway-server.ts, sphere-client.ts |
+| heatFactor ボーナス専用化 (floor=1.0) | 前提 | ✅ 完了 | sphere-core-adapter.ts |
+| tutorialCycles / sanctuaryCycles | 2 | 未着手 | — |
+| busEmitMinH | 2 | 未着手 | — |
+| warpWeights / speciesMemoryScale | 3 | 未着手 (将来) | — |
+| actionType の内積化 | 3 | 未着手 (将来) | — |
+| Weapon 補正 | — | 未着手 (Explorers) | — |
 
 ---
 
-## 前提となる修正 (本日完了済み)
+## 実装詳細 (2026-02-23 完了分)
 
-| 修正 | 状態 |
-|------|------|
-| エネルギー同期 (server-authoritative) | ✅ 完了 |
-| heatFactor ボーナス専用化 (floor=1.0) | ✅ 完了 |
-| sense radius 正規化 (5→1, base 0.3→0.5) | ✅ 完了 |
-| warp 失敗 = エネルギー同期バグの副次効果 | ✅ 原因特定済 |
+### Loadout 拡張
+
+```typescript
+// fast-gate.ts — Loadout に追加
+modeWeights?: ModeWeights;     // feelings · modeWeights[m] → argmax
+stepScale?: number;            // baseStep × stepScale (default 1.0)
+actionThreshold?: number;      // dominant feeling threshold (default 0.5)
+
+type ModeWeights = Record<WalkMode, [number, number, number, number]>;
+```
+
+### chooseAction() 改修
+
+```
+Before:
+  moveMode = this._walkPreference   (固定、唯一の例外: stale→explore)
+  moveStep = 固定値 (0.3 / 0.5 / 0.6)
+  threshold = 0.5 (全種族共通)
+
+After:
+  moveMode = argmax(feelings · modeWeights[m])   ← 毎サイクル動的選択
+  moveStep = 固定値 × this._stepScale             ← 種族歩幅差
+  threshold = this._actionThreshold                ← 種族感情感度
+```
+
+computeFeelings() を chooseAction() 内でも再利用。
+stale ケースの `"explore"` ハードコードは削除 — modeWeights が自然に選ぶ。
+
+### 全種族プロファイル (実装値)
+
+```
+              modeWeights (各 [sat, frust, stam, stale])        stepScale  threshold
+moth:         hot=[0.8,0.1,0,0] random=[0,0.5,0,0]              1.3        0.5
+              flow=[0,0,0.9,0]  explore=[0,0.3,0,0.8]
+scholar:      deep=[0.7,0,0,0.1] explore=[0,0.5,0,0.6]          0.7        0.6
+              flow=[0,0,0.8,0]  hot=[0.2,0.3,0,0]
+hunter:       hot=[0.5,0,0,0] explore=[0,0.6,0,0.6]             1.0        0.4
+              flow=[0,0,0.7,0] random=[0,0.2,0,0]
+scout:        explore=[0.5,0.4,0,0.7] flow=[0,0,0.8,0]          1.5        0.45
+              hot=[0.3,0,0,0]
+wanderer:     explore=[0.2,0.2,0,0.2] hot=[0.2,0.2,0,0]         1.2        0.5
+              deep=[0.2,0,0,0.2] flow=[0,0,0.9,0]
+              random=[0,0.3,0,0]
+archivist:    deep=[0.8,0,0,0.2] explore=[0,0.4,0,0.5]          0.6        0.6
+              flow=[0,0,0.9,0]  hot=[0.1,0.2,0,0]
+sniper:       hot=[0.6,0,0,0] random=[0,0.4,0,0]                0.8        0.4
+              flow=[0,0,0.7,0] explore=[0,0.3,0,0.7]
+balanced:     (modeWeights なし → _walkPreference フォールバック)  1.0        0.5
+```
+
+### flow フォールバックログ (agent.ts)
+
+```typescript
+// standardCycle() — gradient move 失敗時
+this.log(`Move fallback: ${moveMode} → flow (no gradient)`);
+```
+
+### server-authoritative energy (gateway-server.ts)
+
+全アクション応答に `energy: context.energy` を追加。
+GatewayMessage 型に `energy?: number` を追加。
+
+---
+
+## 感情内積パターンの統一構造
+
+```
+                    ┌→ · qualityVector   → sat (品質評価)      [既存]
+feelings [4D] ──────┼→ · returnWeights   → return 判定         [既存]
+                    └→ · modeWeights[m]  → moveMode 選択       [今回実装]
+
+同一の computeFeelings() から 3 つの判定が導出される。
+chooseAction() は computeFeelings() を直接呼び出す形に統一。
+```
 
 ---
 

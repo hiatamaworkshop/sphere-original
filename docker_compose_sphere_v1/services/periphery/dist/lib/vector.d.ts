@@ -31,16 +31,7 @@ export declare function scale(vec: number[], scalar: number): number[];
  */
 export declare function randomUnitVector(dim: number): number[];
 /**
- * Linear interpolation between two vectors
- * @param t Interpolation factor [0, 1]
- */
-export declare function lerp(a: number[], b: number[], t: number): number[];
-/**
  * Calculate weighted sum of multiple vectors
  */
 export declare function weightedSum(vectors: number[][], weights: number[]): number[];
-/**
- * Get vector dimension
- */
-export declare function getDimension(vec: number[]): number;
 //# sourceMappingURL=vector.d.ts.map

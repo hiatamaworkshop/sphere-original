@@ -105,16 +105,16 @@ type GatewayMessage =
   | { type: "amber_showcase"; sessionId: string; amber: AmberShowcaseEntry[] }
   | { type: "positioned"; sessionId: string; position: number[]; questVector?: number[]; remainingTime: number; query: string; tags: string[]; quest?: string }
   | { type: "entryError"; requestId: string; errors: { code: string; message: string; field?: string }[] }
-  | { type: "senseResult"; requestId: string; nodes: NearbyNode[] }
-  | { type: "scanResult"; requestId: string; nodes: L1ScanResult[] }
-  | { type: "focusResult"; requestId: string; node: NodeDetail; nearbyGhosts?: NodeDetail[] }
-  | { type: "evaluateResult"; requestId: string; success: boolean; reason?: string }
-  | { type: "moveResult"; requestId: string; result: MoveResult }
-  | { type: "warpResult"; requestId: string; result: WarpResult }
-  | { type: "emitResult"; requestId: string; success: boolean }
+  | { type: "senseResult"; requestId: string; nodes: NearbyNode[]; energy?: number }
+  | { type: "scanResult"; requestId: string; nodes: L1ScanResult[]; energy?: number }
+  | { type: "focusResult"; requestId: string; node: NodeDetail; nearbyGhosts?: NodeDetail[]; energy?: number }
+  | { type: "evaluateResult"; requestId: string; success: boolean; reason?: string; energy?: number }
+  | { type: "moveResult"; requestId: string; result: MoveResult; energy?: number }
+  | { type: "warpResult"; requestId: string; result: WarpResult; energy?: number }
+  | { type: "emitResult"; requestId: string; success: boolean; energy?: number }
   | { type: "bus_message"; data: { id: string; timestamp: number; senderId: string; payload: string } }
   | { type: "returnAck"; requestId: string }
-  | { type: "layerChanged"; requestId: string; layer: string; message: string }
+  | { type: "layerChanged"; requestId: string; layer: string; message: string; energy?: number }
   | { type: "error"; requestId?: string; error: string }
   | { type: "warning"; message: string }
   | { type: "expelled"; reason: string };

@@ -44,7 +44,8 @@ export interface FossilizationResult {
 export interface DecompositionResult {
     nodeId: string;
     cellId: string;
-    fertilityGain: number;
+    fluxGain: number;
+    position: number[];
 }
 /**
  * GhostificationResult: ゴースト化の結果
@@ -134,13 +135,13 @@ export declare class CleanerFish {
      */
     fossilize(node: SphereNode): FossilizationResult;
     /**
-     * Decomposition: fossil TTL=0 → fertility還元 + 削除
+     * Decomposition: fossil TTL=0 → flux還元 + 削除
      */
     decompose(fossilNode: SphereNode, cellId: string): DecompositionResult;
     /**
      * Evaporation: ghost TTL=0 → 痕跡なし消滅
      *
-     * [Design] Ghost は実体を持たないため、fertility 還元なし
+     * [Design] Ghost は実体を持たないため、flux 還元なし
      */
     evaporate(ghostNode: SphereNode): DecompositionResult;
     /**

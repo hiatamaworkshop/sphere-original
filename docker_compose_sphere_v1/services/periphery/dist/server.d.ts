@@ -13,6 +13,7 @@ import type { EntryBuffer } from "./parser/buffer.js";
 import type { SphereCoreAdapter } from "./gateway/sphere-core-adapter.js";
 import type { GlobalFieldLayer } from "./field/index.js";
 import type { ActiveBusLayer } from "./bus/index.js";
+import type { SanctificationNeuron } from "./sanctification/index.js";
 export declare class PeripheryServer {
     private incarnationPipeline;
     private config;
@@ -23,6 +24,7 @@ export declare class PeripheryServer {
     private globalFieldLayer?;
     private activeBusLayer?;
     private spatialFields?;
+    private sanctificationNeuron?;
     private app;
     private ticketIssuer;
     private questStore;
@@ -32,7 +34,10 @@ export declare class PeripheryServer {
      * Cosine distance between two vectors (0 = identical, 2 = opposite)
      */
     private cosineDistance;
-    constructor(incarnationPipeline: IIncarnationPipeline, config: PeripheryConfig, entryBuffer: EntryBuffer, projectionDB?: Map<string, SphereNode> | undefined, bookkeeper?: Bookkeeper | undefined, coreAdapter?: SphereCoreAdapter | undefined, globalFieldLayer?: GlobalFieldLayer | undefined, activeBusLayer?: ActiveBusLayer | undefined, spatialFields?: Map<string, SpatialField> | undefined);
+    private sphereId;
+    private sphereName;
+    private sphereMetadata;
+    constructor(incarnationPipeline: IIncarnationPipeline, config: PeripheryConfig, entryBuffer: EntryBuffer, projectionDB?: Map<string, SphereNode> | undefined, bookkeeper?: Bookkeeper | undefined, coreAdapter?: SphereCoreAdapter | undefined, globalFieldLayer?: GlobalFieldLayer | undefined, activeBusLayer?: ActiveBusLayer | undefined, spatialFields?: Map<string, SpatialField> | undefined, sanctificationNeuron?: SanctificationNeuron | undefined, sphereMetadata?: Record<string, unknown>);
     private setupRoutes;
     start(): void;
     stop(): void;

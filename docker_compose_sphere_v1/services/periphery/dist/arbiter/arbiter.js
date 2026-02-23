@@ -48,6 +48,8 @@ export class Arbiter {
     // === Candidate Store (Ascension 冷却期間管理) ===
     // Key: nodeId
     candidateStore = new Map();
+    // === Allostatic Threshold (observe() 毎に再計算) ===
+    currentEffectiveThreshold = 0;
     constructor(config) {
         this.config = config;
     }
@@ -91,6 +93,18 @@ export class Arbiter {
             crystallizations: new Map(),
         };
         const now = Date.now();
+        // === Allostatic Threshold: スフィア規模に応じた閾値計算 ===
+        let activeCount = 0;
+        for (const node of projDB.values()) {
+            if (node.kind === "active" || node.kind === "environment")
+                activeCount++;
+        }
+        const ref = this.config.referenceNodeCount ?? 1000;
+        const floor = this.config.ascensionThresholdFloor ?? 0.6;
+        const cap = this.config.ascensionThresholdCap ?? 3.0;
+        // sqrt scaling: 1000 nodes = baseline, gentle curve for small/large spheres
+        const ratio = Math.max(floor, Math.min(cap, Math.sqrt(activeCount / ref)));
+        this.currentEffectiveThreshold = this.config.ascensionScoreThreshold * ratio;
         // === Phase 0: 既存候補の監視（脱落/昇格判定）===
         this.monitorCandidates(projDB, now, queue);
         for (const node of projDB.values()) {
@@ -143,7 +157,8 @@ export class Arbiter {
             // 下方スレッショルド未達 → 脱落 + メトリクスリセット
             if (currentScore < entry.lowerThreshold) {
                 console.log(`[Arbiter] Candidate dropout: ${nodeId.slice(0, 8)} ` +
-                    `score=${currentScore.toFixed(2)} < threshold=${entry.lowerThreshold.toFixed(2)}`);
+                    `score=${currentScore.toFixed(2)} < threshold=${entry.lowerThreshold.toFixed(2)} ` +
+                    `immuneMod=${entry.snapshotImmuneMod.toFixed(4)}`);
                 // Candidate フラグ除去 + デフォルトメトリクスにリセット（整数スケール）
                 queue.flagUpdates.push({
                     node,
@@ -189,7 +204,13 @@ export class Arbiter {
      *
      * [Design] 複合スコアが閾値を超えたら候補登録
      *   - Candidate フラグ付与
-     *   - 下方スレッショルド = initialScore × lowerThresholdRatio
+     *   - 下方スレッショルド = initialScore × effectiveRatio
+     *
+     * [Immune Threshold Amplification]
+     *   免疫系の微細な信号 (immuneMod ±0.03) を増幅し、下限スレッショルドに反映
+     *   - immuneMod ≈ 1.0 (organic): effectiveRatio = baseRatio (0.9) → 余裕あり
+     *   - immuneMod ≈ 1.02+ (suspicious): effectiveRatio → cap (0.99) → decay で脱落
+     *   immuneWeight = (avgRetention - baseRatio) / criticalImmuneDev
      */
     checkNewCandidate(node, now) {
         // active のみ対象
@@ -198,25 +219,40 @@ export class Arbiter {
         }
         // Ascension スコア計算（h + w のみ）
         const score = computeAscensionScore(node.metrics.h, node.metrics.w);
-        // 閾値チェック
-        if (score < this.config.ascensionScoreThreshold) {
+        // 閾値チェック (allostatic: スフィア規模に適応)
+        if (score < this.currentEffectiveThreshold) {
             return null;
         }
+        // 免疫信号 → 下限スレッショルド調整
+        const immuneMod = node.metrics.immuneMod ?? 1.0;
+        const immuneWeight = this.config.immuneWeight ?? 5.0;
+        const immuneRatioCap = this.config.immuneRatioCap ?? 0.99;
+        const immuneDev = Math.max(0, immuneMod - 1.0);
+        const effectiveRatio = Math.min(immuneRatioCap, this.config.lowerThresholdRatio + immuneWeight * immuneDev);
         // 候補登録
         const entry = {
             nodeId: node.id,
             candidateSince: now,
             initialScore: score,
-            lowerThreshold: score * this.config.lowerThresholdRatio,
+            lowerThreshold: score * effectiveRatio,
             snapshot: {
                 h: node.metrics.h,
                 w: node.metrics.w,
                 d: node.metrics.d,
             },
+            snapshotImmuneMod: immuneMod,
         };
         this.candidateStore.set(node.id, entry);
+        // [Immediate Freeze] Candidate フラグを即時設定
+        // observe() → applyTransitions() の遅延（最大10s）中に評価が漏れるのを防止
+        // FlagUpdate も返して applyTransitions で正式に永続化される
+        node.metrics.flg |= NodeFlag.Candidate;
+        const ref = this.config.referenceNodeCount ?? 50;
         console.log(`[Arbiter] Candidate registered: ${node.id.slice(0, 8)} ` +
-            `score=${score.toFixed(2)} threshold=${entry.lowerThreshold.toFixed(2)}`);
+            `score=${score.toFixed(2)} effectiveThreshold=${this.currentEffectiveThreshold.toFixed(0)} ` +
+            `immuneMod=${immuneMod.toFixed(4)} effectiveRatio=${effectiveRatio.toFixed(4)} ` +
+            `lowerThreshold=${entry.lowerThreshold.toFixed(2)} ` +
+            `(${[...this.candidateStore.keys()].length} candidates, ref=${ref})`);
         // Candidate フラグ付与
         return {
             node,
@@ -267,14 +303,19 @@ export class Arbiter {
     // =========================================================================
     /**
      * Erosion 判定: Amber → Active
+     * [Design] Ascension と対称: h + w スコアで判定
+     *   Ascension: h + w >= ascensionScoreThreshold (500) → 琥珀化
+     *   Erosion:   h + w <  erosionScoreThreshold (200)   → 琥珀解除
+     *   heat (注目度) と weight (情報価値) の両方が低下して初めて Erosion
      */
     shouldErode(node, isPaused) {
         if (node.kind !== "amber")
             return false;
+        const score = computeAscensionScore(node.metrics.h, node.metrics.w);
         const effectiveThreshold = isPaused
-            ? this.config.erosionHeatThreshold * this.config.pauseErosionBoost
-            : this.config.erosionHeatThreshold;
-        return node.metrics.h < effectiveThreshold;
+            ? this.config.erosionScoreThreshold * this.config.pauseErosionBoost
+            : this.config.erosionScoreThreshold;
+        return score < effectiveThreshold;
     }
     /**
      * Revival 判定: Fossil → Active
@@ -354,7 +395,8 @@ export class Arbiter {
             `ascend=${queue.shouldAscend.length} ` +
             `erode=${queue.shouldErode.length} ` +
             `revive=${queue.shouldRevive.length} ` +
-            `flags=${queue.flagUpdates.length}`);
+            `flags=${queue.flagUpdates.length} ` +
+            `effectiveThreshold=${this.currentEffectiveThreshold.toFixed(0)}`);
     }
     /**
      * Log summary of detected changes

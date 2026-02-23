@@ -15,12 +15,6 @@ export interface PeripheryConfig {
         vectorDimension: number;
         modelId?: string;
     };
-    gatekeeper: {
-        maxNodesPerCapsule: number;
-        maxTopTierPerCapsule: number;
-        maxGhostRatio: number;
-        maxSummaryLength: number;
-    };
     tagger: {
         topTierCount: number;
     };
@@ -30,6 +24,7 @@ export interface PeripheryConfig {
             top: number;
             normal: number;
             ghost: number;
+            relic?: number;
         };
         tierTTLs: {
             top: number;

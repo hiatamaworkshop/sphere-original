@@ -18,22 +18,17 @@ export const DEFAULT_PERIPHERY_CONFIG = {
         vectorDimension: 384, // all-MiniLM-L6-v2 default
         modelId: "Xenova/all-MiniLM-L6-v2",
     },
-    gatekeeper: {
-        maxNodesPerCapsule: 50,
-        maxTopTierPerCapsule: 5,
-        maxGhostRatio: 0.4,
-        maxSummaryLength: 512,
-    },
     tagger: {
         topTierCount: 3,
     },
     packer: {
         // Integer scale: h/w threshold 1000, d baseline 1000
-        baseHeat: 750, // All nodes start with same baseline heat
+        baseHeat: 500, // All nodes start with same baseline heat
         tierWeights: {
             top: 800,
             normal: 500,
             ghost: 200,
+            relic: 300,
         },
         tierTTLs: {
             top: 172800, // 2 days

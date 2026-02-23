@@ -408,6 +408,7 @@ export class PhiAgent {
       const moved = await this.sphere.move(moveStep, moveMode);
       if (!moved) {
         // Gradient-based move failed (no visible nodes) — follow global field
+        this.log(`Move fallback: ${moveMode} → flow (no gradient)`);
         await this.sphere.move(moveStep, "flow");
       }
     }

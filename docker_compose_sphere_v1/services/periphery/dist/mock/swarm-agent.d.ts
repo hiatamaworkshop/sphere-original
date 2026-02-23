@@ -18,7 +18,7 @@ interface SwarmConfig {
     spawnInterval: number;
     batchSize: number;
     batchDelay: number;
-    behavior: "random" | "focused" | "distributed";
+    behavior: "random" | "focused" | "distributed" | "boost";
     topic?: string;
     topics?: string[];
     maxDuration: number;
@@ -93,7 +93,13 @@ declare class SwarmAgent {
     private randomBehavior;
     private focusedBehavior;
     private distributedBehavior;
-    explore(behavior: "random" | "focused" | "distributed"): Promise<void>;
+    /**
+     * Boost behavior: Evaluate ALL nearby nodes with maximum scores.
+     * Designed to push nodes toward amber candidacy for metabolic observation.
+     * sense → focus+evaluate each node → move to fresh area → repeat
+     */
+    private boostBehavior;
+    explore(behavior: "random" | "focused" | "distributed" | "boost"): Promise<void>;
     private delay;
 }
 declare class SwarmController {

@@ -20,10 +20,26 @@ export class Bookkeeper {
     projectionRepo;
     referenceRepo;
     spatialRepo;
-    constructor(projectionRepo, referenceRepo, spatialRepo) {
+    evalConfig;
+    // === Flux Seep: 対流因子による局所 TTL 染み出し ===
+    // [Design] 分解地点の position に flux を蓄積し、近傍ノードの TTL にわずかずつ還元する
+    // [Performance] 疎な Map — 分解イベントのたびにエントリ生成、閾値以下で自然消滅
+    static SEEP_RATE = 0.02; // pool の 2% を 1 ノードに滴下
+    static SEEP_SAMPLE_N = 3; // サイクルあたりサンプル数
+    static SEEP_DECAY = 0.995; // 毎サイクル 0.5% 蒸発
+    static SEEP_MIN_FLUX = 0.1; // この値以下でエントリ削除
+    static SEEP_RADIUS = 1.0; // queryNearby の cosine distance 上限
+    fluxPool = new Map();
+    static DEFAULT_EVAL_CONFIG = {
+        neutral: 5,
+        coefficients: { h: 5, w: 2, d: 5 },
+        amberMaxHeat: 500,
+    };
+    constructor(projectionRepo, referenceRepo, spatialRepo, evalConfig = Bookkeeper.DEFAULT_EVAL_CONFIG) {
         this.projectionRepo = projectionRepo;
         this.referenceRepo = referenceRepo;
         this.spatialRepo = spatialRepo;
+        this.evalConfig = evalConfig;
     }
     /**
      * Ingest nodes: RefDB first, then ProjDB projection
@@ -73,8 +89,6 @@ export class Bookkeeper {
                 console.log(`[Bookkeeper] refdb_create id=${node.id.slice(0, 8)} vec=${node.vector.length > 0 ? node.vector.length : "empty"}`);
             }
             else {
-                // [Principle 2] Same content = same hash = skip (deduplicated)
-                // console.log(`[Bookkeeper] refdb_dedup id=${node.id.slice(0, 8)}`);
             }
             // === Phase 2: ProjDB (Body) ===
             // [Design] ProjDB stores L1+L2 only for fast perception (scanL1/sense)
@@ -118,17 +132,12 @@ export class Bookkeeper {
      */
     static REVIVAL_TTL = 86400;
     /**
-     * Default heat for Amber nodes
-     * [Design] Amber は sense/scanL1 を支配しないよう、昇格時に heat をリセット
-     * erosionHeat (100) より余裕を持たせ、1回の低評価で即 Erosion を防ぐ
+     * Default heat for Amber nodes (on ascension)
+     * [Design] Relic (baseHeat×0.4 ≈ 300) より高い初期値で発見されやすく
+     * ただし floor ではない — 低評価で erosionHeatThreshold (100) まで落ちれば Erosion 発動
+     * 代謝凍結 (SystemCore) により自然減衰はない。heat 変動は評価のみ
      */
-    static AMBER_DEFAULT_HEAT = 200;
-    /**
-     * Maximum heat for Amber nodes
-     * [Design] 評価で heat が上がりすぎると sense/scanL1 を支配してしまう
-     * 上限を設けることで Amber が Active より目立たないようにする
-     */
-    static AMBER_MAX_HEAT = 500;
+    static AMBER_DEFAULT_HEAT = 400;
     async applyTransitions(queue) {
         const { shouldAscend, shouldErode, shouldRevive, flagUpdates, crystallizations } = queue;
         // 1. Ascension: Active → Amber
@@ -237,6 +246,7 @@ export class Bookkeeper {
             projectionNodes: await this.projectionRepo.count(),
             referenceRecords: await this.referenceRepo.count(),
             spatialCells: await this.spatialRepo.count(),
+            fluxPoolSize: this.fluxPool.size,
         };
     }
     // ============================================================
@@ -276,8 +286,9 @@ export class Bookkeeper {
     }
     /**
      * Apply decomposition results from cleaner fish
-     * [Principle] Delete from both ProjDB and RefDB, add fertility to SpatialField
+     * [Principle] Delete from both ProjDB and RefDB, add flux to SpatialField
      * [Design] decompose = 完全消去 — ProjDB (body) + RefDB (soul) 両方から削除
+     * [Design] flux = 対流因子（分解地点の活動痕跡）。近傍ノードの TTL に染み出す。
      *
      * @param decompositions Decomposition results from cleaner fish
      */
@@ -291,52 +302,119 @@ export class Bookkeeper {
         for (const id of nodeIds) {
             await this.referenceRepo.delete(id);
         }
-        // Update fertility in SpatialFields
-        const fertilityByCell = new Map();
+        // Update flux in SpatialFields (cell-based, for telemetry)
+        const fluxByCell = new Map();
         for (const d of decompositions) {
-            const current = fertilityByCell.get(d.cellId) ?? 0;
-            fertilityByCell.set(d.cellId, current + d.fertilityGain);
+            const current = fluxByCell.get(d.cellId) ?? 0;
+            fluxByCell.set(d.cellId, current + d.fluxGain);
         }
-        for (const [cellId, fertilityGain] of fertilityByCell) {
+        for (const [cellId, fluxGain] of fluxByCell) {
             const field = await this.spatialRepo.get(cellId);
             if (field) {
-                field.fertility += fertilityGain;
+                field.flux += fluxGain;
                 field.lastUpdate = Date.now();
                 await this.spatialRepo.set(cellId, field);
             }
             else {
-                // Create new field if not exists
                 await this.spatialRepo.set(cellId, {
                     cellId,
-                    fertility: fertilityGain,
+                    flux: fluxGain,
                     nodeCount: 0,
                     avgHeat: 0,
                     lastUpdate: Date.now(),
                 });
             }
         }
-        console.log(`[Bookkeeper] decomposed nodes=${nodeIds.length} refdb=${nodeIds.length} cells=${fertilityByCell.size}`);
+        // Populate fluxPool (position-based, for seep mechanism)
+        for (const d of decompositions) {
+            if (d.fluxGain > 0 && d.position.length > 0) {
+                this.fluxPool.set(d.nodeId, {
+                    position: d.position,
+                    amount: d.fluxGain,
+                });
+            }
+        }
+        console.log(`[Bookkeeper] decomposed nodes=${nodeIds.length} cells=${fluxByCell.size} pool=${this.fluxPool.size}`);
     }
     // Note: evaporateGhosts() removed - ghost evaporation is now handled by
-    // CleanerFish.evaporate() → applyDecomposition() with fertilityGain=0
+    // CleanerFish.evaporate() → applyDecomposition() with fluxGain=0
+    // ============================================================
+    // Flux Seep: 対流因子の染み出し
+    // ============================================================
+    /**
+     * Flux Seep: fluxPool から近傍ノードの TTL にわずかずつ染み出す
+     *
+     * [Cycle] decompose → fluxPool += { position, amount }
+     *         → processFluxSeep (毎 observation) → nearby node.TTL += drip
+     *         → pool 自然蒸発 → pool < threshold → エントリ削除
+     *
+     * [Performance] O(poolSize × queryNearby) — poolSize は数十〜数百に収束
+     *   queryNearby は sampleRatio=0.3 で O(n) コストを軽減
+     */
+    async processFluxSeep() {
+        if (this.fluxPool.size === 0)
+            return;
+        let totalDrip = 0;
+        let seepedEntries = 0;
+        const toDelete = [];
+        for (const [key, pool] of this.fluxPool) {
+            if (pool.amount <= Bookkeeper.SEEP_MIN_FLUX) {
+                toDelete.push(key);
+                continue;
+            }
+            // 近傍ノードをランダムサンプル（sampleRatio で走査コスト軽減）
+            const nearby = await this.projectionRepo.queryNearby(pool.position, Bookkeeper.SEEP_SAMPLE_N, Bookkeeper.SEEP_RADIUS, 0.3);
+            // TTL 滴下
+            for (const { node } of nearby) {
+                // 代謝停止ノード（Amber, Relic）と環境ノードは対象外
+                if (node.metrics.flg & NodeFlag.SystemCore)
+                    continue;
+                if (node.kind === "environment")
+                    continue;
+                const drip = pool.amount * Bookkeeper.SEEP_RATE;
+                node.metrics.ttl += drip;
+                pool.amount -= drip;
+                totalDrip += drip;
+                await this.projectionRepo.set(node.id, node);
+            }
+            if (nearby.length > 0)
+                seepedEntries++;
+            // 自然蒸発
+            pool.amount *= Bookkeeper.SEEP_DECAY;
+            // 閾値以下 → 自然消滅
+            if (pool.amount < Bookkeeper.SEEP_MIN_FLUX) {
+                toDelete.push(key);
+            }
+        }
+        // 枯渇エントリ削除
+        for (const key of toDelete) {
+            this.fluxPool.delete(key);
+        }
+        if (totalDrip > 0 || toDelete.length > 0) {
+            console.log(`[Bookkeeper] flux_seep pool=${this.fluxPool.size} seeped=${seepedEntries} ` +
+                `drip=${totalDrip.toFixed(1)} evaporated=${toDelete.length}`);
+        }
+    }
     // ============================================================
     // Evaluation Processing
     // ============================================================
     /**
-     * Evaluation Coefficients (2-Layer Architecture, Integer Scale)
+     * Node Immunity Tracker — Bloom Filter based evaluator diversity detection
      *
-     * [Design] Agent provides intuitive 0-10 scores, computation layer adjusts impact
-     *   - h, w: Primary metrics for Ascension (threshold 1000)
-     *   - d: TTL decay speed control (baseline 1000, high = early death)
+     * [Design] reports/SANCTIFICATION_NEURON_DESIGN.md §Node免疫
+     * [Principle] Semantic blind: hashes eval delta patterns, never agent identity.
      *
-     * [Tuning] Adjust these values to balance evaluation impact
+     * Bloom Filter (32bit, 3 hashes):
+     *   Input: Δh × Δw bucketed into 6×6 = 36 patterns
+     *   Window: OBS_WINDOW observations, then reset
+     *   Trigger: saturation < MIN_DIVERSITY → stress spike → immuneMod rise
+     *
+     * immuneMod (on node struct, persisted in projectionDB):
+     *   1.0 = baseline, clamp [0.97, 1.03]
+     *   Rise: bookkeeper applies stress spike each observation
+     *   Recovery: RenalCore applies 1% per tick toward 1.0 (~6 min half-life)
      */
-    static EVAL_COEFFICIENTS = {
-        h: 5, // Heat: (input - 5) * 5 → max ±25 per evaluation
-        w: 2, // Weight: (input - 5) * 2 → max ±10 per evaluation
-        d: 5, // Decay: (input - 5) * 5 → max ±25 per evaluation (affects TTL)
-    };
-    static EVAL_NEUTRAL = 5;
+    immunityTracker = new NodeImmunityTracker();
     /**
      * Apply evaluations to existing nodes
      *
@@ -377,8 +455,8 @@ export class Bookkeeper {
         let applied = 0;
         let notFound = 0;
         let frozen = 0;
-        const { h: hCoef, w: wCoef, d: dCoef } = Bookkeeper.EVAL_COEFFICIENTS;
-        const neutral = Bookkeeper.EVAL_NEUTRAL;
+        const { h: hCoef, w: wCoef, d: dCoef } = this.evalConfig.coefficients;
+        const neutral = this.evalConfig.neutral;
         for (const evaluation of evaluations) {
             const node = await this.projectionRepo.get(evaluation.nodeId);
             if (!node) {
@@ -386,8 +464,11 @@ export class Bookkeeper {
                 notFound++;
                 continue;
             }
-            // [Evaluation Freeze] Candidate フラグ持ちは評価を無視
-            if (node.metrics.flg & NodeFlag.Candidate) {
+            // [Evaluation Freeze] Candidate（昇格冷却中）と Relic/Environment は評価を無視
+            // [Note] Amber ノードは SystemCore を持つが評価は受け付ける（代謝停止 ≠ 評価不可）
+            if (node.metrics.flg & NodeFlag.Candidate ||
+                node.kind === "relic" ||
+                node.kind === "environment") {
                 frozen++;
                 continue;
             }
@@ -399,11 +480,13 @@ export class Bookkeeper {
             node.metrics.h = Math.max(0, node.metrics.h + hDelta);
             node.metrics.w = Math.max(0, node.metrics.w + wDelta);
             node.metrics.d = Math.max(0, node.metrics.d + dDelta);
-            // [Amber Heat Cap] Amber の heat が上がりすぎると sense/scanL1 を支配する
-            // 上限を設けることで Active より目立たないようにする
+            // [Amber Heat Cap] Amber の heat 上限（sense/scanL1 支配防止）
+            // 下限なし — 低評価で erosionHeatThreshold (100) まで落ちれば Erosion 発動
             if (node.kind === "amber") {
-                node.metrics.h = Math.min(node.metrics.h, Bookkeeper.AMBER_MAX_HEAT);
+                node.metrics.h = Math.min(node.metrics.h, this.evalConfig.amberMaxHeat);
             }
+            // [Node immunity] Track eval delta pattern in Bloom filter
+            this.immunityTracker.addEval(node.id, hDelta, wDelta);
             // Update node in ProjDB
             await this.projectionRepo.set(node.id, node);
             applied++;
@@ -412,7 +495,132 @@ export class Bookkeeper {
                 console.log(`[Bookkeeper] eval_apply id=${node.id.slice(0, 8)} h+=${hDelta} w+=${wDelta} d+=${dDelta.toFixed(2)}`);
             }
         }
+        // [Node immunity] Tick tracker once per observation cycle for all affected nodes
+        for (const nodeId of this.immunityTracker.affectedThisCycle()) {
+            const stressDelta = this.immunityTracker.tick(nodeId);
+            if (stressDelta > 0) {
+                const node = await this.projectionRepo.get(nodeId);
+                if (node) {
+                    const curr = node.metrics.immuneMod ?? 1.0;
+                    node.metrics.immuneMod = Math.min(1.03, curr + stressDelta);
+                    await this.projectionRepo.set(nodeId, node);
+                    console.log(`[Bookkeeper] immunity_spike id=${nodeId.slice(0, 8)} immuneMod=${node.metrics.immuneMod.toFixed(4)}`);
+                }
+            }
+        }
+        this.immunityTracker.endCycle();
         console.log(`[Bookkeeper] evaluations applied=${applied} not_found=${notFound} frozen=${frozen}`);
     }
+}
+// ============================================================
+// Node Immunity Tracker
+// ============================================================
+/**
+ * Per-node Bloom filter tracking evaluator pattern diversity.
+ *
+ * Lives in-memory (volatile): resets on restart, which is acceptable
+ * since the 2-minute window is short enough that loss is negligible.
+ * immuneMod itself persists on the node struct in projectionDB.
+ */
+class NodeImmunityTracker {
+    // Window: reset filter after this many observation cycles
+    static OBS_WINDOW = 12; // 12 × 10s = 120s
+    // Diversity threshold: if fewer than this fraction of 32 bits are set → low diversity
+    static MIN_DIVERSITY = 0.40;
+    // Stress spike applied to immuneMod when low diversity detected
+    static HARD_SPIKE = 0.005; // per firing obs; clamp limits total
+    states = new Map();
+    cycleAffected = new Set();
+    /** Register one evaluation for a node this cycle. */
+    addEval(nodeId, hDelta, wDelta) {
+        let s = this.states.get(nodeId);
+        if (!s) {
+            s = { bits: 0, obsCount: 0 };
+            this.states.set(nodeId, s);
+        }
+        s.bits |= bloomBits(hDelta, wDelta);
+        this.cycleAffected.add(nodeId);
+    }
+    /** Nodes that received at least one eval this cycle. */
+    affectedThisCycle() {
+        return this.cycleAffected;
+    }
+    /**
+     * Advance one observation cycle for a node.
+     * Returns stress delta to apply to immuneMod (0 or HARD_SPIKE).
+     */
+    tick(nodeId) {
+        const s = this.states.get(nodeId);
+        if (!s)
+            return 0;
+        s.obsCount++;
+        const saturation = popcount32(s.bits) / 32;
+        const stress = saturation < NodeImmunityTracker.MIN_DIVERSITY
+            ? NodeImmunityTracker.HARD_SPIKE
+            : 0;
+        if (s.obsCount >= NodeImmunityTracker.OBS_WINDOW) {
+            s.bits = 0;
+            s.obsCount = 0;
+        }
+        return stress;
+    }
+    /** Clear the per-cycle affected set after tick() calls. */
+    endCycle() {
+        this.cycleAffected.clear();
+    }
+}
+// ── Bloom Filter helpers ──────────────────────────────────────
+/**
+ * Bucket Δh (range ±25) into 6 levels.
+ *   0: ≤-17  1: -17~-8  2: -8~0  3: 0~8  4: 8~17  5: >17
+ */
+function hBucket(dh) {
+    if (dh <= -17)
+        return 0;
+    if (dh <= -8)
+        return 1;
+    if (dh <= 0)
+        return 2;
+    if (dh <= 8)
+        return 3;
+    if (dh <= 17)
+        return 4;
+    return 5;
+}
+/**
+ * Bucket Δw (range ±10) into 6 levels.
+ *   0: ≤-7  1: -7~-3  2: -3~0  3: 0~3  4: 3~7  5: >7
+ */
+function wBucket(dw) {
+    if (dw <= -7)
+        return 0;
+    if (dw <= -3)
+        return 1;
+    if (dw <= 0)
+        return 2;
+    if (dw <= 3)
+        return 3;
+    if (dw <= 7)
+        return 4;
+    return 5;
+}
+/**
+ * Map pattern index (0–35) to 3 bit positions in a 32-bit filter.
+ * Three independent hash functions via prime-offset modular arithmetic.
+ */
+function bloomBits(dh, dw) {
+    const p = hBucket(dh) * 6 + wBucket(dw); // 0–35
+    const b1 = p % 32;
+    const b2 = (p * 7 + 11) % 32;
+    const b3 = (p * 13 + 7) % 32;
+    return (1 << b1) | (1 << b2) | (1 << b3);
+}
+/** Count set bits in a 32-bit integer (Hamming weight). */
+function popcount32(n) {
+    n = n >>> 0;
+    n = n - ((n >>> 1) & 0x55555555);
+    n = (n & 0x33333333) + ((n >>> 2) & 0x33333333);
+    n = (n + (n >>> 4)) & 0x0f0f0f0f;
+    return (n * 0x01010101) >>> 24;
 }
 //# sourceMappingURL=bookkeeper.js.map

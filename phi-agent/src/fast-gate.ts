@@ -184,6 +184,9 @@ export type ReturnWeights = [number, number, number, number];
 // Same Sphere, same phi, same nodes —
 // different Loadout = different personality. Zero retraining.
 
+/** Mode weights: feelings · modeWeights[mode] → score. argmax wins. */
+export type ModeWeights = Record<WalkMode, [number, number, number, number]>;
+
 export interface Loadout {
   name: string;
   weights?: Partial<FastGateWeights>;
@@ -196,6 +199,12 @@ export interface Loadout {
   minCycles: number;
   /** Evaluation perspective — shapes what phi asks about a node */
   evalFocus: string;
+  /** Feelings → moveMode: feelings · modeWeights[m] → argmax selects mode each cycle */
+  modeWeights?: ModeWeights;
+  /** Move step multiplier: baseStep × stepScale (default 1.0) */
+  stepScale?: number;
+  /** Dominant feeling threshold for action switch (default 0.5) */
+  actionThreshold?: number;
 }
 
 export const LOADOUTS: Record<string, Loadout> = {
@@ -210,6 +219,17 @@ export const LOADOUTS: Record<string, Loadout> = {
     returnWeights: [0.3, 0.2, 0.3, 0.2],
     walkPreference: "explore",
     minCycles: 3,
+    modeWeights: {
+      //           [sat,  frust, stam, stale]
+      hot:        [0.4,  0.2,  0.0,  0.0],
+      deep:       [0.3,  0.0,  0.0,  0.1],
+      explore:    [0.2,  0.3,  0.0,  0.7],
+      flow:       [0.0,  0.0,  0.8,  0.0],
+      random:     [0.0,  0.3,  0.0,  0.0],
+      fresh:      [0.1,  0.1,  0.0,  0.2],
+    },
+    stepScale: 1.0,
+    actionThreshold: 0.5,
     evalFocus: "Observe this node as a neutral explorer.\n\nRate (0–10, 5=neutral):\nheat = motion/attention (0=still, 10=active)\nweight = density (0=light, 10=heavy)\ndecay = fade rate (0=long-lived, 10=short-lived)",
   },
   scholar: {
@@ -224,6 +244,16 @@ export const LOADOUTS: Record<string, Loadout> = {
     returnWeights: [0.2, 0.1, 0.1, 0.6],
     walkPreference: "deep",
     minCycles: 5,
+    modeWeights: {
+      hot:        [0.1,  0.2,  0.0,  0.0],
+      deep:       [0.7,  0.0,  0.0,  0.1],
+      explore:    [0.0,  0.5,  0.0,  0.6],
+      flow:       [0.0,  0.0,  0.8,  0.0],
+      random:     [0.0,  0.1,  0.0,  0.0],
+      fresh:      [0.1,  0.1,  0.0,  0.3],
+    },
+    stepScale: 0.7,
+    actionThreshold: 0.6,
     evalFocus: "Observe this node as a scholar seeking knowledge.\n\nRate (0–10, 5=neutral):\nheat = motion/attention (0=still, 10=active)\nweight = density (0=light, 10=heavy)\ndecay = fade rate (0=long-lived, 10=short-lived)",
   },
   scout: {
@@ -238,6 +268,16 @@ export const LOADOUTS: Record<string, Loadout> = {
     returnWeights: [0.4, 0.3, 0.2, 0.1],
     walkPreference: "explore",
     minCycles: 2,
+    modeWeights: {
+      hot:        [0.3,  0.1,  0.0,  0.0],
+      deep:       [0.0,  0.0,  0.0,  0.0],
+      explore:    [0.5,  0.4,  0.0,  0.7],
+      flow:       [0.0,  0.0,  0.8,  0.0],
+      random:     [0.0,  0.3,  0.0,  0.1],
+      fresh:      [0.2,  0.1,  0.0,  0.2],
+    },
+    stepScale: 1.5,
+    actionThreshold: 0.45,
     evalFocus: "Observe this node as a scout seeking novelty.",
   },
   archivist: {
@@ -274,6 +314,16 @@ export const LOADOUTS: Record<string, Loadout> = {
     returnWeights: [0.2, 0.1, 0.1, 0.6],       // staleness-driven (hermit value)
     walkPreference: "deep",
     minCycles: 4,
+    modeWeights: {
+      hot:        [0.0,  0.1,  0.0,  0.0],
+      deep:       [0.8,  0.0,  0.0,  0.2],
+      explore:    [0.0,  0.4,  0.0,  0.5],
+      flow:       [0.0,  0.0,  0.9,  0.0],
+      random:     [0.0,  0.1,  0.0,  0.0],
+      fresh:      [0.1,  0.3,  0.0,  0.2],
+    },
+    stepScale: 0.6,
+    actionThreshold: 0.6,
     evalFocus: "Observe this node as an archivist seeking stable knowledge.\n\nRate (0–10, 5=neutral):\nheat = motion/attention (0=still, 10=active)\nweight = density (0=light, 10=heavy)\ndecay = fade rate (0=long-lived, 10=short-lived)",
   },
   hunter: {
@@ -288,6 +338,16 @@ export const LOADOUTS: Record<string, Loadout> = {
     returnWeights: [0.3, 0.4, 0.2, 0.1],
     walkPreference: "hot",
     minCycles: 3,
+    modeWeights: {
+      hot:        [0.5,  0.0,  0.0,  0.0],
+      deep:       [0.1,  0.0,  0.0,  0.0],
+      explore:    [0.0,  0.6,  0.0,  0.6],
+      flow:       [0.0,  0.0,  0.7,  0.0],
+      random:     [0.0,  0.3,  0.0,  0.0],
+      fresh:      [0.3,  0.0,  0.0,  0.3],
+    },
+    stepScale: 1.0,
+    actionThreshold: 0.4,
     evalFocus: "Observe this node as a hunter seeking high-value targets.\n\nRate (0–10, 5=neutral):\nheat = motion/attention (0=still, 10=active)\nweight = density (0=light, 10=heavy)\ndecay = fade rate (0=long-lived, 10=short-lived)",
   },
   // --- Extreme patterns (experimental) ---
@@ -303,6 +363,16 @@ export const LOADOUTS: Record<string, Loadout> = {
     returnWeights: [0.5, 0.1, 0.2, 0.2],
     walkPreference: "hot",
     minCycles: 3,
+    modeWeights: {
+      hot:        [0.8,  0.1,  0.0,  0.0],
+      deep:       [0.0,  0.0,  0.0,  0.0],
+      explore:    [0.0,  0.2,  0.0,  0.7],
+      flow:       [0.0,  0.0,  0.9,  0.0],
+      random:     [0.0,  0.5,  0.0,  0.0],
+      fresh:      [0.1,  0.1,  0.0,  0.2],
+    },
+    stepScale: 1.3,
+    actionThreshold: 0.45,
     evalFocus: "Observe this node like a moth drawn to light.",
   },
   wanderer: {
@@ -314,6 +384,16 @@ export const LOADOUTS: Record<string, Loadout> = {
     returnWeights: [0.0, 0.0, 1.0, 0.0],
     walkPreference: "explore",
     minCycles: 1,
+    modeWeights: {
+      hot:        [0.2,  0.2,  0.0,  0.2],
+      deep:       [0.2,  0.0,  0.0,  0.2],
+      explore:    [0.2,  0.2,  0.0,  0.2],
+      flow:       [0.0,  0.0,  0.9,  0.0],
+      random:     [0.2,  0.2,  0.0,  0.2],
+      fresh:      [0.2,  0.2,  0.0,  0.2],
+    },
+    stepScale: 1.0,
+    actionThreshold: 0.5,
     evalFocus: "Observe this node without bias.\n\nRate (0–10, 5=neutral):\nheat = motion/attention (0=still, 10=active)\nweight = density (0=light, 10=heavy)\ndecay = fade rate (0=long-lived, 10=short-lived)",
   },
   sniper: {
@@ -328,6 +408,16 @@ export const LOADOUTS: Record<string, Loadout> = {
     returnWeights: [0.5, 0.3, 0.1, 0.1],
     walkPreference: "hot",
     minCycles: 2,
+    modeWeights: {
+      hot:        [0.6,  0.0,  0.0,  0.0],
+      deep:       [0.2,  0.0,  0.0,  0.1],
+      explore:    [0.0,  0.5,  0.0,  0.6],
+      flow:       [0.0,  0.0,  0.8,  0.0],
+      random:     [0.0,  0.3,  0.0,  0.0],
+      fresh:      [0.2,  0.1,  0.0,  0.3],
+    },
+    stepScale: 1.0,
+    actionThreshold: 0.45,
     evalFocus: "Observe this node as a sniper seeking precision targets.\n\nRate (0–10, 5=neutral):\nheat = motion/attention (0=still, 10=active)\nweight = density (0=light, 10=heavy)\ndecay = fade rate (0=long-lived, 10=short-lived)",
   },
 };
@@ -524,6 +614,9 @@ export class FastGate {
   private weapon: Weapon;
   private _minCycles: number;
   private _walkPreference: WalkMode;
+  private _modeWeights: ModeWeights | null;
+  private _stepScale: number;
+  private _actionThreshold: number;
   private _evalFocus: string;
   private _lastActionWasScout = false;
   private _speciesHotNodes: Map<string, number>;
@@ -542,6 +635,9 @@ export class FastGate {
     this.returnWeights = l.returnWeights;
     this._minCycles = l.minCycles;
     this._walkPreference = l.walkPreference;
+    this._modeWeights = l.modeWeights ?? null;
+    this._stepScale = l.stepScale ?? 1.0;
+    this._actionThreshold = l.actionThreshold ?? 0.5;
     this._evalFocus = l.evalFocus;
     this.weights = {
       metrics: { ...DEFAULT_WEIGHTS.metrics, ...l.weights?.metrics },
@@ -753,15 +849,24 @@ export class FastGate {
   //   none dominant     → standard cycle
 
   chooseAction(energyRatio: number): { type: string; moveStep: number; moveMode: WalkMode } {
-    const qp = this.memory.qualityProfile;
-    const qv = this.qualityVector;
-    const sat = qp[0] * qv[0] + qp[1] * qv[1] + qp[2] * qv[2] + qp[3] * qv[3];
-    const frust = this.memory.frustration;
-    const stam = Math.max(0, 1 - energyRatio);
-    const stale = this.memory.staleness;
+    const { sat, frust, stam, stale } = this.computeFeelings(energyRatio);
+    const f = [sat, frust, stam, stale] as const;
 
-    // Find dominant feeling (above threshold)
-    const threshold = 0.5;
+    // --- 1. moveMode: feelings · modeWeights → argmax ---
+    let moveMode: WalkMode = this._walkPreference;
+    if (this._modeWeights) {
+      let bestScore = -Infinity;
+      for (const [mode, w] of Object.entries(this._modeWeights) as [WalkMode, [number, number, number, number]][]) {
+        const score = f[0] * w[0] + f[1] * w[1] + f[2] * w[2] + f[3] * w[3];
+        if (score > bestScore) {
+          bestScore = score;
+          moveMode = mode;
+        }
+      }
+    }
+
+    // --- 2. actionType: dominant feeling → behavior ---
+    const threshold = this._actionThreshold;
     const feelings = [
       { name: "sat" as const, value: sat },
       { name: "frust" as const, value: frust },
@@ -772,37 +877,36 @@ export class FastGate {
 
     if (dominant.value < threshold) {
       this._lastActionWasScout = false;
-      return { type: "standard", moveStep: 0.3, moveMode: this._walkPreference };
+      return { type: "standard", moveStep: 0.3 * this._stepScale, moveMode };
     }
 
     // Scout trap guard: scout is a single breath, not a permanent state.
     // After scout, force standard so new data (focus+eval) can update feelings.
     if (dominant.name === "stam" && this._lastActionWasScout) {
       this._lastActionWasScout = false;
-      return { type: "standard", moveStep: 0.3, moveMode: this._walkPreference };
+      return { type: "standard", moveStep: 0.3 * this._stepScale, moveMode };
     }
 
     switch (dominant.name) {
       case "sat":
         // Satisfied → camp: stay, re-sense without moving, exploit area
         this._lastActionWasScout = false;
-        return { type: "camp", moveStep: 0, moveMode: this._walkPreference };
+        return { type: "camp", moveStep: 0, moveMode };
       case "frust":
-        // Frustrated → leap: big move, personality-driven escape
-        // hunter flees toward heat, hermit toward stability
+        // Frustrated → leap: big move, escape direction driven by feelings
         this._lastActionWasScout = false;
-        return { type: "leap", moveStep: 0.6, moveMode: this._walkPreference };
+        return { type: "leap", moveStep: 0.6 * this._stepScale, moveMode };
       case "stale":
-        // Bored → leap: force "explore" to break pattern (override personality)
+        // Bored → leap: feelings already select explore-biased mode via modeWeights
         this._lastActionWasScout = false;
-        return { type: "leap", moveStep: 0.5, moveMode: "explore" };
+        return { type: "leap", moveStep: 0.5 * this._stepScale, moveMode };
       case "stam":
         // Tired → scout: sense-only, skip focus+eval to conserve energy
         this._lastActionWasScout = true;
-        return { type: "scout", moveStep: 0.3, moveMode: this._walkPreference };
+        return { type: "scout", moveStep: 0.3 * this._stepScale, moveMode };
       default:
         this._lastActionWasScout = false;
-        return { type: "standard", moveStep: 0.3, moveMode: this._walkPreference };
+        return { type: "standard", moveStep: 0.3 * this._stepScale, moveMode };
     }
   }
 
