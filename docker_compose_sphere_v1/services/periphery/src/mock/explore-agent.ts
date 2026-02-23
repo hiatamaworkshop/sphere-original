@@ -160,7 +160,7 @@ interface RulebookConstraints {
 
 // Gateway → Agent messages
 type GatewayMessage =
-  | { type: "welcome"; sessionId: string; rulebookUrl: string; quests: QuestSummary[]; message: string }
+  | { type: "welcome"; sessionId: string; rulebookUrl: string; quests?: QuestSummary[]; message: string }
   | { type: "processing"; sessionId: string; message: string }
   | { type: "positioned"; sessionId: string; position: number[]; remainingTime: number; query: string; tags: string[]; quest?: string }
   | { type: "entryError"; requestId: string; errors: { code: string; message: string; field?: string }[] }
@@ -170,11 +170,13 @@ type GatewayMessage =
   | { type: "evaluateResult"; requestId: string; success: boolean; reason?: string }
   | { type: "moveResult"; requestId: string; result: MoveResult }
   | { type: "warpResult"; requestId: string; result: WarpResult }
-  | { type: "returnAck"; requestId: string }
   | { type: "layerChanged"; requestId: string; layer: string; message: string }
   | { type: "error"; requestId?: string; error: string }
   | { type: "warning"; message: string }
-  | { type: "expelled"; reason: string };
+  | { type: "expelled"; reason: string }
+  // Vestibule messages
+  | { type: "vestibuleEntered"; requestId?: string; sessionId: string; auto: { evaluationsApplied: number; autoCapsuleSaved: boolean }; commands: { name: string; description: string }[]; farewell: string }
+  | { type: "farewell"; requestId: string };
 
 // ============================================================
 // Explore Agent
@@ -416,14 +418,13 @@ export class ExploreAgent {
       case "welcome":
         this.sessionId = msg.sessionId;
         this.phase = "pending";
-        this.logEvent("SESSION_STARTED", `session=${msg.sessionId.substring(0, 8)}... quests=${msg.quests.length}`);
+        this.logEvent("SESSION_STARTED", `session=${msg.sessionId.substring(0, 8)}...`);
         console.log(`[${this.name}] Welcome received: ${msg.message}`);
         console.log(`[${this.name}]   Session: ${msg.sessionId}`);
-        console.log(`[${this.name}]   Quests available: ${msg.quests.length}`);
         onWelcome({
           sessionId: msg.sessionId,
           rulebookUrl: msg.rulebookUrl,
-          quests: msg.quests,
+          quests: msg.quests ?? [],
         });
         break;
 
@@ -505,8 +506,17 @@ export class ExploreAgent {
         this.resolveRequest(msg.requestId, msg);
         break;
 
-      case "returnAck":
-        this.logEvent("RETURN_ACKNOWLEDGED", "離脱完了");
+      case "vestibuleEntered": {
+        const ve = msg as Extract<GatewayMessage, { type: "vestibuleEntered" }>;
+        this.logEvent("VESTIBULE_ENTERED", `evaluations=${ve.auto.evaluationsApplied} commands=${ve.commands.map(c => c.name).join(",")}`);
+        if (ve.requestId) {
+          this.resolveRequest(ve.requestId, msg);
+        }
+        break;
+      }
+
+      case "farewell":
+        this.logEvent("FAREWELL", "Session ended by server");
         this.resolveRequest(msg.requestId, msg);
         break;
 
@@ -667,7 +677,10 @@ export class ExploreAgent {
   }
 
   async return(): Promise<void> {
-    await this.sendRequest<{ type: "returnAck" }>("return", {});
+    // return → vestibuleEntered (with requestId)
+    await this.sendRequest<Extract<GatewayMessage, { type: "vestibuleEntered" }>>("return", {});
+    // acknowledge → farewell → server closes connection
+    await this.sendRequest<{ type: "farewell" }>("acknowledge", {});
   }
 
   async enterSanctuary(): Promise<string> {

@@ -103,13 +103,12 @@ type GatewayMessage =
   | { type: "warpResult"; requestId: string; result: WarpResult; energy?: number }
   | { type: "emitResult"; requestId: string; success: boolean; energy?: number }
   | { type: "bus_message"; data: { id: string; timestamp: number; senderId: string; payload: string } }
-  | { type: "returnAck"; requestId: string }
   | { type: "layerChanged"; requestId: string; layer: string; message: string; energy?: number }
   | { type: "error"; requestId?: string; error: string }
   | { type: "warning"; message: string }
   | { type: "expelled"; reason: string }
   // Vestibule messages
-  | { type: "vestibuleEntered"; sessionId: string; auto: { evaluationsApplied: number; autoCapsuleSaved: boolean }; commands: { name: string; description: string }[]; farewell: string }
+  | { type: "vestibuleEntered"; requestId?: string; sessionId: string; auto: { evaluationsApplied: number; autoCapsuleSaved: boolean }; commands: { name: string; description: string }[]; farewell: string }
   | { type: "submitCapsuleResult"; requestId: string; success: boolean; nodeCount?: number; evaluationCount?: number; errors?: string[] }
   | { type: "receipt"; requestId: string; data: any }
   | { type: "trail"; requestId: string; data: any }
@@ -740,14 +739,11 @@ export class GatewayServer {
 
       case "return": {
         await context.return(msg.capsule);
-        // Enter vestibule instead of immediate disconnect
-        const autoResult = context.ended
-          ? { evaluationsApplied: 0, autoCapsuleSaved: true }  // fallback (shouldn't happen)
-          : { evaluationsApplied: 0, autoCapsuleSaved: true };
         // enterVestibule was called inside context.return(), get result via getReceipt
         const receipt = context.getReceipt();
         this.send(socket, {
           type: "vestibuleEntered",
+          requestId,
           sessionId,
           auto: receipt.autoProcess,
           commands: VESTIBULE_COMMANDS,

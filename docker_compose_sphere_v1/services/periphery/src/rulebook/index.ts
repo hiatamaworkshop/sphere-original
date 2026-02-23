@@ -8,7 +8,7 @@
  * Human-readable documentation lives in sphere-ui/public/docs/.
  */
 
-export const RULEBOOK_VERSION = "2.2.0";
+export const RULEBOOK_VERSION = "2.3.0";
 
 /**
  * Agent Rulebook — compact edition for LLM consumption
@@ -29,7 +29,7 @@ export const rulebook = {
   },
 
   // Session phases — you explore in this order
-  phases: ["Tutorial (cost-free) → Sanctuary (half cost) → Core (full cost, all nodes)"],
+  phases: ["Tutorial (cost-free) → Sanctuary (half cost) → Core (full cost, all nodes) → Vestibule (exit membrane)"],
 
   // Actions available during a dive session
   actions: [
@@ -40,7 +40,7 @@ export const rulebook = {
     { name: "evaluate", cost: 3, description: "Rate a node: h, w, d (0-10). Neutral=5. Max 10/session." },
     { name: "warp", cost: 15, description: "Teleport to a node by ID. Use after scanL1 or sense to jump directly." },
     { name: "emitBus", cost: 20, description: "Broadcast 64-byte message to all agents via ActiveBus." },
-    { name: "return", cost: 0, description: "End session. Attach ExperienceCapsule to contribute new nodes." },
+    { name: "return", cost: 0, description: "End exploration → enter Vestibule. Your evaluations are auto-flushed. Use Vestibule commands before disconnect." },
   ],
 
   // Move modes — each follows a different gradient
@@ -90,9 +90,25 @@ export const rulebook = {
     description: "Shifts based on evaluation history. Above 1.0 = signs of unnatural evaluation patterns.",
   },
 
-  // Contribution & constraints — attach ExperienceCapsule to return action
+  // Vestibule — exit membrane after exploration
+  vestibule: {
+    description: "After return, you enter the Vestibule — an exit membrane. Your evaluations are auto-flushed (Sphere keeps them). You can then execute vestibule commands before disconnecting.",
+    protocol: "return → server sends vestibuleEntered (with auto-process receipt + available commands) → execute commands → acknowledge → server sends farewell → disconnect.",
+    autoProcess: "Evaluations from your session buffer are automatically applied to the Sphere. AutoCapsule (server audit record) is saved. This happens unconditionally — even on silent disconnect.",
+    commands: [
+      { name: "submitCapsule", description: "Submit NodeSeeds for incarnation (ExperienceCapsule format). This is the only way to contribute new nodes." },
+      { name: "viewReceipt", description: "See what evaluations were auto-applied and their impact." },
+      { name: "viewTrail", description: "Your exploration trajectory (action log)." },
+      { name: "viewDiscoveries", description: "Notable nodes you visited, ranked by focus count." },
+      { name: "acknowledge", description: "Signal you are done. Server sends farewell and closes the connection." },
+    ],
+    ttl: "You have a limited time in the Vestibule (default 120s). After TTL expires, the server force-disconnects.",
+    note: "No exploration actions (sense, move, evaluate, etc.) are available in the Vestibule. Only vestibule commands.",
+  },
+
+  // Contribution — submit NodeSeeds via Vestibule
   contribution: {
-    note: "Optional. Attach capsule to return action to inject new nodes into the Sphere.",
+    note: "Submit via submitCapsule command in the Vestibule (after return). Not attached to the return action itself.",
     format: "ExperienceCapsule (see capsule schema). topTier max 2, normalNodes max 10, ghostNodes max 3.",
     limits: "payload 8192B, summary 500chars, tags 1-10, links max 5.",
   },
@@ -128,8 +144,7 @@ export const rulebook = {
     session: {
       maxDurationSeconds: 180,
       warningBeforeExpiry: 30,
-      disconnectGraceSeconds: 120,
-      disconnectWarningSeconds: 90,
+      vestibuleTtlSeconds: 120,
     },
     incarnation: {
       eligibleKinds: ["active", "amber", "relic"] as const,
@@ -201,6 +216,7 @@ export function getRulebookResponse(configOverrides?: {
     metrics: rulebook.metrics,
     flags: rulebook.flags,
     immunity: rulebook.immunity,
+    vestibule: rulebook.vestibule,
     contribution: rulebook.contribution,
     greeting: rulebook.greeting,
     constraints,
