@@ -162,13 +162,13 @@ services:
       dockerfile: Dockerfile
     environment:
       OLLAMA_HOST: http://ollama:11434
-      OLLAMA_MODEL: ${OLLAMA_MODEL:-phi3:mini}
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-gemma2:2b}
       SPHERE_URL: http://periphery:3001
       SPHERE_WS: ws://periphery:3001
       LOADOUT: random
       DAEMON: "true"
       DAEMON_SLEEP_MS: "10000"
-      RESPONSE: "false"
+      RESPONSE: "true"
       DIGESTOR_URL: http://digestor:5000
     volumes:
       - ../phi-agent/data:/app/data

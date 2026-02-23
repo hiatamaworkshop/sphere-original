@@ -314,11 +314,13 @@ export class PhiAgent {
     }
   }
 
-  /** Sanctuary: sense amber+relic, focus. Energy cost = 50% of normal. */
+  /** Sanctuary: sense amber+relic, focus. Energy cost = 50% of normal.
+   *  3 cycles max — enough to survey amber + relic landscape.
+   *  Energy carries over to Core (+30 recovery), so spending here is a tradeoff. */
   private async sanctuaryExplore(): Promise<void> {
-    const CYCLES = 2;
-    for (let i = 0; i < CYCLES && this.running; i++) {
-      this.log(`Sanctuary ${i + 1}/${CYCLES} (energy: ${this.sphere.currentEnergy})`);
+    const MAX_CYCLES = 3;
+    for (let cycle = 1; cycle <= MAX_CYCLES && this.running; cycle++) {
+      this.log(`Sanctuary ${cycle}/${MAX_CYCLES} (energy: ${this.sphere.currentEnergy})`);
       if (!this.canAfford("sense")) break;
       const nodes = await this.sphere.sense(this.config.senseRadius);
       this.log(`Sanctuary: sensed ${nodes.length} nodes (amber + relic)`);
@@ -338,6 +340,7 @@ export class PhiAgent {
         this.gate.memory.markVisited(nodes[idx].id);
       }
     }
+    this.log(`Sanctuary done (energy: ${this.sphere.currentEnergy})`);
   }
 
   // ===== Evaluator: Real-time exploration + evaluation =====
@@ -890,9 +893,13 @@ Your overall experience:
 
     const voiceGuide = SPECIES_VOICE[this.gate.loadoutName] ?? SPECIES_VOICE.balanced;
 
-    const prompt = `Nodes encountered:\n${encounterList}${experienceBlock}\nWrite your Sphere diary. Two short paragraphs.`;
+    const prompt = `Nodes encountered:\n${encounterList}${experienceBlock}
+Reflect on the DIVE EXPERIENCE itself — not just the nodes.
+Consider: the layer progression (Tutorial → Sanctuary → Core), energy management,
+the rulebook you received, the showcase of amber nodes, move modes, sense/focus workflow.
+What felt smooth? What was confusing or unnecessary? Two short paragraphs.`;
 
-    const system = `You are an explorer in the Sphere. ${voiceGuide} Write about what you found and felt.`;
+    const system = `You are an explorer reviewing your Sphere dive experience. ${voiceGuide} Focus on the journey mechanics and systems, not just node content.`;
 
     const response = await this.ollama.generateText(prompt, system);
 
