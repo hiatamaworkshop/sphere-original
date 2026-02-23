@@ -28,7 +28,6 @@ import type { EntryBuffer } from "../parser/buffer.js";
 import type { IIncarnationPipeline } from "../incarnation/pipeline.js";
 import type { NearbyNode, NodeDetail, MoveResult, WarpResult, WalkMode, EntryRequest, AmberShowcaseEntry, ScanResult, L1ScanResult } from "../types/gateway.js";
 import type { ExperienceCapsule } from "../types/capsule.js";
-import type { QuestStore } from "./quest-store.js";
 import type { SphereCoreAdapter } from "./sphere-core-adapter.js";
 import type { UnifiedAmberCache } from "./amber-cache.js";
 import type { GlobalFieldLayer } from "../field/index.js";
@@ -49,21 +48,6 @@ export const DEFAULT_GATEWAY_CONFIG: GatewayServerConfig = {
   port: 8081,
   rulebookUrl: "/rulebook",
 };
-
-// ============================================================
-// Showcase Types (Quest/Amber for pre-dive browsing)
-// ============================================================
-
-/**
- * Quest Summary: External question awaiting verification
- * Re-exported from QuestStore with additional fields for welcome message
- */
-interface QuestSummary {
-  id: string;
-  question: string;
-  tags: string[];
-  submittedAt: number;
-}
 
 // ============================================================
 // Message Types (Agent ↔ Gateway)
@@ -94,16 +78,16 @@ type AgentMessage =
  *   - amber_showcase: Amber nodes during Parser wait (L1/L2 only)
  *   - positioned: Ready for full dive with initial position
  *
- * [Amber Cache Design - SHOWCASE_QUEST_DESIGN_MEMO v7]
+ * [Amber Cache Design]
  *   - Unified cache: Single Map + showcaseIds Set
  *   - Showcase: L1/L2 only (id, summary, heat, tags, kind)
  *   - Dynamic: Internal cache for focus optimization (not exposed)
  */
 type GatewayMessage =
-  | { type: "welcome"; sessionId: string; rulebookUrl: string; quests: QuestSummary[]; message: string }
+  | { type: "welcome"; sessionId: string; rulebookUrl: string; message: string }
   | { type: "processing"; sessionId: string; message: string }
   | { type: "amber_showcase"; sessionId: string; amber: AmberShowcaseEntry[] }
-  | { type: "positioned"; sessionId: string; position: number[]; questVector?: number[]; remainingTime: number; query: string; tags: string[]; quest?: string }
+  | { type: "positioned"; sessionId: string; position: number[]; remainingTime: number; query: string; tags: string[] }
   | { type: "entryError"; requestId: string; errors: { code: string; message: string; field?: string }[] }
   | { type: "senseResult"; requestId: string; nodes: NearbyNode[]; energy?: number }
   | { type: "scanResult"; requestId: string; nodes: L1ScanResult[]; energy?: number }
@@ -224,7 +208,6 @@ export class GatewayServer {
     private entryBuffer: EntryBuffer,
     private config: GatewayServerConfig = DEFAULT_GATEWAY_CONFIG,
     private pipeline?: IIncarnationPipeline,
-    private questStore?: QuestStore,
     private coreAdapter?: SphereCoreAdapter,
     private amberCache?: UnifiedAmberCache,
     private globalFieldLayer?: GlobalFieldLayer,
@@ -400,12 +383,10 @@ export class GatewayServer {
     });
 
     // Send "welcome" - agent should now fetch Rulebook and send EntryRequest
-    // Include Quest Showcase for pre-dive browsing
     this.send(socket, {
       type: "welcome",
       sessionId,
       rulebookUrl: this.config.rulebookUrl || "/rulebook",
-      quests: this.getQuestShowcase(),
       message: "Read the Rulebook, then send EntryRequest to begin your dive.",
     });
 
@@ -575,7 +556,6 @@ export class GatewayServer {
       const parsed = await this.entryBuffer.enqueueDiveEntry(
         sessionId,
         queryForVectorization,
-        entryRequest.quest  // optional quest text
       );
       const queryVector = parsed.initialPosition;
 
@@ -594,11 +574,9 @@ export class GatewayServer {
         type: "positioned",
         sessionId,
         position: queryVector,
-        questVector: parsed.questVector,
         remainingTime: context.remainingTime,
         query: entryRequest.query,
         tags: entryRequest.tags,
-        quest: entryRequest.quest,
       });
 
       console.log(`[GatewayServer] Query vector ready: ${sessionId} (dim=${queryVector.length})`);
@@ -766,24 +744,6 @@ export class GatewayServer {
   }
 
   /**
-   * Get Quest Showcase (external questions awaiting verification)
-   *
-   * [Design] Quest ≠ ProjDB node
-   *   - Quest = text object from external POST
-   *   - Stored in Quest Store (NOT ProjDB)
-   *   - Available BEFORE Parser (agents decide quest at welcome)
-   *
-   * [Flow]
-   *   POST /quest → Quest Store → Quest Showcase (welcome)
-   *   Agent selects quest → EntryRequest { quest } → ParserBuffer
-   */
-  private getQuestShowcase(): QuestSummary[] {
-    if (!this.questStore) {
-      return [];
-    }
-    return this.questStore.getShowcase();
-  }
-
   /**
    * Send Amber Showcase to agent
    *

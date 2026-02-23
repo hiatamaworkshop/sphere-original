@@ -2,7 +2,7 @@
  * Sphere Project - Entry Buffer (Atomic Entry + Dual Timeout)
  *
  * [Role] Batching mechanism for agent entry vectorization
- * [Principle] Atomic Entry - Never split an agent's request/quest pair
+ * [Principle] Atomic Entry - Agent request as indivisible unit
  *
  * [Usage] Called right after Membrane.validate() in GatewayServer
  *   - Membrane validation passes → immediately enqueue to EntryBuffer
@@ -33,9 +33,7 @@ import type { Parser } from "./parser.js";
 export interface ParsedDiveEntry {
   agentId: string;
   request: string;
-  quest?: string;
   initialPosition: number[];  // from request
-  questVector?: number[];     // from quest (optional)
 }
 
 /**
@@ -44,7 +42,6 @@ export interface ParsedDiveEntry {
 interface EntryRequest {
   agentId: string;
   request: string;
-  quest?: string;
   enqueuedAt: number;         // timestamp for maxWaitTime tracking
   resolve: (result: ParsedDiveEntry) => void;
   reject: (error: Error) => void;
@@ -82,32 +79,28 @@ export class EntryBuffer {
   /**
    * Enqueue a dive entry for processing (atomic unit)
    *
-   * [Guarantee] request and quest are NEVER separated
    * [Guarantee] agentId is tracked through the entire process
    * [Guarantee] delay is bounded by maxWaitTime
    *
    * @param agentId - Owner agent identifier
    * @param request - Agent's request text
-   * @param quest - Optional quest text
    */
   async enqueueDiveEntry(
     agentId: string,
     request: string,
-    quest?: string
   ): Promise<ParsedDiveEntry> {
     return new Promise((resolve, reject) => {
       const now = Date.now();
       const entry: EntryRequest = {
         agentId,
         request,
-        quest,
         enqueuedAt: now,
         resolve,
         reject,
       };
 
       // Calculate how many texts this entry will add
-      const entryTextCount = quest ? 2 : 1;
+      const entryTextCount = 1;
       const currentTextCount = this.countTexts();
 
       // If adding this entry would exceed batch size, flush first
@@ -138,9 +131,7 @@ export class EntryBuffer {
    * Count total texts in current buffer
    */
   private countTexts(): number {
-    return this.buffer.reduce((count, entry) => {
-      return count + (entry.quest ? 2 : 1);
-    }, 0);
+    return this.buffer.length;
   }
 
   /**
@@ -212,15 +203,12 @@ export class EntryBuffer {
 
     // Build text array and track offsets
     const texts: string[] = [];
-    const offsets: { entry: EntryRequest; startIdx: number; hasQuest: boolean }[] = [];
+    const offsets: { entry: EntryRequest; startIdx: number }[] = [];
 
     for (const entry of batch) {
       const startIdx = texts.length;
       texts.push(entry.request);
-      if (entry.quest) {
-        texts.push(entry.quest);
-      }
-      offsets.push({ entry, startIdx, hasQuest: !!entry.quest });
+      offsets.push({ entry, startIdx });
     }
 
     console.log(
@@ -238,13 +226,11 @@ export class EntryBuffer {
       console.log(`[Entry.Buffer] embed=${embedTime}ms`);
 
       // Distribute results to each entry
-      for (const { entry, startIdx, hasQuest } of offsets) {
+      for (const { entry, startIdx } of offsets) {
         const result: ParsedDiveEntry = {
           agentId: entry.agentId,
           request: entry.request,
-          quest: entry.quest,
           initialPosition: vectors[startIdx],
-          questVector: hasQuest ? vectors[startIdx + 1] : undefined,
         };
         entry.resolve(result);
       }
@@ -254,13 +240,11 @@ export class EntryBuffer {
       const zeroVector = new Array(fallbackDim).fill(0);
 
       // Fallback: resolve with zero vectors (allows spawn at origin)
-      for (const { entry, hasQuest } of offsets) {
+      for (const { entry } of offsets) {
         const result: ParsedDiveEntry = {
           agentId: entry.agentId,
           request: entry.request,
-          quest: entry.quest,
           initialPosition: [...zeroVector],
-          questVector: hasQuest ? [...zeroVector] : undefined,
         };
         entry.resolve(result);
       }

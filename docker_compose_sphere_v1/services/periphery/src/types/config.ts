@@ -111,14 +111,6 @@ export interface PeripheryConfig {
     };
   };
 
-  // === Quest Store (FIFO, no TTL) ===
-  questStore?: {
-    /** 最大クエスト数 (default: 100) - FIFO で古いものから押し出し */
-    maxSize: number;
-    /** Showcase 表示数 (default: 10) */
-    showcaseSize: number;
-  };
-
   // === Amber Cache (Unified Showcase + Dynamic) ===
   amberCache?: {
     /** 合計キャッシュサイズ (default: 100) */
@@ -308,10 +300,6 @@ export const DEFAULT_PERIPHERY_CONFIG: PeripheryConfig = {
       warp: 15,
       evaluate: 3,
     },
-  },
-  questStore: {
-    maxSize: 100,
-    showcaseSize: 10,
   },
   amberCache: {
     maxSize: 100,

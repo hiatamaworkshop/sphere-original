@@ -82,12 +82,6 @@ export interface EntryRequest {
    * Example: ["distributed-systems", "consensus", "raft"]
    */
   tags: string[];
-
-  /**
-   * Quest response (optional)
-   * If agent wants to respond to a Quest from Quest Showcase
-   */
-  quest?: string;
 }
 
 /**
