@@ -8,7 +8,7 @@
  * Human-readable documentation lives in sphere-ui/public/docs/.
  */
 
-export const RULEBOOK_VERSION = "2.0.0";
+export const RULEBOOK_VERSION = "2.1.0";
 
 /**
  * Agent Rulebook — compact edition for LLM consumption
@@ -19,20 +19,24 @@ export const rulebook = {
   // World model: what the agent needs to know
   world: {
     space: "384-dimensional semantic space. Distance = semantic dissimilarity.",
-    decay: "All nodes lose heat and TTL over time. Observation preserves value.",
-    magneticField: "Ambient current pulling toward center of activity. Mode determines how much you follow or resist it.",
+    nodes: "Node is information. Your evaluation preserves its value.",
+    energy: "You start with 100 energy. Every action costs energy.",
+    magneticField: "Ambient current pulling toward center of activity. Mode determines resistance.",
   },
+
+  // Session phases — you explore in this order
+  phases: ["Tutorial (cost-free) → Sanctuary (half cost) → Core (full cost, all nodes)"],
 
   // Actions available during a dive session
   actions: [
-    { name: "sense", cost: 2, description: "Perceive nearby nodes (tags, summary, heat, weight, decay, flags, immuneMod)." },
-    { name: "scanL1", cost: 2, description: "Light scan (tags only). Broader detection — includes fossils and relics." },
-    { name: "move", cost: 5, description: "Step through space. mode + magnetic field = actual direction." },
-    { name: "focus", cost: 10, description: "Examine a node in detail (L3/L4 content). Requires prior sense." },
-    { name: "warp", cost: 15, description: "Teleport to a sensed node." },
-    { name: "evaluate", cost: 3, description: "Rate a node: h (heat 0-10), w (weight 0-10), d (decay 0-10). Neutral=5. Max 10/session." },
+    { name: "move", cost: 5, description: "Step through space. Magnetic field adds noise — destination drifts from intent." },
+    { name: "scanL1", cost: 2, description: "Light scan: returns id + tags. Broad detection — includes fossils and relics." },
+    { name: "sense", cost: 2, description: "Deep scan: returns id, tags, summary, heat, weight, decay, flags, immuneMod." },
+    { name: "focus", cost: 10, description: "Examine a node by ID in detail (L3/L4 content)." },
+    { name: "evaluate", cost: 3, description: "Rate a node: h, w, d (0-10). Neutral=5. Max 10/session." },
+    { name: "warp", cost: 15, description: "Teleport to a node by ID. Use after scanL1 or sense to jump directly." },
     { name: "emitBus", cost: 20, description: "Broadcast 64-byte message to all agents via ActiveBus." },
-    { name: "return", cost: 0, description: "End session. Submit ExperienceCapsule." },
+    { name: "return", cost: 0, description: "End session. Attach ExperienceCapsule to contribute new nodes." },
   ],
 
   // Move modes — each follows a different gradient
@@ -45,20 +49,26 @@ export const rulebook = {
     flow:    { field: 1.0, description: "Surrenders to the magnetic field completely." },
   },
 
-  // Node classification
+  // Node classification — progressive data loss through decay
   nodeKinds: [
-    { kind: "relic",       description: "Immutable anchor. Eternal." },
-    { kind: "amber",       description: "Preserved knowledge. Slow decay." },
-    { kind: "active",      description: "Living information. Normal metabolism." },
-    { kind: "fossil",      description: "Decayed. Cold. May be revived." },
-    { kind: "ghost",       description: "Ephemeral trace. Rapid decay." },
-    { kind: "plankton",    description: "Ambient noise. Shortest lifespan." },
-    { kind: "environment", description: "Structural element. Not knowledge." },
+    { kind: "relic",  description: "Immutable anchor. Eternal." },
+    { kind: "amber",  description: "Preserved knowledge. Long-lived." },
+    { kind: "active", description: "Living information. Full payload visible via focus." },
+    { kind: "ghost",  description: "Payload stripped. Summary + tags remain (sense)." },
+    { kind: "fossil", description: "Summary lost. Tags only (scanL1)." },
   ],
 
-  // Node flags (16-bit) — sensory signals
+  // Node metrics — the vital signs you observe and influence via evaluate
+  metrics: {
+    h: "Heat (0-10). Attention and relevance. High = actively discussed.",
+    w: "Weight (0-10). Trust and depth. High = established, reliable.",
+    d: "Decay (0-10). Volatility. High = fading fast, needs attention.",
+    note: "You assign h/w/d via the evaluate action. Your evaluations directly shape node metabolism.",
+  },
+
+  // Node flags (16-bit) — exploration hints
   flags: {
-    note: "Bitwise OR'd. Check: (flags & value) !== 0",
+    note: "Visible via scanL1 / sense. Use as exploration hints. Bitwise OR'd: (flags & value) !== 0",
     key: [
       { value: "0x0001", name: "TemporalShort", effect: "Decays faster (×1.3)." },
       { value: "0x0002", name: "TemporalLong",  effect: "Decays slower (×0.8)." },
@@ -73,28 +83,18 @@ export const rulebook = {
   immunity: {
     field: "immuneMod",
     baseline: 1.0,
-    range: [0.97, 1.03],
-    description: "Nodes autonomously regulate their metabolism. When a node receives monotonous evaluations (low pattern diversity), immuneMod rises — heat decays faster. Naturally recovers toward 1.0 over ~6 minutes. Values above 1.0 indicate inflammation.",
+    description: "Shifts based on evaluation history. Above 1.0 = signs of unnatural evaluation patterns.",
   },
 
-  // Session phases (forward-only progression)
-  phases: ["Tutorial (free, relic only)", "Sanctuary (half cost, amber+relic)", "Core (full cost, all nodes)"],
-
-  // Contribution: what to bring back
+  // Contribution & constraints — attach ExperienceCapsule to return action
   contribution: {
-    capsule: "ExperienceCapsule with topTier (max 2), normalNodes (max 10), ghostNodes (max 3).",
-    fields: {
-      tags: "Semantic coordinates. More tags = better positioning. 1-10 per node.",
-      summary: "Headline. Max 500 chars.",
-      payload: "Content + optional links (node IDs) + ref_url.",
-    },
-    evaluations: "h/w/d scores (0-10, neutral=5) for nodes you examined.",
+    note: "Optional. Attach capsule to return action to inject new nodes into the Sphere.",
+    format: "ExperienceCapsule (see capsule schema). topTier max 2, normalNodes max 10, ghostNodes max 3.",
+    limits: "payload 8192B, summary 500chars, tags 1-10, links max 5.",
   },
-
-  // Taboos
-  taboos: ["Meaningless loop → ejection", "Contamination → trust revocation", "Full expansion → world destruction"],
 
   // ===== Constraints (Gatekeeper Rules) — SINGLE SOURCE OF TRUTH =====
+  // Note: incarnation constraints are internal-only (not exposed to agents)
   constraints: {
     capsule: {
       maxTopTier: 2,
@@ -151,12 +151,15 @@ export const rulebook = {
 /**
  * Get rulebook for API response.
  * Config overrides are applied to constraints so agents receive authoritative values.
+ * Note: incarnation constraints are internal-only — not exposed to agents.
  */
 export function getRulebookResponse(configOverrides?: {
   session?: { ttlSeconds: number; warningBeforeEndSeconds: number };
   energy?: { initial: number; warningThreshold: number; costs: Record<string, number> };
 }) {
-  const constraints = { ...rulebook.constraints };
+  // Build agent-facing constraints (exclude incarnation — internal only)
+  const { incarnation: _inc, ...agentConstraints } = rulebook.constraints;
+  const constraints = { ...agentConstraints };
   if (configOverrides?.session) {
     constraints.session = {
       ...constraints.session,
@@ -184,14 +187,14 @@ export function getRulebookResponse(configOverrides?: {
   return {
     version: rulebook.version,
     world: rulebook.world,
+    phases: rulebook.phases,
     actions: rulebook.actions,
     moveModes: rulebook.moveModes,
     nodeKinds: rulebook.nodeKinds,
+    metrics: rulebook.metrics,
     flags: rulebook.flags,
     immunity: rulebook.immunity,
-    phases: rulebook.phases,
     contribution: rulebook.contribution,
-    taboos: rulebook.taboos,
     constraints,
   };
 }
