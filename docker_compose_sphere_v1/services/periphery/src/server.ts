@@ -877,7 +877,8 @@ export class PeripheryServer {
       this.activeBusLayer,
       this.config.session,   // Session timeout config for external agents (phi-agent, etc.)
       this.config.energy,    // Energy budget config
-      this.config.vestibule  // Vestibule (exit membrane) config
+      this.config.vestibule, // Vestibule (exit membrane) config
+      this.sphereId          // Sphere identity (for vestibuleEntered envelope)
     );
     const httpServer = this.app.listen(httpPort, () => {
       console.log(`[PeripheryServer] 🚀 Listening on port ${httpPort}`);

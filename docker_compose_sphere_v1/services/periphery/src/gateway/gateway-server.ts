@@ -90,7 +90,7 @@ type AgentMessage =
  *   - Dynamic: Internal cache for focus optimization (not exposed)
  */
 type GatewayMessage =
-  | { type: "welcome"; sessionId: string; rulebookUrl: string; message: string }
+  | { type: "welcome"; sessionId: string; sphereId: string; rulebookUrl: string; message: string }
   | { type: "processing"; sessionId: string; message: string }
   | { type: "amber_showcase"; sessionId: string; amber: AmberShowcaseEntry[] }
   | { type: "positioned"; sessionId: string; position: number[]; remainingTime: number; query: string; tags: string[] }
@@ -108,7 +108,7 @@ type GatewayMessage =
   | { type: "warning"; message: string }
   | { type: "expelled"; reason: string }
   // Vestibule messages
-  | { type: "vestibuleEntered"; requestId?: string; sessionId: string; auto: { evaluationsApplied: number; autoCapsuleSaved: boolean }; commands: { name: string; description: string }[]; farewell: string }
+  | { type: "vestibuleEntered"; requestId?: string; sessionId: string; sphereId: string; timestamp: number; auto: { evaluationsApplied: number; autoCapsuleSaved: boolean }; commands: { name: string; description: string }[]; farewell: string }
   | { type: "submitCapsuleResult"; requestId: string; success: boolean; nodeCount?: number; evaluationCount?: number; errors?: string[] }
   | { type: "receipt"; requestId: string; data: any }
   | { type: "trail"; requestId: string; data: any }
@@ -236,7 +236,8 @@ export class GatewayServer {
     private activeBusLayer?: ActiveBusLayer,
     private sessionConfig?: PeripheryConfig["session"],
     private energyConfig?: PeripheryConfig["energy"],
-    private vestibuleConfig?: PeripheryConfig["vestibule"]
+    private vestibuleConfig?: PeripheryConfig["vestibule"],
+    private sphereId: string = "unknown"
   ) {
     // Subscribe to ActiveBus for WebSocket broadcast
     if (this.activeBusLayer) {
@@ -427,6 +428,7 @@ export class GatewayServer {
     this.send(socket, {
       type: "welcome",
       sessionId,
+      sphereId: this.sphereId,
       rulebookUrl: this.config.rulebookUrl || "/rulebook",
       message: "Read the Rulebook, then send EntryRequest to begin your dive.",
     });
@@ -545,6 +547,8 @@ export class GatewayServer {
         this.send(socket, {
           type: "vestibuleEntered",
           sessionId: conn.sessionId,
+          sphereId: this.sphereId,
+          timestamp: Date.now(),
           auto: autoResult,
           commands: VESTIBULE_COMMANDS,
           farewell: `Expelled: ${reason}. Your evaluations have been saved.`,
@@ -745,6 +749,8 @@ export class GatewayServer {
           type: "vestibuleEntered",
           requestId,
           sessionId,
+          sphereId: this.sphereId,
+          timestamp: Date.now(),
           auto: receipt.autoProcess,
           commands: VESTIBULE_COMMANDS,
           farewell: "Your evaluations have been applied. You may submit a capsule or acknowledge to disconnect.",

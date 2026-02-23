@@ -86,6 +86,8 @@ export interface BusMessage {
 
 /** Vestibule auto-process result returned by the server on return */
 export interface VestibuleResult {
+  sphereId: string;
+  timestamp: number;
   auto: { evaluationsApplied: number; autoCapsuleSaved: boolean };
   commands: { name: string; description: string }[];
   farewell: string;
@@ -271,12 +273,16 @@ export class SphereClient {
       const msg = await this.sendRequest<{
         type: "vestibuleEntered";
         sessionId: string;
+        sphereId: string;
+        timestamp: number;
         auto: { evaluationsApplied: number; autoCapsuleSaved: boolean };
         commands: { name: string; description: string }[];
         farewell: string;
       }>("return", {});
 
       const result: VestibuleResult = {
+        sphereId: msg.sphereId,
+        timestamp: msg.timestamp,
         auto: msg.auto,
         commands: msg.commands,
         farewell: msg.farewell,
@@ -456,6 +462,8 @@ export class SphereClient {
       case "vestibuleEntered": {
         // Server-initiated vestibule (e.g. expelled → auto vestibule)
         const vr: VestibuleResult = {
+          sphereId: msg.sphereId,
+          timestamp: msg.timestamp,
           auto: msg.auto,
           commands: msg.commands,
           farewell: msg.farewell,

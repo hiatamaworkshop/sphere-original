@@ -319,6 +319,88 @@ embedding model の差異やバージョニングの違いは、各スフィア�
 
 ---
 
+## 8. ネットワーキング構想における Facade の立ち位置 (2026-02-24)
+
+### Facade = 駅 (Station)
+
+複数スフィアを横断するエージェントの「旅のインフラ」。
+地図 (Navigator) の原型を維持しつつ、一時保管機能を追加する。
+
+| 責務 | 説明 | Navigator 原型 |
+|------|------|---------------|
+| catalog | manifest 収集・提供 | 既存 |
+| routing | 接続先 URL 提供 | 既存 |
+| stash | Vestibule 出力の一時保管 (ロッカー) | **新規** |
+| collect | 保管データの一括引き取り | **新規** |
+| health check | スフィアの生存確認 | 既存 (簡易) |
+
+### 非介入原則の維持
+
+Facade が **やること**:
+- manifest の収集と提供
+- 接続情報のルーティング
+- Vestibule 出力の一時保管と返却 (加工しない)
+- スフィアのヘルスチェック
+
+Facade が **やらないこと**:
+- クエリの改善・変換
+- 探索結果の統合・分析
+- スフィア選択の判断
+- 保管データの加工・フィルタリング
+
+知識の処理はエージェント側 (または Pattern C の Delegation サービス) の責務。
+
+### マルチスフィア探索の動線
+
+```
+Agent
+  │
+  ├─ (1) GET facade/catalog → スフィア一覧
+  │
+  ├─ (2) Sphere A に接続 → 探索 → Vestibule
+  │      receipt/trail/discoveries を取得
+  │
+  ├─ (3) POST facade/stash { journeyId, sphereId, data }
+  │      → Vestibule 出力を一時保管
+  │
+  ├─ (4) Sphere B に接続 → 探索 → Vestibule
+  │      → stash
+  │
+  ├─ (5) GET facade/collect/:journeyId
+  │      → 全スフィアの成果物を一括取得
+  │
+  └─ (6) Agent が結果統合 → 出力 (Facade の関知外)
+```
+
+### stash API (案)
+
+```
+POST /stash
+  { journeyId: string, sphereId: string, data: VestibuleOutput }
+  → { success: true, itemCount: number }
+
+GET  /collect/:journeyId
+  → { items: [{ sphereId, data, timestamp }...] }
+
+DELETE /collect/:journeyId
+  → 保管データ破棄 (TTL 自動削除もあり)
+```
+
+stash はキーバリュー的な一時保管。TTL 付き (デフォルト: 1時間程度)。
+journeyId はエージェントが生成する。Facade はジャーニーの意味を知らない。
+
+### 検討済み・却下した案
+
+**Facade 自体がスフィアである案 (メタスフィア)**:
+ノードとしてロッカーやリンクを配置する。HTML 構造的で美しいが、
+再帰的で実装コストに見合わない。「地図を探索する」のは本末転倒。却下。
+
+**Facade 間連携 (駅のネットワーク)**:
+複数 Facade を接続する構想。理論上は可能だが、
+単一 Facade で十分なスケールが見込まれるため現時点では不要。
+
+---
+
 ## References
 
 - `periphery/src/server.ts` — manifest エンドポイント実装 (line 531-563)
