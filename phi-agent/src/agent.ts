@@ -223,12 +223,34 @@ export class PhiAgent {
         await this.liaisonExplore();
       }
 
-      // Step 8: Vestibule — proper return protocol
+      // Step 8: Vestibule — proper exit protocol
       this.stats.status = "completed";
-      const vestibuleResult = await this.sphere.disconnect();
+      const vestibuleResult = await this.sphere.enterVestibule();
       if (vestibuleResult) {
-        this.log(`Vestibule: ${vestibuleResult.auto.evaluationsApplied} evaluations applied, capsule=${vestibuleResult.auto.autoCapsuleSaved}`);
+        this.log(`Vestibule entered: ${vestibuleResult.auto.evaluationsApplied} evaluations applied, capsule=${vestibuleResult.auto.autoCapsuleSaved}`);
+
+        // Execute Vestibule commands (same as any external agent)
+        try {
+          const receipt = await this.sphere.viewReceipt();
+          this.log(`Receipt: ${JSON.stringify(receipt)}`);
+        } catch { /* optional */ }
+
+        try {
+          const trail = await this.sphere.viewTrail();
+          const events = trail?.events ?? trail;
+          const steps = Array.isArray(events) ? events.length : 0;
+          this.log(`Trail: ${steps} actions recorded (${((trail?.duration ?? 0) / 1000).toFixed(1)}s)`);
+        } catch { /* optional */ }
+
+        try {
+          const discoveries = await this.sphere.viewDiscoveries();
+          const visits = discoveries?.visits ?? discoveries;
+          const count = Array.isArray(visits) ? visits.length : 0;
+          this.log(`Discoveries: ${count} nodes visited, ${discoveries?.uniqueNodes ?? 0} unique`);
+        } catch { /* optional */ }
       }
+
+      await this.sphere.acknowledge();
       this.log("Returned from Sphere");
 
       // Step 8b: Broadcast — deterministic projection (no LLM, always emitted)

@@ -260,19 +260,15 @@ export class SphereClient {
     this.syncEnergy(result.energy);
   }
 
-  /**
-   * Proper disconnect: return → vestibuleEntered → acknowledge → farewell → server closes.
-   * Returns the VestibuleResult from the server (auto-process receipt + available commands).
-   */
-  async disconnect(): Promise<VestibuleResult | null> {
-    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
-      this.ws = null;
-      return null;
-    }
+  // --- Vestibule lifecycle ---
+  // Protocol: return → vestibuleEntered → [commands] → acknowledge → farewell → close
+
+  /** Send return → receive vestibuleEntered. Enters the Vestibule phase. */
+  async enterVestibule(): Promise<VestibuleResult | null> {
+    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) return null;
 
     try {
-      // Step 1: return → server sends vestibuleEntered
-      const vestibuleMsg = await this.sendRequest<{
+      const msg = await this.sendRequest<{
         type: "vestibuleEntered";
         sessionId: string;
         auto: { evaluationsApplied: number; autoCapsuleSaved: boolean };
@@ -281,24 +277,53 @@ export class SphereClient {
       }>("return", {});
 
       const result: VestibuleResult = {
-        auto: vestibuleMsg.auto,
-        commands: vestibuleMsg.commands,
-        farewell: vestibuleMsg.farewell,
+        auto: msg.auto,
+        commands: msg.commands,
+        farewell: msg.farewell,
       };
-
       this.emit({ type: "vestibuleEntered", result });
-
-      // Step 2: acknowledge → server sends farewell → server closes connection
-      try {
-        await this.sendRequest("acknowledge", {});
-      } catch {
-        // farewell may arrive as server-close rather than requestId response
-      }
-
-      this.ws = null;
       return result;
     } catch {
-      // Connection already closing or server unreachable — best effort
+      return null;
+    }
+  }
+
+  /** View auto-applied evaluation receipt. */
+  async viewReceipt(): Promise<any> {
+    return (await this.sendRequest<{ data: any }>("viewReceipt", {})).data;
+  }
+
+  /** View exploration trajectory (action log). */
+  async viewTrail(): Promise<any> {
+    return (await this.sendRequest<{ data: any }>("viewTrail", {})).data;
+  }
+
+  /** View notable nodes visited, ranked by focus count. */
+  async viewDiscoveries(): Promise<any> {
+    return (await this.sendRequest<{ data: any }>("viewDiscoveries", {})).data;
+  }
+
+  /** Acknowledge and disconnect. Server sends farewell then closes. */
+  async acknowledge(): Promise<void> {
+    try {
+      await this.sendRequest("acknowledge", {});
+    } catch {
+      // farewell may arrive as server-close rather than requestId response
+    }
+    this.ws = null;
+  }
+
+  /** Convenience: enterVestibule → acknowledge (no commands). For error/fallback paths. */
+  async disconnect(): Promise<VestibuleResult | null> {
+    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
+      this.ws = null;
+      return null;
+    }
+    try {
+      const result = await this.enterVestibule();
+      await this.acknowledge();
+      return result;
+    } catch {
       if (this.ws && this.ws.readyState === WebSocket.OPEN) {
         this.ws.close();
       }
