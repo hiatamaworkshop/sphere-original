@@ -26,6 +26,7 @@ export interface NearbyNode {
   kind: string;
   flags: number;
   tags?: string[];
+  immuneMod?: number;
 }
 
 export interface NodeDetail {

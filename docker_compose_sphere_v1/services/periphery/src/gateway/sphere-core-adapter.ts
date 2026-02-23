@@ -329,6 +329,10 @@ export class SphereCoreAdapter {
           kind: node.kind,
           flags: node.metrics.flg,
           tags: node.payload?.tags,
+          // [Node immunity] Only include when inflamed (non-default)
+          ...(node.metrics.immuneMod !== undefined && node.metrics.immuneMod !== 1.0
+            ? { immuneMod: Math.round(node.metrics.immuneMod * 10000) / 10000 }
+            : {}),
         });
       }
     }

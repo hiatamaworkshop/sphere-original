@@ -170,6 +170,8 @@ export interface NearbyNode {
   flags: number;
   /** Direction tags for filtering (from ProjDB) */
   tags?: string[];
+  /** Node immunity level (1.0=normal, >1.0=inflamed, heat decays faster) */
+  immuneMod?: number;
 }
 
 /**
