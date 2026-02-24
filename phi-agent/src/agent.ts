@@ -381,6 +381,13 @@ export class PhiAgent {
   // ===== Evaluator: Real-time exploration + evaluation =====
 
   private async exploreLoop(): Promise<void> {
+    // Orient: scanL1 (wide view, cost=1) + warp to best active node
+    // Ensures agent starts near actual content instead of drifting through relics
+    if (this.canAfford("scanL1")) {
+      const warped = await this.scanAndWarp();
+      if (warped) this.log("Oriented to target area via scanL1");
+    }
+
     while (
       this.running &&
       this.stats.cycles < this.config.maxCycles &&
@@ -602,6 +609,12 @@ export class PhiAgent {
 
   /** Fast exploration — collect nodes for response without evaluation */
   private async liaisonExplore(): Promise<void> {
+    // Orient: scanL1 (wide view, cost=1) + warp to best active node
+    if (this.canAfford("scanL1")) {
+      const warped = await this.scanAndWarp();
+      if (warped) this.log("Oriented to target area via scanL1");
+    }
+
     while (
       this.running &&
       this.stats.cycles < this.config.maxCycles &&
