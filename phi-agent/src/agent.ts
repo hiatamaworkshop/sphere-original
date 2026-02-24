@@ -382,7 +382,6 @@ export class PhiAgent {
 
     while (
       this.running &&
-      this.stats.cycles < this.config.maxCycles &&
       this.sphere.currentEnergy > this.config.minEnergy
     ) {
       this.stats.cycles++;
@@ -395,21 +394,22 @@ export class PhiAgent {
         ? { type: "standard", moveStep: 0, moveMode: this.gate.walkPreference }  // first cycle: no move
         : this.gate.chooseAction(energyRatio);
 
-      this.log(`--- Cycle ${this.stats.cycles}/${this.config.maxCycles} (energy: ${this.sphere.currentEnergy}) [${action.type}] mode=${action.moveMode} step=${action.moveStep.toFixed(2)} ---`);
+      this.log(`--- Cycle ${this.stats.cycles} (energy: ${this.sphere.currentEnergy}) [${action.type}] mode=${action.moveMode} step=${action.moveStep.toFixed(2)} ---`);
 
+      let wantsReturn = false;
       try {
         switch (action.type) {
           case "scout":
             await this.scoutCycle(action.moveStep, action.moveMode);
             break;
           case "camp":
-            await this.standardCycle(0, action.moveMode);  // moveStep=0: no move
+            wantsReturn = await this.standardCycle(0, action.moveMode);
             break;
           case "leap":
-            await this.standardCycle(action.moveStep, action.moveMode);
+            wantsReturn = await this.standardCycle(action.moveStep, action.moveMode);
             break;
           default:
-            await this.standardCycle(action.moveStep, action.moveMode);
+            wantsReturn = await this.standardCycle(action.moveStep, action.moveMode);
             break;
         }
       } catch (err) {
@@ -417,14 +417,8 @@ export class PhiAgent {
         break;
       }
 
-      // Feelings check after cycle (energy may have changed)
-      const currentRatio = this.initialEnergy > 0
-        ? this.sphere.currentEnergy / this.initialEnergy
-        : 1.0;
-      this.log(`Feelings: ${this.gate.feelingsDebug(currentRatio)}`);
-      this.log(`DeltaProfile: ${this.gate.memory.deltaDebug()}`);
-      if (this.gate.shouldReturn(currentRatio)) {
-        this.log(`Satisfied — returning`);
+      if (wantsReturn) {
+        this.log("Satisfied — returning");
         break;
       }
     }
@@ -434,13 +428,13 @@ export class PhiAgent {
     }
   }
 
-  /** Standard cycle: move → sense → pick → focus → eval → record */
-  private async standardCycle(moveStep: number, moveMode: WalkMode): Promise<void> {
+  /** Standard cycle: move → sense → pick → focus → eval → record. Returns true if agent wants to return. */
+  private async standardCycle(moveStep: number, moveMode: WalkMode): Promise<boolean> {
     // 1. Move (skip if moveStep=0, e.g. camp or first cycle)
     if (moveStep > 0) {
       if (!this.canAfford("move")) {
         this.log(`Energy too low for move (${this.sphere.currentEnergy} < ${this.sphere.energyCosts.move})`);
-        return;
+        return false;
       }
       const moved = await this.sphere.move(moveStep, moveMode);
       if (!moved) {
@@ -453,7 +447,7 @@ export class PhiAgent {
     // 2. Sense nearby nodes
     if (!this.canAfford("sense")) {
       this.log(`Energy too low for sense (${this.sphere.currentEnergy} < ${this.sphere.energyCosts.sense})`);
-      return;
+      return false;
     }
     const nodes = await this.sphere.sense(this.config.senseRadius);
     this.log(`Sensed ${nodes.length} nodes`);
@@ -471,7 +465,6 @@ export class PhiAgent {
             if (detail && detail.kind) {
               this.log(`Orient focus: [${detail.kind}] ${detail.tags?.join(", ") ?? ""} — ${(detail.summary ?? "").slice(0, 60)}`);
               this.gate.memory.markVisited(scanTarget.id);
-              // Continue to eval below via shared eval path
               return this.evalAndRecord(scanTarget.id, detail, scanTarget.flags);
             }
           }
@@ -481,7 +474,7 @@ export class PhiAgent {
       }
       this.log("No nodes nearby — scan+warp to find relevant area");
       await this.scanAndWarp();
-      return;
+      return false;
     }
 
     // 3. FastGate picks target (local, 0ms) — with ActiveBus hints
@@ -489,7 +482,7 @@ export class PhiAgent {
     if (targetIndex < 0) {
       this.log("No valid targets (all visited) — scan+warp to new area");
       await this.scanAndWarp();
-      return;
+      return false;
     }
     const target = nodes[targetIndex];
     this.log(`FastGate pick: [${targetIndex}] ${target.summary.slice(0, 60)} (flags: 0x${target.flags.toString(16).padStart(4, "0")})`);
@@ -497,32 +490,32 @@ export class PhiAgent {
     // 4. Focus on target (most expensive action: 10 energy)
     if (!this.canAfford("focus")) {
       this.log(`Energy too low for focus (${this.sphere.currentEnergy} < ${this.sphere.energyCosts.focus}) — skipping`);
-      return;
+      return false;
     }
     const detail = await this.sphere.focus(target.id);
     if (!detail || !detail.kind) {
       this.log(`Focus returned empty for ${target.id} (kind: ${target.kind}) — skipping`);
       this.gate.memory.markVisited(target.id);
-      return;
+      return false;
     }
     // Skip mock/placeholder data
     const text = `${detail.summary ?? ""} ${detail.content ?? ""}`.toLowerCase();
     if (text.includes("mock") || text.includes("⚠️")) {
       this.log(`Mock data detected for ${target.id} — skipping`);
       this.gate.memory.markVisited(target.id);
-      return;
+      return false;
     }
 
-    await this.evalAndRecord(target.id, detail, target.flags, nodes);
+    return this.evalAndRecord(target.id, detail, target.flags, nodes);
   }
 
-  /** Evaluate a focused node and record results (shared by standardCycle + orient) */
+  /** Evaluate a focused node and record results. Returns true if agent wants to return. */
   private async evalAndRecord(
     nodeId: string,
     detail: NodeDetail,
     flags: number,
     nearbyNodes?: { id: string; summary: string; heat: number; weight: number; tags?: string[]; kind: string; flags: number }[],
-  ): Promise<void> {
+  ): Promise<boolean> {
     this.stats.nodesExamined++;
     this.log(`Focused: [${detail.kind}] ${detail.tags?.join(", ") ?? ""} — ${(detail.summary ?? "").slice(0, 60)}`);
 
@@ -535,7 +528,7 @@ export class PhiAgent {
     // Parse failure → mark visited only (don't contaminate quality profile)
     if (evalAction.action !== "evaluate") {
       this.gate.memory.markVisited(nodeId);
-      return;
+      return false;
     }
 
     const h = evalAction.h ?? 5;
@@ -606,6 +599,14 @@ export class PhiAgent {
         }
       }
     }
+
+    // Feelings-based return decision (checked after each evaluation)
+    const energyRatio = this.initialEnergy > 0
+      ? this.sphere.currentEnergy / this.initialEnergy
+      : 1.0;
+    this.log(`Feelings: ${this.gate.feelingsDebug(energyRatio)}`);
+    this.log(`DeltaProfile: ${this.gate.memory.deltaDebug()}`);
+    return this.gate.shouldReturn(energyRatio);
   }
 
   /** Scout cycle: move → sense only (no focus, no eval, saves energy) */
@@ -640,11 +641,10 @@ export class PhiAgent {
 
     while (
       this.running &&
-      this.stats.cycles < this.config.maxCycles &&
       this.sphere.currentEnergy > this.config.minEnergy
     ) {
       this.stats.cycles++;
-      this.log(`--- Explore ${this.stats.cycles}/${this.config.maxCycles} (energy: ${this.sphere.currentEnergy}) [liaison] ---`);
+      this.log(`--- Explore ${this.stats.cycles} (energy: ${this.sphere.currentEnergy}) [liaison] ---`);
 
       try {
         // Move (skip first cycle)

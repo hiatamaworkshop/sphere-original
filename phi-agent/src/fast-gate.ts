@@ -196,7 +196,7 @@ export interface Loadout {
   /** How feelings affect return — [satisfaction, frustration, stamina, staleness] */
   returnWeights: ReturnWeights;
   walkPreference: WalkMode;
-  minCycles: number;
+  minEvals: number;
   /** Evaluation perspective — shapes what phi asks about a node */
   evalFocus: string;
   /** Feelings → moveMode: feelings · modeWeights[m] → argmax selects mode each cycle */
@@ -218,7 +218,7 @@ export const LOADOUTS: Record<string, Loadout> = {
     qualityVector: QUALITY_PRESETS.balanced,
     returnWeights: [0.3, 0.2, 0.3, 0.2],
     walkPreference: "explore",
-    minCycles: 3,
+    minEvals: 3,
     modeWeights: {
       //           [sat,  frust, stam, stale]
       hot:        [0.4,  0.2,  0.0,  0.0],
@@ -243,7 +243,7 @@ export const LOADOUTS: Record<string, Loadout> = {
     qualityVector: QUALITY_PRESETS.scholar,
     returnWeights: [0.2, 0.1, 0.1, 0.6],
     walkPreference: "deep",
-    minCycles: 5,
+    minEvals: 5,
     modeWeights: {
       hot:        [0.1,  0.2,  0.0,  0.0],
       deep:       [0.7,  0.0,  0.0,  0.1],
@@ -267,7 +267,7 @@ export const LOADOUTS: Record<string, Loadout> = {
     qualityVector: QUALITY_PRESETS.scout,
     returnWeights: [0.4, 0.3, 0.2, 0.1],
     walkPreference: "explore",
-    minCycles: 2,
+    minEvals: 2,
     modeWeights: {
       hot:        [0.3,  0.1,  0.0,  0.0],
       deep:       [0.0,  0.0,  0.0,  0.0],
@@ -313,7 +313,7 @@ export const LOADOUTS: Record<string, Loadout> = {
     qualityVector: [0.05, 0.55, 0.35, 0.05],  // weight/decay focused (hermit influence)
     returnWeights: [0.2, 0.1, 0.1, 0.6],       // staleness-driven (hermit value)
     walkPreference: "deep",
-    minCycles: 4,
+    minEvals: 4,
     modeWeights: {
       hot:        [0.0,  0.1,  0.0,  0.0],
       deep:       [0.8,  0.0,  0.0,  0.2],
@@ -337,7 +337,7 @@ export const LOADOUTS: Record<string, Loadout> = {
     qualityVector: QUALITY_PRESETS.hunter,
     returnWeights: [0.3, 0.4, 0.2, 0.1],
     walkPreference: "hot",
-    minCycles: 3,
+    minEvals: 3,
     modeWeights: {
       hot:        [0.5,  0.0,  0.0,  0.0],
       deep:       [0.1,  0.0,  0.0,  0.0],
@@ -362,7 +362,7 @@ export const LOADOUTS: Record<string, Loadout> = {
     qualityVector: [0.8, 0.0, 0.0, 0.2],
     returnWeights: [0.5, 0.1, 0.2, 0.2],
     walkPreference: "hot",
-    minCycles: 3,
+    minEvals: 3,
     modeWeights: {
       hot:        [0.8,  0.1,  0.0,  0.0],
       deep:       [0.0,  0.0,  0.0,  0.0],
@@ -383,7 +383,7 @@ export const LOADOUTS: Record<string, Loadout> = {
     qualityVector: [0.25, 0.25, 0.25, 0.25],
     returnWeights: [0.0, 0.0, 1.0, 0.0],
     walkPreference: "explore",
-    minCycles: 1,
+    minEvals: 1,
     modeWeights: {
       hot:        [0.2,  0.2,  0.0,  0.2],
       deep:       [0.2,  0.0,  0.0,  0.2],
@@ -407,7 +407,7 @@ export const LOADOUTS: Record<string, Loadout> = {
     qualityVector: [0.1, 0.1, 0.0, 0.8],
     returnWeights: [0.5, 0.3, 0.1, 0.1],
     walkPreference: "hot",
-    minCycles: 2,
+    minEvals: 2,
     modeWeights: {
       hot:        [0.6,  0.0,  0.0,  0.0],
       deep:       [0.2,  0.0,  0.0,  0.1],
@@ -612,7 +612,7 @@ export class FastGate {
   private returnWeights: ReturnWeights;
   private weights: FastGateWeights;
   private weapon: Weapon;
-  private _minCycles: number;
+  private _minEvals: number;
   private _walkPreference: WalkMode;
   private _modeWeights: ModeWeights | null;
   private _stepScale: number;
@@ -633,7 +633,7 @@ export class FastGate {
       .filter(t => t.length >= 2);
     this.qualityVector = l.qualityVector;
     this.returnWeights = l.returnWeights;
-    this._minCycles = l.minCycles;
+    this._minEvals = l.minEvals;
     this._walkPreference = l.walkPreference;
     this._modeWeights = l.modeWeights ?? null;
     this._stepScale = l.stepScale ?? 1.0;
@@ -932,7 +932,7 @@ export class FastGate {
    */
   shouldReturn(energyRatio: number = 1.0): boolean {
     const count = this.memory.cycleCount;
-    if (count < this._minCycles) return false;
+    if (count < this._minEvals) return false;
 
     const { desire } = this.computeFeelings(energyRatio);
     const returnProb = Math.max(0, Math.min(1, (desire - 0.5) * 2));
