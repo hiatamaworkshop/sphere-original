@@ -172,6 +172,30 @@ export const QUALITY_PRESETS = {
 export type ReturnWeights = [number, number, number, number];
 
 // ============================================================
+// Weight Delta — individual fluctuation (learned_weight scaffold)
+// ============================================================
+//
+// effective = base × (1 + δ)
+//   base     = species genetics (Loadout definition, immutable)
+//   δ        = learned adaptation + session noise
+//   clamp    ∈ [-0.3, +0.3]
+//
+// Phase 1 (current): δ = session random noise (±NOISE_AMPLITUDE)
+// Phase 2 (future):  δ = Digestor learned_δ + residual noise
+//
+// "learned_weight = 環境が発見した物理定数"
+// — INFORMATION_PHYSICS_ENGINE_DESIGN.md
+
+export interface WeightDelta {
+  flagBias: Partial<Record<keyof Weapon["flagBias"], number>>;
+  returnWeights: [number, number, number, number];
+  qualityVector: [number, number, number, number];
+}
+
+const NOISE_AMPLITUDE = 0.1;  // ±10% session noise
+const DELTA_CLAMP = 0.3;      // max ±30% total deviation (design doc spec)
+
+// ============================================================
 // Loadout — Agent personality bundle
 // ============================================================
 //
@@ -617,6 +641,8 @@ export interface SpeciesMemoryBias {
   hotNodeIds: Map<string, number>;
   /** Top tags from species evaluation history */
   tags: string[];
+  /** Learned weight delta from Digestor (Phase 2: replaces random noise) */
+  weightDelta?: Partial<WeightDelta>;
 }
 
 const SPECIES_NODE_BONUS = 3;   // per visit count — moderate nudge toward known territory
@@ -641,6 +667,7 @@ export class FastGate {
   private _lastActionWasScout = false;
   private _speciesHotNodes: Map<string, number>;
   private _speciesTags: string[];
+  private _appliedDelta: WeightDelta;
   readonly memory = new SessionMemory();
   readonly loadoutName: string;
 
@@ -651,8 +678,8 @@ export class FastGate {
       .toLowerCase()
       .split(/[\s,]+/)
       .filter(t => t.length >= 2);
-    this.qualityVector = l.qualityVector;
-    this.returnWeights = l.returnWeights;
+    this.qualityVector = [...l.qualityVector] as QualityVector;
+    this.returnWeights = [...l.returnWeights] as ReturnWeights;
     this._minEvals = l.minEvals;
     this._walkPreference = l.walkPreference;
     this._modeWeights = l.modeWeights ?? null;
@@ -672,6 +699,9 @@ export class FastGate {
     // Species memory: inherited knowledge from past sessions
     this._speciesHotNodes = speciesBias?.hotNodeIds ?? new Map();
     this._speciesTags = speciesBias?.tags ?? [];
+
+    // Weight delta: individual fluctuation (base × (1 + δ))
+    this._appliedDelta = this.applyWeightDelta(speciesBias?.weightDelta);
   }
 
   /** Inject species bias after construction (for async loading via IO Gateway) */
@@ -682,6 +712,54 @@ export class FastGate {
 
   get walkPreference(): WalkMode { return this._walkPreference; }
   get evalFocus(): string { return this._evalFocus; }
+
+  // --- Weight Delta: individual fluctuation ---
+  //
+  // effective = base × (1 + δ)
+  // δ = learned (from Digestor) + noise (session random)
+  // Applied once at construction to: flagBias, returnWeights, qualityVector
+
+  private applyWeightDelta(learned?: Partial<WeightDelta>): WeightDelta {
+    const noise = () => (Math.random() * 2 - 1) * NOISE_AMPLITUDE;
+    const clamp = (d: number) => Math.max(-DELTA_CLAMP, Math.min(DELTA_CLAMP, d));
+
+    // flagBias
+    const flagKeys = Object.keys(this.weapon.flagBias) as (keyof Weapon["flagBias"])[];
+    const flagDelta = {} as Record<keyof Weapon["flagBias"], number>;
+    for (const k of flagKeys) {
+      const δ = clamp((learned?.flagBias?.[k] ?? 0) + noise());
+      flagDelta[k] = δ;
+      this.weapon.flagBias[k] *= (1 + δ);
+    }
+
+    // returnWeights
+    const returnDelta: [number, number, number, number] = [0, 0, 0, 0];
+    for (let i = 0; i < 4; i++) {
+      const δ = clamp((learned?.returnWeights?.[i] ?? 0) + noise());
+      returnDelta[i] = δ;
+      this.returnWeights[i] *= (1 + δ);
+    }
+
+    // qualityVector
+    const qualityDelta: [number, number, number, number] = [0, 0, 0, 0];
+    for (let i = 0; i < 4; i++) {
+      const δ = clamp((learned?.qualityVector?.[i] ?? 0) + noise());
+      qualityDelta[i] = δ;
+      this.qualityVector[i] *= (1 + δ);
+    }
+
+    return { flagBias: flagDelta, returnWeights: returnDelta, qualityVector: qualityDelta };
+  }
+
+  /** Debug string for applied weight delta */
+  get deltaDebug(): string {
+    const d = this._appliedDelta;
+    const fmt = (v: number) => `${v >= 0 ? "+" : ""}${(v * 100).toFixed(0)}%`;
+    const fb = Object.entries(d.flagBias).map(([k, v]) => `${k.slice(0, 4)}:${fmt(v)}`);
+    const rw = d.returnWeights.map(fmt);
+    const qv = d.qualityVector.map(fmt);
+    return `δ: flag=[${fb.join(",")}] return=[${rw.join(",")}] quality=[${qv.join(",")}]`;
+  }
 
   // --- Pick: compositional scoring pipeline ---
   //

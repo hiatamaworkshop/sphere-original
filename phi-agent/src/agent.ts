@@ -168,6 +168,7 @@ export class PhiAgent {
     } else {
       this.log(`Species profile: not found for ${loadoutName} (no profile or empty)`);
     }
+    this.log(this.gate.deltaDebug);
 
     try {
       // Step 1: Verify ollama is ready
