@@ -56,7 +56,7 @@ def execute_phi_agent(
     }
 
     entry_point = os.path.join(PHI_AGENT_DIR, "dist", "index.js")
-    cmd = ["node", entry_point, query, "--cycles", "3"]
+    cmd = ["node", entry_point, query]
 
     result = subprocess.run(
         cmd,

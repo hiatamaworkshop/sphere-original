@@ -220,7 +220,7 @@ def launch_agent(species, query, model, evaluate=True, sphere_url=SPHERE_URL):
         yield (f"Sphere unavailable: {wake_result}", "*Cannot proceed without Sphere*", "")
         return
 
-    yield (f"Launching {species} agent ({eval_label})...", f"*{wake_result} Agent is exploring... (may take 2-4 minutes)*", "")
+    yield (f"Launching {species} agent ({eval_label})...", f"*{wake_result} Agent is exploring...*", "")
 
     try:
         stdout = execute_phi_agent(
@@ -334,7 +334,7 @@ def create_ui():
 
                         execute_btn = gr.Button("Launch Agent", variant="primary", size="lg")
 
-                        gr.Markdown("*Execution may take some time*")
+                        gr.Markdown("*Execution takes ~30-60 seconds*")
 
                         status_text = gr.Textbox(
                             label="Status",
