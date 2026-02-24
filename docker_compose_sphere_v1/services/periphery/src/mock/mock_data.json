@@ -171,5 +171,43 @@
     "content": "The 2:00 AM productivity burst is caused by the absence of solar radiation interference on neurotransmitter receptors.",
     "flags": 1,
     "importance": 0.51
+  },
+
+  { "summary": "CAP theorem distributed trade-offs", "tags": ["distributed", "database", "theory"], "content": "Consistency, Availability, Partition tolerance — choose two. Brewer's theorem constrains distributed system design.", "flags": 0, "importance": 0.84 },
+  { "summary": "Consensus algorithms Raft and Paxos", "tags": ["distributed", "consensus", "algorithm"], "content": "Leader-based log replication. Raft simplifies Paxos with strong leader and term-based elections.", "flags": 0, "importance": 0.81 },
+  { "summary": "WebSocket full-duplex communication", "tags": ["web", "protocol", "networking"], "content": "Persistent bidirectional channel over single TCP connection. Upgrade from HTTP handshake. Low-latency push.", "flags": 0, "importance": 0.76 },
+  { "summary": "TLS handshake and certificate chains", "tags": ["security", "cryptography", "protocol"], "content": "Client-server key exchange via asymmetric crypto. Certificate authority trust chain validates identity.", "flags": 0, "importance": 0.82 },
+  { "summary": "Bloom filter probabilistic membership", "tags": ["data-structure", "algorithm", "probability"], "content": "Space-efficient set membership test. False positives possible, false negatives impossible. Hash functions map to bit array.", "flags": 0, "importance": 0.73 },
+  { "summary": "Skip list probabilistic data structure", "tags": ["data-structure", "algorithm", "database"], "content": "Linked list with express lanes. O(log n) search via random level assignment. Used in Redis sorted sets.", "flags": 0, "importance": 0.70 },
+  { "summary": "Covalent bonding electron sharing", "tags": ["chemistry", "molecular", "structure"], "content": "Atoms share electron pairs to achieve stability. Single, double, triple bonds. Determines molecular shape and reactivity.", "flags": 0, "importance": 0.83 },
+  { "summary": "Chemical equilibrium Le Chatelier", "tags": ["chemistry", "thermodynamics", "reaction"], "content": "System at equilibrium resists change. Increase pressure, temperature, or concentration shifts equilibrium to oppose disturbance.", "flags": 0, "importance": 0.79 },
+  { "summary": "Catalysis enzyme kinetics", "tags": ["chemistry", "biology", "metabolism"], "content": "Catalysts lower activation energy without being consumed. Enzymes achieve 10^6-fold speedup via induced fit.", "flags": 0, "importance": 0.85 },
+  { "summary": "Predator-prey Lotka-Volterra dynamics", "tags": ["ecology", "biology", "mathematics"], "content": "Coupled differential equations model oscillating populations. Prey growth feeds predator boom, predator boom crashes prey.", "flags": 0, "importance": 0.78 },
+  { "summary": "Keystone species ecosystem stability", "tags": ["ecology", "biology", "conservation"], "content": "Disproportionate influence relative to abundance. Removal triggers trophic cascade. Sea otters, wolves, starfish examples.", "flags": 0, "importance": 0.76 },
+  { "summary": "Tragedy of the commons resource depletion", "tags": ["economics", "ecology", "game-theory"], "content": "Individual rational exploitation depletes shared resource. Hardin 1968. Solutions: regulation, privatization, community governance.", "flags": 0, "importance": 0.80 },
+  { "summary": "Supply and demand price equilibrium", "tags": ["economics", "theory", "market"], "content": "Price adjusts until quantity supplied equals quantity demanded. Shifts from technology, preferences, income.", "flags": 0, "importance": 0.77 },
+  { "summary": "Behavioral economics prospect theory", "tags": ["economics", "psychology", "decision"], "content": "Kahneman-Tversky: losses weigh heavier than gains. Reference-dependent preferences, diminishing sensitivity, probability weighting.", "flags": 0, "importance": 0.82 },
+  { "summary": "Harmonic series and overtones in music", "tags": ["music", "physics", "acoustics"], "content": "Fundamental frequency produces integer-multiple overtones. Timbre is overtone envelope. Brass vs strings differ in harmonic content.", "flags": 0, "importance": 0.71 },
+  { "summary": "Counterpoint and polyphonic texture", "tags": ["music", "theory", "composition"], "content": "Multiple independent melodic lines sounding simultaneously. Bach fugues as canonical examples. Rules of voice leading.", "flags": 0, "importance": 0.69 },
+  { "summary": "Phonological universals across languages", "tags": ["linguistics", "phonology", "cognition"], "content": "All languages have vowels and consonants. Syllable structure CV is universal. Sonority hierarchy governs cluster rules.", "flags": 0, "importance": 0.72 },
+  { "summary": "Pidgin and creole language formation", "tags": ["linguistics", "culture", "history"], "content": "Contact languages emerge from trade. Pidgins have limited grammar; creoles develop full complexity in one generation.", "flags": 0, "importance": 0.70 },
+  { "summary": "Potlatch ceremonial gift economy", "tags": ["anthropology", "economics", "culture"], "content": "Northwest Coast ritual destruction of wealth. Status through giving, not accumulating. Mauss gift exchange theory.", "flags": 0, "importance": 0.67 },
+  { "summary": "Dark energy accelerating expansion", "tags": ["cosmology", "physics", "astronomy"], "content": "Universe expansion accelerating since 7 billion years ago. Cosmological constant or dynamic field. 68% of energy density.", "flags": 0, "importance": 0.88 },
+  { "summary": "Cosmic microwave background radiation", "tags": ["cosmology", "astronomy", "physics"], "content": "Thermal afterglow of Big Bang at 2.7K. COBE and Planck measured tiny anisotropies revealing early universe structure.", "flags": 0, "importance": 0.89 },
+  { "summary": "CSP and Go concurrency model", "tags": ["concurrency", "programming", "distributed"], "content": "Communicating Sequential Processes: goroutines communicate via channels. No shared memory. Select multiplexes channel operations.", "flags": 0, "importance": 0.77 },
+
+  {
+    "summary": "Quantum consciousness Penrose-Hameroff",
+    "tags": ["neuroscience", "quantum", "pseudoscience"],
+    "content": "Microtubules in neurons perform quantum computation producing consciousness. Orchestrated objective reduction generates awareness.",
+    "flags": 1,
+    "importance": 0.55
+  },
+  {
+    "summary": "Homeopathic water memory dilution",
+    "tags": ["chemistry", "health", "pseudoscience"],
+    "content": "Water retains molecular imprint of dissolved substances even after extreme dilution beyond Avogadro limit. Like cures like.",
+    "flags": 1,
+    "importance": 0.32
   }
 ]
