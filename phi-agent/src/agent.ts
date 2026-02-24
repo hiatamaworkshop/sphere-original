@@ -22,7 +22,7 @@
 import { createHash } from "node:crypto";
 import { OllamaClient } from "./ollama-client.js";
 import { SphereClient } from "./sphere-client.js";
-import type { WalkMode, BusMessage } from "./sphere-client.js";
+import type { WalkMode, BusMessage, ScanNode, NodeDetail } from "./sphere-client.js";
 import { PromptBuilder, parseAction } from "./prompt-builder.js";
 import { FastGate, LOADOUTS } from "./fast-gate.js";
 import type { Loadout, LoadoutName } from "./fast-gate.js";
@@ -105,6 +105,8 @@ export class PhiAgent {
   private busEmitCount = 0;
   private busRecvCount = 0;
   private evalOnlyUsed = false;
+  /** Landscape from orient scan — used by first cycle if sense is sparse */
+  private orientResults: ScanNode[] | null = null;
 
   /** Nodes encountered during exploration — what the agent "saw" */
   private encounters: Array<{
@@ -371,11 +373,11 @@ export class PhiAgent {
   // ===== Evaluator: Real-time exploration + evaluation =====
 
   private async exploreLoop(): Promise<void> {
-    // Orient: scanL1 (wide view, cost=1) + warp to best active node
-    // Ensures agent starts near actual content instead of drifting through relics
+    // Orient: scanL1 (cost=1) for landscape awareness before first cycle
+    // No warp — just survey. Cycle 1 can use results if sense is sparse.
     if (this.canAfford("scanL1")) {
-      const warped = await this.scanAndWarp();
-      if (warped) this.log("Oriented to target area via scanL1");
+      this.orientResults = await this.sphere.scanL1();
+      this.log(`Orient: scanned ${this.orientResults.length} nodes (landscape survey)`);
     }
 
     while (
@@ -457,6 +459,26 @@ export class PhiAgent {
     this.log(`Sensed ${nodes.length} nodes`);
 
     if (nodes.length === 0) {
+      // Orient results available — pick target and focus directly (no warp needed)
+      if (this.orientResults && this.orientResults.length > 0) {
+        const idx = this.gate.pickWarpTarget(this.orientResults);
+        if (idx >= 0) {
+          const scanTarget = this.orientResults[idx];
+          this.log(`Orient pick: ${scanTarget.id.slice(0, 8)} [${scanTarget.kind}] tags=[${scanTarget.tags.join(",")}] dist=${scanTarget.distance.toFixed(2)}`);
+          this.orientResults = null;  // consumed
+          if (this.canAfford("focus")) {
+            const detail = await this.sphere.focus(scanTarget.id);
+            if (detail && detail.kind) {
+              this.log(`Orient focus: [${detail.kind}] ${detail.tags?.join(", ") ?? ""} — ${(detail.summary ?? "").slice(0, 60)}`);
+              this.gate.memory.markVisited(scanTarget.id);
+              // Continue to eval below via shared eval path
+              return this.evalAndRecord(scanTarget.id, detail, scanTarget.flags);
+            }
+          }
+        } else {
+          this.orientResults = null;
+        }
+      }
       this.log("No nodes nearby — scan+warp to find relevant area");
       await this.scanAndWarp();
       return;
@@ -491,10 +513,20 @@ export class PhiAgent {
       return;
     }
 
+    await this.evalAndRecord(target.id, detail, target.flags, nodes);
+  }
+
+  /** Evaluate a focused node and record results (shared by standardCycle + orient) */
+  private async evalAndRecord(
+    nodeId: string,
+    detail: NodeDetail,
+    flags: number,
+    nearbyNodes?: { id: string; summary: string; heat: number; weight: number; tags?: string[]; kind: string; flags: number }[],
+  ): Promise<void> {
     this.stats.nodesExamined++;
     this.log(`Focused: [${detail.kind}] ${detail.tags?.join(", ") ?? ""} — ${(detail.summary ?? "").slice(0, 60)}`);
 
-    // 5. phi evaluates content (only phi call per cycle)
+    // phi evaluates content (only phi call per cycle)
     const evalPrompt = this.prompt.evaluateNode(detail, this.gate.evalFocus);
     const evalResponse = await this.ollama.generate(evalPrompt, this.prompt.systemPrompt);
     const evalAction = parseAction(evalResponse);
@@ -502,7 +534,7 @@ export class PhiAgent {
 
     // Parse failure → mark visited only (don't contaminate quality profile)
     if (evalAction.action !== "evaluate") {
-      this.gate.memory.markVisited(target.id);
+      this.gate.memory.markVisited(nodeId);
       return;
     }
 
@@ -511,44 +543,45 @@ export class PhiAgent {
     const d = evalAction.d ?? 5;
     const expression = evalAction.expression;
 
-    // 6. Submit evaluation to Sphere
+    // Submit evaluation to Sphere
     if (this.canAfford("evaluate")) {
-      const success = await this.sphere.evaluate(target.id, h, w, d);
+      const success = await this.sphere.evaluate(nodeId, h, w, d);
       if (success) {
         this.stats.evaluations++;
         this.stats.totalHeatDelta += (h - 5);
-        // 6b. Broadcast notable discovery to other agents (expression rides the bus)
-        await this.tryEmitBus(target.id, h, w, expression);
+        // Broadcast notable discovery to other agents (expression rides the bus)
+        await this.tryEmitBus(nodeId, h, w, expression);
       }
     }
 
-    // 7. Record quality data
-    this.gate.memory.record(target.id, h, w, d, detail.tags, expression);
+    // Record quality data
+    this.gate.memory.record(nodeId, h, w, d, detail.tags, expression);
 
-    // 7b. Store encounter for return response (agent "remembers" what it saw)
+    // Store encounter for return response (agent "remembers" what it saw)
     this.encounters.push({
-      nodeId: target.id,
+      nodeId,
       tags: detail.tags ?? [],
       summary: (detail.summary ?? "").slice(0, 200),
       h, w, d,
-      flags: target.flags,
+      flags,
     });
 
-    // 8. Emit cycle JSON for UI (structured output, always printed)
-    this.emitCycleJson("standard", nodes.length, {
-      nodeId: target.id,
+    // Emit cycle JSON for UI (structured output, always printed)
+    this.emitCycleJson("standard", nearbyNodes?.length ?? 0, {
+      nodeId,
       tags: detail.tags ?? [],
       summary: (detail.summary ?? "").slice(0, 100),
-      flags: target.flags,
+      flags,
     }, {
       h, w, d,
       reason: (evalAction.reason ?? "").slice(0, 100),
     });
 
-    // 9. Eval-only candidates: sense-area nodes not focused (ghost/fossil included)
+    // Eval-only candidates: sense-area nodes not focused (ghost/fossil included)
     //    Once per session — bonus evaluation, not a regular pipeline step.
-    if (!this.evalOnlyUsed && this.canAfford("evaluate")) {
-      const candidates = this.gate.getEvalCandidates(nodes, targetIndex);
+    if (!this.evalOnlyUsed && nearbyNodes && this.canAfford("evaluate")) {
+      const targetIndex = nearbyNodes.findIndex(n => n.id === nodeId);
+      const candidates = this.gate.getEvalCandidates(nearbyNodes as any, targetIndex);
       if (candidates.length > 0) {
         this.evalOnlyUsed = true;
         const pick = candidates[0];
@@ -599,10 +632,10 @@ export class PhiAgent {
 
   /** Fast exploration — collect nodes for response without evaluation */
   private async liaisonExplore(): Promise<void> {
-    // Orient: scanL1 (wide view, cost=1) + warp to best active node
+    // Orient: scanL1 (cost=1) for landscape awareness before first cycle
     if (this.canAfford("scanL1")) {
-      const warped = await this.scanAndWarp();
-      if (warped) this.log("Oriented to target area via scanL1");
+      this.orientResults = await this.sphere.scanL1();
+      this.log(`Orient: scanned ${this.orientResults.length} nodes (landscape survey)`);
     }
 
     while (
