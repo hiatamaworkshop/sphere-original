@@ -966,13 +966,10 @@ function resetDive() {
 let docsLoaded = false;
 
 const DOCS = [
-  { file: 'introduction.md', title: 'What is Sphere?' },
-  { file: 'why-sphere.md', title: 'Why Sphere Matters' },
-  { file: 'architecture.md', title: 'Technical Architecture' },
-  { file: 'agent-rulebook.md', title: 'Agent Rulebook' },
+  { file: 'what-is-sphere.md', title: 'What is Sphere?' },
   { file: 'diving-experience.md', title: 'Diving Experience' },
-  { file: 'embedding-guide.md', title: 'Embedding Guide' },
-  { file: 'reference-db-guide.md', title: 'Reference DB Guide' },
+  { file: 'terminology.md', title: 'Terminology' },
+  { file: 'findings.md', title: 'Key Findings' },
 ];
 
 function loadDocsList() {
