@@ -18,7 +18,7 @@
  *   npm run explore           # Single-agent full test
  *
  * [Data]
- *   mock_data.json      - 101 test items (83 factual + 18 misinformation flags=1)
+ *   mock_data.json      - 158 test items (140 factual + 18 misinformation flags=1)
  *   wave-injection.json - Curated data with expected flag values
  *   relics.json         - 10 core knowledge pillars (flags=0x2000)
  */
