@@ -27,7 +27,7 @@
 docker compose up -d periphery
 ```
 
-ヘルスチェック通過まで ~60s。確認:
+ヘルスチェック通過まで ~30s。確認:
 
 ```bash
 docker compose ps
@@ -179,6 +179,8 @@ docker compose down
 
 # 全停止 + ボリューム削除 (クリーンリセット)
 docker compose down -v
+
+process ゾンビがいないかチェックすること
 ```
 
 ---

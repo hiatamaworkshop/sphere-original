@@ -159,7 +159,7 @@ async function runOnce(config: ParsedArgs): Promise<number> {
   console.log("  phi-agent — Sphere Coupling Service");
   console.log("========================================");
   console.log(`Query:   "${query}"`);
-  console.log(`Loadout: ${l.name} (walk: ${l.walkPreference}, minCycles: ${l.minCycles})`);
+  console.log(`Loadout: ${l.name} (walk: ${l.walkPreference}, minEvals: ${l.minEvals})`);
   console.log(`Quality: [${l.qualityVector.map(v => v.toFixed(1)).join(", ")}]`);
   console.log(`Return:  [${l.returnWeights.map(v => v.toFixed(1)).join(", ")}] (sat,frust,stam,stale)`);
   console.log(`Cycles:  ${cycles}`);

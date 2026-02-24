@@ -1,7 +1,7 @@
 /**
  * Sphere Project - 3-Layer Piping System
  *
- * [Architecture] Agent → Tutorial → Sanctuary → Core → Return
+ * [Architecture] Agent → Tutorial → Sanctuary → Core → Vestibule → Disconnect
  *
  * [Layer Definitions]
  *   - Tutorial: Practice mode (evaluation discarded, shared SanctuaryBundle)
@@ -28,7 +28,7 @@ import type { NodeKind } from "@sphere/renal-core";
  *   - sanctuary: Forbidden (read-only)
  *   - core: Incarnated (written to ProjDB)
  */
-export type ExperienceLayer = "tutorial" | "sanctuary" | "core";
+export type ExperienceLayer = "tutorial" | "sanctuary" | "core" | "vestibule";
 
 /**
  * Layer characteristics lookup
@@ -70,6 +70,13 @@ export const LAYER_CHARACTERISTICS: Record<ExperienceLayer, LayerCharacteristics
     hasCleanerFish: true,
     requiresOnline: true,
     dataSource: "Live ProjDB + RefDB",
+  },
+  vestibule: {
+    canEvaluate: false,
+    hasTick: false,
+    hasCleanerFish: false,
+    requiresOnline: true,
+    dataSource: "Post-exploration (exit membrane)",
   },
 };
 
@@ -322,7 +329,7 @@ export interface LayerTransitionResult {
  * [Flow] Tutorial → Sanctuary → Core (順序強制)
  *   - Tutorial → Sanctuary: Parser complete
  *   - Sanctuary → Core: Agent chooses to incarnate
- *   - Any → Return: End session (always allowed, no delay forced)
+ *   - Core → Vestibule: Session end (all exit paths converge here)
  *
  * [Design] Tutorial は必ず通過する
  *   - スキップ不可（Parser 待機バッファとしての役割）
@@ -333,10 +340,12 @@ export interface LayerTransitionResult {
  *   - Tutorial → Core: 直接遷移不可（Sanctuary を経由せよ）
  *   - Core → Sanctuary: Cannot un-incarnate
  *   - Sanctuary → Tutorial: No regression
+ *   - Vestibule → Any: No return from exit membrane
  */
 export const VALID_TRANSITIONS: Array<[ExperienceLayer, ExperienceLayer]> = [
   ["tutorial", "sanctuary"],
   ["sanctuary", "core"],
+  ["core", "vestibule"],
 ];
 
 /**
@@ -379,6 +388,10 @@ export function handleLayerEvaluation(
     case "core":
       // Live world: accept for incarnation
       return { success: true, incarnated: true };
+
+    case "vestibule":
+      // Exit membrane: no evaluation allowed
+      return { success: false, reason: "invalid_layer" };
 
     default:
       return { success: false, reason: "invalid_layer" };

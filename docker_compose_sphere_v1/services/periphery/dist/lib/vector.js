@@ -68,16 +68,6 @@ export function randomUnitVector(dim) {
     return normalize(vec);
 }
 /**
- * Linear interpolation between two vectors
- * @param t Interpolation factor [0, 1]
- */
-export function lerp(a, b, t) {
-    if (a.length !== b.length) {
-        throw new Error(`Vector dimension mismatch: ${a.length} vs ${b.length}`);
-    }
-    return a.map((v, i) => v + (b[i] - v) * t);
-}
-/**
  * Calculate weighted sum of multiple vectors
  */
 export function weightedSum(vectors, weights) {
@@ -97,11 +87,5 @@ export function weightedSum(vectors, weights) {
         }
     }
     return result;
-}
-/**
- * Get vector dimension
- */
-export function getDimension(vec) {
-    return vec.length;
 }
 //# sourceMappingURL=vector.js.map

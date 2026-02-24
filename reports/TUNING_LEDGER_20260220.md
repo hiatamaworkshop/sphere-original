@@ -165,3 +165,21 @@ decayIntensity ──→ heat/weight の減衰速度
 
 **要注意**: decayIntensity を変えると ascension の難易度が連動して変わる。
 両方同時に変えるときは effectiveThreshold と初期 score の差分を確認すること。
+
+---
+
+## 8. sense() heatFactor (2026-02-23)
+
+**場所**: `services/periphery/src/gateway/sphere-core-adapter.ts` sense() 内
+
+**現行**: **廃止済み** — heatFactor ロジックを完全削除。sense() は `perceptionRadius` のみで判定。
+
+**変更履歴**:
+- `h/1000, floor=0.5` → `h/500, floor=0.5` (02-23): 実ノード h=200-400 で全て floor に張り付く問題
+- `h/500, floor=0.5` → `floor=1.0, ボーナス専用` (02-23): sense 基本範囲をペナルティなしに変更
+- `floor=1.0, ボーナス専用` → **削除** (02-23): modeWeights 実装により検知補正はエージェント側に移管完了
+
+**設計判断**: ヒートによる検知しやすさはエージェント側の関心事（種族特性・Weapon 補正）であり、
+スフィアの物理法則として sense() にハードコードすべきでない。
+Sphere は均一な知覚範囲を提供し、エージェントが moveMode (hot/deep/explore) で
+どの方向に注意を向けるかを選択する。

@@ -311,6 +311,31 @@ class SwarmAgent {
         }
         await this.move(0.3, "explore");
     }
+    /**
+     * Boost behavior: Evaluate ALL nearby nodes with maximum scores.
+     * Designed to push nodes toward amber candidacy for metabolic observation.
+     * sense → focus+evaluate each node → move to fresh area → repeat
+     */
+    async boostBehavior() {
+        const nodes = await this.sense(8);
+        await this.delay(400);
+        // Evaluate every sensed node with high scores
+        for (const target of nodes) {
+            if (this.stats.energy <= 15)
+                break; // Reserve energy for return
+            try {
+                await this.focus(target.id);
+                await this.delay(300);
+                await this.evaluate(target.id, 9, 8, 2);
+                await this.delay(300);
+            }
+            catch {
+                // Skip on error (rate limit, etc.)
+            }
+        }
+        // Move to fresh area to find new nodes
+        await this.move(0.3, "explore");
+    }
     // ============================================================
     // Main Explore Flow
     // ============================================================
@@ -378,6 +403,9 @@ class SwarmAgent {
                             break;
                         case "distributed":
                             await this.distributedBehavior();
+                            break;
+                        case "boost":
+                            await this.boostBehavior();
                             break;
                     }
                     await this.delay(1000);
@@ -616,7 +644,7 @@ function parseArgs() {
             case "--behavior":
             case "-b":
                 const b = args[++i];
-                if (b === "random" || b === "focused" || b === "distributed") {
+                if (b === "random" || b === "focused" || b === "distributed" || b === "boost") {
                     config.behavior = b;
                 }
                 break;
@@ -645,7 +673,7 @@ Options:
   -n, --count <num>       Number of agents to spawn (default: 3)
   -B, --batch <num>       Agents per batch (default: 5)
   -D, --batch-delay <ms>  Delay between batches (default: 3000)
-  -b, --behavior <type>   Behavior: random, focused, distributed (default: random)
+  -b, --behavior <type>   Behavior: random, focused, distributed, boost (default: random)
   -t, --topic <query>     Focus topic (sets behavior to focused)
   -i, --interval <ms>     Spawn interval within batch (default: 100)
   -d, --duration <ms>     Max exploration duration per agent (default: 30000)

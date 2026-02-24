@@ -74,22 +74,12 @@ export class SphereCoreAdapter {
     // Dynamic sampling: reduce per-agent load as agent count increases
     // [Design] sense/scanL1 are frequent operations, throttle by agent count
     agentCount = 1;
-    // Spatial field for fertility bonus (optional, late-bound)
-    spatialRepo = null;
     constructor(projectionRepo, referenceRepo, parser, config = {}, unifiedCache) {
         this.projectionRepo = projectionRepo;
         this.referenceRepo = referenceRepo;
         this.parser = parser;
         this.config = { ...DEFAULT_CONFIG, ...config };
         this.unifiedCache = unifiedCache ?? null;
-    }
-    /**
-     * Set spatial field repository for fertility-based perception bonus.
-     * [Design] Fertility = decomposed node energy. Higher fertility → wider perception.
-     * This closes the death→nutrients→perception cycle.
-     */
-    setSpatialRepo(repo) {
-        this.spatialRepo = repo;
     }
     /**
      * Set unified cache (for late binding)
@@ -124,21 +114,6 @@ export class SphereCoreAdapter {
      */
     getSampleRatio() {
         return Math.max(0.2, 1 / Math.pow(this.agentCount, 0.25));
-    }
-    /**
-     * Get fertility-based perception bonus.
-     * [Design] Total fertility across all cells → sigmoid → 0-0.3 bonus
-     * [Cycle] decompose → fertility += h×w → decay → sense bonus → perception widens
-     * Uses planktonConversionRate concept: raw fertility → usable perception bonus
-     * Saturates at 0.3 (30% wider perception at high fertility)
-     */
-    async getFertilityBonus() {
-        if (!this.spatialRepo)
-            return 0;
-        const fields = await this.spatialRepo.getAll();
-        const totalFertility = fields.reduce((sum, f) => sum + f.fertility, 0);
-        // Sigmoid-like saturation: tanh maps [0,∞) → [0,1), scaled to max 0.3
-        return 0.3 * Math.tanh(totalFertility / 1000);
     }
     /**
      * Get unified cache (for showcase access)
@@ -255,10 +230,6 @@ export class SphereCoreAdapter {
      */
     async sense(agentVector, radius = 1.0) {
         const perceptionRadius = this.config.basePerceptionRadius * radius;
-        // Fertility bonus: decomposed node energy feeds perception range
-        // [Design] Closes the death→nutrients→perception cycle
-        // Higher total fertility → wider perception (up to +30% at saturation)
-        const fertilityBonus = await this.getFertilityBonus();
         // Dynamic limit based on agent count
         const dynamicLimit = this.getDynamicLimit(this.config.maxSenseResults);
         // Sample ratio for O(n) traversal reduction
@@ -267,7 +238,7 @@ export class SphereCoreAdapter {
         // (wider radius allows heat-based visibility adjustment)
         // [Sampling] sampleRatio reduces traversal cost as agent count increases
         const candidates = await this.projectionRepo.queryNearby(agentVector, dynamicLimit * 2, // Get extra candidates for filtering
-        perceptionRadius * 2 * (1 + fertilityBonus), // Extended radius, fertility-boosted
+        perceptionRadius * 2, // Extended radius for heat-based filtering
         sampleRatio);
         const nearbyNodes = [];
         for (const { node, distance } of candidates) {
@@ -276,11 +247,11 @@ export class SphereCoreAdapter {
             if (node.kind === "environment") {
                 continue;
             }
-            // Fossil: no heat-based visibility check (inert, always detectable if in range)
-            // Living nodes: high heat extends perception range
+            // Heat bonus: high heat nodes are easier to detect (glow in the dark)
+            // floor=1.0 (no penalty), baseHeat=500 → factor=1.0, h=1000 → factor=1.25
             const isFossil = node.kind === "fossil";
-            const heatFactor = isFossil ? 0.5 : Math.max(0.5, node.metrics.h / 1000);
-            const visibilityRadius = perceptionRadius * heatFactor * (1 + fertilityBonus);
+            const heatFactor = isFossil ? 1.0 : Math.max(1.0, 1.0 + (node.metrics.h - 500) / 2000);
+            const visibilityRadius = perceptionRadius * heatFactor;
             if (distance <= visibilityRadius) {
                 nearbyNodes.push({
                     id: node.id,
@@ -414,8 +385,8 @@ export class SphereCoreAdapter {
         // Track focus state
         this.focusState.set(sessionId, { nodeId, startTime: Date.now() });
         // Update metrics only for non-frozen nodes
-        // Amber nodes are frozen - no metabolism updates
-        if (!this.isAmber(node)) {
+        // Amber (SystemCore) and Candidate (cooldown) are frozen
+        if (!this.isAmber(node) && !(node.metrics.flg & NodeFlag.Candidate)) {
             node.metrics.h += this.config.focusHeatBoost;
             await this.projectionRepo.set(nodeId, node);
         }
@@ -535,39 +506,6 @@ export class SphereCoreAdapter {
         return duration;
     }
     // ============================================================
-    // Evaluation: evaluate() - DEPRECATED
-    // ============================================================
-    /**
-     * Record evaluation on an existing node
-     *
-     * @deprecated This method is no longer used in the 2-layer evaluation architecture.
-     *
-     * [New Design] Evaluations are:
-     *   1. Accumulated in session buffer (sphere-context.ts)
-     *   2. Included in ExperienceCapsule.evaluations at return time
-     *   3. Processed by Bookkeeper.applyEvaluations() with coefficients
-     *
-     * [Why Deprecated]
-     *   - Real-time ProjDB writes removed for unified evaluation path
-     *   - Session accumulation → batch ProjDB reflection at return time
-     *   - Bookkeeper handles 2-layer coefficient application (h×10, w×5, d×0.01)
-     *
-     * @param nodeId Target node ID
-     * @param score Evaluation score (-1 to 1) - OLD FORMAT
-     */
-    async evaluate(nodeId, score) {
-        console.warn(`[SphereCoreAdapter] evaluate() is DEPRECATED. ` +
-            `Evaluations should be buffered in session and processed by Bookkeeper at return time.`);
-        const node = await this.projectionRepo.get(nodeId);
-        if (!node)
-            return false;
-        // Legacy behavior (kept for compatibility, not recommended)
-        const heatDelta = score * 5; // -5 to +5 range
-        node.metrics.h = Math.max(0, Math.min(100, node.metrics.h + heatDelta));
-        await this.projectionRepo.set(nodeId, node);
-        return true;
-    }
-    // ============================================================
     // Movement: move()
     // ============================================================
     /**
@@ -607,6 +545,21 @@ export class SphereCoreAdapter {
      */
     async nodeExists(nodeId) {
         return this.projectionRepo.exists(nodeId);
+    }
+    /**
+     * Get a relic node's vector for Tutorial mock positioning.
+     * Returns the first relic found, or a zero vector if none exist.
+     */
+    async getRelicVector() {
+        const allNodes = await this.projectionRepo.getAll();
+        for (const node of allNodes) {
+            if (node.kind === "relic" && node.vector?.length) {
+                return node.vector;
+            }
+        }
+        // Fallback: zero vector (384-dim)
+        const dim = allNodes[0]?.vector?.length ?? 384;
+        return new Array(dim).fill(0);
     }
 }
 //# sourceMappingURL=sphere-core-adapter.js.map

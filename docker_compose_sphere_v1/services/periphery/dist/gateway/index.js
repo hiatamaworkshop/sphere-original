@@ -12,7 +12,7 @@ export { TicketIssuer, DEFAULT_TICKET_CONFIG, STANDARD_CAPABILITIES, } from "./t
 // Gateway Server
 export { GatewayServer, DEFAULT_GATEWAY_CONFIG, } from "./gateway-server.js";
 // SphereContext
-export { SphereContextImpl, createSphereContext, createMockSphereContext, } from "./sphere-context.js";
+export { SphereContextImpl, createSphereContext, } from "./sphere-context.js";
 // SphereCore Adapter
 export { SphereCoreAdapter, } from "./sphere-core-adapter.js";
 // Layer Transition (3-Layer Piping)

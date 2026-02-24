@@ -19,8 +19,8 @@
     "normalNodes": {
       "type": "array",
       "items": "NodeSeed",
-      "max": 5,
-      "description": "Medium-value nodes"
+      "max": 10,
+      "description": "Standard nodes (seed and agent contributions)"
     },
     "ghostNodes": {
       "type": "array",

@@ -82,12 +82,6 @@ export interface EntryRequest {
    * Example: ["distributed-systems", "consensus", "raft"]
    */
   tags: string[];
-
-  /**
-   * Quest response (optional)
-   * If agent wants to respond to a Quest from Quest Showcase
-   */
-  quest?: string;
 }
 
 /**
@@ -170,6 +164,8 @@ export interface NearbyNode {
   flags: number;
   /** Direction tags for filtering (from ProjDB) */
   tags?: string[];
+  /** Node immunity level (1.0=normal, >1.0=inflamed, heat decays faster) */
+  immuneMod?: number;
 }
 
 /**
@@ -445,15 +441,13 @@ export interface SphereContext {
    */
   moveIntent(intent: MoveIntent): Promise<MoveResult>;
 
-  // ===== Return =====
+  // ===== Return → Vestibule =====
 
   /**
-   * End session and return with experience capsule
-   * Agent submits ExperienceCapsule → Gatekeeper validation → Pipeline
+   * End exploration and enter Vestibule (exit membrane)
+   * Evaluations are auto-flushed. Optional capsule stored for submitCapsule.
    *
-   * [Design] Trust the agent - they create their own capsule
-   *
-   * @param capsule Experience to bring back (optional - can return empty-handed)
+   * @param capsule Experience to bring back (optional)
    */
   return(capsule?: ExperienceCapsule): Promise<void>;
 

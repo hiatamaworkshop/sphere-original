@@ -262,7 +262,13 @@ class SwarmAgent {
         this.resolveRequest(msg.requestId, msg);
         break;
 
-      case "returnAck":
+      case "vestibuleEntered":
+        if (msg.requestId) {
+          this.resolveRequest(msg.requestId, msg);
+        }
+        break;
+
+      case "farewell":
         this.resolveRequest(msg.requestId, msg);
         break;
 
@@ -374,7 +380,10 @@ class SwarmAgent {
   }
 
   private async return(): Promise<void> {
+    // return → vestibuleEntered (with requestId)
     await this.sendRequest("return", {});
+    // acknowledge → farewell → server closes connection
+    await this.sendRequest("acknowledge", {});
   }
 
   // ============================================================

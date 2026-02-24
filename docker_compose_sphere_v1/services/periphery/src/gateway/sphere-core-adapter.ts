@@ -295,13 +295,12 @@ export class SphereCoreAdapter {
     // Sample ratio for O(n) traversal reduction
     const sampleRatio = this.getSampleRatio();
 
-    // Spatial query: Get candidates within extended radius
-    // (wider radius allows heat-based visibility adjustment)
+    // Spatial query: Get candidates within perception radius
     // [Sampling] sampleRatio reduces traversal cost as agent count increases
     const candidates = await this.projectionRepo.queryNearby(
       agentVector,
-      dynamicLimit * 2,  // Get extra candidates for filtering
-      perceptionRadius * 2,  // Extended radius for heat-based filtering
+      dynamicLimit,
+      perceptionRadius,
       sampleRatio
     );
 
@@ -314,13 +313,9 @@ export class SphereCoreAdapter {
         continue;
       }
 
-      // Fossil: no heat-based visibility check (inert, always detectable if in range)
-      // Living nodes: high heat extends perception range
       const isFossil = node.kind === "fossil";
-      const heatFactor = isFossil ? 0.5 : Math.max(0.5, node.metrics.h / 1000);
-      const visibilityRadius = perceptionRadius * heatFactor;
 
-      if (distance <= visibilityRadius) {
+      if (distance <= perceptionRadius) {
         nearbyNodes.push({
           id: node.id,
           distance: addNoise(distance, this.config.noiseFactor),
@@ -333,6 +328,10 @@ export class SphereCoreAdapter {
           kind: node.kind,
           flags: node.metrics.flg,
           tags: node.payload?.tags,
+          // [Node immunity] Only include when inflamed (non-default)
+          ...(node.metrics.immuneMod !== undefined && node.metrics.immuneMod !== 1.0
+            ? { immuneMod: Math.round(node.metrics.immuneMod * 10000) / 10000 }
+            : {}),
         });
       }
     }
@@ -390,8 +389,8 @@ export class SphereCoreAdapter {
     // [Sampling] sampleRatio reduces traversal cost as agent count increases
     const candidates = await this.projectionRepo.queryNearby(
       agentVector,
-      dynamicLimit * 2,  // More candidates for filtering
-      perceptionRadius * 2,
+      dynamicLimit,
+      perceptionRadius,
       sampleRatio
     );
 

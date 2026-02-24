@@ -22,7 +22,7 @@
 import { createHash } from "node:crypto";
 import { OllamaClient } from "./ollama-client.js";
 import { SphereClient } from "./sphere-client.js";
-import type { WalkMode, BusMessage } from "./sphere-client.js";
+import type { WalkMode, BusMessage, ScanNode, NodeDetail } from "./sphere-client.js";
 import { PromptBuilder, parseAction } from "./prompt-builder.js";
 import { FastGate, LOADOUTS } from "./fast-gate.js";
 import type { Loadout, LoadoutName } from "./fast-gate.js";
@@ -87,7 +87,7 @@ const DEFAULT_AGENT_CONFIG: AgentConfig = {
   stream: false,
   maxCycles: 10,
   minEnergy: 10,
-  senseRadius: 5,
+  senseRadius: 1,
   moveStep: 0.3,
   debug: true,
 };
@@ -105,6 +105,8 @@ export class PhiAgent {
   private busEmitCount = 0;
   private busRecvCount = 0;
   private evalOnlyUsed = false;
+  /** Landscape from orient scan — used by first cycle if sense is sparse */
+  private orientResults: ScanNode[] | null = null;
 
   /** Nodes encountered during exploration — what the agent "saw" */
   private encounters: Array<{
@@ -166,6 +168,7 @@ export class PhiAgent {
     } else {
       this.log(`Species profile: not found for ${loadoutName} (no profile or empty)`);
     }
+    this.log(this.gate.deltaDebug);
 
     try {
       // Step 1: Verify ollama is ready
@@ -223,9 +226,34 @@ export class PhiAgent {
         await this.liaisonExplore();
       }
 
-      // Step 8: Clean disconnect — release Sphere session before slow narrative generation
+      // Step 8: Vestibule — proper exit protocol
       this.stats.status = "completed";
-      await this.sphere.disconnect();
+      const vestibuleResult = await this.sphere.enterVestibule();
+      if (vestibuleResult) {
+        this.log(`Vestibule entered: ${vestibuleResult.auto.evaluationsApplied} evaluations applied, capsule=${vestibuleResult.auto.autoCapsuleSaved}`);
+
+        // Execute Vestibule commands (same as any external agent)
+        try {
+          const receipt = await this.sphere.viewReceipt();
+          this.log(`Receipt: ${JSON.stringify(receipt)}`);
+        } catch { /* optional */ }
+
+        try {
+          const trail = await this.sphere.viewTrail();
+          const events = trail?.events ?? trail;
+          const steps = Array.isArray(events) ? events.length : 0;
+          this.log(`Trail: ${steps} actions recorded (${((trail?.duration ?? 0) / 1000).toFixed(1)}s)`);
+        } catch { /* optional */ }
+
+        try {
+          const discoveries = await this.sphere.viewDiscoveries();
+          const visits = discoveries?.visits ?? discoveries;
+          const count = Array.isArray(visits) ? visits.length : 0;
+          this.log(`Discoveries: ${count} nodes visited, ${discoveries?.uniqueNodes ?? 0} unique`);
+        } catch { /* optional */ }
+      }
+
+      await this.sphere.acknowledge();
       this.log("Returned from Sphere");
 
       // Step 8b: Broadcast — deterministic projection (no LLM, always emitted)
@@ -314,11 +342,13 @@ export class PhiAgent {
     }
   }
 
-  /** Sanctuary: sense amber+relic, focus. Energy cost = 50% of normal. */
+  /** Sanctuary: sense amber+relic, focus. Energy cost = 50% of normal.
+   *  3 cycles max — enough to survey amber + relic landscape.
+   *  Energy carries over to Core (+30 recovery), so spending here is a tradeoff. */
   private async sanctuaryExplore(): Promise<void> {
-    const CYCLES = 2;
-    for (let i = 0; i < CYCLES && this.running; i++) {
-      this.log(`Sanctuary ${i + 1}/${CYCLES} (energy: ${this.sphere.currentEnergy})`);
+    const MAX_CYCLES = 3;
+    for (let cycle = 1; cycle <= MAX_CYCLES && this.running; cycle++) {
+      this.log(`Sanctuary ${cycle}/${MAX_CYCLES} (energy: ${this.sphere.currentEnergy})`);
       if (!this.canAfford("sense")) break;
       const nodes = await this.sphere.sense(this.config.senseRadius);
       this.log(`Sanctuary: sensed ${nodes.length} nodes (amber + relic)`);
@@ -338,14 +368,21 @@ export class PhiAgent {
         this.gate.memory.markVisited(nodes[idx].id);
       }
     }
+    this.log(`Sanctuary done (energy: ${this.sphere.currentEnergy})`);
   }
 
   // ===== Evaluator: Real-time exploration + evaluation =====
 
   private async exploreLoop(): Promise<void> {
+    // Orient: scanL1 (cost=1) for landscape awareness before first cycle
+    // No warp — just survey. Cycle 1 can use results if sense is sparse.
+    if (this.canAfford("scanL1")) {
+      this.orientResults = await this.sphere.scanL1();
+      this.log(`Orient: scanned ${this.orientResults.length} nodes (landscape survey)`);
+    }
+
     while (
       this.running &&
-      this.stats.cycles < this.config.maxCycles &&
       this.sphere.currentEnergy > this.config.minEnergy
     ) {
       this.stats.cycles++;
@@ -358,21 +395,22 @@ export class PhiAgent {
         ? { type: "standard", moveStep: 0, moveMode: this.gate.walkPreference }  // first cycle: no move
         : this.gate.chooseAction(energyRatio);
 
-      this.log(`--- Cycle ${this.stats.cycles}/${this.config.maxCycles} (energy: ${this.sphere.currentEnergy}) [${action.type}] ---`);
+      this.log(`--- Cycle ${this.stats.cycles} (energy: ${this.sphere.currentEnergy}) [${action.type}] mode=${action.moveMode} step=${action.moveStep.toFixed(2)} ---`);
 
+      let wantsReturn = false;
       try {
         switch (action.type) {
           case "scout":
             await this.scoutCycle(action.moveStep, action.moveMode);
             break;
           case "camp":
-            await this.standardCycle(0, action.moveMode);  // moveStep=0: no move
+            wantsReturn = await this.standardCycle(0, action.moveMode);
             break;
           case "leap":
-            await this.standardCycle(action.moveStep, action.moveMode);
+            wantsReturn = await this.standardCycle(action.moveStep, action.moveMode);
             break;
           default:
-            await this.standardCycle(action.moveStep, action.moveMode);
+            wantsReturn = await this.standardCycle(action.moveStep, action.moveMode);
             break;
         }
       } catch (err) {
@@ -380,14 +418,8 @@ export class PhiAgent {
         break;
       }
 
-      // Feelings check after cycle (energy may have changed)
-      const currentRatio = this.initialEnergy > 0
-        ? this.sphere.currentEnergy / this.initialEnergy
-        : 1.0;
-      this.log(`Feelings: ${this.gate.feelingsDebug(currentRatio)}`);
-      this.log(`DeltaProfile: ${this.gate.memory.deltaDebug()}`);
-      if (this.gate.shouldReturn(currentRatio)) {
-        this.log(`Satisfied — returning`);
+      if (wantsReturn) {
+        this.log("Satisfied — returning");
         break;
       }
     }
@@ -397,17 +429,18 @@ export class PhiAgent {
     }
   }
 
-  /** Standard cycle: move → sense → pick → focus → eval → record */
-  private async standardCycle(moveStep: number, moveMode: WalkMode): Promise<void> {
+  /** Standard cycle: move → sense → pick → focus → eval → record. Returns true if agent wants to return. */
+  private async standardCycle(moveStep: number, moveMode: WalkMode): Promise<boolean> {
     // 1. Move (skip if moveStep=0, e.g. camp or first cycle)
     if (moveStep > 0) {
       if (!this.canAfford("move")) {
         this.log(`Energy too low for move (${this.sphere.currentEnergy} < ${this.sphere.energyCosts.move})`);
-        return;
+        return false;
       }
       const moved = await this.sphere.move(moveStep, moveMode);
       if (!moved) {
         // Gradient-based move failed (no visible nodes) — follow global field
+        this.log(`Move fallback: ${moveMode} → flow (no gradient)`);
         await this.sphere.move(moveStep, "flow");
       }
     }
@@ -415,15 +448,34 @@ export class PhiAgent {
     // 2. Sense nearby nodes
     if (!this.canAfford("sense")) {
       this.log(`Energy too low for sense (${this.sphere.currentEnergy} < ${this.sphere.energyCosts.sense})`);
-      return;
+      return false;
     }
     const nodes = await this.sphere.sense(this.config.senseRadius);
     this.log(`Sensed ${nodes.length} nodes`);
 
     if (nodes.length === 0) {
+      // Orient results available — pick target and focus directly (no warp needed)
+      if (this.orientResults && this.orientResults.length > 0) {
+        const idx = this.gate.pickWarpTarget(this.orientResults);
+        if (idx >= 0) {
+          const scanTarget = this.orientResults[idx];
+          this.log(`Orient pick: ${scanTarget.id.slice(0, 8)} [${scanTarget.kind}] tags=[${scanTarget.tags.join(",")}] dist=${scanTarget.distance.toFixed(2)}`);
+          this.orientResults = null;  // consumed
+          if (this.canAfford("focus")) {
+            const detail = await this.sphere.focus(scanTarget.id);
+            if (detail && detail.kind) {
+              this.log(`Orient focus: [${detail.kind}] ${detail.tags?.join(", ") ?? ""} — ${(detail.summary ?? "").slice(0, 60)}`);
+              this.gate.memory.markVisited(scanTarget.id);
+              return this.evalAndRecord(scanTarget.id, detail, scanTarget.flags);
+            }
+          }
+        } else {
+          this.orientResults = null;
+        }
+      }
       this.log("No nodes nearby — scan+warp to find relevant area");
       await this.scanAndWarp();
-      return;
+      return false;
     }
 
     // 3. FastGate picks target (local, 0ms) — with ActiveBus hints
@@ -431,7 +483,7 @@ export class PhiAgent {
     if (targetIndex < 0) {
       this.log("No valid targets (all visited) — scan+warp to new area");
       await this.scanAndWarp();
-      return;
+      return false;
     }
     const target = nodes[targetIndex];
     this.log(`FastGate pick: [${targetIndex}] ${target.summary.slice(0, 60)} (flags: 0x${target.flags.toString(16).padStart(4, "0")})`);
@@ -439,26 +491,36 @@ export class PhiAgent {
     // 4. Focus on target (most expensive action: 10 energy)
     if (!this.canAfford("focus")) {
       this.log(`Energy too low for focus (${this.sphere.currentEnergy} < ${this.sphere.energyCosts.focus}) — skipping`);
-      return;
+      return false;
     }
     const detail = await this.sphere.focus(target.id);
     if (!detail || !detail.kind) {
       this.log(`Focus returned empty for ${target.id} (kind: ${target.kind}) — skipping`);
       this.gate.memory.markVisited(target.id);
-      return;
+      return false;
     }
     // Skip mock/placeholder data
     const text = `${detail.summary ?? ""} ${detail.content ?? ""}`.toLowerCase();
     if (text.includes("mock") || text.includes("⚠️")) {
       this.log(`Mock data detected for ${target.id} — skipping`);
       this.gate.memory.markVisited(target.id);
-      return;
+      return false;
     }
 
+    return this.evalAndRecord(target.id, detail, target.flags, nodes);
+  }
+
+  /** Evaluate a focused node and record results. Returns true if agent wants to return. */
+  private async evalAndRecord(
+    nodeId: string,
+    detail: NodeDetail,
+    flags: number,
+    nearbyNodes?: { id: string; summary: string; heat: number; weight: number; tags?: string[]; kind: string; flags: number }[],
+  ): Promise<boolean> {
     this.stats.nodesExamined++;
     this.log(`Focused: [${detail.kind}] ${detail.tags?.join(", ") ?? ""} — ${(detail.summary ?? "").slice(0, 60)}`);
 
-    // 5. phi evaluates content (only phi call per cycle)
+    // phi evaluates content (only phi call per cycle)
     const evalPrompt = this.prompt.evaluateNode(detail, this.gate.evalFocus);
     const evalResponse = await this.ollama.generate(evalPrompt, this.prompt.systemPrompt);
     const evalAction = parseAction(evalResponse);
@@ -466,8 +528,8 @@ export class PhiAgent {
 
     // Parse failure → mark visited only (don't contaminate quality profile)
     if (evalAction.action !== "evaluate") {
-      this.gate.memory.markVisited(target.id);
-      return;
+      this.gate.memory.markVisited(nodeId);
+      return false;
     }
 
     const h = evalAction.h ?? 5;
@@ -475,44 +537,45 @@ export class PhiAgent {
     const d = evalAction.d ?? 5;
     const expression = evalAction.expression;
 
-    // 6. Submit evaluation to Sphere
+    // Submit evaluation to Sphere
     if (this.canAfford("evaluate")) {
-      const success = await this.sphere.evaluate(target.id, h, w, d);
+      const success = await this.sphere.evaluate(nodeId, h, w, d);
       if (success) {
         this.stats.evaluations++;
         this.stats.totalHeatDelta += (h - 5);
-        // 6b. Broadcast notable discovery to other agents (expression rides the bus)
-        await this.tryEmitBus(target.id, h, w, expression);
+        // Broadcast notable discovery to other agents (expression rides the bus)
+        await this.tryEmitBus(nodeId, h, w, expression);
       }
     }
 
-    // 7. Record quality data
-    this.gate.memory.record(target.id, h, w, d, detail.tags, expression);
+    // Record quality data
+    this.gate.memory.record(nodeId, h, w, d, detail.tags, expression);
 
-    // 7b. Store encounter for return response (agent "remembers" what it saw)
+    // Store encounter for return response (agent "remembers" what it saw)
     this.encounters.push({
-      nodeId: target.id,
+      nodeId,
       tags: detail.tags ?? [],
       summary: (detail.summary ?? "").slice(0, 200),
       h, w, d,
-      flags: target.flags,
+      flags,
     });
 
-    // 8. Emit cycle JSON for UI (structured output, always printed)
-    this.emitCycleJson("standard", nodes.length, {
-      nodeId: target.id,
+    // Emit cycle JSON for UI (structured output, always printed)
+    this.emitCycleJson("standard", nearbyNodes?.length ?? 0, {
+      nodeId,
       tags: detail.tags ?? [],
       summary: (detail.summary ?? "").slice(0, 100),
-      flags: target.flags,
+      flags,
     }, {
       h, w, d,
       reason: (evalAction.reason ?? "").slice(0, 100),
     });
 
-    // 9. Eval-only candidates: sense-area nodes not focused (ghost/fossil included)
+    // Eval-only candidates: sense-area nodes not focused (ghost/fossil included)
     //    Once per session — bonus evaluation, not a regular pipeline step.
-    if (!this.evalOnlyUsed && this.canAfford("evaluate")) {
-      const candidates = this.gate.getEvalCandidates(nodes, targetIndex);
+    if (!this.evalOnlyUsed && nearbyNodes && this.canAfford("evaluate")) {
+      const targetIndex = nearbyNodes.findIndex(n => n.id === nodeId);
+      const candidates = this.gate.getEvalCandidates(nearbyNodes as any, targetIndex);
       if (candidates.length > 0) {
         this.evalOnlyUsed = true;
         const pick = candidates[0];
@@ -531,12 +594,20 @@ export class PhiAgent {
             this.stats.totalHeatDelta += (lh - 5);
             this.log(`Eval-only [${pick.kind}]: ${pick.summary.slice(0, 40)} → h=${lh} w=${lw} d=${ld}`);
           }
-          this.gate.memory.record(pick.id, lh, lw, ld, pick.tags ?? [], lightEval.expression);
+          this.gate.memory.record(pick.id, lh, lw, ld, pick.tags ?? [], lightEval.expression, true);
         } else {
           this.gate.memory.markVisited(pick.id);
         }
       }
     }
+
+    // Feelings-based return decision (checked after each evaluation)
+    const energyRatio = this.initialEnergy > 0
+      ? this.sphere.currentEnergy / this.initialEnergy
+      : 1.0;
+    this.log(`Feelings: ${this.gate.feelingsDebug(energyRatio)}`);
+    this.log(`DeltaProfile: ${this.gate.memory.deltaDebug()}`);
+    return this.gate.shouldReturn(energyRatio);
   }
 
   /** Scout cycle: move → sense only (no focus, no eval, saves energy) */
@@ -563,13 +634,18 @@ export class PhiAgent {
 
   /** Fast exploration — collect nodes for response without evaluation */
   private async liaisonExplore(): Promise<void> {
+    // Orient: scanL1 (cost=1) for landscape awareness before first cycle
+    if (this.canAfford("scanL1")) {
+      this.orientResults = await this.sphere.scanL1();
+      this.log(`Orient: scanned ${this.orientResults.length} nodes (landscape survey)`);
+    }
+
     while (
       this.running &&
-      this.stats.cycles < this.config.maxCycles &&
       this.sphere.currentEnergy > this.config.minEnergy
     ) {
       this.stats.cycles++;
-      this.log(`--- Explore ${this.stats.cycles}/${this.config.maxCycles} (energy: ${this.sphere.currentEnergy}) [liaison] ---`);
+      this.log(`--- Explore ${this.stats.cycles} (energy: ${this.sphere.currentEnergy}) [liaison] ---`);
 
       try {
         // Move (skip first cycle)

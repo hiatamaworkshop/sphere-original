@@ -80,6 +80,20 @@ export class IncarnationPipeline {
             // 1. Gatekeeper: Validate against Rulebook (STATELESS)
             const validation = this.gatekeeper.validate(capsule);
             if (!validation.valid) {
+                // [Eval rescue] EMPTY_CAPSULE means no seeds, but evaluations are independent.
+                // Evaluations reference existing nodes and don't go through the node pipeline.
+                // Apply them even when no seeds are present.
+                const onlyEmptyCapsule = validation.errors?.every(e => e.code === "EMPTY_CAPSULE");
+                if (onlyEmptyCapsule && evalCount > 0) {
+                    await this.bookkeeper.applyEvaluations(capsule.evaluations);
+                    console.log(`[Pipeline] eval-only: evals_applied=${evalCount}`);
+                    console.log(`[Pipeline] ========== INGEST END ==========`);
+                    return {
+                        success: true,
+                        nodeCount: 0,
+                        evaluationCount: evalCount,
+                    };
+                }
                 console.log(`[Pipeline] REJECTED by Gatekeeper`);
                 console.log(`[Pipeline] ========== INGEST END (FAIL) ==========`);
                 return {

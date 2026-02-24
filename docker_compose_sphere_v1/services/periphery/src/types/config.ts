@@ -111,12 +111,10 @@ export interface PeripheryConfig {
     };
   };
 
-  // === Quest Store (FIFO, no TTL) ===
-  questStore?: {
-    /** 最大クエスト数 (default: 100) - FIFO で古いものから押し出し */
-    maxSize: number;
-    /** Showcase 表示数 (default: 10) */
-    showcaseSize: number;
+  // === Vestibule (Exit Membrane) ===
+  vestibule?: {
+    /** Vestibule 滞在上限 (秒) - デフォルト: 120 */
+    ttlSeconds: number;
   };
 
   // === Amber Cache (Unified Showcase + Dynamic) ===
@@ -309,9 +307,8 @@ export const DEFAULT_PERIPHERY_CONFIG: PeripheryConfig = {
       evaluate: 3,
     },
   },
-  questStore: {
-    maxSize: 100,
-    showcaseSize: 10,
+  vestibule: {
+    ttlSeconds: 120,  // 2 minutes in vestibule before forced disconnect
   },
   amberCache: {
     maxSize: 100,
