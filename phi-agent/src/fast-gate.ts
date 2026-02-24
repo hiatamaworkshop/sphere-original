@@ -453,7 +453,14 @@ export class SessionMemory {
   private _deltas: number[][] = [];
   private _prevState: number[] | null = null;
 
-  record(nodeId: string, h: number, w: number, d: number, tags: string[], expression?: number[]): void {
+  /**
+   * Record an evaluation.
+   * @param sidecar If true, this is a secondary observation (eval-only).
+   *   Sidecar evals count toward quality profile but do NOT affect
+   *   delta profile (staleness) or feelings progression (decline).
+   *   This prevents bonus evaluations from injecting artificial noise.
+   */
+  record(nodeId: string, h: number, w: number, d: number, tags: string[], expression?: number[], sidecar = false): void {
     this.evals.push({ nodeId, h, w, d, tags, expression });
     this._totalH += h;
     this._totalW += w;
@@ -462,6 +469,9 @@ export class SessionMemory {
     if (h < 5) this._misses++;
     this._peakH = Math.max(this._peakH, h);
     this._visitedNodeIds.add(nodeId);
+
+    // Sidecar evals don't affect delta profile — prevents artificial oscillation
+    if (sidecar) return;
 
     // Track tag diversity
     const prevTagCount = this._allTags.size;
@@ -558,17 +568,27 @@ export class SessionMemory {
   }
 
   /** Approximate entropy of recent deltas (normalized 0-1).
-   *  High = diverse changes. Low = predictable pattern. */
+   *  High = diverse changes. Low = predictable pattern.
+   *
+   *  Only uses continuous dimensions (h, w, preservation) for variance.
+   *  Binary dimensions (hit, novelty) distort variance-based entropy —
+   *  a single hit oscillation (0→1→0) produces variance=1.0, drowning
+   *  out meaningful content diversity signals.
+   *
+   *  Calibration (contentVar = h_var + w_var + p_var):
+   *    0.00 → staleness=1.0  (identical scores every cycle)
+   *    0.01 → staleness=0.78 (±1 fluctuation in one dim)
+   *    0.05 → staleness=0.50 (moderate variation)
+   *    0.20 → staleness=0.00 (wildly different scores)
+   */
   get deltaEntropy(): number {
     const n = this._deltas.length;
-    if (n < 3) return 1.0;  // assume maximum entropy when insufficient data
+    if (n < 2) return 1.0;  // need at least 2 deltas (3 evals) for variance
 
-    // Use variance sum as proxy for entropy (cheap, no binning needed)
-    // High total variance → high entropy (diverse Δ patterns)
     const v = this.deltaVariance;
-    const totalVar = v.reduce((a, b) => a + b, 0);
-    // Normalize: each dim is [-1,1] so max variance ≈ 1.0 per dim
-    return Math.min(1, totalVar / v.length);
+    // Continuous dimensions only: h(0), w(1), preservation(2)
+    const contentVar = v[0] + v[1] + v[2];
+    return Math.min(1, Math.sqrt(contentVar * 5));
   }
 
   /** Debug string for delta profile */

@@ -593,7 +593,7 @@ export class PhiAgent {
             this.stats.totalHeatDelta += (lh - 5);
             this.log(`Eval-only [${pick.kind}]: ${pick.summary.slice(0, 40)} → h=${lh} w=${lw} d=${ld}`);
           }
-          this.gate.memory.record(pick.id, lh, lw, ld, pick.tags ?? [], lightEval.expression);
+          this.gate.memory.record(pick.id, lh, lw, ld, pick.tags ?? [], lightEval.expression, true);
         } else {
           this.gate.memory.markVisited(pick.id);
         }
