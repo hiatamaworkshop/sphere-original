@@ -688,7 +688,7 @@ async function seedSphere(): Promise<void> {
     return;
   }
 
-  const rawData: RawSeedItem[] = (JSON.parse(readFileSync(seedPath, "utf-8")) as RawSeedItem[]).slice(0, 20);
+  const rawData: RawSeedItem[] = JSON.parse(readFileSync(seedPath, "utf-8")) as RawSeedItem[];
   console.log(`[Seed] Loading ${rawData.length} items from ${seedPath}`);
 
   // Build capsules (same logic as contribution.ts, 10 items per capsule)

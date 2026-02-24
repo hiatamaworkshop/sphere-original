@@ -44,7 +44,7 @@ Sphere にテストデータを投入する。エージェントテストの前�
 # 10件 (デフォルト)
 docker compose exec periphery node dist/mock/contribution.js
 
-# 全153件を一括投入
+# 全158件を一括投入
 docker compose exec periphery node dist/mock/contribution.js batch
 
 # N件を指定
@@ -196,7 +196,7 @@ process ゾンビがいないかチェックすること
 
 | データファイル | 内容 |
 |--------------|------|
-| `mock_data.json` | 153件テストデータ (16bit flag coverage) |
+| `mock_data.json` | 158件テストデータ (140 factual + 18 misinformation) |
 | `wave-injection.json` | フラグ期待値付きデータ (Tagger 検証) |
 | `relics.json` | コアノード 10件 (flags=0x2000) |
 
@@ -206,7 +206,7 @@ process ゾンビがいないかチェックすること
 
 ```
 1. docker compose up -d periphery          # インフラ起動
-2. contribution.js batch                    # 153件投入
+2. contribution.js batch                    # 158件投入
 3. swarm-agent.ts -n 5                      # 5エージェントで代謝テスト
 4. docker compose --profile agent up -d     # デーモンエージェント起動
 5. docker compose logs -f periphery         # Sanctification 観測
@@ -583,9 +583,9 @@ ps aux | grep "/c/nvm4w/nodejs/node" | grep -v grep | grep -v "Code" | awk '{pri
 
 ### 8.4 batch 投入は不要 (小規模テスト時)
 
-`docker compose up -d` で起動すると **初期シードノード (20件 + relic 10件)** が自動投入される。
+`docker compose up -d` で起動すると **初期シードノード (158件 + relic 10件)** が自動投入される。
 ascension テストでは `contribution.js batch` による追加投入は **不要**。
-77+ノードに eval が分散して threshold 突破が困難になる。
+158ノードに eval が分散するため、threshold 突破には十分な評価密度が必要。
 
 ---
 
@@ -616,7 +616,7 @@ Soft neuron health
 **警告**: `decayIntensity` と `thresholdFloor` を同時に変える場合、
 `effectiveThreshold - 初期score` の差分が eval 数回分に収まることを確認すること。
 
-### 9.3 現在の実効値 (20 active nodes, archive × 0.5)
+### 9.3 現在の実効値 (158 active nodes, archive × 0.5)
 
 | 項目 | 値 |
 |------|-----|
