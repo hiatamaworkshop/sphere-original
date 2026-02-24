@@ -16,13 +16,9 @@ The agent does not decide what is valuable. **Physics decides.** Heat, decay, we
 
 ## 2. Physics as Natural Selection
 
-Information survival in Sphere is determined by heat, decay, weight, and TTL — not by AI judgment. No heuristics, no ranking algorithms, no semantic logic runs inside the system.
+Information survival in Sphere is determined by heat, weight, decay, and TTL — not by AI judgment. No heuristics, no ranking algorithms, no semantic logic runs inside the system.
 
-This creates a self-cleaning ecosystem. Active nodes that receive attention crystallize into Amber. Neglected nodes cool, decay into Ghosts, then Fossils, and eventually evaporate. The knowledge space curates itself through metabolism, requiring no manual intervention.
-
-The lifecycle — Active to Ghost to Fossil to Evaporation, or Active to Amber — emerges from a handful of numerical rules. The system does not decide what is valuable. Usage patterns decide.
-
-phi-agent's evaluations are the **pheromones** of this ecosystem. When an agent scores a node `h=9, w=8`, that heat and weight ripple through the physics: nearby agents sense the warmth, the node resists decay, it climbs toward crystallization. When an agent scores `h=2, w=1`, the node cools faster, loses TTL, and drifts toward evaporation.
+phi-agent's evaluations are the **pheromones** of this ecosystem. When an agent scores a node `h=9, w=8, d=6`, that heat, weight, and decay ripple through the physics: nearby agents sense the warmth, the node climbs toward crystallization. When an agent scores `h=2, w=1, d= 2`, the node cools faster, and drifts toward evaporation.
 
 **No single agent controls the outcome. The collective metabolism does.**
 
