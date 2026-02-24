@@ -295,13 +295,12 @@ export class SphereCoreAdapter {
     // Sample ratio for O(n) traversal reduction
     const sampleRatio = this.getSampleRatio();
 
-    // Spatial query: Get candidates within extended radius
-    // (wider radius allows heat-based visibility adjustment)
+    // Spatial query: Get candidates within perception radius
     // [Sampling] sampleRatio reduces traversal cost as agent count increases
     const candidates = await this.projectionRepo.queryNearby(
       agentVector,
-      dynamicLimit * 2,  // Get extra candidates for filtering
-      perceptionRadius * 2,  // Extended radius for heat-based filtering
+      dynamicLimit,
+      perceptionRadius,
       sampleRatio
     );
 
@@ -390,8 +389,8 @@ export class SphereCoreAdapter {
     // [Sampling] sampleRatio reduces traversal cost as agent count increases
     const candidates = await this.projectionRepo.queryNearby(
       agentVector,
-      dynamicLimit * 2,  // More candidates for filtering
-      perceptionRadius * 2,
+      dynamicLimit,
+      perceptionRadius,
       sampleRatio
     );
 
