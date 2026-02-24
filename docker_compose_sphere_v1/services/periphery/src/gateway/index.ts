@@ -29,7 +29,6 @@ export {
 export {
   SphereContextImpl,
   createSphereContext,
-  createMockSphereContext,
   type CreateSphereContextOptions,
 } from "./sphere-context.js";
 
@@ -51,13 +50,6 @@ export {
   type TransitionEventHandler,
   type FlushStrategy,
 } from "./layer-transition.js";
-
-// Quest Store
-export {
-  QuestStore,
-  type QuestStoreConfig,
-  type QuestSummary,
-} from "./quest-store.js";
 
 // Amber Cache (Unified Showcase + Dynamic)
 export {

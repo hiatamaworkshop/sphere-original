@@ -87,7 +87,7 @@ const DEFAULT_AGENT_CONFIG: AgentConfig = {
   stream: false,
   maxCycles: 10,
   minEnergy: 10,
-  senseRadius: 5,
+  senseRadius: 1,
   moveStep: 0.3,
   debug: true,
 };
@@ -104,6 +104,7 @@ export class PhiAgent {
   private busHints: Map<string, BusHint> = new Map();
   private busEmitCount = 0;
   private busRecvCount = 0;
+  private evalOnlyUsed = false;
 
   /** Nodes encountered during exploration — what the agent "saw" */
   private encounters: Array<{
@@ -194,12 +195,25 @@ export class PhiAgent {
       ].filter(Boolean).join("+") || "observe-only";
       this.log(`Positioned in Sphere (energy: ${this.initialEnergy}, loadout: ${this.gate.loadoutName}, flags: ${flags})`);
 
-      // Step 3: Transition to Core layer
-      this.log("Transitioning to Core...");
-      await this.sphere.transitionToCore();
-      this.log("Reached Core layer");
+      // Step 3: Tutorial layer — explore relics while query vectorizes (zero energy cost)
+      await this.tutorialExplore();
 
-      // Step 4: Explore — branch on evaluate flag
+      // Step 4: Wait for query vector (may already be ready)
+      this.log("Waiting for query vector...");
+      await this.sphere.waitForPositioned();
+      this.log("Query vector ready.");
+
+      // Step 5: Sanctuary layer — explore amber + relic from query position (half energy cost)
+      this.log("Entering Sanctuary...");
+      await this.sphere.enterSanctuary();
+      await this.sanctuaryExplore();
+
+      // Step 6: Core layer — live world (energy +30 recovery)
+      this.log("Entering Core...");
+      await this.sphere.enterCore();
+      this.log(`Core layer (energy: ${this.sphere.currentEnergy})`);
+
+      // Step 7: Explore — branch on evaluate flag
       this.stats.status = "exploring";
       if (this.config.evaluate) {
         await this.exploreLoop();
@@ -208,12 +222,37 @@ export class PhiAgent {
         await this.liaisonExplore();
       }
 
-      // Step 5: Clean disconnect — release Sphere session before slow narrative generation
+      // Step 8: Vestibule — proper exit protocol
       this.stats.status = "completed";
-      await this.sphere.disconnect();
+      const vestibuleResult = await this.sphere.enterVestibule();
+      if (vestibuleResult) {
+        this.log(`Vestibule entered: ${vestibuleResult.auto.evaluationsApplied} evaluations applied, capsule=${vestibuleResult.auto.autoCapsuleSaved}`);
+
+        // Execute Vestibule commands (same as any external agent)
+        try {
+          const receipt = await this.sphere.viewReceipt();
+          this.log(`Receipt: ${JSON.stringify(receipt)}`);
+        } catch { /* optional */ }
+
+        try {
+          const trail = await this.sphere.viewTrail();
+          const events = trail?.events ?? trail;
+          const steps = Array.isArray(events) ? events.length : 0;
+          this.log(`Trail: ${steps} actions recorded (${((trail?.duration ?? 0) / 1000).toFixed(1)}s)`);
+        } catch { /* optional */ }
+
+        try {
+          const discoveries = await this.sphere.viewDiscoveries();
+          const visits = discoveries?.visits ?? discoveries;
+          const count = Array.isArray(visits) ? visits.length : 0;
+          this.log(`Discoveries: ${count} nodes visited, ${discoveries?.uniqueNodes ?? 0} unique`);
+        } catch { /* optional */ }
+      }
+
+      await this.sphere.acknowledge();
       this.log("Returned from Sphere");
 
-      // Step 5b: Broadcast — deterministic projection (no LLM, always emitted)
+      // Step 8b: Broadcast — deterministic projection (no LLM, always emitted)
       let broadcastPosts: string[] = [];
       if (this.encounters.length > 0) {
         const posts = renderBroadcast(this.encounters, {
@@ -273,6 +312,61 @@ export class PhiAgent {
     this.running = false;
   }
 
+  // ===== Layer exploration: Tutorial → Sanctuary (before Core) =====
+
+  /** Tutorial: sense relics, focus on one. Energy cost = 0 (tutorial multiplier). */
+  private async tutorialExplore(): Promise<void> {
+    const CYCLES = 2;
+    for (let i = 0; i < CYCLES && this.running; i++) {
+      this.log(`Tutorial ${i + 1}/${CYCLES}`);
+      const nodes = await this.sphere.sense(this.config.senseRadius);
+      this.log(`Tutorial: sensed ${nodes.length} nodes (relic only)`);
+      if (nodes.length === 0) {
+        await this.scanAndWarp();
+        continue;
+      }
+      const idx = this.gate.pickFocusTarget(nodes, () => 0);
+      if (idx < 0) {
+        await this.scanAndWarp();
+        continue;
+      }
+      const detail = await this.sphere.focus(nodes[idx].id);
+      if (detail) {
+        this.log(`Tutorial focus: [${detail.kind}] ${(detail.summary ?? "").slice(0, 60)}`);
+        this.gate.memory.markVisited(nodes[idx].id);
+      }
+    }
+  }
+
+  /** Sanctuary: sense amber+relic, focus. Energy cost = 50% of normal.
+   *  3 cycles max — enough to survey amber + relic landscape.
+   *  Energy carries over to Core (+30 recovery), so spending here is a tradeoff. */
+  private async sanctuaryExplore(): Promise<void> {
+    const MAX_CYCLES = 3;
+    for (let cycle = 1; cycle <= MAX_CYCLES && this.running; cycle++) {
+      this.log(`Sanctuary ${cycle}/${MAX_CYCLES} (energy: ${this.sphere.currentEnergy})`);
+      if (!this.canAfford("sense")) break;
+      const nodes = await this.sphere.sense(this.config.senseRadius);
+      this.log(`Sanctuary: sensed ${nodes.length} nodes (amber + relic)`);
+      if (nodes.length === 0) {
+        await this.scanAndWarp();
+        continue;
+      }
+      const idx = this.gate.pickFocusTarget(nodes, () => 0);
+      if (idx < 0) {
+        await this.scanAndWarp();
+        continue;
+      }
+      if (!this.canAfford("focus")) break;
+      const detail = await this.sphere.focus(nodes[idx].id);
+      if (detail) {
+        this.log(`Sanctuary focus: [${detail.kind}] ${detail.tags?.join(", ") ?? ""} — ${(detail.summary ?? "").slice(0, 60)}`);
+        this.gate.memory.markVisited(nodes[idx].id);
+      }
+    }
+    this.log(`Sanctuary done (energy: ${this.sphere.currentEnergy})`);
+  }
+
   // ===== Evaluator: Real-time exploration + evaluation =====
 
   private async exploreLoop(): Promise<void> {
@@ -291,7 +385,7 @@ export class PhiAgent {
         ? { type: "standard", moveStep: 0, moveMode: this.gate.walkPreference }  // first cycle: no move
         : this.gate.chooseAction(energyRatio);
 
-      this.log(`--- Cycle ${this.stats.cycles}/${this.config.maxCycles} (energy: ${this.sphere.currentEnergy}) [${action.type}] ---`);
+      this.log(`--- Cycle ${this.stats.cycles}/${this.config.maxCycles} (energy: ${this.sphere.currentEnergy}) [${action.type}] mode=${action.moveMode} step=${action.moveStep.toFixed(2)} ---`);
 
       try {
         switch (action.type) {
@@ -313,13 +407,13 @@ export class PhiAgent {
         break;
       }
 
-      // Feelings check (4D feelings × personality vector)
-      const postRatio = this.initialEnergy > 0
+      // Feelings check after cycle (energy may have changed)
+      const currentRatio = this.initialEnergy > 0
         ? this.sphere.currentEnergy / this.initialEnergy
         : 1.0;
-      this.log(`Feelings: ${this.gate.feelingsDebug(postRatio)}`);
+      this.log(`Feelings: ${this.gate.feelingsDebug(currentRatio)}`);
       this.log(`DeltaProfile: ${this.gate.memory.deltaDebug()}`);
-      if (this.gate.shouldReturn(postRatio)) {
+      if (this.gate.shouldReturn(currentRatio)) {
         this.log(`Satisfied — returning`);
         break;
       }
@@ -338,7 +432,12 @@ export class PhiAgent {
         this.log(`Energy too low for move (${this.sphere.currentEnergy} < ${this.sphere.energyCosts.move})`);
         return;
       }
-      await this.sphere.move(moveStep, moveMode);
+      const moved = await this.sphere.move(moveStep, moveMode);
+      if (!moved) {
+        // Gradient-based move failed (no visible nodes) — follow global field
+        this.log(`Move fallback: ${moveMode} → flow (no gradient)`);
+        await this.sphere.move(moveStep, "flow");
+      }
     }
 
     // 2. Sense nearby nodes
@@ -350,20 +449,16 @@ export class PhiAgent {
     this.log(`Sensed ${nodes.length} nodes`);
 
     if (nodes.length === 0) {
-      this.log("No nodes nearby, exploring...");
-      if (this.canAfford("move")) {
-        await this.sphere.move(this.config.moveStep, "explore");
-      }
+      this.log("No nodes nearby — scan+warp to find relevant area");
+      await this.scanAndWarp();
       return;
     }
 
     // 3. FastGate picks target (local, 0ms) — with ActiveBus hints
     const targetIndex = this.gate.pickFocusTarget(nodes, (id) => this.getBusBonus(id));
     if (targetIndex < 0) {
-      this.log("No valid targets (all visited) — moving to explore");
-      if (this.canAfford("move")) {
-        await this.sphere.move(this.config.moveStep, "explore");
-      }
+      this.log("No valid targets (all visited) — scan+warp to new area");
+      await this.scanAndWarp();
       return;
     }
     const target = nodes[targetIndex];
@@ -441,6 +536,35 @@ export class PhiAgent {
       h, w, d,
       reason: (evalAction.reason ?? "").slice(0, 100),
     });
+
+    // 9. Eval-only candidates: sense-area nodes not focused (ghost/fossil included)
+    //    Once per session — bonus evaluation, not a regular pipeline step.
+    if (!this.evalOnlyUsed && this.canAfford("evaluate")) {
+      const candidates = this.gate.getEvalCandidates(nodes, targetIndex);
+      if (candidates.length > 0) {
+        this.evalOnlyUsed = true;
+        const pick = candidates[0];
+        const senseDetail = {
+          id: pick.id, tags: pick.tags ?? [], summary: pick.summary,
+          content: "", heat: pick.heat, weight: pick.weight, ttl: 0, kind: pick.kind,
+        };
+        const lightPrompt = this.prompt.evaluateNode(senseDetail, this.gate.evalFocus);
+        const lightResp = await this.ollama.generate(lightPrompt, this.prompt.systemPrompt);
+        const lightEval = parseAction(lightResp);
+        if (lightEval.action === "evaluate") {
+          const lh = lightEval.h ?? 5, lw = lightEval.w ?? 5, ld = lightEval.d ?? 5;
+          const ok = await this.sphere.evaluate(pick.id, lh, lw, ld);
+          if (ok) {
+            this.stats.evaluations++;
+            this.stats.totalHeatDelta += (lh - 5);
+            this.log(`Eval-only [${pick.kind}]: ${pick.summary.slice(0, 40)} → h=${lh} w=${lw} d=${ld}`);
+          }
+          this.gate.memory.record(pick.id, lh, lw, ld, pick.tags ?? [], lightEval.expression);
+        } else {
+          this.gate.memory.markVisited(pick.id);
+        }
+      }
+    }
   }
 
   /** Scout cycle: move → sense only (no focus, no eval, saves energy) */
@@ -479,7 +603,10 @@ export class PhiAgent {
         // Move (skip first cycle)
         if (this.stats.cycles > 1) {
           if (!this.canAfford("move")) break;
-          await this.sphere.move(this.config.moveStep, this.gate.walkPreference);
+          const moved = await this.sphere.move(this.config.moveStep, this.gate.walkPreference);
+          if (!moved) {
+            await this.sphere.move(this.config.moveStep, "flow");
+          }
         }
 
         // Sense nearby nodes
@@ -488,20 +615,16 @@ export class PhiAgent {
         this.log(`Sensed ${nodes.length} nodes`);
 
         if (nodes.length === 0) {
-          this.log("No nodes nearby, exploring...");
-          if (this.canAfford("move")) {
-            await this.sphere.move(this.config.moveStep, "explore");
-          }
+          this.log("No nodes nearby — scan+warp");
+          await this.scanAndWarp();
           continue;
         }
 
         // FastGate picks target (local, 0ms)
         const targetIndex = this.gate.pickFocusTarget(nodes, (id) => this.getBusBonus(id));
         if (targetIndex < 0) {
-          this.log("No valid targets (all visited/excluded)");
-          if (this.canAfford("move")) {
-            await this.sphere.move(this.config.moveStep, "explore");
-          }
+          this.log("No valid targets (all visited) — scan+warp");
+          await this.scanAndWarp();
           continue;
         }
         const target = nodes[targetIndex];
@@ -706,8 +829,34 @@ export class PhiAgent {
   // ===== Utility =====
 
   /** Check if enough energy remains for an action */
-  private canAfford(action: "sense" | "move" | "focus" | "evaluate"): boolean {
+  private canAfford(action: "sense" | "move" | "focus" | "evaluate" | "scanL1" | "warp"): boolean {
     return this.sphere.currentEnergy >= this.sphere.energyCosts[action];
+  }
+
+  /**
+   * Fallback when sense returns 0 nodes: scanL1 (wider range) → pick by species preference → warp.
+   * Returns true if warp succeeded (agent is now near a node), false if unable.
+   */
+  private async scanAndWarp(): Promise<boolean> {
+    if (!this.canAfford("scanL1")) return false;
+    const scanned = await this.sphere.scanL1();
+    this.log(`Scan: found ${scanned.length} nodes`);
+    if (scanned.length === 0) return false;
+
+    const idx = this.gate.pickWarpTarget(scanned);
+    if (idx < 0) return false;
+
+    const target = scanned[idx];
+    this.log(`Warp target: ${target.id.slice(0, 8)} [${target.kind}] tags=[${target.tags.join(",")}] dist=${target.distance.toFixed(2)}`);
+
+    if (!this.canAfford("warp")) return false;
+    const ok = await this.sphere.warp(target.id);
+    if (ok) {
+      this.log(`Warped to ${target.id.slice(0, 8)}`);
+    } else {
+      this.log(`Warp failed for ${target.id.slice(0, 8)}`);
+    }
+    return ok;
   }
 
   /** Emit structured JSON for UI consumption (always printed, independent of debug flag) */

@@ -23,12 +23,15 @@ import type { SphereNode, NodeKind, CrystallizationData } from "@sphere/renal-co
  * Arbiter 設定（Ascension/Erosion 閾値）
  */
 export interface ArbiterConfig {
-    erosionHeatThreshold: number;
+    erosionScoreThreshold: number;
     pauseErosionBoost: number;
     hotHeatThreshold: number;
     ascensionCooldownMs: number;
     ascensionScoreThreshold: number;
     lowerThresholdRatio: number;
+    referenceNodeCount?: number;
+    ascensionThresholdFloor?: number;
+    ascensionThresholdCap?: number;
     dropoutResetH?: number;
     dropoutResetW?: number;
     dropoutResetD?: number;
@@ -36,6 +39,8 @@ export interface ArbiterConfig {
     absorptionRadius?: number;
     absorptionFactor?: number;
     maxAbsorbedNodes?: number;
+    immuneWeight?: number;
+    immuneRatioCap?: number;
     revivalThreshold?: number;
     revivalDThreshold?: number;
     protectionThreshold?: number;
@@ -120,7 +125,8 @@ export interface StateChanges {
  *
  * [Design] 冷却期間中の候補を監視
  *   - 評価凍結: Candidate フラグ持ちは評価を受け付けない
- *   - 下方スレッショルド: initialScore × lowerThresholdRatio を維持必要
+ *   - 下方スレッショルド: initialScore × effectiveRatio を維持必要
+ *   - effectiveRatio = lowerThresholdRatio + immuneWeight × max(0, immuneMod - 1.0)
  *   - 動的スコア再計算: 毎 observe() でスコアを再計算
  */
 export interface CandidateEntry {
@@ -130,7 +136,7 @@ export interface CandidateEntry {
     candidateSince: number;
     /** 登録時の複合スコア */
     initialScore: number;
-    /** 下方スレッショルド = initialScore × lowerThresholdRatio */
+    /** 下方スレッショルド = initialScore × effectiveRatio（免疫信号で調整済み） */
     lowerThreshold: number;
     /** 参考用: 登録時のメトリクス */
     snapshot: {
@@ -138,6 +144,8 @@ export interface CandidateEntry {
         w: number;
         d: number;
     };
+    /** 登録時の immuneMod（免疫信号スナップショット、ログ用） */
+    snapshotImmuneMod: number;
 }
 /**
  * Arbiter: ProjDB を監視し、状態遷移を判定・検出する
@@ -150,6 +158,7 @@ export interface CandidateEntry {
 export declare class Arbiter {
     private config;
     private candidateStore;
+    private currentEffectiveThreshold;
     constructor(config: ArbiterConfig);
     /**
      * Take a snapshot of current node states
@@ -189,7 +198,13 @@ export declare class Arbiter {
      *
      * [Design] 複合スコアが閾値を超えたら候補登録
      *   - Candidate フラグ付与
-     *   - 下方スレッショルド = initialScore × lowerThresholdRatio
+     *   - 下方スレッショルド = initialScore × effectiveRatio
+     *
+     * [Immune Threshold Amplification]
+     *   免疫系の微細な信号 (immuneMod ±0.03) を増幅し、下限スレッショルドに反映
+     *   - immuneMod ≈ 1.0 (organic): effectiveRatio = baseRatio (0.9) → 余裕あり
+     *   - immuneMod ≈ 1.02+ (suspicious): effectiveRatio → cap (0.99) → decay で脱落
+     *   immuneWeight = (avgRetention - baseRatio) / criticalImmuneDev
      */
     private checkNewCandidate;
     /**
@@ -202,6 +217,10 @@ export declare class Arbiter {
     diff(before: StateSnapshot, projDB: Map<string, SphereNode>): StateChanges;
     /**
      * Erosion 判定: Amber → Active
+     * [Design] Ascension と対称: h + w スコアで判定
+     *   Ascension: h + w >= ascensionScoreThreshold (500) → 琥珀化
+     *   Erosion:   h + w <  erosionScoreThreshold (200)   → 琥珀解除
+     *   heat (注目度) と weight (情報価値) の両方が低下して初めて Erosion
      */
     private shouldErode;
     /**

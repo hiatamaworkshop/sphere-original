@@ -7,16 +7,15 @@
  * [Connection Flow]
  *   1. Agent connects with token → "connected" (pending)
  *   2. Agent reads Rulebook, sends EntryRequest
- *   3. Membrane validates → "processing" (tutorial/amber browsing enabled)
- *   4. Parser vectorizes (async) → initial position calculated
- *   5. SphereContext created → "ready" (full dive enabled)
+ *   3. Membrane validates → SphereContext(relic vector) → "processing" (Tutorial active)
+ *   4. Parser vectorizes (async) → reposition(queryVector) → "positioned"
+ *   5. Agent transitions: enterSanctuary → enterCore
  *   6. Agent interacts via sense/focus/move/evaluate/return
  *   7. On return() or expiry → cleanup
  *
- * [3-Phase Design]
+ * [2-Phase Design]
  *   - pending: Awaiting EntryRequest (only entry message allowed)
- *   - processing: Parser working (sense for tutorial/amber allowed)
- *   - active: Full dive (all operations allowed)
+ *   - active: SphereContext exists, Tutorial layer (relic vector → query vector via reposition)
  */
 
 import { WebSocket, WebSocketServer, RawData } from "ws";
@@ -29,7 +28,6 @@ import type { EntryBuffer } from "../parser/buffer.js";
 import type { IIncarnationPipeline } from "../incarnation/pipeline.js";
 import type { NearbyNode, NodeDetail, MoveResult, WarpResult, WalkMode, EntryRequest, AmberShowcaseEntry, ScanResult, L1ScanResult } from "../types/gateway.js";
 import type { ExperienceCapsule } from "../types/capsule.js";
-import type { QuestStore } from "./quest-store.js";
 import type { SphereCoreAdapter } from "./sphere-core-adapter.js";
 import type { UnifiedAmberCache } from "./amber-cache.js";
 import type { GlobalFieldLayer } from "../field/index.js";
@@ -52,21 +50,6 @@ export const DEFAULT_GATEWAY_CONFIG: GatewayServerConfig = {
 };
 
 // ============================================================
-// Showcase Types (Quest/Amber for pre-dive browsing)
-// ============================================================
-
-/**
- * Quest Summary: External question awaiting verification
- * Re-exported from QuestStore with additional fields for welcome message
- */
-interface QuestSummary {
-  id: string;
-  question: string;
-  tags: string[];
-  submittedAt: number;
-}
-
-// ============================================================
 // Message Types (Agent ↔ Gateway)
 // ============================================================
 
@@ -84,41 +67,53 @@ type AgentMessage =
   | { type: "emit"; requestId: string; payload: string }  // base64 encoded
   | { type: "return"; requestId: string; capsule?: ExperienceCapsule }
   | { type: "enterSanctuary"; requestId: string }
-  | { type: "enterCore"; requestId: string };
+  | { type: "enterCore"; requestId: string }
+  // Vestibule commands
+  | { type: "submitCapsule"; requestId: string; capsule: ExperienceCapsule }
+  | { type: "viewReceipt"; requestId: string }
+  | { type: "viewTrail"; requestId: string }
+  | { type: "viewDiscoveries"; requestId: string }
+  | { type: "acknowledge"; requestId: string };
 
 /**
  * Gateway → Agent messages
  *
- * [Message Names - SHOWCASE_QUEST_DESIGN_MEMO alignment]
- *   - welcome: Initial greeting with Quest Showcase
+ * [Message Names]
+ *   - welcome: Initial greeting
  *   - processing: Parser working
  *   - amber_showcase: Amber nodes during Parser wait (L1/L2 only)
  *   - positioned: Ready for full dive with initial position
  *
- * [Amber Cache Design - SHOWCASE_QUEST_DESIGN_MEMO v7]
+ * [Amber Cache Design]
  *   - Unified cache: Single Map + showcaseIds Set
  *   - Showcase: L1/L2 only (id, summary, heat, tags, kind)
  *   - Dynamic: Internal cache for focus optimization (not exposed)
  */
 type GatewayMessage =
-  | { type: "welcome"; sessionId: string; rulebookUrl: string; quests: QuestSummary[]; message: string }
+  | { type: "welcome"; sessionId: string; sphereId: string; rulebookUrl: string; message: string }
   | { type: "processing"; sessionId: string; message: string }
   | { type: "amber_showcase"; sessionId: string; amber: AmberShowcaseEntry[] }
-  | { type: "positioned"; sessionId: string; position: number[]; questVector?: number[]; remainingTime: number; query: string; tags: string[]; quest?: string }
+  | { type: "positioned"; sessionId: string; position: number[]; remainingTime: number; query: string; tags: string[] }
   | { type: "entryError"; requestId: string; errors: { code: string; message: string; field?: string }[] }
-  | { type: "senseResult"; requestId: string; nodes: NearbyNode[] }
-  | { type: "scanResult"; requestId: string; nodes: L1ScanResult[] }
-  | { type: "focusResult"; requestId: string; node: NodeDetail; nearbyGhosts?: NodeDetail[] }
-  | { type: "evaluateResult"; requestId: string; success: boolean; reason?: string }
-  | { type: "moveResult"; requestId: string; result: MoveResult }
-  | { type: "warpResult"; requestId: string; result: WarpResult }
-  | { type: "emitResult"; requestId: string; success: boolean }
+  | { type: "senseResult"; requestId: string; nodes: NearbyNode[]; energy?: number }
+  | { type: "scanResult"; requestId: string; nodes: L1ScanResult[]; energy?: number }
+  | { type: "focusResult"; requestId: string; node: NodeDetail; nearbyGhosts?: NodeDetail[]; energy?: number }
+  | { type: "evaluateResult"; requestId: string; success: boolean; reason?: string; energy?: number }
+  | { type: "moveResult"; requestId: string; result: MoveResult; energy?: number }
+  | { type: "warpResult"; requestId: string; result: WarpResult; energy?: number }
+  | { type: "emitResult"; requestId: string; success: boolean; energy?: number }
   | { type: "bus_message"; data: { id: string; timestamp: number; senderId: string; payload: string } }
-  | { type: "returnAck"; requestId: string }
-  | { type: "layerChanged"; requestId: string; layer: string; message: string }
+  | { type: "layerChanged"; requestId: string; layer: string; message: string; energy?: number }
   | { type: "error"; requestId?: string; error: string }
   | { type: "warning"; message: string }
-  | { type: "expelled"; reason: string };
+  | { type: "expelled"; reason: string }
+  // Vestibule messages
+  | { type: "vestibuleEntered"; requestId?: string; sessionId: string; sphereId: string; timestamp: number; auto: { evaluationsApplied: number; autoCapsuleSaved: boolean }; commands: { name: string; description: string }[]; farewell: string }
+  | { type: "submitCapsuleResult"; requestId: string; success: boolean; nodeCount?: number; evaluationCount?: number; errors?: string[] }
+  | { type: "receipt"; requestId: string; data: any }
+  | { type: "trail"; requestId: string; data: any }
+  | { type: "discoveries"; requestId: string; data: any }
+  | { type: "farewell"; requestId: string };
 
 // ============================================================
 // Connection State (3-phase)
@@ -136,20 +131,9 @@ interface PendingConnection {
 }
 
 /**
- * Processing connection: EntryRequest received, Parser working
- * Agent can browse tutorial/amber during this phase
- */
-interface ProcessingConnection {
-  state: "processing";
-  sessionId: string;
-  socket: WebSocket;
-  token: string;
-  sessionTtl: number;
-  entryRequest: EntryRequest;
-}
-
-/**
- * Active connection: SphereContext created, full diving enabled
+ * Active connection: SphereContext created, diving enabled
+ * [Entry Pipeline] Created immediately on entry with relic vector (Tutorial layer).
+ * Query vector arrives async via reposition().
  */
 interface ActiveConnection {
   state: "active";
@@ -159,7 +143,7 @@ interface ActiveConnection {
   context: SphereContextImpl;
 }
 
-type ConnectionState = PendingConnection | ProcessingConnection | ActiveConnection;
+type ConnectionState = PendingConnection | ActiveConnection;
 
 // ============================================================
 // WebSocket Message Rate Limiter (per connection)
@@ -221,11 +205,21 @@ class WsRateLimiter {
 // Gateway Server
 // ============================================================
 
+/** Vestibule commands presented to agents on exit */
+const VESTIBULE_COMMANDS = [
+  { name: "submitCapsule", description: "Submit NodeSeeds for incarnation" },
+  { name: "viewReceipt", description: "Metabolic impact of your evaluations" },
+  { name: "viewTrail", description: "Your exploration trajectory" },
+  { name: "viewDiscoveries", description: "Notable nodes encountered" },
+  { name: "acknowledge", description: "Complete session and disconnect" },
+];
+
 export class GatewayServer {
   private wss: WebSocketServer | null = null;
   private connections = new Map<string, ConnectionState>();
   private wsRateLimiters = new Map<string, WsRateLimiter>();
   private wsRateLimitConfig: WsRateLimitConfig = DEFAULT_WS_RATE_LIMIT;
+  private vestibuleTtlTimers = new Map<string, ReturnType<typeof setTimeout>>();
   private membrane = new Membrane();
 
   /** Callback for agent count changes (for Dormancy feature) */
@@ -236,13 +230,14 @@ export class GatewayServer {
     private entryBuffer: EntryBuffer,
     private config: GatewayServerConfig = DEFAULT_GATEWAY_CONFIG,
     private pipeline?: IIncarnationPipeline,
-    private questStore?: QuestStore,
     private coreAdapter?: SphereCoreAdapter,
     private amberCache?: UnifiedAmberCache,
     private globalFieldLayer?: GlobalFieldLayer,
     private activeBusLayer?: ActiveBusLayer,
     private sessionConfig?: PeripheryConfig["session"],
-    private energyConfig?: PeripheryConfig["energy"]
+    private energyConfig?: PeripheryConfig["energy"],
+    private vestibuleConfig?: PeripheryConfig["vestibule"],
+    private sphereId: string = "unknown"
   ) {
     // Subscribe to ActiveBus for WebSocket broadcast
     if (this.activeBusLayer) {
@@ -297,6 +292,8 @@ export class GatewayServer {
     }
     this.connections.clear();
     this.wsRateLimiters.clear();
+    for (const timer of this.vestibuleTtlTimers.values()) clearTimeout(timer);
+    this.vestibuleTtlTimers.clear();
     this.notifyAgentCountChange();
   }
 
@@ -350,6 +347,8 @@ export class GatewayServer {
       }
       this.connections.clear();
       this.wsRateLimiters.clear();
+      for (const timer of this.vestibuleTtlTimers.values()) clearTimeout(timer);
+      this.vestibuleTtlTimers.clear();
 
       this.wss.close();
       this.wss = null;
@@ -401,6 +400,20 @@ export class GatewayServer {
 
     socket.on("close", () => {
       console.log(`[GatewayServer] Connection closed: ${sessionId}`);
+      // Serverside vestibule: rescue evaluations on silent disconnect
+      const currentConn = this.connections.get(sessionId);
+      if (currentConn?.state === "active" && !currentConn.context.ended) {
+        console.log(`[GatewayServer] Serverside vestibule for ${sessionId} (silent disconnect)`);
+        currentConn.context.enterVestibule().catch(err => {
+          console.error(`[GatewayServer] Serverside vestibule error:`, err);
+        });
+      }
+      // Clear vestibule TTL timer if any
+      const vtTimer = this.vestibuleTtlTimers.get(sessionId);
+      if (vtTimer) {
+        clearTimeout(vtTimer);
+        this.vestibuleTtlTimers.delete(sessionId);
+      }
       this.ticketIssuer.releaseSession(token);
       this.connections.delete(sessionId);
       this.wsRateLimiters.delete(sessionId);
@@ -412,12 +425,11 @@ export class GatewayServer {
     });
 
     // Send "welcome" - agent should now fetch Rulebook and send EntryRequest
-    // Include Quest Showcase for pre-dive browsing
     this.send(socket, {
       type: "welcome",
       sessionId,
+      sphereId: this.sphereId,
       rulebookUrl: this.config.rulebookUrl || "/rulebook",
-      quests: this.getQuestShowcase(),
       message: "Read the Rulebook, then send EntryRequest to begin your dive.",
     });
 
@@ -452,9 +464,6 @@ export class GatewayServer {
       switch (conn.state) {
         case "pending":
           await this.handlePendingMessage(conn, msg, requestId);
-          break;
-        case "processing":
-          await this.handleProcessingMessage(conn, msg, requestId);
           break;
         case "active":
           await this.handleActiveMessage(conn, msg, requestId);
@@ -500,47 +509,101 @@ export class GatewayServer {
       return;
     }
 
-    // Transition to processing state
-    const processingConn: ProcessingConnection = {
-      state: "processing",
+    // [Entry Pipeline] Get relic vector for Tutorial mock positioning
+    // Tutorial starts immediately at a relic's location while query vectorization runs async
+    const relicVector = this.coreAdapter
+      ? await this.coreAdapter.getRelicVector()
+      : new Array(384).fill(0);
+
+    // Create SphereContext immediately with relic vector (Tutorial layer)
+    const ticket = {
+      token: conn.token,
+      issuedAt: Date.now(),
+      ttl: conn.sessionTtl,
+      capsRef: "standard",
+    };
+
+    const context = createSphereContext({
+      ticket,
+      sessionId: conn.sessionId,
+      initialVector: relicVector,
+      pipeline: this.pipeline,
+      coreAdapter: this.coreAdapter,
+      globalFieldLayer: this.globalFieldLayer,
+      activeBusLayer: this.activeBusLayer,
+      sessionConfig: this.sessionConfig,
+      energyConfig: this.energyConfig,
+    });
+
+    // Set up context event handlers
+    context.on("warning", (warningMsg) => {
+      this.send(socket, { type: "warning", message: warningMsg });
+    });
+
+    context.on("expelled", async (reason) => {
+      try {
+        const autoResult = await context.returnOnExpelled();
+        // Enter vestibule instead of immediate disconnect
+        this.send(socket, {
+          type: "vestibuleEntered",
+          sessionId: conn.sessionId,
+          sphereId: this.sphereId,
+          timestamp: Date.now(),
+          auto: autoResult,
+          commands: VESTIBULE_COMMANDS,
+          farewell: `Expelled: ${reason}. Your evaluations have been saved.`,
+        });
+        this.startVestibuleTtl(conn.sessionId, socket);
+        console.log(`[GatewayServer] Expelled → Vestibule: ${conn.sessionId} (${reason})`);
+      } catch (err) {
+        console.error(`[GatewayServer] Expelled vestibule failed:`, err);
+        this.send(socket, { type: "expelled", reason });
+        socket.close(4003, reason);
+        this.connections.delete(conn.sessionId);
+        this.notifyAgentCountChange();
+      }
+    });
+
+    // Transition to active state immediately (Tutorial layer)
+    const activeConn: ActiveConnection = {
+      state: "active",
       sessionId: conn.sessionId,
       socket: conn.socket,
       token: conn.token,
-      sessionTtl: conn.sessionTtl,
-      entryRequest: msg.request,
+      context,
     };
-    this.connections.set(conn.sessionId, processingConn);
+    this.connections.set(conn.sessionId, activeConn);
 
-    // Send "processing" - Parser working
+    // Send "processing" — client knows Tutorial is ready
     this.send(socket, {
       type: "processing",
       sessionId: conn.sessionId,
-      message: "Calculating your initial position...",
+      message: "Tutorial ready. Query vectorization in progress...",
     });
 
     // Send amber_showcase - representative Amber nodes for browsing during Parser wait
     // [Design] Parser wait masking: Agent browses Showcase while vector is calculated
     this.sendAmberShowcase(conn.sessionId, socket);
 
-    console.log(`[GatewayServer] Agent processing: ${conn.sessionId} (tutorial/amber browsing enabled)`);
+    console.log(`[GatewayServer] Agent in Tutorial: ${conn.sessionId} (relic vector, async vectorization started)`);
 
-    // Start async vectorization
-    this.startVectorization(processingConn, requestId);
+    // Start async vectorization — on completion, reposition + send positioned
+    this.startVectorization(activeConn, requestId, msg.request);
   }
 
   /**
    * Start async vectorization via EntryBuffer
-   * When complete, transition to active state
+   * When complete, reposition agent and send "positioned"
    *
-   * [Design] Uses EntryBuffer for batch efficiency
-   *   - Multiple agent entries can be batched together
-   *   - Called right after Membrane.validate() passes
+   * [Entry Pipeline] SphereContext already exists (relic vector).
+   * This method runs async — agent can explore Tutorial while waiting.
    */
   private async startVectorization(
-    conn: ProcessingConnection,
-    requestId: string
+    conn: ActiveConnection,
+    requestId: string,
+    entryRequest: EntryRequest
   ): Promise<void> {
-    const { sessionId, socket, token, sessionTtl, entryRequest } = conn;
+    const { sessionId, socket, context } = conn;
 
     try {
       // EntryBuffer: query + tags → vector (batched for efficiency)
@@ -548,81 +611,30 @@ export class GatewayServer {
       const parsed = await this.entryBuffer.enqueueDiveEntry(
         sessionId,
         queryForVectorization,
-        entryRequest.quest  // optional quest text
       );
-      const initialVector = parsed.initialPosition;
-      // Use full 384-dim vector directly (no 3D projection)
+      const queryVector = parsed.initialPosition;
 
-      // Check if connection still exists (may have disconnected)
+      // Check if connection still exists (may have disconnected during vectorization)
       const currentConn = this.connections.get(sessionId);
-      if (!currentConn || currentConn.state !== "processing") {
-        console.log(`[GatewayServer] Session ${sessionId} no longer in processing state, skipping ready`);
+      if (!currentConn || currentConn.state !== "active") {
+        console.log(`[GatewayServer] Session ${sessionId} no longer active, skipping reposition`);
         return;
       }
 
-      // Create SphereContext with position
-      const ticket = {
-        token,
-        issuedAt: Date.now(),
-        ttl: sessionTtl,
-        capsRef: "standard",
-      };
+      // Reposition agent from relic vector to real query vector
+      context.reposition(queryVector);
 
-      const context = createSphereContext({
-        ticket,
-        sessionId,
-        initialVector,
-        pipeline: this.pipeline,
-        coreAdapter: this.coreAdapter,
-        globalFieldLayer: this.globalFieldLayer,
-        activeBusLayer: this.activeBusLayer,
-        sessionConfig: this.sessionConfig,
-        energyConfig: this.energyConfig,
-      });
-
-      // Set up context event handlers
-      context.on("warning", (msg) => {
-        this.send(socket, { type: "warning", message: msg });
-      });
-
-      context.on("expelled", async (reason) => {
-        // Process AutoCapsule + buffered evaluations before closing
-        try {
-          await context.returnOnExpelled();
-        } catch (err) {
-          console.log(`[GatewayServer] returnOnExpelled failed: ${err}`);
-        }
-        this.send(socket, { type: "expelled", reason });
-        socket.close(4003, reason);
-        this.connections.delete(sessionId);
-        this.notifyAgentCountChange();
-      });
-
-      // Transition to active state
-      const activeConn: ActiveConnection = {
-        state: "active",
-        sessionId,
-        socket,
-        token,
-        context,
-      };
-      this.connections.set(sessionId, activeConn);
-
-      // Send "positioned" - full diving enabled (384-dim vector)
-      // Include agent's own request context for goal-directed behavior
-      // [Quest Vector] Compass direction from quest text (SHOWCASE_QUEST_DESIGN_MEMO v9)
+      // Send "positioned" — query vector ready, Sanctuary transition enabled
       this.send(socket, {
         type: "positioned",
         sessionId,
-        position: initialVector,
-        questVector: parsed.questVector,  // quest vector as compass (optional)
+        position: queryVector,
         remainingTime: context.remainingTime,
         query: entryRequest.query,
         tags: entryRequest.tags,
-        quest: entryRequest.quest,
       });
 
-      console.log(`[GatewayServer] Agent diving: ${sessionId} (vector dim=${initialVector.length})`);
+      console.log(`[GatewayServer] Query vector ready: ${sessionId} (dim=${queryVector.length})`);
 
     } catch (error) {
       console.error(`[GatewayServer] Vectorization failed for ${sessionId}:`, error);
@@ -630,38 +642,9 @@ export class GatewayServer {
     }
   }
 
-  /**
-   * Handle messages in processing state
-   * Only "sense" is allowed (for tutorial/amber browsing)
-   */
-  private async handleProcessingMessage(
-    conn: ProcessingConnection,
-    msg: AgentMessage,
-    requestId: string
-  ): Promise<void> {
-    const { socket } = conn;
-
-    switch (msg.type) {
-      case "entry":
-        this.sendError(socket, requestId, "Already submitted EntryRequest. Waiting for position calculation.");
-        break;
-
-      case "sense":
-        // Allow sense for tutorial/amber browsing during processing
-        // TODO: Implement tutorial/amber-only sense (limited scope)
-        // For now, return empty result as placeholder
-        this.send(socket, {
-          type: "senseResult",
-          requestId,
-          nodes: [], // Tutorial/amber nodes would go here
-        });
-        console.log(`[GatewayServer] Processing sense for ${conn.sessionId} (tutorial/amber only)`);
-        break;
-
-      default:
-        this.sendError(socket, requestId, "Position calculation in progress. Only 'sense' is available for tutorial/amber browsing.");
-    }
-  }
+  // [Entry Pipeline] handleProcessingMessage removed.
+  // SphereContext is created immediately on entry (relic vector).
+  // All messages are handled by handleActiveMessage (Tutorial layer filtering applies).
 
   /**
    * Handle messages in active (diving) state
@@ -675,8 +658,8 @@ export class GatewayServer {
     const { sessionId, socket, context } = conn;
     const { type } = msg;
 
-    // Rate limit check (skip for return - always allow graceful exit)
-    if (type !== "return") {
+    // Rate limit check (skip for return/acknowledge - always allow graceful exit)
+    if (type !== "return" && type !== "acknowledge") {
       const limiter = this.wsRateLimiters.get(sessionId);
       if (limiter) {
         const reject = limiter.checkAction(type);
@@ -687,6 +670,13 @@ export class GatewayServer {
       }
     }
 
+    // === Vestibule Gate ===
+    // When in vestibule layer, only vestibule commands are available
+    if (context.layer === "vestibule") {
+      await this.handleVestibuleMessage(conn, msg, requestId);
+      return;
+    }
+
     switch (type) {
       case "entry": {
         this.sendError(socket, requestId, "Already entered. Cannot re-enter.");
@@ -695,13 +685,13 @@ export class GatewayServer {
 
       case "sense": {
         const nodes = await context.sense(msg.radius);
-        this.send(socket, { type: "senseResult", requestId, nodes });
+        this.send(socket, { type: "senseResult", requestId, nodes, energy: context.energy });
         break;
       }
 
       case "scan": {
         const nodes = await context.scanL1(msg.radius);
-        this.send(socket, { type: "scanResult", requestId, nodes });
+        this.send(socket, { type: "scanResult", requestId, nodes, energy: context.energy });
         break;
       }
 
@@ -713,6 +703,7 @@ export class GatewayServer {
           requestId,
           node: focusResult.node,
           nearbyGhosts: focusResult.nearbyGhosts,
+          energy: context.energy,
         });
         break;
       }
@@ -724,6 +715,7 @@ export class GatewayServer {
           requestId,
           success: result.success,
           reason: !result.success ? result.reason : undefined,
+          energy: context.energy,
         });
         break;
       }
@@ -731,13 +723,13 @@ export class GatewayServer {
       case "move": {
         // move(step, mode) - 384D semantic space movement
         const result = await context.move(msg.step, msg.mode);
-        this.send(socket, { type: "moveResult", requestId, result });
+        this.send(socket, { type: "moveResult", requestId, result, energy: context.energy });
         break;
       }
 
       case "warp": {
         const result = await context.warp(msg.nodeId);
-        this.send(socket, { type: "warpResult", requestId, result });
+        this.send(socket, { type: "warpResult", requestId, result, energy: context.energy });
         break;
       }
 
@@ -745,16 +737,26 @@ export class GatewayServer {
         // Decode base64 payload
         const payload = Buffer.from(msg.payload, "base64");
         const success = await context.emitBus(new Uint8Array(payload));
-        this.send(socket, { type: "emitResult", requestId, success });
+        this.send(socket, { type: "emitResult", requestId, success, energy: context.energy });
         break;
       }
 
       case "return": {
         await context.return(msg.capsule);
-        this.send(socket, { type: "returnAck", requestId });
-        socket.close(1000, "Session ended");
-        this.connections.delete(sessionId);
-        this.notifyAgentCountChange();
+        // enterVestibule was called inside context.return(), get result via getReceipt
+        const receipt = context.getReceipt();
+        this.send(socket, {
+          type: "vestibuleEntered",
+          requestId,
+          sessionId,
+          sphereId: this.sphereId,
+          timestamp: Date.now(),
+          auto: receipt.autoProcess,
+          commands: VESTIBULE_COMMANDS,
+          farewell: "Your evaluations have been applied. You may submit a capsule or acknowledge to disconnect.",
+        });
+        this.startVestibuleTtl(sessionId, socket);
+        console.log(`[GatewayServer] Return → Vestibule: ${sessionId}`);
         break;
       }
 
@@ -766,6 +768,7 @@ export class GatewayServer {
             requestId,
             layer: "sanctuary",
             message: "Entered Sanctuary - read-only exploration enabled",
+            energy: context.energy,
           });
         } catch (error) {
           const msg = error instanceof Error ? error.message : "Failed to enter Sanctuary";
@@ -782,6 +785,7 @@ export class GatewayServer {
             requestId,
             layer: "core",
             message: "Entered Core - evaluations will be incarnated",
+            energy: context.energy,
           });
         } catch (error) {
           const msg = error instanceof Error ? error.message : "Failed to enter Core";
@@ -793,6 +797,92 @@ export class GatewayServer {
       default:
         this.sendError(socket, requestId, `Unknown message type: ${type}`);
     }
+  }
+
+  /**
+   * Handle messages in vestibule state
+   * Only vestibule commands (submitCapsule, view*, acknowledge) are available
+   */
+  private async handleVestibuleMessage(
+    conn: ActiveConnection,
+    msg: AgentMessage,
+    requestId: string
+  ): Promise<void> {
+    const { sessionId, socket, context } = conn;
+    const { type } = msg;
+
+    switch (type) {
+      case "submitCapsule": {
+        const result = await context.submitCapsule(msg.capsule);
+        this.send(socket, {
+          type: "submitCapsuleResult",
+          requestId,
+          success: result.success,
+          nodeCount: result.nodeCount,
+          evaluationCount: result.evaluationCount,
+          errors: result.errors,
+        });
+        break;
+      }
+
+      case "viewReceipt": {
+        const data = context.getReceipt();
+        this.send(socket, { type: "receipt", requestId, data });
+        break;
+      }
+
+      case "viewTrail": {
+        const data = context.getTrail();
+        this.send(socket, { type: "trail", requestId, data });
+        break;
+      }
+
+      case "viewDiscoveries": {
+        const data = context.getDiscoveries();
+        this.send(socket, { type: "discoveries", requestId, data });
+        break;
+      }
+
+      case "acknowledge": {
+        // Clear vestibule TTL
+        const vtTimer = this.vestibuleTtlTimers.get(sessionId);
+        if (vtTimer) {
+          clearTimeout(vtTimer);
+          this.vestibuleTtlTimers.delete(sessionId);
+        }
+        this.send(socket, { type: "farewell", requestId });
+        socket.close(1000, "Session ended");
+        this.connections.delete(sessionId);
+        this.wsRateLimiters.delete(sessionId);
+        this.notifyAgentCountChange();
+        console.log(`[GatewayServer] Acknowledged → disconnect: ${sessionId}`);
+        break;
+      }
+
+      default:
+        this.sendError(socket, requestId, `Only vestibule commands available (submitCapsule, viewReceipt, viewTrail, viewDiscoveries, acknowledge). Got: ${type}`);
+    }
+  }
+
+  /**
+   * Start Vestibule TTL timer
+   * When TTL expires, force-disconnect the agent
+   */
+  private startVestibuleTtl(sessionId: string, socket: WebSocket): void {
+    const ttlSeconds = this.vestibuleConfig?.ttlSeconds ?? 120;
+    const ttlMs = ttlSeconds * 1000;
+
+    const timer = setTimeout(() => {
+      console.log(`[GatewayServer] Vestibule TTL expired: ${sessionId}`);
+      this.send(socket, { type: "farewell", requestId: "system" });
+      socket.close(1000, "Vestibule TTL expired");
+      this.connections.delete(sessionId);
+      this.wsRateLimiters.delete(sessionId);
+      this.vestibuleTtlTimers.delete(sessionId);
+      this.notifyAgentCountChange();
+    }, ttlMs);
+
+    this.vestibuleTtlTimers.set(sessionId, timer);
   }
 
   /**
@@ -812,24 +902,6 @@ export class GatewayServer {
   }
 
   /**
-   * Get Quest Showcase (external questions awaiting verification)
-   *
-   * [Design] Quest ≠ ProjDB node
-   *   - Quest = text object from external POST
-   *   - Stored in Quest Store (NOT ProjDB)
-   *   - Available BEFORE Parser (agents decide quest at welcome)
-   *
-   * [Flow]
-   *   POST /quest → Quest Store → Quest Showcase (welcome)
-   *   Agent selects quest → EntryRequest { quest } → ParserBuffer
-   */
-  private getQuestShowcase(): QuestSummary[] {
-    if (!this.questStore) {
-      return [];
-    }
-    return this.questStore.getShowcase();
-  }
-
   /**
    * Send Amber Showcase to agent
    *
@@ -866,17 +938,15 @@ export class GatewayServer {
   /**
    * Get connection statistics
    */
-  getStats(): { pendingConnections: number; processingConnections: number; activeConnections: number } {
+  getStats(): { pendingConnections: number; activeConnections: number } {
     let pending = 0;
-    let processing = 0;
     let active = 0;
     for (const conn of this.connections.values()) {
       switch (conn.state) {
         case "pending": pending++; break;
-        case "processing": processing++; break;
         case "active": active++; break;
       }
     }
-    return { pendingConnections: pending, processingConnections: processing, activeConnections: active };
+    return { pendingConnections: pending, activeConnections: active };
   }
 }

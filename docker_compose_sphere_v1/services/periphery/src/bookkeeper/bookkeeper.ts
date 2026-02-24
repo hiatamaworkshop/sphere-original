@@ -127,8 +127,6 @@ export class Bookkeeper {
           `[Bookkeeper] refdb_create id=${node.id.slice(0, 8)} vec=${node.vector.length > 0 ? node.vector.length : "empty"}`
         );
       } else {
-        // [Principle 2] Same content = same hash = skip (deduplicated)
-        // console.log(`[Bookkeeper] refdb_dedup id=${node.id.slice(0, 8)}`);
       }
 
       // === Phase 2: ProjDB (Body) ===
@@ -635,14 +633,15 @@ export class Bookkeeper {
     // [Node immunity] Tick tracker once per observation cycle for all affected nodes
     for (const nodeId of this.immunityTracker.affectedThisCycle()) {
       const stressDelta = this.immunityTracker.tick(nodeId);
-      if (stressDelta > 0) {
+      if (stressDelta !== 0) {
         const node = await this.projectionRepo.get(nodeId);
         if (node) {
           const curr = node.metrics.immuneMod ?? 1.0;
-          node.metrics.immuneMod = Math.min(1.03, curr + stressDelta);
+          node.metrics.immuneMod = Math.max(0.97, Math.min(1.03, curr + stressDelta));
           await this.projectionRepo.set(nodeId, node);
+          const direction = stressDelta > 0 ? "inflame" : "protect";
           console.log(
-            `[Bookkeeper] immunity_spike id=${nodeId.slice(0, 8)} immuneMod=${node.metrics.immuneMod.toFixed(4)}`
+            `[Bookkeeper] immunity_${direction} id=${nodeId.slice(0, 8)} immuneMod=${node.metrics.immuneMod.toFixed(4)}`
           );
         }
       }
@@ -674,17 +673,18 @@ class NodeImmunityTracker {
   // Stress spike applied to immuneMod when low diversity detected
   private static readonly HARD_SPIKE = 0.005;      // per firing obs; clamp limits total
 
-  private states = new Map<string, { bits: number; obsCount: number }>();
+  private states = new Map<string, { bits: number; obsCount: number; netH: number }>();
   private cycleAffected = new Set<string>();
 
   /** Register one evaluation for a node this cycle. */
   addEval(nodeId: string, hDelta: number, wDelta: number): void {
     let s = this.states.get(nodeId);
     if (!s) {
-      s = { bits: 0, obsCount: 0 };
+      s = { bits: 0, obsCount: 0, netH: 0 };
       this.states.set(nodeId, s);
     }
     s.bits |= bloomBits(hDelta, wDelta);
+    s.netH += hDelta;
     this.cycleAffected.add(nodeId);
   }
 
@@ -695,7 +695,10 @@ class NodeImmunityTracker {
 
   /**
    * Advance one observation cycle for a node.
-   * Returns stress delta to apply to immuneMod (0 or HARD_SPIKE).
+   * Returns stress delta to apply to immuneMod.
+   *   +HARD_SPIKE when monotonous boost (net positive) detected
+   *   -HARD_SPIKE when monotonous erosion (net negative) detected
+   *   0 when pattern diversity is sufficient
    */
   tick(nodeId: string): number {
     const s = this.states.get(nodeId);
@@ -703,13 +706,15 @@ class NodeImmunityTracker {
 
     s.obsCount++;
     const saturation = popcount32(s.bits) / 32;
+    // Direction-aware spike: boost → inflammation, erosion → protection
     const stress = saturation < NodeImmunityTracker.MIN_DIVERSITY
-      ? NodeImmunityTracker.HARD_SPIKE
+      ? (s.netH >= 0 ? NodeImmunityTracker.HARD_SPIKE : -NodeImmunityTracker.HARD_SPIKE)
       : 0;
 
     if (s.obsCount >= NodeImmunityTracker.OBS_WINDOW) {
       s.bits = 0;
       s.obsCount = 0;
+      s.netH = 0;
     }
     return stress;
   }

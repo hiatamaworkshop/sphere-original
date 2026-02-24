@@ -134,7 +134,7 @@ export class SignatureRegistry {
 /**
  * Quantize cosine distance to perception level
  */
-export function quantizeDistance(
+function quantizeDistance(
   distance: number,
   config: MoveConfig = DEFAULT_MOVE_CONFIG
 ): DistanceLevel {
@@ -146,7 +146,7 @@ export function quantizeDistance(
 /**
  * Quantize heat value to perception level
  */
-export function quantizeHeat(
+function quantizeHeat(
   heat: number,
   config: MoveConfig = DEFAULT_MOVE_CONFIG
 ): HeatLevel {
@@ -166,11 +166,12 @@ export function quantizeHeat(
  *        この関数は移動システム内部用で、量子化された ScanResult (distance/heat/signature) を返す。
  *        現在 Gateway からは呼ばれないが、signature ベース移動の基盤として残置。
  *
- * [Design] Hot nodes are visible from further away (heatBoost)
+ * [Design] Uniform range (baseRange only). Heat-based visibility was removed —
+ *          detection bias belongs in agent layer (modeWeights / Weapon).
  * [Design] Cold nodes are invisible (minHeat filter)
  * [Design] Results are capped (maxResults)
  */
-export function scan(
+function scan(
   agentVector: number[],
   nodes: SphereNode[],
   signatureRegistry: SignatureRegistry,
@@ -188,11 +189,7 @@ export function scan(
 
     const dist = cosineDistance(agentVector, node.vector);
 
-    // Heat boosts visibility range
-    const heatLevel = quantizeHeat(node.metrics.h, moveConfig);
-    const effectiveRange = config.baseRange + config.heatBoost[heatLevel];
-
-    if (dist <= effectiveRange) {
+    if (dist <= config.baseRange) {
       candidates.push({ node, dist });
     }
   }
@@ -267,7 +264,7 @@ function calculateGravity(
  *   follow: gravity dominant
  *   orbit: perpendicular to gravity (not fully implemented)
  */
-export function calculateDrift(
+function calculateDrift(
   agentVector: number[],
   mode: DriftMode,
   nodes: SphereNode[],
@@ -323,7 +320,7 @@ export function calculateDrift(
  * [Design] moveBatch: steps > 1 executes as single calculation
  * [Principle] 384-dim resolution happens once, not per step
  */
-export function executeMove(
+function executeMove(
   agentVector: number[],
   velocity: number[],
   intent: MoveIntent,

@@ -1,1 +1,1 @@
-{"version":3,"file":"index.js","sourceRoot":"","sources":["../../src/mock/index.ts"],"names":[],"mappings":"AAAA;;;;;;;;;;;;;;;;;;GAkBG;AAEH,aAAa;AACb,OAAO,EAAE,YAAY,EAAE,MAAM,oBAAoB,CAAC"}
+{"version":3,"file":"index.js","sourceRoot":"","sources":["../../src/mock/index.ts"],"names":[],"mappings":"AAAA;;;;;;;;;;;;;;;;;;;;;;;GAuBG;AAEH,aAAa;AACb,OAAO,EAAE,eAAe,EAAE,UAAU,EAAE,MAAM,kBAAkB,CAAC;AAE/D,OAAO,EAAE,YAAY,EAAE,MAAM,oBAAoB,CAAC;AAClD,OAAO,EAAE,OAAO,EAAE,MAAM,oBAAoB,CAAC"}

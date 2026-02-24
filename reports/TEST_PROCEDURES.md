@@ -359,9 +359,8 @@ docker compose exec phi-agent ls -la /app/data/generations/
 # species-profile の確認
 docker compose exec phi-agent cat /app/data/species-profile.json | head -50
 
-# periphery のスナップショット
-curl http://localhost:3001/nodes/stats
-curl http://localhost:3001/metrics
+# periphery の統合ステータス (nodes, gateway, field, sanctification 等)
+curl -s http://localhost:3001/sphere/status | jq
 ```
 
 ### 7.8 聖域化モニタリング — API・メトリクス一覧
@@ -445,12 +444,62 @@ for a in hunter scholar balanced sniper moth; do echo -n "$a: "; docker logs sph
 #### 全体ヘルスチェック
 
 ```bash
-# Sphere ヘルス (node count, uptime)
+# 統合ステータス (推奨: 全サブシステムを1回で取得)
+curl -s http://localhost:3001/sphere/status | jq
+
+# ヘルス (軽量)
 curl -s http://localhost:3001/health | jq
 
-# 全メトリクス (tick, connections, bus stats)
+# メトリクス (uptime, nodeCount, agents, field, memory)
 curl -s http://localhost:3001/metrics | jq
 ```
+
+#### API エンドポイント一覧 (2026-02-23)
+
+| エンドポイント | Rate Limit | 用途 |
+|------------|-----------|------|
+| **情報・監視** | | |
+| `GET /` | なし | Sphere 概要 + 全エンドポイント一覧 |
+| `GET /health` | なし | ヘルスチェック (`{ status: "ok" }`) |
+| `GET /sphere/status` | 120/min | **統合ステータス** (gateway, nodes, tickets, bus, field, sanctification, memory) |
+| `GET /sanctification` | 120/min | 聖別ニューロン全詳細 (hard/soft/meta) |
+| `GET /metrics` | なし | 軽量メトリクス (uptime, nodeCount, agents, field, memory) |
+| **ノード観測** | | |
+| `GET /nodes/stats` | 120/min | kind 別カウント + heat/weight/ttl 平均 |
+| `GET /nodes/metrics` | 120/min | 全ノード個別メトリクス (heat 順) |
+| `GET /nodes/:id` | 120/min | 単一ノード詳細 |
+| `GET /sphere/snapshot` | 120/min | 全状態スナップショット (Digestor sphere_hash 用) |
+| **カタログ・探索** | | |
+| `GET /sphere/manifest` | 120/min | Facade カタログ向け自己記述 |
+| `GET /sphere/explore?q=&limit=&radius=` | 30/min | ベクトル検索 (クエリ → 近傍ノード) |
+| **入力** | | |
+| `POST /sphere/contribute` | 10/min | 外部データ投入 (ExperienceCapsule) |
+| `POST /sphere/forge/environmental` | 10/min | Environmental ノード生成 (要認証) |
+| **ガイダンス** | | |
+| `GET /rulebook` | なし | エージェントルールブック |
+| `GET /schema` | なし | データフォーマット仕様 |
+| **ダイブ** | | |
+| `POST /dive/request` | なし | Dive Ticket 発行 |
+| `GET /dive/validate/:token` | なし | チケット検証 (デバッグ) |
+| `GET /dive/stats` | なし | チケット統計 |
+| **クエスト** | | |
+| `POST /quest` | 30/min | クエスト投稿 (外部検証リクエスト) |
+| `GET /quest/stats` | なし | クエスト統計 |
+
+**Digestor (IO Gateway, port 5000):**
+
+| エンドポイント | 用途 |
+|------------|------|
+| `GET /health` | ヘルスチェック |
+| `POST /evaluations` | eval 受付 (phi-agent → eval-log.jsonl) |
+| `POST /narratives` | narrative 受付 |
+| `GET /narratives?limit=&loadout=&type=` | narrative 一覧 |
+| `GET /narratives/:id` | 単一 narrative |
+| `GET /species` | 全種族プロファイル |
+| `GET /species/:name/profile` | 単一種族プロファイル |
+| `GET /generations` | 世代一覧 |
+| `GET /generations/:id` | 単一世代 |
+| `GET /stats` | eval-log 集計 |
 
 ---
 

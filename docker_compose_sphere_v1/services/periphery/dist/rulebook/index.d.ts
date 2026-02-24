@@ -35,7 +35,6 @@ export declare const rulebook: {
         movement: {
             move: string;
             warp: string;
-            deprecated: string;
         };
         magneticField: string;
         attractant: string;
@@ -131,10 +130,7 @@ export declare const rulebook: {
             modes?: undefined;
             fieldInfluence?: undefined;
         })[];
-        deprecated: {
-            name: string;
-            description: string;
-        }[];
+        deprecated: never[];
         forbidden: {
             name: string;
             description: string;
@@ -519,7 +515,6 @@ export declare function getRulebookResponse(configOverrides?: {
         movement: {
             move: string;
             warp: string;
-            deprecated: string;
         };
         magneticField: string;
         attractant: string;
@@ -611,10 +606,7 @@ export declare function getRulebookResponse(configOverrides?: {
             modes?: undefined;
             fieldInfluence?: undefined;
         })[];
-        deprecated: {
-            name: string;
-            description: string;
-        }[];
+        deprecated: never[];
         forbidden: {
             name: string;
             description: string;

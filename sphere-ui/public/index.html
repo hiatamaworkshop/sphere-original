@@ -122,6 +122,16 @@
         </div>
       </div>
 
+      <div class="layer-bar" id="layerBar" style="display:none">
+        <span class="layer-step layer-active" id="layer-tutorial">Tutorial</span>
+        <span class="layer-arrow">&rarr;</span>
+        <button class="layer-btn" id="btnEnterSanctuary">Enter Sanctuary &rarr;</button>
+        <span class="layer-step" id="layer-sanctuary">Sanctuary</span>
+        <span class="layer-arrow">&rarr;</span>
+        <button class="layer-btn" id="btnEnterCore" style="display:none">Enter Core &rarr;</button>
+        <span class="layer-step" id="layer-core">Core</span>
+      </div>
+
       <div class="dive-actions" id="diveActions" style="display:none">
         <label class="dive-param">R:<input type="number" id="diveRadius" value="3" min="0.5" max="10" step="0.5"></label>
         <button data-action="scan" title="L1 broad sweep: tags only, wide range, detects Fossils">Scan</button>

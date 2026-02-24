@@ -94,7 +94,7 @@ export class SignatureRegistry {
 /**
  * Quantize cosine distance to perception level
  */
-export function quantizeDistance(distance, config = DEFAULT_MOVE_CONFIG) {
+function quantizeDistance(distance, config = DEFAULT_MOVE_CONFIG) {
     if (distance <= config.distanceThresholds.near)
         return "near";
     if (distance <= config.distanceThresholds.mid)
@@ -104,7 +104,7 @@ export function quantizeDistance(distance, config = DEFAULT_MOVE_CONFIG) {
 /**
  * Quantize heat value to perception level
  */
-export function quantizeHeat(heat, config = DEFAULT_MOVE_CONFIG) {
+function quantizeHeat(heat, config = DEFAULT_MOVE_CONFIG) {
     if (heat <= config.heatThresholds.low)
         return "low";
     if (heat <= config.heatThresholds.mid)
@@ -125,7 +125,7 @@ export function quantizeHeat(heat, config = DEFAULT_MOVE_CONFIG) {
  * [Design] Cold nodes are invisible (minHeat filter)
  * [Design] Results are capped (maxResults)
  */
-export function scan(agentVector, nodes, signatureRegistry, config = DEFAULT_SCAN_CONFIG, moveConfig = DEFAULT_MOVE_CONFIG) {
+function scan(agentVector, nodes, signatureRegistry, config = DEFAULT_SCAN_CONFIG, moveConfig = DEFAULT_MOVE_CONFIG) {
     const candidates = [];
     for (const node of nodes) {
         // Skip nodes without vector
@@ -195,7 +195,7 @@ function calculateGravity(agentVector, nodes, config) {
  *   follow: gravity dominant
  *   orbit: perpendicular to gravity (not fully implemented)
  */
-export function calculateDrift(agentVector, mode, nodes, velocity, config = DEFAULT_MOVE_CONFIG) {
+function calculateDrift(agentVector, mode, nodes, velocity, config = DEFAULT_MOVE_CONFIG) {
     const dim = agentVector.length;
     const gravity = calculateGravity(agentVector, nodes, config);
     const noise = randomUnitVector(dim);
@@ -228,7 +228,7 @@ export function calculateDrift(agentVector, mode, nodes, velocity, config = DEFA
  * [Design] moveBatch: steps > 1 executes as single calculation
  * [Principle] 384-dim resolution happens once, not per step
  */
-export function executeMove(agentVector, velocity, intent, nodes, signatureRegistry, config = DEFAULT_MOVE_CONFIG) {
+function executeMove(agentVector, velocity, intent, nodes, signatureRegistry, config = DEFAULT_MOVE_CONFIG) {
     const steps = getSteps(intent);
     let direction;
     // Resolve direction based on intent type

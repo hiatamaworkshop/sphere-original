@@ -26,6 +26,7 @@ export interface NearbyNode {
   kind: string;
   flags: number;
   tags?: string[];
+  immuneMod?: number;
 }
 
 export interface NodeDetail {
@@ -39,6 +40,14 @@ export interface NodeDetail {
   kind: string;
   sourceNodeId?: string;
   ref_url?: string;
+}
+
+export interface ScanNode {
+  id: string;
+  distance: number;
+  tags: string[];
+  kind: string;
+  flags: number;
 }
 
 export interface SphereConfig {
@@ -75,6 +84,15 @@ export interface BusMessage {
   payload: Uint8Array;
 }
 
+/** Vestibule auto-process result returned by the server on return */
+export interface VestibuleResult {
+  sphereId: string;
+  timestamp: number;
+  auto: { evaluationsApplied: number; autoCapsuleSaved: boolean };
+  commands: { name: string; description: string }[];
+  farewell: string;
+}
+
 export type SphereEvent =
   | { type: "connected"; sessionId: string }
   | { type: "positioned"; position: number[] }
@@ -83,6 +101,7 @@ export type SphereEvent =
   | { type: "expelled"; reason: string }
   | { type: "error"; error: string }
   | { type: "bus_message"; message: BusMessage }
+  | { type: "vestibuleEntered"; result: VestibuleResult }
   | { type: "closed" };
 
 export type SphereEventHandler = (event: SphereEvent) => void;
@@ -116,6 +135,8 @@ export class SphereClient {
   private eventHandler: SphereEventHandler | null = null;
   private lastRequestTime = 0;
   private readonly minRequestInterval = 350; // ms — gateway rate limit: 3 actions/sec
+  private positionedResolve: (() => void) | null = null;
+  private positionedPromise: Promise<void> | null = null;
 
   constructor(config: Partial<SphereConfig> = {}) {
     this.config = { ...DEFAULT_CONFIG, ...config };
@@ -131,6 +152,10 @@ export class SphereClient {
 
   // --- Connection lifecycle ---
 
+  /**
+   * Connect to Sphere. Resolves when Tutorial is ready (processing received).
+   * Use waitForPositioned() to wait for query vector availability.
+   */
   async connect(query: string, tags: string[]): Promise<void> {
     // Step 1: Get ticket
     const ticketRes = await fetch(`${this.config.peripheryUrl}/dive/request`, {
@@ -144,6 +169,9 @@ export class SphereClient {
     if (!ticketData.success) {
       throw new Error("Ticket request rejected");
     }
+
+    // Set up positioned promise (resolved when query vector arrives)
+    this.positionedPromise = new Promise((res) => { this.positionedResolve = res; });
 
     // Step 2: WebSocket connect
     const token = ticketData.ticket.token;
@@ -170,7 +198,7 @@ export class SphereClient {
         reject(err);
       });
 
-      // Override handleMessage temporarily to catch welcome + positioned
+      // Override handleMessage temporarily to catch welcome + processing
       const originalHandler = this.handleMessage.bind(this);
       let welcomeReceived = false;
 
@@ -192,15 +220,20 @@ export class SphereClient {
           return;
         }
 
-        if (msg.type === "positioned") {
+        if (msg.type === "processing") {
+          // [Entry Pipeline] Tutorial is ready — SphereContext exists with relic vector
           clearTimeout(timeout);
           this.handleMessage = originalHandler;
           resolve();
           return;
         }
 
-        if (msg.type === "processing") {
-          return; // expected, ignore
+        if (msg.type === "positioned") {
+          // Query vector ready — resolve positioned promise
+          this.emit({ type: "positioned", position: msg.position ?? [] });
+          this.positionedResolve?.();
+          this.positionedResolve = null;
+          return;
         }
 
         // Fallthrough to normal handler
@@ -209,55 +242,145 @@ export class SphereClient {
     });
   }
 
-  async transitionToCore(): Promise<void> {
-    await this.sendRequest("enterSanctuary", {});
-    await this.sendRequest("enterCore", {});
+  /**
+   * Wait for query vectorization to complete (positioned message).
+   * Call after tutorialExplore() to ensure Sanctuary transition is possible.
+   */
+  async waitForPositioned(): Promise<void> {
+    if (!this.positionedPromise) return;
+    await this.positionedPromise;
+    this.positionedPromise = null;
   }
 
-  async disconnect(): Promise<void> {
-    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-      try {
-        await this.sendRequest("return", {});
-      } catch {
-        // best effort
-      }
-      this.ws.close();
+  async enterSanctuary(): Promise<void> {
+    const result = await this.sendRequest<{ energy?: number }>("enterSanctuary", {});
+    this.syncEnergy(result.energy);
+  }
+
+  async enterCore(): Promise<void> {
+    const result = await this.sendRequest<{ energy?: number }>("enterCore", {});
+    this.syncEnergy(result.energy);
+  }
+
+  // --- Vestibule lifecycle ---
+  // Protocol: return → vestibuleEntered → [commands] → acknowledge → farewell → close
+
+  /** Send return → receive vestibuleEntered. Enters the Vestibule phase. */
+  async enterVestibule(): Promise<VestibuleResult | null> {
+    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) return null;
+
+    try {
+      const msg = await this.sendRequest<{
+        type: "vestibuleEntered";
+        sessionId: string;
+        sphereId: string;
+        timestamp: number;
+        auto: { evaluationsApplied: number; autoCapsuleSaved: boolean };
+        commands: { name: string; description: string }[];
+        farewell: string;
+      }>("return", {});
+
+      const result: VestibuleResult = {
+        sphereId: msg.sphereId,
+        timestamp: msg.timestamp,
+        auto: msg.auto,
+        commands: msg.commands,
+        farewell: msg.farewell,
+      };
+      this.emit({ type: "vestibuleEntered", result });
+      return result;
+    } catch {
+      return null;
+    }
+  }
+
+  /** View auto-applied evaluation receipt. */
+  async viewReceipt(): Promise<any> {
+    return (await this.sendRequest<{ data: any }>("viewReceipt", {})).data;
+  }
+
+  /** View exploration trajectory (action log). */
+  async viewTrail(): Promise<any> {
+    return (await this.sendRequest<{ data: any }>("viewTrail", {})).data;
+  }
+
+  /** View notable nodes visited, ranked by focus count. */
+  async viewDiscoveries(): Promise<any> {
+    return (await this.sendRequest<{ data: any }>("viewDiscoveries", {})).data;
+  }
+
+  /** Acknowledge and disconnect. Server sends farewell then closes. */
+  async acknowledge(): Promise<void> {
+    try {
+      await this.sendRequest("acknowledge", {});
+    } catch {
+      // farewell may arrive as server-close rather than requestId response
     }
     this.ws = null;
   }
 
+  /** Convenience: enterVestibule → acknowledge (no commands). For error/fallback paths. */
+  async disconnect(): Promise<VestibuleResult | null> {
+    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
+      this.ws = null;
+      return null;
+    }
+    try {
+      const result = await this.enterVestibule();
+      await this.acknowledge();
+      return result;
+    } catch {
+      if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+        this.ws.close();
+      }
+      this.ws = null;
+      return null;
+    }
+  }
+
   // --- Sphere operations ---
 
-  async sense(radius: number = 5): Promise<NearbyNode[]> {
-    const result = await this.sendRequest<{ nodes: NearbyNode[] }>("sense", { radius });
-    this.consumeEnergy(this.costs.sense);
+  async sense(radius: number = 1): Promise<NearbyNode[]> {
+    const result = await this.sendRequest<{ nodes: NearbyNode[]; energy?: number }>("sense", { radius });
+    this.syncEnergy(result.energy);
     return result.nodes || [];
   }
 
   async focus(nodeId: string): Promise<NodeDetail> {
     const result = await this.sendRequest<any>("focus", { nodeId });
-    this.consumeEnergy(this.costs.focus);
+    this.syncEnergy(result.energy);
     return result.node;
   }
 
   async evaluate(nodeId: string, h: number, w: number = 5, d: number = 5): Promise<boolean> {
-    const result = await this.sendRequest<{ success: boolean }>("evaluate", { nodeId, h, w, d });
-    this.consumeEnergy(this.costs.evaluate);
+    const result = await this.sendRequest<{ success: boolean; energy?: number }>("evaluate", { nodeId, h, w, d });
+    this.syncEnergy(result.energy);
     return result.success;
   }
 
   async move(step: number = 0.3, mode: WalkMode = "random"): Promise<boolean> {
-    const result = await this.sendRequest<{ result: { success: boolean } }>("move", { step, mode });
-    this.consumeEnergy(this.costs.move);
+    const result = await this.sendRequest<{ result: { success: boolean }; energy?: number }>("move", { step, mode });
+    this.syncEnergy(result.energy);
+    return result.result?.success ?? false;
+  }
+
+  async scanL1(radius?: number): Promise<ScanNode[]> {
+    const result = await this.sendRequest<{ nodes: ScanNode[]; energy?: number }>("scan", { radius });
+    this.syncEnergy(result.energy);
+    return result.nodes || [];
+  }
+
+  async warp(nodeId: string): Promise<boolean> {
+    const result = await this.sendRequest<{ result: { success: boolean }; energy?: number }>("warp", { nodeId });
+    this.syncEnergy(result.energy);
     return result.result?.success ?? false;
   }
 
   async emitBus(payload: Uint8Array, free = false): Promise<boolean> {
-    const cost = this.costs.emitBus ?? 20;
-    if (!free && this.energy < cost) return false;
+    if (!free && this.energy < (this.costs.emitBus ?? 20)) return false;
     const b64 = Buffer.from(payload).toString("base64");
-    const result = await this.sendRequest<{ success: boolean }>("emit", { payload: b64 });
-    if (!free) this.consumeEnergy(cost);
+    const result = await this.sendRequest<{ success: boolean; energy?: number }>("emit", { payload: b64 });
+    this.syncEnergy(result.energy);
     return result.success ?? false;
   }
 
@@ -301,8 +424,11 @@ export class SphereClient {
 
   // --- Internal ---
 
-  private consumeEnergy(cost: number): void {
-    this.energy = Math.max(0, this.energy - cost);
+  /** Sync energy from server-authoritative response */
+  private syncEnergy(serverEnergy: number | undefined): void {
+    if (serverEnergy !== undefined) {
+      this.energy = serverEnergy;
+    }
   }
 
   private handleMessage(msg: any): void {
@@ -315,6 +441,12 @@ export class SphereClient {
     }
 
     switch (msg.type) {
+      case "positioned":
+        // Query vector ready (async, arrives after connect resolves)
+        this.emit({ type: "positioned", position: msg.position ?? [] });
+        this.positionedResolve?.();
+        this.positionedResolve = null;
+        break;
       case "layerChanged":
         this.emit({ type: "layerChanged", layer: msg.layer });
         break;
@@ -326,6 +458,21 @@ export class SphereClient {
         break;
       case "error":
         this.emit({ type: "error", error: msg.error || "unknown" });
+        break;
+      case "vestibuleEntered": {
+        // Server-initiated vestibule (e.g. expelled → auto vestibule)
+        const vr: VestibuleResult = {
+          sphereId: msg.sphereId,
+          timestamp: msg.timestamp,
+          auto: msg.auto,
+          commands: msg.commands,
+          farewell: msg.farewell,
+        };
+        this.emit({ type: "vestibuleEntered", result: vr });
+        break;
+      }
+      case "farewell":
+        // Server signals session end — connection will close
         break;
       case "bus_message": {
         const d = msg.data;

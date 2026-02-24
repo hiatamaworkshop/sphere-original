@@ -279,27 +279,24 @@ document.addEventListener('click', (e) => {
 // === Dashboard ===
 async function fetchDashboard() {
   try {
-    const [stats, metrics] = await Promise.all([
-      api('/nodes/stats'),
-      api('/metrics')
-    ]);
-    renderNodeDistribution(stats);
-    renderAverages(stats);
-    renderSystem(metrics);
-    renderField(metrics);
+    const s = await api('/sphere/status');
+    renderNodeDistribution(s.nodes);
+    renderAverages(s.nodes);
+    renderSystem(s);
+    renderField(s);
     updateConnection(true);
   } catch (_e) {
     updateConnection(false);
   }
 }
 
-function renderNodeDistribution(stats) {
+function renderNodeDistribution(nodes) {
   const el = document.getElementById('nodeDistribution');
-  const counts = stats.counts;
+  const counts = nodes.byKind;
   const kinds = ['active', 'amber', 'fossil', 'ghost', 'relic', 'environment'];
   const max = Math.max(...kinds.map(k => counts[k] || 0), 1);
 
-  el.innerHTML = `<div class="total">Total: ${counts.total}</div>` +
+  el.innerHTML = `<div class="total">Total: ${nodes.total}</div>` +
     kinds.map(k => {
       const count = counts[k] || 0;
       const pct = (count / max * 100).toFixed(0);
@@ -311,9 +308,9 @@ function renderNodeDistribution(stats) {
     }).join('');
 }
 
-function renderAverages(stats) {
+function renderAverages(nodes) {
   const el = document.getElementById('nodeAverages');
-  const a = stats.averages;
+  const a = nodes.averages;
   el.innerHTML = `
     <div class="metric-row"><span>Avg Heat</span><span>${a.heat.toFixed(1)}</span></div>
     <div class="metric-row"><span>Avg Weight</span><span>${a.weight.toFixed(1)}</span></div>
@@ -321,23 +318,23 @@ function renderAverages(stats) {
   `;
 }
 
-function renderSystem(metrics) {
+function renderSystem(status) {
   const el = document.getElementById('systemMetrics');
   el.innerHTML = `
-    <div class="metric-row"><span>Uptime</span><span>${formatUptime(metrics.uptime)}</span></div>
-    <div class="metric-row"><span>Nodes</span><span>${metrics.nodeCount}</span></div>
-    <div class="metric-row"><span>Agents</span><span>${metrics.agents}</span></div>
-    <div class="metric-row"><span>Heap</span><span>${(metrics.memory.heapUsed / 1024 / 1024).toFixed(1)} MB</span></div>
+    <div class="metric-row"><span>Uptime</span><span>${formatUptime(status.uptime)}</span></div>
+    <div class="metric-row"><span>Nodes</span><span>${status.nodes.total}</span></div>
+    <div class="metric-row"><span>Agents</span><span>${status.gateway.active}</span></div>
+    <div class="metric-row"><span>Heap</span><span>${status.memory.heapUsedMB} MB</span></div>
   `;
 }
 
-function renderField(metrics) {
+function renderField(status) {
   const el = document.getElementById('fieldInfo');
-  if (!metrics.field) {
+  if (!status.field) {
     el.innerHTML = '<div class="metric-row"><span>No field data</span></div>';
     return;
   }
-  const f = metrics.field;
+  const f = status.field;
   el.innerHTML = `
     <div class="metric-row"><span>Intensity</span><span>${f.intensity.toFixed(3)}</span></div>
     <div class="metric-row"><span>Dominant Flags</span><span>0x${f.dominantFlags.toString(16).padStart(4, '0')}</span></div>
@@ -662,12 +659,8 @@ function handleDiveMessage(msg) {
       break;
 
     case 'processing':
-      addDiveLog('Processing entry...');
-      setDivePhase('processing');
-      break;
-
-    case 'positioned':
-      addDiveLog(`Positioned! Query: "${msg.query}", Time: ${msg.remainingTime ?? '?'}s`);
+      // [Entry Pipeline] Tutorial ready — SphereContext exists with relic vector
+      addDiveLog('Tutorial ready — exploring while query vectorizes...');
       setDivePhase('active');
       document.getElementById('diveActions').style.display = 'flex';
       document.getElementById('endDive').disabled = false;
@@ -675,12 +668,18 @@ function handleDiveMessage(msg) {
       diveEnergy = 100;
       document.getElementById('energyDisplay').style.display = 'inline';
       updateEnergyDisplay();
-      // Auto-transition: tutorial → sanctuary → core (sequential)
-      sendDiveAction('enterSanctuary', {}).then(() => sendDiveAction('enterCore', {}));
+      // Show Tutorial layer UI — manual progression
+      showLayerUI('tutorial');
+      break;
+
+    case 'positioned':
+      // Query vector ready — Sanctuary transition now allowed
+      addDiveLog(`Query ready: "${msg.query}", Time: ${msg.remainingTime ?? '?'}s`);
       break;
 
     case 'layerChanged':
       addDiveLog(`Layer: ${msg.layer}`);
+      showLayerUI(msg.layer);
       resolvePending(msg.requestId, msg);
       break;
 
@@ -901,6 +900,42 @@ document.getElementById('warpBtn').addEventListener('click', () => {
 document.getElementById('startDive').addEventListener('click', startDive);
 document.getElementById('endDive').addEventListener('click', () => { if (diveWs) sendDiveAction('return', {}); });
 
+// === Layer UI ===
+function showLayerUI(layer) {
+  const bar = document.getElementById('layerBar');
+  const tut = document.getElementById('layer-tutorial');
+  const san = document.getElementById('layer-sanctuary');
+  const cor = document.getElementById('layer-core');
+  const btnSan = document.getElementById('btnEnterSanctuary');
+  const btnCore = document.getElementById('btnEnterCore');
+
+  bar.style.display = 'flex';
+  // Reset classes
+  [tut, san, cor].forEach(el => el.classList.remove('layer-active', 'layer-done'));
+  btnSan.style.display = 'none';
+  btnCore.style.display = 'none';
+
+  if (layer === 'tutorial') {
+    tut.classList.add('layer-active');
+    btnSan.style.display = 'inline-block';
+  } else if (layer === 'sanctuary') {
+    tut.classList.add('layer-done');
+    san.classList.add('layer-active');
+    btnCore.style.display = 'inline-block';
+  } else if (layer === 'core') {
+    tut.classList.add('layer-done');
+    san.classList.add('layer-done');
+    cor.classList.add('layer-active');
+  }
+}
+
+document.getElementById('btnEnterSanctuary').addEventListener('click', () => {
+  sendDiveAction('enterSanctuary', {});
+});
+document.getElementById('btnEnterCore').addEventListener('click', () => {
+  sendDiveAction('enterCore', {});
+});
+
 // Action help modal
 document.getElementById('actionHelpBtn').addEventListener('click', () => {
   document.getElementById('actionHelpModal').style.display = 'flex';
@@ -959,8 +994,10 @@ function resetDive() {
   document.getElementById('diveAgentId').textContent = '';
   document.getElementById('warpNodeId').value = '';
   document.getElementById('energyDisplay').style.display = 'none';
+  document.getElementById('layerBar').style.display = 'none';
   diveEnergy = 100;
 }
+
 
 // === Docs ===
 let docsLoaded = false;

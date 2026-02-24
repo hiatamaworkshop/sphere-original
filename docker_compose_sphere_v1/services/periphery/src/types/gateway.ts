@@ -82,12 +82,6 @@ export interface EntryRequest {
    * Example: ["distributed-systems", "consensus", "raft"]
    */
   tags: string[];
-
-  /**
-   * Quest response (optional)
-   * If agent wants to respond to a Quest from Quest Showcase
-   */
-  quest?: string;
 }
 
 /**
@@ -170,6 +164,8 @@ export interface NearbyNode {
   flags: number;
   /** Direction tags for filtering (from ProjDB) */
   tags?: string[];
+  /** Node immunity level (1.0=normal, >1.0=inflamed, heat decays faster) */
+  immuneMod?: number;
 }
 
 /**
@@ -284,22 +280,6 @@ export interface WarpResult {
   /** Why warp failed */
   error?: "not_visible" | "not_found" | "rate_limited" | "no_vector" | "insufficient_energy";
 }
-
-/**
- * RandomWalk Result: Exploration without target
- *
- * [Design] Move in random direction in 384D space
- * [Purpose] Explore when sense() returns uninteresting nodes
- * [Effect] Updates 384D _embeddingVector (true movement)
- *
- * [Difference from Warp]
- *   - warp: Jump to known node (requires nodeId)
- *   - randomWalk: Explore unknown territory (no target)
- */
-/**
- * @deprecated Use MoveResult instead
- */
-export type RandomWalkResult = MoveResult;
 
 /**
  * WalkMode: Agent exploration personality
@@ -456,26 +436,18 @@ export interface SphereContext {
   warp(nodeId: string): Promise<WarpResult>;
 
   /**
-   * @deprecated Use move(step, mode) instead
-   * Random walk - alias for move()
-   */
-  randomWalk(stepSize?: number, mode?: WalkMode): Promise<RandomWalkResult>;
-
-  /**
    * @deprecated Low-level movement intent API
    * Use move(step, mode) for exploration
    */
   moveIntent(intent: MoveIntent): Promise<MoveResult>;
 
-  // ===== Return =====
+  // ===== Return → Vestibule =====
 
   /**
-   * End session and return with experience capsule
-   * Agent submits ExperienceCapsule → Gatekeeper validation → Pipeline
+   * End exploration and enter Vestibule (exit membrane)
+   * Evaluations are auto-flushed. Optional capsule stored for submitCapsule.
    *
-   * [Design] Trust the agent - they create their own capsule
-   *
-   * @param capsule Experience to bring back (optional - can return empty-handed)
+   * @param capsule Experience to bring back (optional)
    */
   return(capsule?: ExperienceCapsule): Promise<void>;
 
@@ -571,7 +543,6 @@ export type GatewayToSphereMessage =
   | { type: "evaluate"; sessionId: string; nodeId: string; h: number; w: number; d: number }
   | { type: "move"; sessionId: string; intent: MoveIntent }
   | { type: "warp"; sessionId: string; nodeId: string }
-  | { type: "randomWalk"; sessionId: string; stepSize?: number; mode?: WalkMode }
   | { type: "return"; sessionId: string; capsule?: ExperienceCapsule }
   | { type: "enterSanctuary"; sessionId: string }
   | { type: "enterCore"; sessionId: string };
@@ -586,7 +557,6 @@ export type SphereToGatewayMessage =
   | { type: "evaluateResult"; sessionId: string; result: EvaluationResult }
   | { type: "moveResult"; sessionId: string; result: MoveResult }
   | { type: "warpResult"; sessionId: string; result: WarpResult }
-  | { type: "randomWalkResult"; sessionId: string; result: RandomWalkResult }
   | { type: "returnAck"; sessionId: string }
   | { type: "layerTransition"; sessionId: string; newLayer: ExperienceLayer; flushedCount?: number; error?: string }
   | { type: "warning"; sessionId: string; message: string }

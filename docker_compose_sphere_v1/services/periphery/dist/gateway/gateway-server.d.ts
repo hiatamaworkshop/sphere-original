@@ -7,16 +7,15 @@
  * [Connection Flow]
  *   1. Agent connects with token → "connected" (pending)
  *   2. Agent reads Rulebook, sends EntryRequest
- *   3. Membrane validates → "processing" (tutorial/amber browsing enabled)
- *   4. Parser vectorizes (async) → initial position calculated
- *   5. SphereContext created → "ready" (full dive enabled)
+ *   3. Membrane validates → SphereContext(relic vector) → "processing" (Tutorial active)
+ *   4. Parser vectorizes (async) → reposition(queryVector) → "positioned"
+ *   5. Agent transitions: enterSanctuary → enterCore
  *   6. Agent interacts via sense/focus/move/evaluate/return
  *   7. On return() or expiry → cleanup
  *
- * [3-Phase Design]
+ * [2-Phase Design]
  *   - pending: Awaiting EntryRequest (only entry message allowed)
- *   - processing: Parser working (sense for tutorial/amber allowed)
- *   - active: Full dive (all operations allowed)
+ *   - active: SphereContext exists, Tutorial layer (relic vector → query vector via reposition)
  */
 import type { Server as HttpServer } from "http";
 import { TicketIssuer } from "./ticket-issuer.js";
@@ -102,18 +101,12 @@ export declare class GatewayServer {
     private handlePendingMessage;
     /**
      * Start async vectorization via EntryBuffer
-     * When complete, transition to active state
+     * When complete, reposition agent and send "positioned"
      *
-     * [Design] Uses EntryBuffer for batch efficiency
-     *   - Multiple agent entries can be batched together
-     *   - Called right after Membrane.validate() passes
+     * [Entry Pipeline] SphereContext already exists (relic vector).
+     * This method runs async — agent can explore Tutorial while waiting.
      */
     private startVectorization;
-    /**
-     * Handle messages in processing state
-     * Only "sense" is allowed (for tutorial/amber browsing)
-     */
-    private handleProcessingMessage;
     /**
      * Handle messages in active (diving) state
      * All operations allowed
@@ -158,7 +151,6 @@ export declare class GatewayServer {
      */
     getStats(): {
         pendingConnections: number;
-        processingConnections: number;
         activeConnections: number;
     };
 }

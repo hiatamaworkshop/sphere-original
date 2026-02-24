@@ -209,6 +209,7 @@ const arbiterSettings = sphereConfig.periphery?.arbiter ?? {};
 const dynamicThresholds = config.nodeFlags?.dynamicThresholds;
 const arbiterConfig = {
   erosionScoreThreshold: arbiterSettings.erosion?.scoreThreshold ?? 200,
+  erosionCooldownMs: arbiterSettings.erosion?.cooldownMs ?? 300000,
   pauseErosionBoost: renalConfig.pauseErosionBoost,
   // Dynamic Flags thresholds (from unified nodeFlags config)
   hotHeatThreshold: dynamicThresholds?.hotHeatThreshold

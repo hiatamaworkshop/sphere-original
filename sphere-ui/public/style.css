@@ -835,6 +835,15 @@ h3 {
 .no-results { color: var(--text-dim); padding: 1rem; text-align: center; }
 .meta { font-size: 0.8rem; color: var(--text-dim); margin-bottom: 0.75rem; }
 
+/* === Layer Bar === */
+.layer-bar { display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: var(--card-bg, #1a1a2e); border-radius: 6px; margin: 4px 0; }
+.layer-step { padding: 4px 10px; border-radius: 4px; color: #666; font-size: 0.85em; }
+.layer-step.layer-active { color: #fff; background: #16213e; border: 1px solid var(--primary, #0f3460); font-weight: 600; }
+.layer-step.layer-done { color: var(--success, #4ecca3); }
+.layer-arrow { color: #555; font-size: 0.8em; }
+.layer-btn { padding: 4px 12px; background: transparent; color: var(--primary, #0f3460); border: 1px solid var(--primary, #0f3460); border-radius: 4px; cursor: pointer; font-size: 0.85em; }
+.layer-btn:hover { background: var(--primary, #0f3460); color: #fff; }
+
 /* === Responsive === */
 @media (max-width: 768px) {
   header { flex-wrap: wrap; }

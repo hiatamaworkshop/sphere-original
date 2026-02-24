@@ -50,11 +50,13 @@ import { NodeFlag } from "@sphere/renal-core";
  *   - Density: Authority のみ配線。Dense/Sparse/Composite の物理効果は未確定
  *   - Cognitive: 物理効果なし (FastGate scoring のみ — 意図通り)
  *
- * [Dynamic flags — Arbiter 管轄, Tagger は付与しない]
+ * [Dynamic flags — Arbiter/Bookkeeper 管轄, Tagger は付与しない]
  *   - Hot (0x0008): h >= hotHeatThreshold で Arbiter が付与
- *   - Candidate (0x8000): Ascension 冷却期間中に Arbiter が付与
+ *   - SystemCore (0x2000): Relic seed / Amber ascension で Bookkeeper が付与 (代謝凍結)
  *   - Compressed (0x4000): Fossil 化時に Arbiter が付与
+ *   - Candidate (0x8000): Ascension 冷却期間中に Arbiter が付与
  *   ※ Candidate/Compressed は将来 state field へ移行予定 (types.ts TODO)
+ *   ※ SystemCore を Tagger で付与すると active ノードの代謝が停止するバグが発生した (2026-02)
  *
  * [Known Behaviors]
  *   - "stable" → TemporalLong の単独マッチ (Settled は "established" 等で検出)
@@ -129,11 +131,9 @@ const TAG_FLAG_PATTERNS = [
         pattern: /\b(favorite|bookmark|starred|pinned|saved|marked|flagged|remember|keep|preserved|highlighted)\b/i,
         flags: NodeFlag.UserMarked,
     },
-    // SystemCore (0x2000): infrastructure
-    {
-        pattern: /\b(system|config|settings|internal|kernel|infrastructure|architecture|framework|schema|model|engine|runtime|bootstrap|core)\b/i,
-        flags: NodeFlag.SystemCore,
-    },
+    // SystemCore (0x2000): 付与禁止 — 代謝凍結フラグのため Tagger が付与してはならない
+    // Relic seed data と Bookkeeper (Amber ascension) のみが管理する
+    // See: Dynamic flags コメント (上記)
 ];
 /**
  * Compute 16bit flags from tags array

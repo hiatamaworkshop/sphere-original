@@ -25,7 +25,7 @@
     "_comment": "知覚の物理法則: M = T / (a × D)",
     "targetTotalOps": 100000,
     "_formula": "sampleSize = targetTotalOps / (agentCount × dimension)",
-    "basePerceptionRadius": 0.3,
+    "basePerceptionRadius": 0.5,
     "maxSenseResults": 8
   },
 
@@ -156,6 +156,12 @@
           "factor": 0.1,
           "maxNodes": 5
         }
+      },
+
+      "erosion": {
+        "_comment": "Erosion cooldown: amber → active delayed by cooldown period. No eval freeze — other agents can save the node.",
+        "scoreThreshold": 200,
+        "cooldownMs": 300000
       },
 
       "revival": {

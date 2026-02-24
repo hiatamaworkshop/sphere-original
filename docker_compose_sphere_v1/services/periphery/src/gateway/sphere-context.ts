@@ -25,7 +25,6 @@ import type {
   MoveIntent,
   MoveResult,
   WarpResult,
-  RandomWalkResult,
   WalkMode,
   GatewaySession,
   DiveTicket,
@@ -39,9 +38,8 @@ import type {
   EvaluationResult,
   SessionBuffer,
 } from "../types/experience-layer.js";
-import type { ActionLog } from "../types/auto-capsule.js";
+import type { ActionLog, AutoCapsule } from "../types/auto-capsule.js";
 import { createActionLog, logAction, buildAutoCapsule } from "../types/auto-capsule.js";
-import { ReturnHandler, createReturnHandler } from "./return-handler.js";
 import {
   createSessionBuffer,
   addEvaluationToBuffer,
@@ -49,7 +47,6 @@ import {
   isValidTransition,
   LAYER_CHARACTERISTICS,
 } from "../types/experience-layer.js";
-import { Gatekeeper } from "../gatekeeper/gatekeeper.js";
 import type { IIncarnationPipeline } from "../incarnation/pipeline.js";
 import type { SphereCoreAdapter } from "./sphere-core-adapter.js";
 import { AgentMovementState } from "./move.js";
@@ -97,6 +94,7 @@ const LAYER_ENERGY_MULTIPLIER: Record<ExperienceLayer, number> = {
   tutorial: 0,     // No energy cost — practice / vectorization wait
   sanctuary: 0.5,  // Half cost — static view, encourage browsing
   core: 1.0,       // Full cost — live world
+  vestibule: 0,    // No energy cost — exit membrane
 };
 
 /**
@@ -181,6 +179,7 @@ export class SphereContextImpl implements SphereContext {
 
   // 3-Layer Piping State
   private _layer: ExperienceLayer = "tutorial";
+  private _queryReady = false;  // true after real query vector is set via reposition()
   private _sessionBuffer: SessionBuffer;
 
   // Action Logging (for AutoCapsule generation)
@@ -188,9 +187,12 @@ export class SphereContextImpl implements SphereContext {
   private _currentFocusNodeId: string | null = null;
   private _currentFocusStartTime: number = 0;
 
+  // Vestibule state
+  private _autoProcessResult: { evaluationsApplied: number; autoCapsuleSaved: boolean } | null = null;
+  private _autoCapsule: AutoCapsule | null = null;
+  private _pendingCapsule?: ExperienceCapsule;
+
   // Dependencies
-  private gatekeeper = new Gatekeeper();
-  private returnHandler: ReturnHandler;
   private pipeline?: IIncarnationPipeline;
   private coreAdapter?: SphereCoreAdapter;
   private globalFieldLayer?: GlobalFieldLayer;
@@ -254,9 +256,6 @@ export class SphereContextImpl implements SphereContext {
 
     // Initialize action log for AutoCapsule generation
     this._actionLog = createActionLog(sessionId);
-
-    // Initialize return handler
-    this.returnHandler = createReturnHandler(this.gatekeeper, this.pipeline);
 
     // Initialize movement state
     this.movementState = new AgentMovementState(initialVector, {
@@ -857,8 +856,9 @@ export class SphereContextImpl implements SphereContext {
       return { success: false, distance: 0, mode, blocked: "insufficient_energy" };
     }
 
-    // Clamp step to valid range
-    const clampedStep = Math.max(0.01, Math.min(1.0, step));
+    // Clamp step to valid range (cosine distance units)
+    // Max 1.99: just under scanL1_radius × 2 — new scan barely catches old scan's far edge
+    const clampedStep = Math.max(0.01, Math.min(1.99, step));
 
     // For gradient modes, require visible nodes from sense()
     // (flow uses GlobalField, random needs nothing)
@@ -925,12 +925,51 @@ export class SphereContextImpl implements SphereContext {
       console.log(`[SphereContext] move(step=${step}, mode=${mode}) no field influence`);
     }
 
-    // Update 384D position: newPos = currentPos + direction * stepSize
-    for (let i = 0; i < this._embeddingVector.length; i++) {
-      this._embeddingVector[i] += direction[i] * clampedStep;
+    // === Slerp-based movement: step = cosine distance ===
+    // step=0.5 → cosine distance 0.5 (= 1 sense radius)
+    // step=1.0 → cosine distance 1.0 (= 1 scanL1 radius)
+
+    const dim = this._embeddingVector.length;
+
+    // 1. Project direction into tangent plane (orthogonal to current position)
+    let dotVD = 0;
+    for (let i = 0; i < dim; i++) dotVD += this._embeddingVector[i] * direction[i];
+
+    const dPerp = new Array<number>(dim);
+    let dPerpMag = 0;
+    for (let i = 0; i < dim; i++) {
+      dPerp[i] = direction[i] - dotVD * this._embeddingVector[i];
+      dPerpMag += dPerp[i] * dPerp[i];
+    }
+    dPerpMag = Math.sqrt(dPerpMag);
+
+    // If direction is parallel to current position, fall back to random tangent
+    if (dPerpMag < 1e-10) {
+      const randDir = this.generateRandomUnitVector(dim);
+      let dotVR = 0;
+      for (let i = 0; i < dim; i++) dotVR += this._embeddingVector[i] * randDir[i];
+      dPerpMag = 0;
+      for (let i = 0; i < dim; i++) {
+        dPerp[i] = randDir[i] - dotVR * this._embeddingVector[i];
+        dPerpMag += dPerp[i] * dPerp[i];
+      }
+      dPerpMag = Math.sqrt(dPerpMag);
     }
 
-    // Normalize to keep on unit hypersphere (optional, but keeps vectors comparable)
+    // Normalize tangent direction
+    for (let i = 0; i < dim; i++) dPerp[i] /= dPerpMag;
+
+    // 2. Slerp: new = v·cos(θ) + dPerp·sin(θ)
+    //    cosine_distance = 1 - cos(θ)  →  θ = acos(1 - step)
+    const theta = Math.acos(Math.max(-1, Math.min(1, 1 - clampedStep)));
+    const cosTheta = Math.cos(theta);
+    const sinTheta = Math.sin(theta);
+
+    for (let i = 0; i < dim; i++) {
+      this._embeddingVector[i] = this._embeddingVector[i] * cosTheta + dPerp[i] * sinTheta;
+    }
+
+    // Safety normalize (slerp should preserve unit length, but guard against float drift)
     this.normalizeEmbedding();
 
     // Update 3D projection for display
@@ -949,20 +988,13 @@ export class SphereContextImpl implements SphereContext {
       success: true,
     });
 
-    console.log(`[SphereContext] Move complete - moved ${clampedStep.toFixed(3)} in ${mode} direction`);
+    console.log(`[SphereContext] Move complete - cosDist=${clampedStep.toFixed(3)} θ=${(theta * 180 / Math.PI).toFixed(1)}° mode=${mode}`);
 
     return {
       success: true,
-      distance: clampedStep,
+      distance: clampedStep,  // Now in cosine distance units
       mode,
     };
-  }
-
-  /**
-   * @deprecated Use move(step, mode) instead
-   */
-  async randomWalk(stepSize: number = 0.3, mode: WalkMode = "random"): Promise<RandomWalkResult> {
-    return this.move(stepSize, mode);
   }
 
   /**
@@ -1210,44 +1242,66 @@ export class SphereContextImpl implements SphereContext {
     return true;
   }
 
-  // ===== Return =====
+  // ===== Return → Vestibule =====
 
   /**
-   * Forced return for expelled sessions (energy exhaustion / TTL expiry).
+   * Forced entry to Vestibule for expelled sessions (energy exhaustion / TTL expiry).
    * Bypasses checkSession() since session state is already "expired".
-   * Ensures AutoCapsule + buffered evaluations flow through the pipeline.
    */
-  async returnOnExpelled(): Promise<void> {
-    if (this._ended) return;  // already returned normally
-    console.log(`[SphereContext] returnOnExpelled() - session ${this._sessionId}`);
-    return this._processReturn();
+  async returnOnExpelled(): Promise<{ evaluationsApplied: number; autoCapsuleSaved: boolean }> {
+    if (this._ended) return this._autoProcessResult ?? { evaluationsApplied: 0, autoCapsuleSaved: false };
+    console.log(`[SphereContext] returnOnExpelled() → Vestibule - session ${this._sessionId}`);
+    return this.enterVestibule();
   }
 
   async return(capsule?: ExperienceCapsule): Promise<void> {
     this.checkSession();
-    console.log(`[SphereContext] return() - session ${this._sessionId}`);
-    return this._processReturn(capsule);
+    console.log(`[SphereContext] return() → Vestibule - session ${this._sessionId}`);
+    await this.enterVestibule(capsule);
   }
 
-  private async _processReturn(capsule?: ExperienceCapsule): Promise<void> {
-    this._ended = true;
+  // ===== Vestibule (Exit Membrane) =====
 
-    // End any current focus (with action log)
+  /**
+   * Enter Vestibule layer — post-exploration exit membrane
+   *
+   * [Design] All exit paths converge here:
+   *   - return (graceful): Interactive mode — agent can execute vestibule commands
+   *   - expelled (TTL/energy): Interactive mode — same as return
+   *   - silent disconnect: Serverside mode — auto-process only, no agent interaction
+   *
+   * [Auto-processing] Unconditional, Sphere's benefit:
+   *   1. End focus + clear timers
+   *   2. Build AutoCapsule (server truth audit)
+   *   3. Extract & flush evaluations to Pipeline
+   *   4. Transition to vestibule layer
+   *
+   * @param proposedCapsule Optional capsule from agent (stored for submitCapsule command)
+   * @returns Auto-processing result
+   */
+  async enterVestibule(proposedCapsule?: ExperienceCapsule): Promise<{ evaluationsApplied: number; autoCapsuleSaved: boolean }> {
+    // Idempotent: already in vestibule
+    if (this._ended) {
+      return this._autoProcessResult ?? { evaluationsApplied: 0, autoCapsuleSaved: false };
+    }
+
+    this._ended = true;
+    console.log(`[SphereContext] Entering Vestibule - session ${this._sessionId}`);
+
+    // 1. End any current focus
     this.endCurrentFocus();
     if (this.coreAdapter) {
       await this.coreAdapter.endFocus(this._sessionId);
     }
 
-    // Clear timers
+    // 2. Clear session timers
     this.clearTimers();
 
-    // Build AutoCapsule from action log (server truth)
-    const autoCapsule = buildAutoCapsule(this._actionLog);
-    console.log(`[SphereContext] AutoCapsule built: ${autoCapsule.visits.length} visits, ${autoCapsule.summaryMetrics.uniqueNodes} unique nodes`);
+    // 3. Build AutoCapsule from action log (server truth)
+    this._autoCapsule = buildAutoCapsule(this._actionLog);
+    console.log(`[SphereContext] AutoCapsule built: ${this._autoCapsule.visits.length} visits, ${this._autoCapsule.summaryMetrics.uniqueNodes} unique nodes`);
 
-    // Extract evaluations from session buffer
-    // [Design] Session buffer holds h, w, d (0-10) values from evaluate() calls
-    // These are converted to NodeEvaluation format for capsule submission
+    // 4. Extract evaluations from session buffer → auto-flush to Pipeline
     const bufferedEvaluations: NodeEvaluation[] = [];
     for (const [_nodeId, delta] of this._sessionBuffer.temporaryEvaluations) {
       bufferedEvaluations.push({
@@ -1258,53 +1312,133 @@ export class SphereContextImpl implements SphereContext {
       });
     }
 
-    if (bufferedEvaluations.length > 0) {
-      console.log(`[SphereContext] Adding ${bufferedEvaluations.length} buffered evaluations to capsule`);
-    }
-
-    // Merge buffered evaluations into capsule
-    let finalCapsule: ExperienceCapsule | undefined = capsule;
-    if (bufferedEvaluations.length > 0) {
-      if (capsule) {
-        // Merge with existing capsule
-        finalCapsule = {
-          ...capsule,
-          evaluations: [...(capsule.evaluations || []), ...bufferedEvaluations],
-        };
-      } else {
-        // Create minimal capsule with evaluations only
-        finalCapsule = {
-          schemaVersion: CAPSULE_SCHEMA_VERSION,
-          topTier: [],
-          normalNodes: [],
-          ghostNodes: [],
-          evaluations: bufferedEvaluations,
-          timestamp: Date.now(),
-        };
+    let evaluationsApplied = 0;
+    if (bufferedEvaluations.length > 0 && this.pipeline) {
+      const evalCapsule: ExperienceCapsule = {
+        schemaVersion: CAPSULE_SCHEMA_VERSION,
+        topTier: [],
+        normalNodes: [],
+        ghostNodes: [],
+        evaluations: bufferedEvaluations,
+        timestamp: Date.now(),
+      };
+      try {
+        const result = await this.pipeline.ingest(evalCapsule);
+        evaluationsApplied = result.evaluationCount;
+        console.log(`[SphereContext] Auto-flushed ${evaluationsApplied} evaluations to Pipeline`);
+      } catch (err) {
+        console.error(`[SphereContext] Evaluation auto-flush failed:`, err);
       }
     }
 
-    // Process return through ReturnHandler
-    const result = await this.returnHandler.processReturn(autoCapsule, finalCapsule);
+    // 5. Transition to vestibule layer
+    this._layer = "vestibule";
+    this._session.layer = "vestibule";
+    this._sessionBuffer.layer = "vestibule";
 
-    if (!result.success) {
-      console.log(`[SphereContext] Return had issues:`, result.errors);
+    // 6. Store proposed capsule for submitCapsule command
+    if (proposedCapsule) {
+      this._pendingCapsule = proposedCapsule;
     }
 
-    if (result.ingestionResult) {
-      console.log(`[SphereContext] Pipeline result: ${result.ingestionResult.nodeCount} nodes, ${result.ingestionResult.evaluationCount} evaluations`);
+    // 7. Record auto-process result
+    this._autoProcessResult = {
+      evaluationsApplied,
+      autoCapsuleSaved: true,
+    };
+
+    console.log(`[SphereContext] Vestibule ready: ${evaluationsApplied} evaluations applied, awaiting commands`);
+    return this._autoProcessResult;
+  }
+
+  /**
+   * Submit capsule with NodeSeeds for incarnation (Vestibule command)
+   *
+   * [Design] Gatekeeper validation happens inside Pipeline.ingest() — single point
+   * [Constraint] Only available in vestibule layer
+   */
+  async submitCapsule(capsule: ExperienceCapsule): Promise<{ success: boolean; nodeCount: number; evaluationCount: number; errors?: string[] }> {
+    if (this._layer !== "vestibule") {
+      throw new Error("submitCapsule only available in vestibule");
+    }
+    if (!this.pipeline) {
+      return { success: false, nodeCount: 0, evaluationCount: 0, errors: ["Pipeline not available"] };
     }
 
-    // Update session state
-    this._session.state = "disconnected";
-    this._session.disconnectedAt = Date.now();
+    console.log(`[SphereContext] submitCapsule: ${capsule.topTier.length}t/${capsule.normalNodes.length}n/${capsule.ghostNodes.length}g nodes`);
 
+    try {
+      const result = await this.pipeline.ingest(capsule);
+      console.log(`[SphereContext] Pipeline result: ${result.nodeCount} nodes, ${result.evaluationCount} evaluations`);
+      return {
+        success: result.success,
+        nodeCount: result.nodeCount,
+        evaluationCount: result.evaluationCount,
+        errors: result.errors?.map(e => `${e.code}: ${e.message}`),
+      };
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : String(err);
+      console.error(`[SphereContext] submitCapsule error:`, err);
+      return { success: false, nodeCount: 0, evaluationCount: 0, errors: [errorMsg] };
+    }
+  }
+
+  // ===== Vestibule View Commands =====
+
+  /**
+   * Get receipt of auto-processed evaluations (Vestibule command)
+   */
+  getReceipt(): { autoProcess: { evaluationsApplied: number; autoCapsuleSaved: boolean }; evaluations: { nodeId: string; h: number; w: number; d: number }[] } {
+    const evaluations: { nodeId: string; h: number; w: number; d: number }[] = [];
+    for (const [_nodeId, delta] of this._sessionBuffer.temporaryEvaluations) {
+      evaluations.push({ nodeId: delta.nodeId, h: delta.h, w: delta.w, d: delta.d });
+    }
+    return {
+      autoProcess: this._autoProcessResult ?? { evaluationsApplied: 0, autoCapsuleSaved: false },
+      evaluations,
+    };
+  }
+
+  /**
+   * Get exploration trail from action log (Vestibule command)
+   */
+  getTrail(): { sessionId: string; duration: number; events: { type: string; timestamp: number; nodeId?: string }[] } {
+    const duration = Date.now() - this._actionLog.startTime;
+    const events = this._actionLog.events.map(e => ({
+      type: e.type,
+      timestamp: e.timestamp,
+      nodeId: "nodeId" in e ? (e as any).nodeId : undefined,
+    }));
+    return { sessionId: this._sessionId, duration, events };
+  }
+
+  /**
+   * Get notable discoveries from session (Vestibule command)
+   */
+  getDiscoveries(): { visits: { nodeId: string; kind: string; stayTime: number; focusCount: number }[]; uniqueNodes: number; totalStayTime: number } {
+    if (!this._autoCapsule) {
+      return { visits: [], uniqueNodes: 0, totalStayTime: 0 };
+    }
+    return {
+      visits: this._autoCapsule.visits.map(v => ({
+        nodeId: v.nodeId,
+        kind: v.kind,
+        stayTime: v.stayTime,
+        focusCount: v.focusCount,
+      })),
+      uniqueNodes: this._autoCapsule.summaryMetrics.uniqueNodes,
+      totalStayTime: this._autoCapsule.summaryMetrics.totalStayTime,
+    };
   }
 
   // ===== Layer Transition =====
 
   async enterSanctuary(): Promise<void> {
     this.checkSession();
+
+    if (!this._queryReady) {
+      throw new Error("Cannot enter Sanctuary: query vector not yet available");
+    }
 
     if (!isValidTransition(this._layer, "sanctuary")) {
       throw new Error(`Invalid transition: ${this._layer} → sanctuary`);
@@ -1356,6 +1490,32 @@ export class SphereContextImpl implements SphereContext {
     // Core layer characteristics
     const chars = LAYER_CHARACTERISTICS.core;
     console.log(`[SphereContext] Now in Core layer (live world, ${chars.dataSource})`);
+  }
+
+  // ===== Reposition (query vector ready) =====
+
+  get queryReady(): boolean {
+    return this._queryReady;
+  }
+
+  /**
+   * Replace the agent's position with the real query vector.
+   * Called when Parser vectorization completes (Tutorial → Sanctuary transition enabler).
+   *
+   * [Design] Tutorial starts at a relic's vector (mock position).
+   *          When the real query vector is ready, reposition the agent
+   *          so Sanctuary exploration starts from the query's semantic location.
+   */
+  reposition(newVector: number[]): void {
+    this._embeddingVector = newVector;
+    this._position = projectTo3D(newVector);
+    this._session.position = { ...this._position };
+    this.movementState = new AgentMovementState(newVector, {
+      ...DEFAULT_MOVE_CONFIG,
+      vectorDimension: newVector.length,
+    });
+    this._queryReady = true;
+    console.log(`[SphereContext] Repositioned: query vector ready (dim=${newVector.length})`);
   }
 
   // ===== Event Handling =====
@@ -1562,6 +1722,10 @@ export class SphereContextImpl implements SphereContext {
     return { ...this._session };
   }
 
+  get ended(): boolean {
+    return this._ended;
+  }
+
   isEnded(): boolean {
     return this._ended || this._session.state !== "connected";
   }
@@ -1612,15 +1776,3 @@ export function createSphereContext(options: CreateSphereContextOptions): Sphere
   );
 }
 
-/**
- * Create SphereContext with default zero vector (for testing/mock)
- */
-export function createMockSphereContext(
-  ticket: DiveTicket,
-  sessionId: string,
-  vectorDim: number = 384,
-  pipeline?: IIncarnationPipeline
-): SphereContextImpl {
-  const zeroVector = new Array(vectorDim).fill(0);
-  return new SphereContextImpl(ticket, sessionId, zeroVector, pipeline);
-}

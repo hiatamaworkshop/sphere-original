@@ -9,7 +9,7 @@
  *   - Agents don't perceive: ttl, decay, exact traversal count
  *   - "sense is feeling presence, not reading the world"
  */
-import type { IProjectionRepository, IReferenceRepository, ISpatialFieldRepository } from "../repository/index.js";
+import type { IProjectionRepository, IReferenceRepository } from "../repository/index.js";
 import type { NearbyNode, FocusResult, L1ScanResult } from "../types/gateway.js";
 import type { Parser } from "../parser/parser.js";
 import type { UnifiedAmberCache } from "./amber-cache.js";
@@ -40,14 +40,7 @@ export declare class SphereCoreAdapter {
     private internalCache;
     private unifiedCache;
     private agentCount;
-    private spatialRepo;
     constructor(projectionRepo: IProjectionRepository, referenceRepo: IReferenceRepository, parser: Parser, config?: Partial<SphereCoreAdapterConfig>, unifiedCache?: UnifiedAmberCache);
-    /**
-     * Set spatial field repository for fertility-based perception bonus.
-     * [Design] Fertility = decomposed node energy. Higher fertility → wider perception.
-     * This closes the death→nutrients→perception cycle.
-     */
-    setSpatialRepo(repo: ISpatialFieldRepository): void;
     /**
      * Set unified cache (for late binding)
      */
@@ -74,14 +67,6 @@ export declare class SphereCoreAdapter {
      * Minimum 20% to ensure meaningful results
      */
     private getSampleRatio;
-    /**
-     * Get fertility-based perception bonus.
-     * [Design] Total fertility across all cells → sigmoid → 0-0.3 bonus
-     * [Cycle] decompose → fertility += h×w → decay → sense bonus → perception widens
-     * Uses planktonConversionRate concept: raw fertility → usable perception bonus
-     * Saturates at 0.3 (30% wider perception at high fertility)
-     */
-    private getFertilityBonus;
     /**
      * Get unified cache (for showcase access)
      */
@@ -208,25 +193,6 @@ export declare class SphereCoreAdapter {
      */
     endFocus(sessionId: string): Promise<number>;
     /**
-     * Record evaluation on an existing node
-     *
-     * @deprecated This method is no longer used in the 2-layer evaluation architecture.
-     *
-     * [New Design] Evaluations are:
-     *   1. Accumulated in session buffer (sphere-context.ts)
-     *   2. Included in ExperienceCapsule.evaluations at return time
-     *   3. Processed by Bookkeeper.applyEvaluations() with coefficients
-     *
-     * [Why Deprecated]
-     *   - Real-time ProjDB writes removed for unified evaluation path
-     *   - Session accumulation → batch ProjDB reflection at return time
-     *   - Bookkeeper handles 2-layer coefficient application (h×10, w×5, d×0.01)
-     *
-     * @param nodeId Target node ID
-     * @param score Evaluation score (-1 to 1) - OLD FORMAT
-     */
-    evaluate(nodeId: string, score: number): Promise<boolean>;
-    /**
      * Vectorize a concept keyword for movement
      *
      * [Design] Agent expresses intent via keyword, Sphere translates
@@ -248,5 +214,10 @@ export declare class SphereCoreAdapter {
      * Check if node exists
      */
     nodeExists(nodeId: string): Promise<boolean>;
+    /**
+     * Get a relic node's vector for Tutorial mock positioning.
+     * Returns the first relic found, or a zero vector if none exist.
+     */
+    getRelicVector(): Promise<number[]>;
 }
 //# sourceMappingURL=sphere-core-adapter.d.ts.map

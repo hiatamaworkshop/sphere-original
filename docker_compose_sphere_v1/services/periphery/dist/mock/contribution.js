@@ -54,36 +54,19 @@ async function contribute(count = 10) {
     const actualCount = Math.min(count, sourceData.length);
     const selectedData = sourceData.slice(0, actualCount);
     console.log(`[Contributor] Selected ${actualCount} items (requested: ${count})`);
-    const topTier = [];
-    const normalNodes = [];
-    const ghostNodes = [];
-    for (const data of selectedData) {
-        // [Design] New nodes start with default metrics (h=0)
-        // importance is only used for tier classification, NOT as initial heat
-        // Heat grows from agent evaluations in subsequent sessions
-        const seed = {
-            tags: data.tags,
-            summary: data.summary ?? data.title ?? "",
-            content: data.payload ?? data.content,
-            // [REMOVED] initialHeat - determined by config.baseHeat, not agent
-            flags: data.flags ?? 0,
-        };
-        // 振り分けロジック (importance → tier classification only)
-        if (data.importance >= 0.85) {
-            topTier.push(seed);
-        }
-        else if (data.importance >= 0.5) {
-            normalNodes.push(seed);
-        }
-        else {
-            ghostNodes.push(seed);
-        }
-    }
+    // [Design] Tier 分類廃止 — 全ノードを normalNodes として投入
+    // topTier は weight=300 で初期スコアが高く Candidate 化が早すぎるため除外
+    const normalNodes = selectedData.map(data => ({
+        tags: data.tags,
+        summary: data.summary,
+        content: data.content,
+        flags: data.flags ?? 0,
+    }));
     const capsule = {
         schemaVersion: CAPSULE_SCHEMA_VERSION,
-        topTier: topTier.slice(0, 2), // Max 2
-        normalNodes: normalNodes.slice(0, 5), // Max 5
-        ghostNodes: ghostNodes.slice(0, 3), // Max 3
+        topTier: [],
+        normalNodes: normalNodes.slice(0, 10), // Max 10 (schema limit)
+        ghostNodes: [],
         evaluations: [],
         timestamp: Date.now(),
     };
@@ -133,33 +116,18 @@ async function contributeBatch() {
     const chunkSize = 10;
     for (let i = 0; i < sourceData.length; i += chunkSize) {
         const chunk = sourceData.slice(i, i + chunkSize);
-        const topTier = [];
-        const normalNodes = [];
-        const ghostNodes = [];
-        for (const data of chunk) {
-            // [Design] New nodes start with default metrics from config.baseHeat
-            const seed = {
-                tags: data.tags,
-                summary: data.summary ?? data.title ?? "",
-                content: data.payload ?? data.content,
-                // [REMOVED] initialHeat - determined by config.baseHeat, not agent
-                flags: data.flags ?? 0,
-            };
-            if (data.importance >= 0.85) {
-                topTier.push(seed);
-            }
-            else if (data.importance >= 0.5) {
-                normalNodes.push(seed);
-            }
-            else {
-                ghostNodes.push(seed);
-            }
-        }
+        // [Design] Tier 分類廃止 — 全ノードを normalNodes として投入
+        const normalNodes = chunk.map(data => ({
+            tags: data.tags,
+            summary: data.summary,
+            content: data.content,
+            flags: data.flags ?? 0,
+        }));
         capsules.push({
             schemaVersion: CAPSULE_SCHEMA_VERSION,
-            topTier: topTier.slice(0, 2),
-            normalNodes: normalNodes.slice(0, 5),
-            ghostNodes: ghostNodes.slice(0, 3),
+            topTier: [],
+            normalNodes: normalNodes.slice(0, 10), // Max 10 (schema limit)
+            ghostNodes: [],
             evaluations: [],
             timestamp: Date.now(),
         });
@@ -204,31 +172,18 @@ async function contributeWave(totalCount = 50, delayMs = 3000) {
     let totalIncarnated = 0;
     for (let w = 0; w < waves; w++) {
         const chunk = sourceData.slice(w * chunkSize, (w + 1) * chunkSize);
-        const topTier = [];
-        const normalNodes = [];
-        const ghostNodes = [];
-        for (const data of chunk) {
-            const seed = {
-                tags: data.tags,
-                summary: data.summary ?? data.title ?? "",
-                content: data.payload ?? data.content,
-                flags: data.flags ?? 0,
-            };
-            if (data.importance >= 0.85) {
-                topTier.push(seed);
-            }
-            else if (data.importance >= 0.5) {
-                normalNodes.push(seed);
-            }
-            else {
-                ghostNodes.push(seed);
-            }
-        }
+        // [Design] Tier 分類廃止 — 全ノードを normalNodes として投入
+        const normalNodes = chunk.map(data => ({
+            tags: data.tags,
+            summary: data.summary,
+            content: data.content,
+            flags: data.flags ?? 0,
+        }));
         const capsule = {
             schemaVersion: CAPSULE_SCHEMA_VERSION,
-            topTier: topTier.slice(0, 2),
-            normalNodes: normalNodes.slice(0, 5),
-            ghostNodes: ghostNodes.slice(0, 3),
+            topTier: [],
+            normalNodes: normalNodes.slice(0, 10), // Max 10 (schema limit)
+            ghostNodes: [],
             evaluations: [],
             timestamp: Date.now(),
         };

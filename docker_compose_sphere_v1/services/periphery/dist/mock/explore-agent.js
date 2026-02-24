@@ -50,7 +50,7 @@ function getRandomMockEntry() {
         return null;
     const entry = data[Math.floor(Math.random() * data.length)];
     return {
-        query: entry.title,
+        query: entry.summary,
         tags: entry.tags,
     };
 }

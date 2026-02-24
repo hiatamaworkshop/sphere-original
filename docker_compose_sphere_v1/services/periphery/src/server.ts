@@ -18,7 +18,6 @@ import { NodeFlag } from "@sphere/renal-core";
 import { getRulebookResponse, RULEBOOK_VERSION } from "./rulebook/index.js";
 import { getSchemasForAPI } from "./schema/index.js";
 import { TicketIssuer, DEFAULT_TICKET_CONFIG, GatewayServer, DEFAULT_GATEWAY_CONFIG } from "./gateway/index.js";
-import { QuestStore } from "./gateway/quest-store.js";
 import { NodeForge, type EnvironmentalRequest } from "./forge/index.js";
 import type { Bookkeeper } from "./bookkeeper/bookkeeper.js";
 import type { EntryBuffer } from "./parser/buffer.js";
@@ -86,7 +85,6 @@ function createExternalServiceGuard(
 export class PeripheryServer {
   private app = express();
   private ticketIssuer!: TicketIssuer;
-  private questStore: QuestStore;
   private gatewayServer: GatewayServer | null = null;
   private nodeForge: NodeForge;
 
@@ -137,8 +135,6 @@ export class PeripheryServer {
       sessionTtl: config.session?.ttlSeconds ?? DEFAULT_TICKET_CONFIG.sessionTtl,
     };
     this.ticketIssuer = new TicketIssuer(ticketConfig);
-    // Initialize QuestStore with config
-    this.questStore = new QuestStore(config.questStore);
     // Initialize NodeForge with config (if available)
     this.nodeForge = new NodeForge(config.forge);
     this.setupRoutes();
@@ -208,9 +204,9 @@ export class PeripheryServer {
           info: {
             "GET /": "Sphere information (this endpoint)",
             "GET /health": "Health check",
+            "GET /sphere/status": "Unified status (dashboard)",
             "GET /sanctification": "Sanctification neuron triangle status",
             "GET /metrics": "System metrics (monitoring)",
-            "GET /stats": "System statistics",
           },
           observation: {
             "GET /nodes/metrics": "List all nodes with metrics (sorted by heat)",
@@ -242,10 +238,6 @@ export class PeripheryServer {
             "POST /dive/request": "Request a Dive Ticket for Sphere entry",
             "GET /dive/validate/:token": "Validate a Dive Ticket (debug)",
             "GET /dive/stats": "Dive ticket statistics",
-          },
-          quest: {
-            "POST /quest": "Submit Quest (verification request from external world)",
-            "GET /quest/stats": "Quest store statistics",
           },
         },
         metrics: {
@@ -358,17 +350,94 @@ export class PeripheryServer {
           volatility: field.volatility,
         } : null,
         memory: {
-          rss: process.memoryUsage.rss(),
+          rss: process.memoryUsage().rss,
           heapUsed: process.memoryUsage().heapUsed,
         },
       });
     });
 
-    // Stats endpoint (legacy, kept for compatibility)
-    this.app.get("/stats", (_req, res) => {
+    // ===== Unified Status Endpoint =====
+    // Single fetch for dashboard — aggregates all subsystem states
+    this.app.get("/sphere/status", readLimiter, (_req, res) => {
+      // --- Nodes (single iteration) ---
+      const byKind: Record<string, number> = {
+        active: 0, amber: 0, fossil: 0, ghost: 0, relic: 0, environment: 0,
+      };
+      let totalHeat = 0, totalWeight = 0, totalTTL = 0, total = 0;
+
+      if (this.projectionDB) {
+        for (const node of this.projectionDB.values()) {
+          total++;
+          byKind[node.kind] = (byKind[node.kind] ?? 0) + 1;
+          totalHeat += node.metrics.h;
+          totalWeight += node.metrics.w;
+          totalTTL += node.metrics.ttl;
+        }
+      }
+
+      // --- Gateway ---
+      const gw = this.gatewayServer?.getStats();
+
+      // --- Tickets ---
+      const tk = this.ticketIssuer.getStats();
+
+      // --- Bus ---
+      const busStats = this.activeBusLayer?.getStats();
+
+      // --- Field ---
+      const field = this.globalFieldLayer?.getGlobalField();
+
+      // --- Sanctification ---
+      const sanct = this.sanctificationNeuron?.getStatus();
+
+      // --- Memory ---
+      const mem = process.memoryUsage();
+
       res.json({
-        service: "periphery",
+        timestamp: new Date().toISOString(),
         uptime: process.uptime(),
+
+        gateway: gw
+          ? { pending: gw.pendingConnections, active: gw.activeConnections }
+          : { pending: 0, active: 0 },
+
+        nodes: {
+          total,
+          byKind,
+          averages: {
+            heat: total > 0 ? Math.round(totalHeat / total * 100) / 100 : 0,
+            weight: total > 0 ? Math.round(totalWeight / total * 100) / 100 : 0,
+            ttl: total > 0 ? Math.round(totalTTL / total) : 0,
+          },
+        },
+
+        tickets: tk,
+
+        bus: busStats ? {
+          enabled: busStats.enabled,
+          currentMessages: busStats.currentSize,
+          totalMessages: busStats.totalMessages,
+          subscribers: busStats.subscriberCount,
+        } : null,
+
+        field: field ? {
+          intensity: field.intensity,
+          volatility: field.volatility,
+          dominantFlags: field.dominantFlags,
+          sampleCount: field.sampleCount,
+        } : null,
+
+        sanctification: sanct ? {
+          epoch: sanct.epoch,
+          health: sanct.soft.health,
+          metabolicMode: sanct.metabolicMode,
+          dormancy: sanct.dormancy,
+        } : null,
+
+        memory: {
+          heapUsedMB: Math.round(mem.heapUsed / 1048576 * 10) / 10,
+          rssMB: Math.round(mem.rss / 1048576 * 10) / 10,
+        },
       });
     });
 
@@ -699,58 +768,6 @@ export class PeripheryServer {
       res.json(stats);
     });
 
-    // ===== Quest Submission Endpoint =====
-    // External world submits quests (verification requests)
-    // Uses same structure as EntryRequest (query + tags)
-    this.app.post("/quest", mediumLimiter, (req, res) => {
-      try {
-        const { query, tags, submitterId } = req.body;
-
-        // Validate: same structure as EntryRequest
-        if (!query || typeof query !== "string") {
-          res.status(400).json({
-            success: false,
-            error: "Field 'query' is required (quest text)",
-          });
-          return;
-        }
-
-        if (!Array.isArray(tags)) {
-          res.status(400).json({
-            success: false,
-            error: "Field 'tags' is required (string array)",
-          });
-          return;
-        }
-
-        // Submit to Quest Store
-        const questId = this.questStore.submit(
-          { query, tags },
-          submitterId
-        );
-
-        console.log(`[Server] Quest submitted: ${questId}`);
-
-        res.json({
-          success: true,
-          questId,
-          message: "Quest submitted. Agents will see it in Quest Showcase.",
-        });
-      } catch (error) {
-        console.error("[Server] Error submitting quest:", error);
-        res.status(500).json({
-          success: false,
-          error: "Internal server error",
-        });
-      }
-    });
-
-    // ===== Quest Stats Endpoint =====
-    this.app.get("/quest/stats", (_req, res) => {
-      const stats = this.questStore.getStats();
-      res.json(stats);
-    });
-
     // ===== Schema Endpoint =====
     // Data format specification for external submissions (schema-driven)
     this.app.get("/schema", (_req, res) => {
@@ -854,13 +871,14 @@ export class PeripheryServer {
       this.entryBuffer,
       { port: wsPort },
       this.incarnationPipeline,
-      this.questStore,
       this.coreAdapter,
       undefined,  // amberCache
       this.globalFieldLayer,
       this.activeBusLayer,
       this.config.session,   // Session timeout config for external agents (phi-agent, etc.)
-      this.config.energy     // Energy budget config
+      this.config.energy,    // Energy budget config
+      this.config.vestibule, // Vestibule (exit membrane) config
+      this.sphereId          // Sphere identity (for vestibuleEntered envelope)
     );
     const httpServer = this.app.listen(httpPort, () => {
       console.log(`[PeripheryServer] 🚀 Listening on port ${httpPort}`);
@@ -868,9 +886,9 @@ export class PeripheryServer {
       console.log(`[PeripheryServer] Endpoints:`);
       console.log(`  GET  /                   - Sphere information`);
       console.log(`  GET  /health             - Health check`);
+      console.log(`  GET  /sphere/status      - Unified status (dashboard)`);
       console.log(`  GET  /sanctification     - Neuron triangle status`);
       console.log(`  GET  /metrics            - System metrics (monitoring)`);
-      console.log(`  GET  /stats              - System stats`);
       console.log(`  GET  /nodes/metrics      - List all nodes with metrics`);
       console.log(`  GET  /nodes/stats        - Node statistics`);
       console.log(`  GET  /nodes/:id          - Get specific node`);
@@ -884,8 +902,6 @@ export class PeripheryServer {
       console.log(`  POST /dive/request       - Request Dive Ticket`);
       console.log(`  GET  /dive/validate/:t   - Validate ticket (debug)`);
       console.log(`  GET  /dive/stats         - Dive statistics`);
-      console.log(`  POST /quest              - Submit Quest (external)`);
-      console.log(`  GET  /quest/stats        - Quest statistics`);
     });
 
     // WebSocket: same port (wsPort=0 or unset) or separate port (local dev)

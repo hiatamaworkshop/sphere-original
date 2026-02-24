@@ -94,13 +94,7 @@ export const computeEffectiveHeat = (
   flags: number,
   config?: RenalCoreFlagsConfig
 ): number => {
-  let heat = baseHeat;
-  // const mods = config?.physicsModifiers ?? DEFAULT_MODIFIERS;
-
-  // No flag-based heat modifiers currently applied
-  // (TemporalShort affects decay, not heat)
-
-  return heat;
+  return baseHeat;
 };
 
 /**
@@ -146,13 +140,7 @@ export const computeEffectiveWeight = (
   flags: number,
   config?: RenalCoreFlagsConfig
 ): number => {
-  let weight = baseWeight;
-  // const mods = config?.physicsModifiers ?? DEFAULT_MODIFIERS;
-
-  // No flag-based weight modifiers currently applied
-  // (Hub removed, Dense/Authority applied elsewhere)
-
-  return weight;
+  return baseWeight;
 };
 
 /**

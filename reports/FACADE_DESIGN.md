@@ -319,6 +319,302 @@ embedding model の差異やバージョニングの違いは、各スフィア�
 
 ---
 
+## 8. ネットワーキング構想における Facade の立ち位置 (2026-02-24)
+
+### Facade = 駅 (Station)
+
+複数スフィアを横断するエージェントの「旅のインフラ」。
+地図 (Navigator) の原型を維持しつつ、一時保管機能を追加する。
+
+| 責務 | 説明 | Navigator 原型 |
+|------|------|---------------|
+| catalog | manifest 収集・提供 | 既存 |
+| routing | 接続先 URL 提供 | 既存 |
+| stash | Vestibule 出力の一時保管 (ロッカー) | **新規** |
+| collect | 保管データの一括引き取り | **新規** |
+| health check | スフィアの生存確認 | 既存 (簡易) |
+
+### 非介入原則の維持
+
+Facade が **やること**:
+- manifest の収集と提供
+- 接続情報のルーティング
+- Vestibule 出力の一時保管と返却 (加工しない)
+- スフィアのヘルスチェック
+
+Facade が **やらないこと**:
+- クエリの改善・変換
+- 探索結果の統合・分析
+- スフィア選択の判断
+- 保管データの加工・フィルタリング
+
+知識の処理はエージェント側 (または Pattern C の Delegation サービス) の責務。
+
+### マルチスフィア探索の動線
+
+```
+Agent
+  │
+  ├─ (1) GET facade/catalog → スフィア一覧
+  │
+  ├─ (2) Sphere A に接続 → 探索 → Vestibule
+  │      receipt/trail/discoveries を取得
+  │
+  ├─ (3) POST facade/stash { journeyId, sphereId, data }
+  │      → Vestibule 出力を一時保管
+  │
+  ├─ (4) Sphere B に接続 → 探索 → Vestibule
+  │      → stash
+  │
+  ├─ (5) GET facade/collect/:journeyId
+  │      → 全スフィアの成果物を一括取得
+  │
+  └─ (6) Agent が結果統合 → 出力 (Facade の関知外)
+```
+
+### stash API (案)
+
+```
+POST /stash
+  { journeyId: string, sphereId: string, data: VestibuleOutput }
+  → { success: true, itemCount: number }
+
+GET  /collect/:journeyId
+  → { items: [{ sphereId, data, timestamp }...] }
+
+DELETE /collect/:journeyId
+  → 保管データ破棄 (TTL 自動削除もあり)
+```
+
+stash はキーバリュー的な一時保管。TTL 付き (デフォルト: 1時間程度)。
+journeyId はエージェントが生成する。Facade はジャーニーの意味を知らない。
+
+### 検討済み・却下した案
+
+**Facade 自体がスフィアである案 (メタスフィア)**:
+ノードとしてロッカーやリンクを配置する。HTML 構造的で美しいが、
+再帰的で実装コストに見合わない。「地図を探索する」のは本末転倒。却下。
+
+**Facade 間連携 (駅のネットワーク)**:
+複数 Facade を接続する構想。理論上は可能だが、
+単一 Facade で十分なスケールが見込まれるため現時点では不要。
+
+---
+
+## 9. ロッカーの作法 (2026-02-24)
+
+### 概要
+
+Facade が提供する Journey スコープのストレージ群。
+全データは **opaque (不透明)** — Facade は中身を見ない、加工しない。
+
+```
+┌─────────────────────────────────────────────┐
+│  Journey: j-abc-123                         │
+│                                             │
+│  [Locker]     生データ保管 (immutable)       │
+│    ├─ sphere-medical  → VestibuleOutput     │
+│    ├─ sphere-ocean    → VestibuleOutput     │
+│    └─ sphere-mountain → VestibuleOutput     │
+│                                             │
+│  [Workbench]  推論バッファ (appendable)      │
+│    ├─ "medical と ocean の交差点は..."       │
+│    ├─ "mountain の生存技術は関連薄い"        │
+│    └─ "海洋医療という軸が浮上した"           │
+│                                             │
+│  [Notebook]   推論結果 (immutable entries)   │
+│    └─ { conclusion, sources, confidence }   │
+│                                             │
+│  [Itinerary]  旅程 (mutable, 1つ)           │
+│    └─ { remaining, visited, nextQuery }     │
+│                                             │
+└─────────────────────────────────────────────┘
+```
+
+### 4つの機能
+
+#### Locker (ロッカー) — 生データ保管
+
+スフィアの Vestibule 出力をそのまま保管。不変。
+
+```
+POST   /locker/:journeyId
+  { sphereId, data: VestibuleOutput }
+  → { success, itemCount }
+
+GET    /locker/:journeyId
+  → { items: [{ sphereId, data, timestamp }...] }
+
+GET    /locker/:journeyId/:sphereId
+  → 特定スフィアの成果物のみ
+```
+
+#### Workbench (作業台) — 推論バッファ
+
+推論途中の思考を積み重ねる一時テーブル。append 専用。
+軽量モデルが推論中にコンテキストを退避させる場所。
+
+```
+POST   /workbench/:journeyId/append
+  { entry: string | object }
+  → { success, entryCount }
+
+GET    /workbench/:journeyId
+  → { entries: [{ entry, timestamp, index }...] }
+
+DELETE /workbench/:journeyId
+  → 作業台クリア (推論やり直し)
+```
+
+#### Notebook (手帳) — 推論結果の確定
+
+推論が完了した結論を書く。Locker と同様 immutable。
+
+```
+POST   /notebook/:journeyId
+  { title, body: string | object, sources?: string[] }
+  → { success, noteId }
+
+GET    /notebook/:journeyId
+  → { notes: [{ noteId, title, body, sources, timestamp }...] }
+```
+
+#### Itinerary (旅程表) — 旅の計画
+
+どこに行って何を探すか。1つだけ、上書き可能。
+
+```
+PUT    /itinerary/:journeyId
+  { plan: [{ sphereId, query, tags, priority, status }...] }
+  → { success }
+
+GET    /itinerary/:journeyId
+  → { plan: [...] }
+```
+
+### 補助機能
+
+#### Bookmark (しおり)
+
+再訪問したいノードを記録。warp で直接飛べる。
+
+```
+POST   /bookmark/:journeyId
+  { sphereId, nodeId, reason? }
+
+GET    /bookmark/:journeyId
+  → { bookmarks: [...] }
+```
+
+#### Collect (一括回収)
+
+旅の終わりに全成果物をまとめて取得・破棄。
+
+```
+GET    /collect/:journeyId
+  → { locker, notebook, workbench, itinerary, bookmarks }
+
+DELETE /collect/:journeyId
+  → 全データ破棄
+```
+
+### TTL (保管期間)
+
+| ストレージ | デフォルト TTL | 備考 |
+|-----------|--------------|------|
+| Locker | 1時間 | VestibuleOutput は一時的 |
+| Workbench | 30分 | 推論バッファは揮発的 |
+| Notebook | 1時間 | Locker と同ライフサイクル |
+| Itinerary | 1時間 | Journey 全体の寿命 |
+| Bookmark | 1時間 | Journey 全体の寿命 |
+
+全ストレージは journeyId 単位で TTL 管理。
+最終アクセスからの経過時間でカウント (sliding window)。
+エージェントが活動中なら自然にリフレッシュされる。
+
+### 非介入原則との整合
+
+| Facade がやること | Facade がやらないこと |
+|---|---|
+| データの保管・返却 | データの分析・加工 |
+| TTL による自動削除 | 推論の実行 |
+| journeyId によるグルーピング | journey の意味の理解 |
+| append / immutable の制約管理 | 内容の検証・フィルタリング |
+
+### 軽量モデルの典型的な旅
+
+```
+Agent (小コンテキスト)
+  │
+  ├─ GET /catalog → 計画立案
+  ├─ PUT /itinerary { plan: [medical, ocean, mountain] }
+  │
+  ├─ Sphere Medical 探索 → Vestibule
+  ├─ POST /locker    (成果物保管)
+  ├─ POST /workbench/append (気づきメモ)
+  │  ← コンテキスト解放 →
+  │
+  ├─ GET /itinerary  (次の目的地確認)
+  ├─ Sphere Ocean 探索 → Vestibule
+  ├─ POST /locker
+  ├─ GET /workbench  (前回の気づきを読み直す)
+  ├─ POST /workbench/append (新たな気づき)
+  │
+  ├─ GET /workbench  (推論の積み重ねを確認)
+  ├─ POST /notebook  (結論を確定)
+  │
+  ├─ GET /collect    (全成果物回収)
+  └─ 統合出力生成 (Facade の関知外)
+```
+
+### 高性能モデルとの使い分け
+
+- **軽量モデル**: ロッカーは **必須** (外部記憶)。Workbench で思考を退避しながら推論
+- **高性能モデル**: ロッカーは **推奨** (効率と耐障害性)。コンテキスト内で保持も可能だが、クラッシュ耐性と構造化の利点あり
+
+---
+
+## 10. 設計上の注意事項 (2026-02-24)
+
+### ボトムアップ設計のリスク
+
+本プロジェクトは Sphere (個体) を先に設計・実装し、後から Facade (全体像) を構築している。
+本来の設計順序は **Facade → Sphere** (地図を描いてから図書館を建てる) だが、
+実際は **Sphere → Facade** (図書館を建ててから地図を描く) になっている。
+
+この逆行は以下の齟齬を生んだ:
+
+| 問題 | 原因 | 修正 |
+|------|------|------|
+| vestibuleEntered に sphereId がなかった | 単体スフィアでは自己識別が不要だった | welcome + vestibuleEntered に追加 |
+| entry に手荷物を持ち込めない | 単独スフィアでは不要だった | 未修正 (現時点では不要) |
+| Vestibule 出力が自己記述的でなかった | 複数結果を並べることを想定していなかった | vestibuleEntered に荷札追加 |
+
+### 検算の習慣
+
+Sphere に新機能を追加する際、以下の問いを立てること:
+
+1. **「Facade から見て自然か？」** — ネットワーキング環境で複数スフィアが並んだとき、この API は外部から使いやすいか
+2. **「データは自己記述的か？」** — 出力を受け取った側が、どのスフィアの何のデータかを判別できるか
+3. **「エージェントの自由を制限していないか？」** — スフィアのプロトコルは純粋に保ち、最適化は phi-agent 側に集中しているか
+
+下から上に建てたものを、**上から下に検算する**。
+FACADE_DESIGN.md はそのための基準文書である。
+
+### レイヤー間の責務境界
+
+```
+Facade   — 地図 + ロッカー (インフラ)     → 知識に触れない
+Sphere   — 純粋な知識プロトコル (個体)     → 誰が来ても同じ応答
+phi-agent — 最適化層 (FastGate, Weapon)   → Sphere を活かす技術
+外部Agent — 直接接続 or phi-agent API 経由 → 自由を担保
+```
+
+各レイヤーの純粋性を保つことがプロジェクトの重要事項。
+思いつきで責務を越境させない。迷ったらこの境界に立ち返る。
+
+---
+
 ## References
 
 - `periphery/src/server.ts` — manifest エンドポイント実装 (line 531-563)

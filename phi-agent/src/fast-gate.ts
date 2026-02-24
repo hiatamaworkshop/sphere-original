@@ -10,9 +10,8 @@
 // phi is ONLY used for evaluate (content understanding).
 //
 // Scoring weights are configurable via constructor.
-// Hub flag is deprecated (dynamic linkCounts not supplied to Arbiter).
 
-import type { NearbyNode } from "./sphere-client.js";
+import type { NearbyNode, ScanNode } from "./sphere-client.js";
 import type { WalkMode } from "./sphere-client.js";
 
 // ============================================================
@@ -46,11 +45,9 @@ const Flag = {
   // Special (bits 12-15)
   UserMarked:  0x1000,
   SystemCore:  0x2000,
-  Compressed:  0x4000,  // TODO: move to state
-  Candidate:   0x8000,  // TODO: move to state
+  Compressed:  0x4000,
+  Candidate:   0x8000,
 
-  // Aliases for state flags
-  Frozen: 0x2000,  // Alias for SystemCore (backwards compatibility)
 } as const;
 
 // ============================================================
@@ -83,7 +80,7 @@ export const DEFAULT_WEIGHTS: FastGateWeights = {
 // Weapon — multiplicative scoring layers
 // ============================================================
 //
-// score = linear(metrics) × gate(flags) × state(hot/frozen) × ratio(h/w)
+// score = linear(metrics) × gate(flags) × state(hot/systemCore) × ratio(h/w)
 //
 // All biases are soft gates (1.0 = neutral, never 0).
 // Flag present → bias applied. Flag absent → 1.0 (neutral).
@@ -108,7 +105,7 @@ export interface Weapon {
   };
   stateBias: {
     hot: number;
-    frozen: number;
+    systemCore: number;
   };
   ratioBias: {
     heatDensity: number;
@@ -136,7 +133,7 @@ export const DEFAULT_WEAPON: Weapon = {
     tensile: 1.0,
     settled: 1.0,
   },
-  stateBias: { hot: 1.0, frozen: 1.0 },
+  stateBias: { hot: 1.0, systemCore: 1.0 },
   ratioBias: { heatDensity: 0, stability: 0 },
 };
 
@@ -187,6 +184,9 @@ export type ReturnWeights = [number, number, number, number];
 // Same Sphere, same phi, same nodes —
 // different Loadout = different personality. Zero retraining.
 
+/** Mode weights: feelings · modeWeights[mode] → score. argmax wins. */
+export type ModeWeights = Record<WalkMode, [number, number, number, number]>;
+
 export interface Loadout {
   name: string;
   weights?: Partial<FastGateWeights>;
@@ -199,6 +199,12 @@ export interface Loadout {
   minCycles: number;
   /** Evaluation perspective — shapes what phi asks about a node */
   evalFocus: string;
+  /** Feelings → moveMode: feelings · modeWeights[m] → argmax selects mode each cycle */
+  modeWeights?: ModeWeights;
+  /** Move step multiplier: baseStep × stepScale (default 1.0) */
+  stepScale?: number;
+  /** Dominant feeling threshold for action switch (default 0.5) */
+  actionThreshold?: number;
 }
 
 export const LOADOUTS: Record<string, Loadout> = {
@@ -206,13 +212,24 @@ export const LOADOUTS: Record<string, Loadout> = {
     name: "balanced",
     weapon: {
       flagBias: { authority: 1.2, temporalShort: 1.1, temporalLong: 1.1 },
-      stateBias: { hot: 1.2, frozen: 0.8 },
+      stateBias: { hot: 1.2, systemCore: 0.8 },
       ratioBias: { heatDensity: 0.2, stability: 0.1 },
     },
     qualityVector: QUALITY_PRESETS.balanced,
     returnWeights: [0.3, 0.2, 0.3, 0.2],
     walkPreference: "explore",
     minCycles: 3,
+    modeWeights: {
+      //           [sat,  frust, stam, stale]
+      hot:        [0.4,  0.2,  0.0,  0.0],
+      deep:       [0.3,  0.0,  0.0,  0.1],
+      explore:    [0.2,  0.3,  0.0,  0.7],
+      flow:       [0.0,  0.0,  0.8,  0.0],
+      random:     [0.0,  0.3,  0.0,  0.0],
+      fresh:      [0.1,  0.1,  0.0,  0.2],
+    },
+    stepScale: 1.0,
+    actionThreshold: 0.5,
     evalFocus: "Observe this node as a neutral explorer.\n\nRate (0–10, 5=neutral):\nheat = motion/attention (0=still, 10=active)\nweight = density (0=light, 10=heavy)\ndecay = fade rate (0=long-lived, 10=short-lived)",
   },
   scholar: {
@@ -220,13 +237,23 @@ export const LOADOUTS: Record<string, Loadout> = {
     weights: { metrics: { ...DEFAULT_WEIGHTS.metrics, weight: 0.5, distance: -1 } },
     weapon: {
       flagBias: { authority: 1.5, temporalLong: 1.3, dense: 1.3, composite: 1.2, sharp: 1.2, fuzzy: 0.8, temporalShort: 0.8 },
-      stateBias: { hot: 0.8, frozen: 1.3 },
+      stateBias: { hot: 0.8, systemCore: 1.3 },
       ratioBias: { stability: 0.5 },
     },
     qualityVector: QUALITY_PRESETS.scholar,
     returnWeights: [0.2, 0.1, 0.1, 0.6],
     walkPreference: "deep",
     minCycles: 5,
+    modeWeights: {
+      hot:        [0.1,  0.2,  0.0,  0.0],
+      deep:       [0.7,  0.0,  0.0,  0.1],
+      explore:    [0.0,  0.5,  0.0,  0.6],
+      flow:       [0.0,  0.0,  0.8,  0.0],
+      random:     [0.0,  0.1,  0.0,  0.0],
+      fresh:      [0.1,  0.1,  0.0,  0.3],
+    },
+    stepScale: 0.7,
+    actionThreshold: 0.6,
     evalFocus: "Observe this node as a scholar seeking knowledge.\n\nRate (0–10, 5=neutral):\nheat = motion/attention (0=still, 10=active)\nweight = density (0=light, 10=heavy)\ndecay = fade rate (0=long-lived, 10=short-lived)",
   },
   scout: {
@@ -234,13 +261,23 @@ export const LOADOUTS: Record<string, Loadout> = {
     weights: { metrics: { ...DEFAULT_WEIGHTS.metrics, heat: 0.8, distance: -3 } },
     weapon: {
       flagBias: { temporalShort: 1.5, sparse: 1.2, fuzzy: 1.2, authority: 0.85, settled: 0.85 },
-      stateBias: { hot: 1.5, frozen: 0.5 },
+      stateBias: { hot: 1.5, systemCore: 0.5 },
       ratioBias: { heatDensity: 0.3 },
     },
     qualityVector: QUALITY_PRESETS.scout,
     returnWeights: [0.4, 0.3, 0.2, 0.1],
     walkPreference: "explore",
     minCycles: 2,
+    modeWeights: {
+      hot:        [0.3,  0.1,  0.0,  0.0],
+      deep:       [0.0,  0.0,  0.0,  0.0],
+      explore:    [0.5,  0.4,  0.0,  0.7],
+      flow:       [0.0,  0.0,  0.8,  0.0],
+      random:     [0.0,  0.3,  0.0,  0.1],
+      fresh:      [0.2,  0.1,  0.0,  0.2],
+    },
+    stepScale: 1.5,
+    actionThreshold: 0.45,
     evalFocus: "Observe this node as a scout seeking novelty.",
   },
   archivist: {
@@ -267,7 +304,7 @@ export const LOADOUTS: Record<string, Loadout> = {
       },
       stateBias: {
         hot: 0.6,      // hermit+archivist average
-        frozen: 1.4    // hermit+archivist average
+        systemCore: 1.4    // hermit+archivist average
       },
       ratioBias: {
         stability: 0.5   // hermit integration: strong stability bias
@@ -277,6 +314,16 @@ export const LOADOUTS: Record<string, Loadout> = {
     returnWeights: [0.2, 0.1, 0.1, 0.6],       // staleness-driven (hermit value)
     walkPreference: "deep",
     minCycles: 4,
+    modeWeights: {
+      hot:        [0.0,  0.1,  0.0,  0.0],
+      deep:       [0.8,  0.0,  0.0,  0.2],
+      explore:    [0.0,  0.4,  0.0,  0.5],
+      flow:       [0.0,  0.0,  0.9,  0.0],
+      random:     [0.0,  0.1,  0.0,  0.0],
+      fresh:      [0.1,  0.3,  0.0,  0.2],
+    },
+    stepScale: 0.6,
+    actionThreshold: 0.6,
     evalFocus: "Observe this node as an archivist seeking stable knowledge.\n\nRate (0–10, 5=neutral):\nheat = motion/attention (0=still, 10=active)\nweight = density (0=light, 10=heavy)\ndecay = fade rate (0=long-lived, 10=short-lived)",
   },
   hunter: {
@@ -284,13 +331,23 @@ export const LOADOUTS: Record<string, Loadout> = {
     weights: { metrics: { ...DEFAULT_WEIGHTS.metrics, heat: 0.8 } },
     weapon: {
       flagBias: { temporalShort: 1.3, tensile: 1.2, fuzzy: 1.15, authority: 0.8, settled: 0.8 },
-      stateBias: { hot: 1.5, frozen: 0.5 },
+      stateBias: { hot: 1.5, systemCore: 0.5 },
       ratioBias: { heatDensity: 0.4 },
     },
     qualityVector: QUALITY_PRESETS.hunter,
     returnWeights: [0.3, 0.4, 0.2, 0.1],
     walkPreference: "hot",
     minCycles: 3,
+    modeWeights: {
+      hot:        [0.5,  0.0,  0.0,  0.0],
+      deep:       [0.1,  0.0,  0.0,  0.0],
+      explore:    [0.0,  0.6,  0.0,  0.6],
+      flow:       [0.0,  0.0,  0.7,  0.0],
+      random:     [0.0,  0.3,  0.0,  0.0],
+      fresh:      [0.3,  0.0,  0.0,  0.3],
+    },
+    stepScale: 1.0,
+    actionThreshold: 0.4,
     evalFocus: "Observe this node as a hunter seeking high-value targets.\n\nRate (0–10, 5=neutral):\nheat = motion/attention (0=still, 10=active)\nweight = density (0=light, 10=heavy)\ndecay = fade rate (0=long-lived, 10=short-lived)",
   },
   // --- Extreme patterns (experimental) ---
@@ -299,13 +356,23 @@ export const LOADOUTS: Record<string, Loadout> = {
     weights: { metrics: { ...DEFAULT_WEIGHTS.metrics, heat: 2.0, weight: 0, decay: 0, distance: -1 }, keywordMatch: 0 },
     weapon: {
       flagBias: { temporalShort: 1.5, sharp: 1.5, settled: 0.75 },
-      stateBias: { hot: 1.8, frozen: 0.5 },
+      stateBias: { hot: 1.8, systemCore: 0.5 },
       ratioBias: { heatDensity: 0.5 },
     },
     qualityVector: [0.8, 0.0, 0.0, 0.2],
     returnWeights: [0.5, 0.1, 0.2, 0.2],
     walkPreference: "hot",
     minCycles: 3,
+    modeWeights: {
+      hot:        [0.8,  0.1,  0.0,  0.0],
+      deep:       [0.0,  0.0,  0.0,  0.0],
+      explore:    [0.0,  0.2,  0.0,  0.7],
+      flow:       [0.0,  0.0,  0.9,  0.0],
+      random:     [0.0,  0.5,  0.0,  0.0],
+      fresh:      [0.1,  0.1,  0.0,  0.2],
+    },
+    stepScale: 1.3,
+    actionThreshold: 0.45,
     evalFocus: "Observe this node like a moth drawn to light.",
   },
   wanderer: {
@@ -317,6 +384,16 @@ export const LOADOUTS: Record<string, Loadout> = {
     returnWeights: [0.0, 0.0, 1.0, 0.0],
     walkPreference: "explore",
     minCycles: 1,
+    modeWeights: {
+      hot:        [0.2,  0.2,  0.0,  0.2],
+      deep:       [0.2,  0.0,  0.0,  0.2],
+      explore:    [0.2,  0.2,  0.0,  0.2],
+      flow:       [0.0,  0.0,  0.9,  0.0],
+      random:     [0.2,  0.2,  0.0,  0.2],
+      fresh:      [0.2,  0.2,  0.0,  0.2],
+    },
+    stepScale: 1.0,
+    actionThreshold: 0.5,
     evalFocus: "Observe this node without bias.\n\nRate (0–10, 5=neutral):\nheat = motion/attention (0=still, 10=active)\nweight = density (0=light, 10=heavy)\ndecay = fade rate (0=long-lived, 10=short-lived)",
   },
   sniper: {
@@ -324,13 +401,23 @@ export const LOADOUTS: Record<string, Loadout> = {
     weights: { metrics: { ...DEFAULT_WEIGHTS.metrics, heat: 1.0 }, keywordMatch: 20 },
     weapon: {
       flagBias: { authority: 1.5, temporalShort: 1.2, composite: 0.8 },
-      stateBias: { hot: 1.3, frozen: 0.5 },
+      stateBias: { hot: 1.3, systemCore: 0.5 },
       ratioBias: { heatDensity: 0.3, stability: 0.2 },
     },
     qualityVector: [0.1, 0.1, 0.0, 0.8],
     returnWeights: [0.5, 0.3, 0.1, 0.1],
     walkPreference: "hot",
     minCycles: 2,
+    modeWeights: {
+      hot:        [0.6,  0.0,  0.0,  0.0],
+      deep:       [0.2,  0.0,  0.0,  0.1],
+      explore:    [0.0,  0.5,  0.0,  0.6],
+      flow:       [0.0,  0.0,  0.8,  0.0],
+      random:     [0.0,  0.3,  0.0,  0.0],
+      fresh:      [0.2,  0.1,  0.0,  0.3],
+    },
+    stepScale: 1.0,
+    actionThreshold: 0.45,
     evalFocus: "Observe this node as a sniper seeking precision targets.\n\nRate (0–10, 5=neutral):\nheat = motion/attention (0=still, 10=active)\nweight = density (0=light, 10=heavy)\ndecay = fade rate (0=long-lived, 10=short-lived)",
   },
 };
@@ -527,6 +614,9 @@ export class FastGate {
   private weapon: Weapon;
   private _minCycles: number;
   private _walkPreference: WalkMode;
+  private _modeWeights: ModeWeights | null;
+  private _stepScale: number;
+  private _actionThreshold: number;
   private _evalFocus: string;
   private _lastActionWasScout = false;
   private _speciesHotNodes: Map<string, number>;
@@ -545,6 +635,9 @@ export class FastGate {
     this.returnWeights = l.returnWeights;
     this._minCycles = l.minCycles;
     this._walkPreference = l.walkPreference;
+    this._modeWeights = l.modeWeights ?? null;
+    this._stepScale = l.stepScale ?? 1.0;
+    this._actionThreshold = l.actionThreshold ?? 0.5;
     this._evalFocus = l.evalFocus;
     this.weights = {
       metrics: { ...DEFAULT_WEIGHTS.metrics, ...l.weights?.metrics },
@@ -574,7 +667,7 @@ export class FastGate {
   //
   // score = base(metrics + keyword)
   //       × flagGate(authority, catalyst, freshness, sticky)
-  //       × stateGate(hot, frozen)
+  //       × stateGate(hot, systemCore)
   //       × ratioMod(heatDensity, stability)
   //
   // All gates are soft (1.0 = neutral, floor 0.1).
@@ -594,9 +687,8 @@ export class FastGate {
       // Hard exclude: already focused
       if (this.memory.wasVisited(n.id)) continue;
 
-      // Hard exclude: Ghost/Fossil — sense-visible but not focusable
-      // Ghost: tags+summary readable in sense results (L1+L2), but no L3 content
-      // Fossil: Compressed flag, L1 only
+      // Hard exclude from focus: Ghost/Fossil have no L3 content
+      // (eval-only path via getEvalCandidates() handles these)
       if (n.kind === "ghost" || n.kind === "fossil") continue;
       if (n.flags & Flag.Compressed) continue;
 
@@ -606,9 +698,9 @@ export class FastGate {
       // --- Base: linear(metrics) + keyword ---
       let base = n.heat * mw.heat + n.weight * mw.weight + n.decay * mw.decay + n.distance * mw.distance;
 
-      const text = (n.summary + " " + (n.tags ?? []).join(" ")).toLowerCase();
+      const searchText = (n.summary + " " + (n.tags ?? []).join(" ")).toLowerCase();
       for (const token of this.queryTokens) {
-        if (text.includes(token)) base += this.weights.keywordMatch;
+        if (searchText.includes(token)) base += this.weights.keywordMatch;
       }
 
       // --- Species memory: familiarity bonus for known nodes ---
@@ -619,7 +711,7 @@ export class FastGate {
 
       // --- Species memory: inherited vocabulary extends search ---
       for (const tag of this._speciesTags) {
-        if (text.includes(tag)) base += SPECIES_TAG_BONUS;
+        if (searchText.includes(tag)) base += SPECIES_TAG_BONUS;
       }
 
       // --- ActiveBus: other agents flagged this node ---
@@ -649,7 +741,7 @@ export class FastGate {
       // --- State gate: multiplicative (dynamic flags) ---
       let stateGate = 1.0;
       if (n.flags & Flag.Hot)    stateGate *= wp.stateBias.hot;
-      if (n.flags & Flag.Frozen) stateGate *= wp.stateBias.frozen;
+      if (n.flags & Flag.SystemCore) stateGate *= wp.stateBias.systemCore;
 
       // --- Ratio modifier ---
       const heatDensity = n.heat / (n.weight + 1);
@@ -668,6 +760,85 @@ export class FastGate {
     return bestScore === -Infinity ? -1 : bestIndex;
   }
 
+  // --- Warp target selection: scan results → best node for species ---
+  //
+  // When sense returns 0 nodes, agent uses scanL1 (wider range) to find
+  // candidates and warps to the best one based on species preferences.
+  //
+  // Scoring: tag overlap (query + species memory) + hot node bonus + distance penalty
+
+  pickWarpTarget(scanned: ScanNode[]): number {
+    if (scanned.length === 0) return -1;
+
+    let bestIndex = -1;
+    let bestScore = -Infinity;
+
+    for (let i = 0; i < scanned.length; i++) {
+      const n = scanned[i];
+
+      // Skip already visited nodes
+      if (this.memory.wasVisited(n.id)) continue;
+
+      let score = 0;
+
+      // Tag overlap with query tokens (+3 per match)
+      if (n.tags) {
+        const lowerTags = n.tags.map(t => t.toLowerCase());
+        for (const qt of this.queryTokens) {
+          if (lowerTags.some(t => t.includes(qt))) score += 3;
+        }
+        // Tag overlap with species memory (+2 per match, substring)
+        for (const st of this._speciesTags) {
+          if (lowerTags.some(t => t.includes(st.toLowerCase()))) score += 2;
+        }
+      }
+
+      // Hot node bonus from species memory (+5)
+      if (this._speciesHotNodes.has(n.id)) {
+        score += 5;
+      }
+
+      // Distance penalty (closer is better, -1 per 0.1 distance)
+      score -= n.distance * 10;
+
+      if (score > bestScore) {
+        bestScore = score;
+        bestIndex = i;
+      }
+    }
+
+    // If no unvisited node found, pick closest
+    if (bestIndex < 0 && scanned.length > 0) {
+      let closestDist = Infinity;
+      for (let i = 0; i < scanned.length; i++) {
+        if (scanned[i].distance < closestDist) {
+          closestDist = scanned[i].distance;
+          bestIndex = i;
+        }
+      }
+    }
+
+    return bestIndex;
+  }
+
+  // --- Eval-only candidates: sensed but not focused ---
+  //
+  // Returns nodes from sense results that can be evaluated without focusing.
+  // Ghost/fossil are the primary use case (sense-visible but not focusable),
+  // but any unfocused sensed node is included.
+  //
+  // Cost: eval only (no focus cost = -10 energy). Max 1 per session in agent.ts.
+  // Wired in standardCycle() step 9.
+
+  getEvalCandidates(nodes: NearbyNode[], focusTargetIndex: number): NearbyNode[] {
+    return nodes.filter((n, i) => {
+      if (i === focusTargetIndex) return false;
+      if (this.memory.wasVisited(n.id)) return false;
+      if (n.tags && n.tags.includes("auto-generated")) return false;
+      return true;
+    });
+  }
+
   // --- Action selection: feelings → next cycle behavior ---
   //
   // Instead of a fixed pipeline, feelings modulate the cycle:
@@ -678,15 +849,24 @@ export class FastGate {
   //   none dominant     → standard cycle
 
   chooseAction(energyRatio: number): { type: string; moveStep: number; moveMode: WalkMode } {
-    const qp = this.memory.qualityProfile;
-    const qv = this.qualityVector;
-    const sat = qp[0] * qv[0] + qp[1] * qv[1] + qp[2] * qv[2] + qp[3] * qv[3];
-    const frust = this.memory.frustration;
-    const stam = Math.max(0, 1 - energyRatio);
-    const stale = this.memory.staleness;
+    const { sat, frust, stam, stale } = this.computeFeelings(energyRatio);
+    const f = [sat, frust, stam, stale] as const;
 
-    // Find dominant feeling (above threshold)
-    const threshold = 0.5;
+    // --- 1. moveMode: feelings · modeWeights → argmax ---
+    let moveMode: WalkMode = this._walkPreference;
+    if (this._modeWeights) {
+      let bestScore = -Infinity;
+      for (const [mode, w] of Object.entries(this._modeWeights) as [WalkMode, [number, number, number, number]][]) {
+        const score = f[0] * w[0] + f[1] * w[1] + f[2] * w[2] + f[3] * w[3];
+        if (score > bestScore) {
+          bestScore = score;
+          moveMode = mode;
+        }
+      }
+    }
+
+    // --- 2. actionType: dominant feeling → behavior ---
+    const threshold = this._actionThreshold;
     const feelings = [
       { name: "sat" as const, value: sat },
       { name: "frust" as const, value: frust },
@@ -697,37 +877,36 @@ export class FastGate {
 
     if (dominant.value < threshold) {
       this._lastActionWasScout = false;
-      return { type: "standard", moveStep: 0.3, moveMode: this._walkPreference };
+      return { type: "standard", moveStep: 0.3 * this._stepScale, moveMode };
     }
 
     // Scout trap guard: scout is a single breath, not a permanent state.
     // After scout, force standard so new data (focus+eval) can update feelings.
     if (dominant.name === "stam" && this._lastActionWasScout) {
       this._lastActionWasScout = false;
-      return { type: "standard", moveStep: 0.3, moveMode: this._walkPreference };
+      return { type: "standard", moveStep: 0.3 * this._stepScale, moveMode };
     }
 
     switch (dominant.name) {
       case "sat":
         // Satisfied → camp: stay, re-sense without moving, exploit area
         this._lastActionWasScout = false;
-        return { type: "camp", moveStep: 0, moveMode: this._walkPreference };
+        return { type: "camp", moveStep: 0, moveMode };
       case "frust":
-        // Frustrated → leap: big move, personality-driven escape
-        // hunter flees toward heat, hermit toward stability
+        // Frustrated → leap: big move, escape direction driven by feelings
         this._lastActionWasScout = false;
-        return { type: "leap", moveStep: 0.6, moveMode: this._walkPreference };
+        return { type: "leap", moveStep: 0.6 * this._stepScale, moveMode };
       case "stale":
-        // Bored → leap: force "explore" to break pattern (override personality)
+        // Bored → leap: feelings already select explore-biased mode via modeWeights
         this._lastActionWasScout = false;
-        return { type: "leap", moveStep: 0.5, moveMode: "explore" };
+        return { type: "leap", moveStep: 0.5 * this._stepScale, moveMode };
       case "stam":
         // Tired → scout: sense-only, skip focus+eval to conserve energy
         this._lastActionWasScout = true;
-        return { type: "scout", moveStep: 0.3, moveMode: this._walkPreference };
+        return { type: "scout", moveStep: 0.3 * this._stepScale, moveMode };
       default:
         this._lastActionWasScout = false;
-        return { type: "standard", moveStep: 0.3, moveMode: this._walkPreference };
+        return { type: "standard", moveStep: 0.3 * this._stepScale, moveMode };
     }
   }
 
@@ -755,42 +934,28 @@ export class FastGate {
     const count = this.memory.cycleCount;
     if (count < this._minCycles) return false;
 
-    const desire = this.computeReturnDesire(energyRatio);
+    const { desire } = this.computeFeelings(energyRatio);
     const returnProb = Math.max(0, Math.min(1, (desire - 0.5) * 2));
     return Math.random() < returnProb;
   }
 
-  /** Compute return desire (feelings · returnWeights). Exposed for debug. */
-  private computeReturnDesire(energyRatio: number): number {
-    // Satisfaction: quality profile × quality vector
-    const qp = this.memory.qualityProfile;
-    const qv = this.qualityVector;
-    const satisfaction = qp[0] * qv[0] + qp[1] * qv[1] + qp[2] * qv[2] + qp[3] * qv[3];
-
-    // Frustration: miss rate
-    const frustration = this.memory.frustration;
-
-    // Stamina: energy pressure (linear)
-    const stamina = Math.max(0, 1 - energyRatio);
-
-    // Staleness: pattern convergence (1 - entropy)
-    const staleness = this.memory.staleness;
-
-    // Feelings × personality
-    const rw = this.returnWeights;
-    return satisfaction * rw[0] + frustration * rw[1] + stamina * rw[2] + staleness * rw[3];
-  }
-
-  /** For debug logging */
-  feelingsDebug(energyRatio: number = 1.0): string {
+  /** Compute 4D feelings + return desire (feelings · returnWeights). */
+  private computeFeelings(energyRatio: number): { sat: number; frust: number; stam: number; stale: number; desire: number } {
     const qp = this.memory.qualityProfile;
     const qv = this.qualityVector;
     const sat = qp[0] * qv[0] + qp[1] * qv[1] + qp[2] * qv[2] + qp[3] * qv[3];
     const frust = this.memory.frustration;
     const stam = Math.max(0, 1 - energyRatio);
     const stale = this.memory.staleness;
-    const desire = this.computeReturnDesire(energyRatio);
-    const prob = Math.max(0, Math.min(1, (desire - 0.5) * 2));
-    return `F=[sat:${sat.toFixed(2)},frust:${frust.toFixed(2)},stam:${stam.toFixed(2)},stale:${stale.toFixed(2)}] desire=${desire.toFixed(3)} → ${(prob * 100).toFixed(0)}%`;
+    const rw = this.returnWeights;
+    const desire = sat * rw[0] + frust * rw[1] + stam * rw[2] + stale * rw[3];
+    return { sat, frust, stam, stale, desire };
+  }
+
+  /** For debug logging */
+  feelingsDebug(energyRatio: number = 1.0): string {
+    const f = this.computeFeelings(energyRatio);
+    const prob = Math.max(0, Math.min(1, (f.desire - 0.5) * 2));
+    return `F=[sat:${f.sat.toFixed(2)},frust:${f.frust.toFixed(2)},stam:${f.stam.toFixed(2)},stale:${f.stale.toFixed(2)}] desire=${f.desire.toFixed(3)} → ${(prob * 100).toFixed(0)}%`;
   }
 }

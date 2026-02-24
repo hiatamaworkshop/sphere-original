@@ -20,16 +20,6 @@ export interface PeripheryConfig {
     modelId?: string;              // Model ID for local provider (optional)
   };
 
-  // === Gatekeeper (DEPRECATED) ===
-  // NOTE: Gatekeeper now uses Rulebook constraints directly
-  // See: services/periphery/src/rulebook/index.ts
-  gatekeeper: {
-    maxNodesPerCapsule: number;    // DEPRECATED - use Rulebook
-    maxTopTierPerCapsule: number;  // DEPRECATED - use Rulebook
-    maxGhostRatio: number;         // DEPRECATED - use Rulebook
-    maxSummaryLength: number;      // DEPRECATED - use Rulebook
-  };
-
   // === Tagger ===
   tagger: {
     topTierCount: number;          // Number of nodes to mark as top-tier
@@ -121,12 +111,10 @@ export interface PeripheryConfig {
     };
   };
 
-  // === Quest Store (FIFO, no TTL) ===
-  questStore?: {
-    /** 最大クエスト数 (default: 100) - FIFO で古いものから押し出し */
-    maxSize: number;
-    /** Showcase 表示数 (default: 10) */
-    showcaseSize: number;
+  // === Vestibule (Exit Membrane) ===
+  vestibule?: {
+    /** Vestibule 滞在上限 (秒) - デフォルト: 120 */
+    ttlSeconds: number;
   };
 
   // === Amber Cache (Unified Showcase + Dynamic) ===
@@ -262,12 +250,6 @@ export const DEFAULT_PERIPHERY_CONFIG: PeripheryConfig = {
     vectorDimension: 384,  // all-MiniLM-L6-v2 default
     modelId: "Xenova/all-MiniLM-L6-v2",
   },
-  gatekeeper: {
-    maxNodesPerCapsule: 50,
-    maxTopTierPerCapsule: 5,
-    maxGhostRatio: 0.4,
-    maxSummaryLength: 512,
-  },
   tagger: {
     topTierCount: 3,
   },
@@ -325,9 +307,8 @@ export const DEFAULT_PERIPHERY_CONFIG: PeripheryConfig = {
       evaluate: 3,
     },
   },
-  questStore: {
-    maxSize: 100,
-    showcaseSize: 10,
+  vestibule: {
+    ttlSeconds: 120,  // 2 minutes in vestibule before forced disconnect
   },
   amberCache: {
     maxSize: 100,

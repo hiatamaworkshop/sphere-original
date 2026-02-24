@@ -33,6 +33,10 @@ export interface ArbiterConfig {
   // Pause判定
   pauseErosionBoost: number;
 
+  // === Erosion Cooldown 設定 ===
+  // 冷却期間（ミリ秒）- 閾値割れ後、この期間回復しなければ降格。評価は凍結しない。
+  erosionCooldownMs?: number;  // default: 300000 (5分)
+
   // === Dynamic Flags 閾値 ===
   // Hot: heat がこの閾値を超えると Hot フラグを付与
   hotHeatThreshold: number;
@@ -202,6 +206,10 @@ export class Arbiter {
   // Key: nodeId
   private candidateStore: Map<string, CandidateEntry> = new Map();
 
+  // === Erosion Candidate Store (Erosion 冷却期間管理) ===
+  // Key: nodeId, Value: registration timestamp
+  private erosionCandidates = new Map<string, number>();
+
   // === Allostatic Threshold (observe() 毎に再計算) ===
   private currentEffectiveThreshold: number = 0;
 
@@ -269,13 +277,12 @@ export class Arbiter {
 
     // === Phase 0: 既存候補の監視（脱落/昇格判定）===
     this.monitorCandidates(projDB, now, queue);
+    // === Phase 0+: Erosion 候補の監視（回復/降格判定）===
+    this.monitorErosionCandidates(projDB, now, queue, options.isPaused);
 
     for (const node of projDB.values()) {
-      // 1. Erosion 判定: Amber → Active
-      if (this.shouldErode(node, options.isPaused)) {
-        queue.shouldErode.push(node);
-        continue;
-      }
+      // 1. Erosion 候補登録: Amber の score が閾値割れ → cooldown 開始
+      this.checkErosionCandidate(node, now, options.isPaused);
 
       // 2. Revival 判定: Fossil → Active
       if (this.shouldRevive(node)) {
@@ -383,6 +390,64 @@ export class Arbiter {
     // 処理済み候補を削除
     for (const nodeId of toRemove) {
       this.candidateStore.delete(nodeId);
+    }
+  }
+
+  /**
+   * Monitor existing erosion candidates (cooldown period check)
+   *
+   * [Design] Ascension Cooldown の対称設計
+   *   - 評価は凍結しない（他エージェントが救済可能）
+   *   - score が回復すれば candidate 取消
+   *   - cooldown 経過後も閾値以下なら降格実行
+   */
+  private monitorErosionCandidates(
+    projDB: Map<string, SphereNode>,
+    now: number,
+    queue: TransitionQueue,
+    isPaused?: boolean,
+  ): void {
+    const cooldownMs = this.config.erosionCooldownMs ?? 300000;
+    const toRemove: string[] = [];
+
+    for (const [nodeId, since] of this.erosionCandidates) {
+      const node = projDB.get(nodeId);
+
+      // ノードが消滅 or amber でなくなった → 除去
+      if (!node || node.kind !== "amber") {
+        toRemove.push(nodeId);
+        continue;
+      }
+
+      const score = computeAscensionScore(node.metrics.h, node.metrics.w);
+      const effectiveThreshold = isPaused
+        ? this.config.erosionScoreThreshold * this.config.pauseErosionBoost
+        : this.config.erosionScoreThreshold;
+
+      // Score が回復 → 救済成功
+      if (score >= effectiveThreshold) {
+        console.log(
+          `[Arbiter] Erosion candidate recovered: ${nodeId.slice(0, 8)} ` +
+          `score=${score.toFixed(2)} >= threshold=${effectiveThreshold.toFixed(2)}`
+        );
+        toRemove.push(nodeId);
+        continue;
+      }
+
+      // Cooldown 期間経過 → 降格実行
+      const elapsed = now - since;
+      if (elapsed >= cooldownMs) {
+        console.log(
+          `[Arbiter] Erosion completed: ${nodeId.slice(0, 8)} ` +
+          `score=${score.toFixed(2)} cooldown=${elapsed}ms`
+        );
+        queue.shouldErode.push(node);
+        toRemove.push(nodeId);
+      }
+    }
+
+    for (const nodeId of toRemove) {
+      this.erosionCandidates.delete(nodeId);
     }
   }
 
@@ -512,21 +577,29 @@ export class Arbiter {
   // =========================================================================
 
   /**
-   * Erosion 判定: Amber → Active
-   * [Design] Ascension と対称: h + w スコアで判定
-   *   Ascension: h + w >= ascensionScoreThreshold (500) → 琥珀化
-   *   Erosion:   h + w <  erosionScoreThreshold (200)   → 琥珀解除
-   *   heat (注目度) と weight (情報価値) の両方が低下して初めて Erosion
+   * Erosion Candidate 登録: Amber ノードの score が閾値を下回ったら候補登録
+   *
+   * [Design] Ascension Cooldown の対称
+   *   - 閾値割れ → 即 erosion ではなく候補登録
+   *   - cooldown 期間中に回復すれば取消（評価凍結しない = 救済可能）
+   *   - monitorErosionCandidates() が実際の降格を判定
    */
-  private shouldErode(node: SphereNode, isPaused?: boolean): boolean {
-    if (node.kind !== "amber") return false;
+  private checkErosionCandidate(node: SphereNode, now: number, isPaused?: boolean): void {
+    if (node.kind !== "amber") return;
+    if (this.erosionCandidates.has(node.id)) return;  // 既に登録済み
 
     const score = computeAscensionScore(node.metrics.h, node.metrics.w);
     const effectiveThreshold = isPaused
       ? this.config.erosionScoreThreshold * this.config.pauseErosionBoost
       : this.config.erosionScoreThreshold;
 
-    return score < effectiveThreshold;
+    if (score < effectiveThreshold) {
+      this.erosionCandidates.set(node.id, now);
+      console.log(
+        `[Arbiter] Erosion candidate registered: ${node.id.slice(0, 8)} ` +
+        `score=${score.toFixed(2)} < threshold=${effectiveThreshold.toFixed(2)}`
+      );
+    }
   }
 
   /**

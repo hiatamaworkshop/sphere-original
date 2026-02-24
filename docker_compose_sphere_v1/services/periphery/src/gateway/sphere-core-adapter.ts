@@ -314,13 +314,9 @@ export class SphereCoreAdapter {
         continue;
       }
 
-      // Fossil: no heat-based visibility check (inert, always detectable if in range)
-      // Living nodes: high heat extends perception range
       const isFossil = node.kind === "fossil";
-      const heatFactor = isFossil ? 0.5 : Math.max(0.5, node.metrics.h / 1000);
-      const visibilityRadius = perceptionRadius * heatFactor;
 
-      if (distance <= visibilityRadius) {
+      if (distance <= perceptionRadius) {
         nearbyNodes.push({
           id: node.id,
           distance: addNoise(distance, this.config.noiseFactor),
@@ -333,6 +329,10 @@ export class SphereCoreAdapter {
           kind: node.kind,
           flags: node.metrics.flg,
           tags: node.payload?.tags,
+          // [Node immunity] Only include when inflamed (non-default)
+          ...(node.metrics.immuneMod !== undefined && node.metrics.immuneMod !== 1.0
+            ? { immuneMod: Math.round(node.metrics.immuneMod * 10000) / 10000 }
+            : {}),
         });
       }
     }
@@ -616,45 +616,6 @@ export class SphereCoreAdapter {
   }
 
   // ============================================================
-  // Evaluation: evaluate() - DEPRECATED
-  // ============================================================
-
-  /**
-   * Record evaluation on an existing node
-   *
-   * @deprecated This method is no longer used in the 2-layer evaluation architecture.
-   *
-   * [New Design] Evaluations are:
-   *   1. Accumulated in session buffer (sphere-context.ts)
-   *   2. Included in ExperienceCapsule.evaluations at return time
-   *   3. Processed by Bookkeeper.applyEvaluations() with coefficients
-   *
-   * [Why Deprecated]
-   *   - Real-time ProjDB writes removed for unified evaluation path
-   *   - Session accumulation → batch ProjDB reflection at return time
-   *   - Bookkeeper handles 2-layer coefficient application (h×10, w×5, d×0.01)
-   *
-   * @param nodeId Target node ID
-   * @param score Evaluation score (-1 to 1) - OLD FORMAT
-   */
-  async evaluate(nodeId: string, score: number): Promise<boolean> {
-    console.warn(
-      `[SphereCoreAdapter] evaluate() is DEPRECATED. ` +
-      `Evaluations should be buffered in session and processed by Bookkeeper at return time.`
-    );
-
-    const node = await this.projectionRepo.get(nodeId);
-    if (!node) return false;
-
-    // Legacy behavior (kept for compatibility, not recommended)
-    const heatDelta = score * 5;  // -5 to +5 range
-    node.metrics.h = Math.max(0, Math.min(100, node.metrics.h + heatDelta));
-
-    await this.projectionRepo.set(nodeId, node);
-    return true;
-  }
-
-  // ============================================================
   // Movement: move()
   // ============================================================
 
@@ -699,5 +660,21 @@ export class SphereCoreAdapter {
    */
   async nodeExists(nodeId: string): Promise<boolean> {
     return this.projectionRepo.exists(nodeId);
+  }
+
+  /**
+   * Get a relic node's vector for Tutorial mock positioning.
+   * Returns the first relic found, or a zero vector if none exist.
+   */
+  async getRelicVector(): Promise<number[]> {
+    const allNodes = await this.projectionRepo.getAll();
+    for (const node of allNodes) {
+      if (node.kind === "relic" && node.vector?.length) {
+        return node.vector;
+      }
+    }
+    // Fallback: zero vector (384-dim)
+    const dim = allNodes[0]?.vector?.length ?? 384;
+    return new Array(dim).fill(0);
   }
 }

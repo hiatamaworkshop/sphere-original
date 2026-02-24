@@ -13,7 +13,7 @@
  *   - _embeddingVector: Full semantic position (384-dim)
  *   - _position (Vector): 3D projection for display
  */
-import type { SphereContext, SphereContextEventType, SphereContextEventHandlers, Vector, NearbyNode, FocusResult, MoveIntent, MoveResult, WarpResult, RandomWalkResult, WalkMode, GatewaySession, DiveTicket, ScanResult, L1ScanResult } from "../types/gateway.js";
+import type { SphereContext, SphereContextEventType, SphereContextEventHandlers, Vector, NearbyNode, FocusResult, MoveIntent, MoveResult, WarpResult, WalkMode, GatewaySession, DiveTicket, ScanResult, L1ScanResult } from "../types/gateway.js";
 import type { ExperienceCapsule } from "../types/capsule.js";
 import type { ExperienceLayer, EvaluationResult } from "../types/experience-layer.js";
 import type { IIncarnationPipeline } from "../incarnation/pipeline.js";
@@ -38,6 +38,7 @@ export declare class SphereContextImpl implements SphereContext {
     private _energyConfig;
     private _lowEnergyWarned;
     private _layer;
+    private _queryReady;
     private _sessionBuffer;
     private _actionLog;
     private _currentFocusNodeId;
@@ -132,10 +133,6 @@ export declare class SphereContextImpl implements SphereContext {
      */
     move(step?: number, mode?: WalkMode): Promise<MoveResult>;
     /**
-     * @deprecated Use move(step, mode) instead
-     */
-    randomWalk(stepSize?: number, mode?: WalkMode): Promise<RandomWalkResult>;
-    /**
      * Calculate magnetic field direction based on WalkMode
      *
      * [Design] Mode determines which aspect of the field to follow:
@@ -197,6 +194,16 @@ export declare class SphereContextImpl implements SphereContext {
     private _processReturn;
     enterSanctuary(): Promise<void>;
     enterCore(): Promise<void>;
+    get queryReady(): boolean;
+    /**
+     * Replace the agent's position with the real query vector.
+     * Called when Parser vectorization completes (Tutorial → Sanctuary transition enabler).
+     *
+     * [Design] Tutorial starts at a relic's vector (mock position).
+     *          When the real query vector is ready, reposition the agent
+     *          so Sanctuary exploration starts from the query's semantic location.
+     */
+    reposition(newVector: number[]): void;
     on<K extends SphereContextEventType>(event: K, handler: SphereContextEventHandlers[K]): void;
     private emit;
     private checkSession;
@@ -207,6 +214,13 @@ export declare class SphereContextImpl implements SphereContext {
      * @returns true if action can proceed, false if insufficient energy
      */
     private consumeEnergy;
+    /**
+     * Filter nodes by current layer's access control
+     * [Design] Tutorial: relic only (amber is earned through exploration)
+     *          Sanctuary: amber + relic visible (reward for progression)
+     *          Core: no filter (full access)
+     */
+    private filterByLayer;
     private setupTimers;
     private clearTimers;
     private mockSense;
@@ -242,8 +256,4 @@ export interface CreateSphereContextOptions {
  *   });
  */
 export declare function createSphereContext(options: CreateSphereContextOptions): SphereContextImpl;
-/**
- * Create SphereContext with default zero vector (for testing/mock)
- */
-export declare function createMockSphereContext(ticket: DiveTicket, sessionId: string, vectorDim?: number, pipeline?: IIncarnationPipeline): SphereContextImpl;
 //# sourceMappingURL=sphere-context.d.ts.map

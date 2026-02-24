@@ -1,0 +1,595 @@
+{
+  "generation": 28,
+  "timestamp": "2026-02-23T07:13:59.112Z",
+  "inputEvaluations": 497,
+  "survivedEvaluations": 468,
+  "hunger": 0.5564,
+  "halfLifeHours": 72,
+  "species": {
+    "balanced": {
+      "evaluations": 60,
+      "avgH": 6.683717948717948,
+      "avgW": 7.964871794871794,
+      "avgD": 6.669230769230769,
+      "hotNodes": [
+        {
+          "nodeId": "f7dcec2535f28615",
+          "count": 27.5
+        },
+        {
+          "nodeId": "ad0692f4836319a4",
+          "count": 22.4
+        },
+        {
+          "nodeId": "84bed15fb3e8faa2",
+          "count": 17.2
+        },
+        {
+          "nodeId": "7dd64c0d44a58234",
+          "count": 14.6
+        },
+        {
+          "nodeId": "b5e41d88e6139392",
+          "count": 11.5
+        },
+        {
+          "nodeId": "8f0d116bcdc25011",
+          "count": 11.399999999999999
+        },
+        {
+          "nodeId": "be1506b879c9a025",
+          "count": 10.5
+        },
+        {
+          "nodeId": "42cc058cdc7a6c4d",
+          "count": 7.8999999999999995
+        },
+        {
+          "nodeId": "87d78df12cb2f4ab",
+          "count": 7.199999999999999
+        },
+        {
+          "nodeId": "23fbfaf960db4d6a",
+          "count": 6.3
+        }
+      ],
+      "commonTags": [
+        "mathematics",
+        "theory",
+        "cognition",
+        "culture",
+        "linguistics",
+        "game-theory",
+        "economics",
+        "philosophy",
+        "information",
+        "mystery",
+        "unsolved",
+        "frontier",
+        "computation",
+        "music",
+        "society"
+      ]
+    },
+    "scholar": {
+      "evaluations": 49,
+      "avgH": 6.955860805860805,
+      "avgW": 8.168681318681319,
+      "avgD": 6.157326007326008,
+      "hotNodes": [
+        {
+          "nodeId": "f7dcec2535f28615",
+          "count": 28.9
+        },
+        {
+          "nodeId": "ad0692f4836319a4",
+          "count": 21
+        },
+        {
+          "nodeId": "7dd64c0d44a58234",
+          "count": 16.7
+        },
+        {
+          "nodeId": "84bed15fb3e8faa2",
+          "count": 15.799999999999999
+        },
+        {
+          "nodeId": "be1506b879c9a025",
+          "count": 15.399999999999999
+        },
+        {
+          "nodeId": "b5e41d88e6139392",
+          "count": 10.1
+        },
+        {
+          "nodeId": "8f0d116bcdc25011",
+          "count": 9.299999999999999
+        },
+        {
+          "nodeId": "23fbfaf960db4d6a",
+          "count": 8.399999999999999
+        },
+        {
+          "nodeId": "42cc058cdc7a6c4d",
+          "count": 6.5
+        },
+        {
+          "nodeId": "87d78df12cb2f4ab",
+          "count": 5.1
+        }
+      ],
+      "commonTags": [
+        "mathematics",
+        "economics",
+        "game-theory",
+        "theory",
+        "philosophy",
+        "information",
+        "cognition",
+        "linguistics",
+        "mystery",
+        "unsolved",
+        "frontier",
+        "trade",
+        "incentives",
+        "culture",
+        "logic"
+      ]
+    },
+    "scout": {
+      "evaluations": 92,
+      "avgH": 7.219370122630991,
+      "avgW": 7.730016722408026,
+      "avgD": 5.956549609810478,
+      "hotNodes": [
+        {
+          "nodeId": "f7dcec2535f28615",
+          "count": 31
+        },
+        {
+          "nodeId": "ad0692f4836319a4",
+          "count": 23.8
+        },
+        {
+          "nodeId": "84bed15fb3e8faa2",
+          "count": 17.9
+        },
+        {
+          "nodeId": "be1506b879c9a025",
+          "count": 16.8
+        },
+        {
+          "nodeId": "7dd64c0d44a58234",
+          "count": 16.7
+        },
+        {
+          "nodeId": "b5e41d88e6139392",
+          "count": 14.299999999999999
+        },
+        {
+          "nodeId": "8f0d116bcdc25011",
+          "count": 13.499999999999998
+        },
+        {
+          "nodeId": "23fbfaf960db4d6a",
+          "count": 9.1
+        },
+        {
+          "nodeId": "87d78df12cb2f4ab",
+          "count": 5.1
+        },
+        {
+          "nodeId": "42cc058cdc7a6c4d",
+          "count": 5.1
+        }
+      ],
+      "commonTags": [
+        "mathematics",
+        "theory",
+        "linguistics",
+        "cognition",
+        "game-theory",
+        "economics",
+        "culture",
+        "philosophy",
+        "information",
+        "computation",
+        "trade",
+        "incentives",
+        "mystery",
+        "unsolved",
+        "frontier"
+      ]
+    },
+    "sniper": {
+      "evaluations": 52,
+      "avgH": 6.675641025641026,
+      "avgW": 8.240384615384615,
+      "avgD": 6.624358974358975,
+      "hotNodes": [
+        {
+          "nodeId": "f7dcec2535f28615",
+          "count": 28.2
+        },
+        {
+          "nodeId": "ad0692f4836319a4",
+          "count": 23.1
+        },
+        {
+          "nodeId": "7dd64c0d44a58234",
+          "count": 13.2
+        },
+        {
+          "nodeId": "84bed15fb3e8faa2",
+          "count": 12.299999999999999
+        },
+        {
+          "nodeId": "8f0d116bcdc25011",
+          "count": 12.099999999999998
+        },
+        {
+          "nodeId": "b5e41d88e6139392",
+          "count": 11.5
+        },
+        {
+          "nodeId": "be1506b879c9a025",
+          "count": 10.5
+        },
+        {
+          "nodeId": "42cc058cdc7a6c4d",
+          "count": 7.199999999999999
+        },
+        {
+          "nodeId": "87d78df12cb2f4ab",
+          "count": 7.199999999999999
+        },
+        {
+          "nodeId": "23fbfaf960db4d6a",
+          "count": 6.3
+        }
+      ],
+      "commonTags": [
+        "mathematics",
+        "theory",
+        "culture",
+        "cognition",
+        "linguistics",
+        "information",
+        "philosophy",
+        "computation",
+        "music",
+        "neuroscience",
+        "brain",
+        "history",
+        "time",
+        "civilization",
+        "chronology"
+      ]
+    },
+    "wanderer": {
+      "evaluations": 53,
+      "avgH": 6.655321722302855,
+      "avgW": 7.905878084179971,
+      "avgD": 6.138727624576681,
+      "hotNodes": [
+        {
+          "nodeId": "f7dcec2535f28615",
+          "count": 28.9
+        },
+        {
+          "nodeId": "ad0692f4836319a4",
+          "count": 23.8
+        },
+        {
+          "nodeId": "84bed15fb3e8faa2",
+          "count": 15.799999999999999
+        },
+        {
+          "nodeId": "7dd64c0d44a58234",
+          "count": 13.2
+        },
+        {
+          "nodeId": "8f0d116bcdc25011",
+          "count": 12.799999999999999
+        },
+        {
+          "nodeId": "b5e41d88e6139392",
+          "count": 12.2
+        },
+        {
+          "nodeId": "be1506b879c9a025",
+          "count": 10.5
+        },
+        {
+          "nodeId": "42cc058cdc7a6c4d",
+          "count": 6.5
+        },
+        {
+          "nodeId": "23fbfaf960db4d6a",
+          "count": 6.3
+        },
+        {
+          "nodeId": "87d78df12cb2f4ab",
+          "count": 5.1
+        }
+      ],
+      "commonTags": [
+        "mathematics",
+        "theory",
+        "linguistics",
+        "cognition",
+        "culture",
+        "information",
+        "computation",
+        "game-theory",
+        "economics",
+        "philosophy",
+        "mystery",
+        "neuroscience",
+        "brain",
+        "society",
+        "anthropology"
+      ]
+    },
+    "moth": {
+      "evaluations": 49,
+      "avgH": 7.584432234432233,
+      "avgW": 8.025824175824177,
+      "avgD": 6.228754578754579,
+      "hotNodes": [
+        {
+          "nodeId": "f7dcec2535f28615",
+          "count": 28.2
+        },
+        {
+          "nodeId": "ad0692f4836319a4",
+          "count": 19.6
+        },
+        {
+          "nodeId": "7dd64c0d44a58234",
+          "count": 13.899999999999999
+        },
+        {
+          "nodeId": "84bed15fb3e8faa2",
+          "count": 12.299999999999999
+        },
+        {
+          "nodeId": "be1506b879c9a025",
+          "count": 11.9
+        },
+        {
+          "nodeId": "b5e41d88e6139392",
+          "count": 11.5
+        },
+        {
+          "nodeId": "8f0d116bcdc25011",
+          "count": 11.399999999999999
+        },
+        {
+          "nodeId": "87d78df12cb2f4ab",
+          "count": 7.8999999999999995
+        },
+        {
+          "nodeId": "23fbfaf960db4d6a",
+          "count": 6.3
+        },
+        {
+          "nodeId": "42cc058cdc7a6c4d",
+          "count": 5.1
+        }
+      ],
+      "commonTags": [
+        "mathematics",
+        "theory",
+        "culture",
+        "information",
+        "cognition",
+        "linguistics",
+        "philosophy",
+        "computation",
+        "economics",
+        "game-theory",
+        "mystery",
+        "anthropology",
+        "music",
+        "neuroscience",
+        "brain"
+      ]
+    },
+    "archivist": {
+      "evaluations": 59,
+      "avgH": 6.963124728378965,
+      "avgW": 8.320013037809648,
+      "avgD": 6.726575401999131,
+      "hotNodes": [
+        {
+          "nodeId": "f7dcec2535f28615",
+          "count": 27.5
+        },
+        {
+          "nodeId": "ad0692f4836319a4",
+          "count": 18.9
+        },
+        {
+          "nodeId": "84bed15fb3e8faa2",
+          "count": 16.5
+        },
+        {
+          "nodeId": "8f0d116bcdc25011",
+          "count": 14.2
+        },
+        {
+          "nodeId": "be1506b879c9a025",
+          "count": 14
+        },
+        {
+          "nodeId": "7dd64c0d44a58234",
+          "count": 13.2
+        },
+        {
+          "nodeId": "23fbfaf960db4d6a",
+          "count": 10.5
+        },
+        {
+          "nodeId": "b5e41d88e6139392",
+          "count": 8.7
+        },
+        {
+          "nodeId": "42cc058cdc7a6c4d",
+          "count": 6.5
+        },
+        {
+          "nodeId": "87d78df12cb2f4ab",
+          "count": 5.1
+        }
+      ],
+      "commonTags": [
+        "mathematics",
+        "theory",
+        "computation",
+        "game-theory",
+        "economics",
+        "linguistics",
+        "information",
+        "philosophy",
+        "trade",
+        "incentives",
+        "cognition",
+        "culture",
+        "mystery",
+        "logic",
+        "proof"
+      ]
+    },
+    "hunter": {
+      "evaluations": 54,
+      "avgH": 7.14131054131054,
+      "avgW": 8.167094017094016,
+      "avgD": 5.93034188034188,
+      "hotNodes": [
+        {
+          "nodeId": "f7dcec2535f28615",
+          "count": 26.099999999999998
+        },
+        {
+          "nodeId": "ad0692f4836319a4",
+          "count": 21
+        },
+        {
+          "nodeId": "84bed15fb3e8faa2",
+          "count": 17.2
+        },
+        {
+          "nodeId": "be1506b879c9a025",
+          "count": 15.399999999999999
+        },
+        {
+          "nodeId": "7dd64c0d44a58234",
+          "count": 13.2
+        },
+        {
+          "nodeId": "8f0d116bcdc25011",
+          "count": 11.399999999999999
+        },
+        {
+          "nodeId": "b5e41d88e6139392",
+          "count": 8.7
+        },
+        {
+          "nodeId": "87d78df12cb2f4ab",
+          "count": 7.199999999999999
+        },
+        {
+          "nodeId": "23fbfaf960db4d6a",
+          "count": 6.3
+        },
+        {
+          "nodeId": "42cc058cdc7a6c4d",
+          "count": 5.1
+        }
+      ],
+      "commonTags": [
+        "mathematics",
+        "theory",
+        "game-theory",
+        "economics",
+        "culture",
+        "linguistics",
+        "computation",
+        "cognition",
+        "trade",
+        "incentives",
+        "philosophy",
+        "information",
+        "society",
+        "anthropology",
+        "music"
+      ]
+    }
+  },
+  "global": {
+    "evaluations": 468,
+    "avgH": 6.995726495726496,
+    "avgW": 8.038461538461538,
+    "avgD": 6.286324786324786,
+    "hotNodes": [
+      {
+        "nodeId": "f7dcec2535f28615",
+        "count": 73
+      },
+      {
+        "nodeId": "ad0692f4836319a4",
+        "count": 56
+      },
+      {
+        "nodeId": "84bed15fb3e8faa2",
+        "count": 41
+      },
+      {
+        "nodeId": "7dd64c0d44a58234",
+        "count": 37
+      },
+      {
+        "nodeId": "be1506b879c9a025",
+        "count": 35
+      },
+      {
+        "nodeId": "8f0d116bcdc25011",
+        "count": 31
+      },
+      {
+        "nodeId": "b5e41d88e6139392",
+        "count": 29
+      },
+      {
+        "nodeId": "23fbfaf960db4d6a",
+        "count": 21
+      },
+      {
+        "nodeId": "87d78df12cb2f4ab",
+        "count": 17
+      },
+      {
+        "nodeId": "42cc058cdc7a6c4d",
+        "count": 17
+      }
+    ],
+    "commonTags": [
+      "mathematics",
+      "theory",
+      "linguistics",
+      "culture",
+      "cognition",
+      "economics",
+      "game-theory",
+      "information",
+      "philosophy",
+      "computation",
+      "mystery",
+      "unsolved",
+      "frontier",
+      "trade",
+      "incentives"
+    ]
+  }
+}

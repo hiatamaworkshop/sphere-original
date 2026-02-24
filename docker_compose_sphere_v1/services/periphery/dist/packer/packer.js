@@ -13,6 +13,7 @@
  *   - classificationFlags: 16bit semantic flags (from Tagger via tags)
  *   - tier/rank: classification
  */
+import { NodeFlag } from "@sphere/renal-core";
 import { createHash } from "crypto";
 import { DEV_CONFIG } from "../config/env.js";
 /**
@@ -107,15 +108,19 @@ export class Packer {
         if (seed.ref_url) {
             payload.ref_url = seed.ref_url;
         }
+        const isRelic = !!(seed.flags & NodeFlag.SystemCore);
         return {
             id: contentHash(seed.summary), // [Principle 2] Hash Link
-            kind: tier === "ghost" ? "ghost" : "active",
+            kind: isRelic ? "relic" : tier === "ghost" ? "ghost" : "active",
             vector,
             payload,
             metrics: {
-                w: this.getTierWeight(tier),
+                // Relic: 確固たる重みを持つ原典 (h=40%, w=relic tier) — scholar が重力源として発見できる
+                w: isRelic ? this.getTierWeight("relic") : this.getTierWeight(tier),
                 d: this.config.packer.standardDecayCoefficient,
-                h: this.config.packer.baseHeat, // All nodes start with same baseline (agent cannot set)
+                h: isRelic
+                    ? Math.round(this.config.packer.baseHeat * 0.4)
+                    : this.config.packer.baseHeat,
                 ttl: this.getTierTTL(tier),
                 flg: this.getTierFlags(tier, seed.flags, seed.classificationFlags),
                 stayTime: this.config.packer.initialMetrics.stayTime,
@@ -134,6 +139,8 @@ export class Packer {
                 return this.config.packer.tierWeights.normal;
             case "ghost":
                 return this.config.packer.tierWeights.ghost;
+            case "relic":
+                return this.config.packer.tierWeights.relic ?? this.config.packer.tierWeights.normal;
             default:
                 return this.config.packer.tierWeights.normal;
         }
