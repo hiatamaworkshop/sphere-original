@@ -195,23 +195,34 @@ export class PhiAgent {
       ].filter(Boolean).join("+") || "observe-only";
       this.log(`Positioned in Sphere (energy: ${this.initialEnergy}, loadout: ${this.gate.loadoutName}, flags: ${flags})`);
 
-      // Step 3: Tutorial layer — explore relics while query vectorizes (zero energy cost)
-      await this.tutorialExplore();
+      const skipLayers = process.env.SKIP_LAYERS === "true";
 
-      // Step 4: Wait for query vector (may already be ready)
-      this.log("Waiting for query vector...");
-      await this.sphere.waitForPositioned();
-      this.log("Query vector ready.");
+      if (skipLayers) {
+        // Skip layers mode: fast-track through Tutorial → Sanctuary → Core without exploring
+        this.log("Skip layers mode — fast-tracking to Core...");
+        await this.sphere.waitForPositioned();
+        await this.sphere.enterSanctuary();
+        await this.sphere.enterCore();
+        this.log(`Core layer (energy: ${this.sphere.currentEnergy})`);
+      } else {
+        // Step 3: Tutorial layer — explore relics while query vectorizes (zero energy cost)
+        await this.tutorialExplore();
 
-      // Step 5: Sanctuary layer — explore amber + relic from query position (half energy cost)
-      this.log("Entering Sanctuary...");
-      await this.sphere.enterSanctuary();
-      await this.sanctuaryExplore();
+        // Step 4: Wait for query vector (may already be ready)
+        this.log("Waiting for query vector...");
+        await this.sphere.waitForPositioned();
+        this.log("Query vector ready.");
 
-      // Step 6: Core layer — live world (energy +30 recovery)
-      this.log("Entering Core...");
-      await this.sphere.enterCore();
-      this.log(`Core layer (energy: ${this.sphere.currentEnergy})`);
+        // Step 5: Sanctuary layer — explore amber + relic from query position (half energy cost)
+        this.log("Entering Sanctuary...");
+        await this.sphere.enterSanctuary();
+        await this.sanctuaryExplore();
+
+        // Step 6: Core layer — live world (energy +30 recovery)
+        this.log("Entering Core...");
+        await this.sphere.enterCore();
+        this.log(`Core layer (energy: ${this.sphere.currentEnergy})`);
+      }
 
       // Step 7: Explore — branch on evaluate flag
       this.stats.status = "exploring";

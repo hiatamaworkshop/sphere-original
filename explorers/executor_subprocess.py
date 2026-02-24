@@ -49,6 +49,7 @@ def execute_phi_agent(
         "EVALUATE": "true" if evaluate else "false",
         "RESPONSE": "true",
         "DAEMON": "false",
+        "SKIP_LAYERS": "true",
         "LLM_BACKEND": os.environ.get("LLM_BACKEND", "groq"),
         "GROQ_API_KEY": os.environ.get("GROQ_API_KEY", ""),
         "GROQ_MODEL": model,
