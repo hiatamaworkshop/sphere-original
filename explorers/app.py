@@ -18,7 +18,7 @@ from parser import parse_cycles, format_cycle_output, format_summary, format_com
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
-# Available species (9 loadouts)
+# Available species (8 loadouts)
 SPECIES = [
     "balanced",
     "scholar",
@@ -26,7 +26,6 @@ SPECIES = [
     "archivist",
     "hunter",
     "moth",
-    "hermit",
     "wanderer",
     "sniper"
 ]
@@ -39,7 +38,6 @@ SPECIES_DESC = {
     "archivist": "Preservationist -- loves Amber (frozen) nodes",
     "hunter": "Heat seeker -- chases high-heat areas",
     "moth": "Heat generator -- evaluates everything as hot",
-    "hermit": "Stability seeker -- avoids crowds, deep mode",
     "wanderer": "Exhaustive explorer -- never returns until energy is gone",
     "sniper": "Selective evaluator -- harsh scorer, high standards"
 }
