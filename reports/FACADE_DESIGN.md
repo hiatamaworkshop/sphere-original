@@ -575,6 +575,131 @@ Facade 管理テーブル: { sphereId, lastKnownEpoch }
 
 ---
 
+## 12. 実装案 (2026-02-25)
+
+### プロジェクト構成
+
+Facade は Sphere とは独立した別プロジェクトとして配置する。
+Sphere が1つの自律したプロジェクトであるように、Facade もそれらを繋ぐ独立したネットワーキング層として存在する。
+
+```
+DockerFiles/
+  sphere-original/         ← 既存: Sphere プロジェクト
+  sphere-facade/           ← 新規: Facade プロジェクト (独立)
+    docker-compose.yml     ← facade コンテナのみ (Redis は外部参照)
+    .env.example
+    README.md
+    services/
+      facade/
+        src/
+          server.ts
+        package.json
+        Dockerfile
+```
+
+### 環境変数 (.env.example)
+
+```env
+# Sphere URLs (カンマ区切り、起動時に manifest を取りに行く)
+SPHERE_URLS=http://localhost:3001,http://localhost:3002
+
+# Redis (テスト時は sphere の Redis を流用可、本番では専用を用意推奨)
+REDIS_URL=redis://localhost:6379
+
+PORT=3100
+```
+
+### API (6本)
+
+```
+GET    /catalog                      → 登録済みスフィア一覧
+GET    /catalog/:sphereId            → 単一スフィアの manifest + 接続情報
+
+POST   /locker/:journeyId/append     → 私有ロッカーに追記 + 共有 FIFO へ自動プッシュ
+GET    /locker/:journeyId            → 私有ロッカー全エントリ取得
+GET    /shared                       → 共有 FIFO (末尾 N件)
+DELETE /locker/:journeyId            → 私有ロッカー破棄
+```
+
+### Redis キー設計
+
+```
+facade:sphere:{sphereId}        → manifest + connectInfo (catalog キャッシュ)
+facade:locker:{journeyId}       → list (RPUSH / LRANGE)
+facade:shared                   → capped list (RPUSH + LTRIM で上限管理)
+```
+
+### 起動時の動作
+
+1. `SPHERE_URLS` をパースして各スフィアの `GET /sphere/manifest` を叩く
+2. manifest を `facade:sphere:{sphereId}` に格納
+3. 定期ポーリング (sanctuary: epoch 比較、core: 5-10分) でキャッシュ更新
+
+### 第2スフィアのテスト方法
+
+- 既存の periphery イメージを別ポートで起動 (DB は共有で可)
+- `SPHERE_URLS` に両方を指定して Facade 起動
+- curl で catalog / locker / shared を手動操作して挙動確認
+
+---
+
+## 13. Facade の2形態 — 将来構想 (2026-02-25)
+
+### Pattern A: 分散連合型 Facade (本設計書の対象)
+
+```
+外部エージェント (高性能)
+    │
+    ├─ GET /catalog → 同時稼働中の複数スフィアを選択
+    ↓
+[Facade] ← ネットワーク集約層
+    ├─ Sphere-Medical  (常時稼働)
+    ├─ Sphere-Ocean    (常時稼働)
+    └─ Sphere-Law      (常時稼働)
+    ← 複数エージェントが並列探索、共有 FIFO に集合知が蓄積
+```
+
+- 複数スフィアが同時稼働、複数エージェントが並列探索
+- Facade = ネットワーク集約 + ロッカー
+- 用途: 本番デプロイ、多ユーザー、分散サーバー環境
+- **直近の実装対象はこちら**
+
+### Pattern B: 知識端末型 Facade (スフィアプロジェクトの原案)
+
+```
+人間 (オペレーター)
+    │ ① スフィア選択 (Medical / Survival / Service Manual...)
+    ↓
+[Facade = 端末OS層]
+    │ ② 常駐エージェントにクエリ + スフィア指定を渡す
+    ↓
+[常駐エージェント] ← クエリを保持して待機
+    │ ③ 指定スフィアを探索 → Vestibule → 結果を返す
+    ↓
+人間 ← 静的データ・推論結果を受け取る
+    │ ④ 次ジャンルへ → スフィアスワップ
+```
+
+- 搭載スフィアを順次切り替え (1台あたり1スフィア稼働)
+- 常駐エージェントが人間のクエリを受けてスフィアを探索
+- 用途: **宇宙船・潜水艦内マニュアル、サバイバル、医療、サービスマニュアル**
+  — ジャンル別スフィアを詰め込んだ知識端末
+- Facade は「どのスフィアモジュールが使えるか」を提示し、選択を仲介する
+
+**スワップの前提条件**:
+- 全スフィアデータが同一 embedding model で構築されていること
+- モデルが統一されていれば DB ファイル差し替えのみでスワップ可能
+- 統一できない場合は「スフィアサーバーを順次起動」する方が安全
+
+**Pattern B が原案である理由**:
+スフィアプロジェクトの出発点は「限られたリソース環境で複数ジャンルの知識を持ち歩く」
+という発想にあった。Facade はその選択・切り替えの窓口として構想されていた。
+Pattern A (分散連合) はその発展形であり、現在の実装方針ではあるが、
+Pattern B の思想 — エージェントが世界を探索し、人間がその結果を受け取る — が
+プロジェクトの根幹にある。
+
+---
+
 ## References
 
 - `periphery/src/server.ts` — manifest エンドポイント実装 (line 531-563)
