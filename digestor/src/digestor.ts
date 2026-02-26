@@ -17,6 +17,8 @@ import type { FlatEval, ScoredEval } from "./scoring.js";
 import { buildProfile } from "./profiler.js";
 import type { WeightDelta } from "./profiler.js";
 import { startServer } from "./server.js";
+import { computeSessionMetrics, aggregateSpeciesTrajectory, MIN_WAYPOINTS, MIN_SPECIES_TRAILS } from "./trajectory-statistics.js";
+import type { TrailEntry, TrajectoryStats, SphereAverages } from "./trajectory-statistics.js";
 
 // ---- Config (environment variables) ----
 
@@ -258,6 +260,67 @@ function loadPreviousDeltas(): Record<string, WeightDelta> | undefined {
   }
 }
 
+// ---- Trail reading ----
+
+function readTrails(): TrailEntry[] {
+  if (!existsSync(TRAIL_LOG)) return [];
+  const raw = readFileSync(TRAIL_LOG, "utf-8");
+  const trails: TrailEntry[] = [];
+  for (const line of raw.split("\n")) {
+    if (!line.trim()) continue;
+    try {
+      trails.push(JSON.parse(line));
+    } catch { /* skip malformed */ }
+  }
+  return trails;
+}
+
+// ---- Trajectory digest (trail-log → per-species trajectory stats) ----
+
+function trajectoryDigest(
+  sphereSnapshot: SphereSnapshot | null,
+): Record<string, TrajectoryStats> | null {
+  const trails = readTrails();
+  if (trails.length === 0) return null;
+
+  // Sphere averages for bias computation
+  const sphereAvg: SphereAverages | undefined = sphereSnapshot ? {
+    avgHeat: sphereSnapshot.heatDistribution.mean,
+    avgWeight: sphereSnapshot.weightDistribution.mean,
+  } : undefined;
+
+  // Compute per-session metrics, group by species
+  const sessionsBySpecies = new Map<string, ReturnType<typeof computeSessionMetrics>[]>();
+  let computed = 0;
+  let skipped = 0;
+
+  for (const trail of trails) {
+    const metrics = computeSessionMetrics(trail, sphereAvg);
+    if (!metrics) { skipped++; continue; }
+    computed++;
+    const list = sessionsBySpecies.get(metrics.loadout) ?? [];
+    list.push(metrics);
+    sessionsBySpecies.set(metrics.loadout, list);
+  }
+
+  console.log(`[digestor] Trajectory: ${trails.length} trails, ${computed} computed, ${skipped} skipped (< ${MIN_WAYPOINTS} waypoints)`);
+
+  // Aggregate per species
+  const result: Record<string, TrajectoryStats> = {};
+  for (const [loadout, sessions] of sessionsBySpecies) {
+    const valid = sessions.filter((s): s is NonNullable<typeof s> => s !== null);
+    const stats = aggregateSpeciesTrajectory(valid);
+    if (stats) {
+      result[loadout] = stats;
+      console.log(`[digestor]   ${loadout}: ${stats.sessions} sessions, spread=${stats.avgSpread.toFixed(2)}, path=${stats.avgPathLength.toFixed(1)}, straight=${stats.avgStraightness.toFixed(2)}${stats.avgHeatBias !== undefined ? `, hBias=${stats.avgHeatBias.toFixed(2)}` : ""}${stats.avgWeightBias !== undefined ? `, wBias=${stats.avgWeightBias.toFixed(2)}` : ""}`);
+    } else {
+      console.log(`[digestor]   ${loadout}: ${valid.length} sessions (< ${MIN_SPECIES_TRAILS} minimum)`);
+    }
+  }
+
+  return Object.keys(result).length > 0 ? result : null;
+}
+
 // ---- Main digest cycle ----
 
 async function digest(): Promise<void> {
@@ -292,6 +355,16 @@ async function digest(): Promise<void> {
     console.log(`[digestor] Loaded previous deltas for: ${Object.keys(previousDeltas).join(", ")}`);
   }
   const profile = buildProfile(survived, flat.length, previousDeltas);
+
+  // Step 3.5: Trajectory analysis (trail-log → per-species trajectoryStats)
+  const trajectoryResult = trajectoryDigest(sphereSnapshot);
+  if (trajectoryResult) {
+    for (const [loadout, stats] of Object.entries(trajectoryResult)) {
+      if (profile.species[loadout]) {
+        profile.species[loadout].trajectoryStats = stats;
+      }
+    }
+  }
 
   // Step 4: Write profile (overwrite)
   writeFileSync(PROFILE_OUT, JSON.stringify(profile, null, 2), "utf-8");

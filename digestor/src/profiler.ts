@@ -7,6 +7,7 @@
 // phi-agent reads the profile and uses it directly (no re-blending).
 
 import type { ScoredEval } from "./scoring.js";
+import type { TrajectoryStats } from "./trajectory-statistics.js";
 
 // ---- Weight Delta (learned_weight Phase 2) ----
 //
@@ -58,6 +59,8 @@ export interface SpeciesEntry {
   evaluationConsistency?: EvalConsistency;
   /** Learned weight delta — accumulated across generations (Phase 2) */
   weightDelta?: WeightDelta;
+  /** Spatial trajectory statistics (Phase 2 — computed from trail-log) */
+  trajectoryStats?: TrajectoryStats;
 }
 
 export interface SpeciesProfile {
