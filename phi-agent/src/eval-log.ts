@@ -192,13 +192,15 @@ export interface TrailEntry {
   initialQuery?: string;
   /** Final embedding position */
   lastPosition?: number[];
-  /** Raw action events (focus events contain positionSnapshot + heat for waypoints) */
+  /** Raw action events (focus events contain positionSnapshot + h/w/d for waypoints) */
   events: Array<{
     type: string;
     timestamp: number;
     nodeId?: string;
     positionSnapshot?: number[];
     heat?: number;
+    weight?: number;
+    decay?: number;
   }>;
 }
 

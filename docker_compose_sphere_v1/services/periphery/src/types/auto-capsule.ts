@@ -33,6 +33,10 @@ export interface FocusAction extends ActionEventBase {
   nodeId: string;
   kind: NodeKind;
   heatAtFocus: number;
+  /** Node weight at focus (authority/importance) */
+  weightAtFocus?: number;
+  /** Node decay at focus (volatility) */
+  decayAtFocus?: number;
   /** L3: Derivation origin (if this node is derived from another) */
   sourceNodeId?: string;
   /** Agent's embedding position at the moment of focus (for trajectory/Δpos analysis) */

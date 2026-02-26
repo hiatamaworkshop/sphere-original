@@ -536,6 +536,8 @@ export class SphereContextImpl implements SphereContext {
       nodeId,
       kind: detail.kind,
       heatAtFocus: detail.heat,
+      weightAtFocus: detail.weight,   // Trajectory: authority/importance at focus
+      decayAtFocus: detail.decay,     // Trajectory: volatility at focus
       sourceNodeId: detail.sourceNodeId,  // L3: track derivation for depth awareness
       positionSnapshot: [...this._embeddingVector],  // Trajectory analysis: agent position at focus
     });
@@ -1414,16 +1416,18 @@ export class SphereContextImpl implements SphereContext {
     sphereId?: string;
     duration: number;
     lastPosition?: number[];
-    events: { type: string; timestamp: number; nodeId?: string; positionSnapshot?: number[]; heat?: number }[];
+    events: { type: string; timestamp: number; nodeId?: string; positionSnapshot?: number[]; heat?: number; weight?: number; decay?: number }[];
   } {
     const duration = Date.now() - this._actionLog.startTime;
     const events = this._actionLog.events.map(e => ({
       type: e.type,
       timestamp: e.timestamp,
       nodeId: "nodeId" in e ? (e as any).nodeId : undefined,
-      // Include position snapshot + heat only for focus events (trajectory waypoints)
+      // Include position snapshot + node metrics only for focus events (trajectory waypoints)
       positionSnapshot: e.type === "focus" ? (e as any).positionSnapshot : undefined,
       heat: e.type === "focus" ? (e as any).heatAtFocus : undefined,
+      weight: e.type === "focus" ? (e as any).weightAtFocus : undefined,
+      decay: e.type === "focus" ? (e as any).decayAtFocus : undefined,
     }));
     return {
       sessionId: this._sessionId,
