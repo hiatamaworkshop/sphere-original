@@ -711,6 +711,7 @@ export class PeripheryServer {
       res.json(getRulebookResponse({
         session: this.config.session,
         energy: this.config.energy,
+        metricSemantics: this.sphereMetadata.metricSemantics as Record<string, unknown>,
       }));
     });
 

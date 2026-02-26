@@ -8,6 +8,7 @@
 // Energy tracking uses costs from the Rulebook (config-authoritative).
 
 import WebSocket from "ws";
+import type { MetricSemantics } from "./fast-gate.js";
 
 // ============================================================
 // Types (mirroring gateway protocol)
@@ -137,9 +138,15 @@ export class SphereClient {
   private readonly minRequestInterval = 350; // ms — gateway rate limit: 3 actions/sec
   private positionedResolve: (() => void) | null = null;
   private positionedPromise: Promise<void> | null = null;
+  private _metricSemantics: MetricSemantics | undefined;
 
   constructor(config: Partial<SphereConfig> = {}) {
     this.config = { ...DEFAULT_CONFIG, ...config };
+  }
+
+  /** MetricSemantics from Sphere rulebook (available after preconnect) */
+  get metricSemantics(): MetricSemantics | undefined {
+    return this._metricSemantics;
   }
 
   onEvent(handler: SphereEventHandler): void {
@@ -148,6 +155,46 @@ export class SphereClient {
 
   private emit(event: SphereEvent): void {
     this.eventHandler?.(event);
+  }
+
+  // --- Pre-flight: fetch rulebook before WebSocket dive ---
+
+  /**
+   * Pre-flight: fetch rulebook via HTTP before WebSocket dive.
+   * Extracts MetricSemantics and energy costs so FastGate can be
+   * configured BEFORE entering the Sphere.
+   */
+  async preconnect(): Promise<void> {
+    try {
+      const res = await fetch(`${this.config.peripheryUrl}/rulebook`);
+      if (!res.ok) throw new Error(`${res.status}`);
+      const rb = (await res.json()) as any;
+
+      // Extract energy config (same logic as fetchRulebook)
+      const ec = rb.constraints?.energy;
+      if (ec) {
+        this.energy = ec.initial ?? FALLBACK_INITIAL_ENERGY;
+        this.costs = {
+          sense:    ec.costs?.sense    ?? FALLBACK_COSTS.sense,
+          scanL1:   ec.costs?.scanL1   ?? FALLBACK_COSTS.scanL1,
+          move:     ec.costs?.move     ?? FALLBACK_COSTS.move,
+          focus:    ec.costs?.focus    ?? FALLBACK_COSTS.focus,
+          warp:     ec.costs?.warp     ?? FALLBACK_COSTS.warp,
+          evaluate: ec.costs?.evaluate ?? FALLBACK_COSTS.evaluate,
+          emitBus:  ec.costs?.emitBus  ?? FALLBACK_COSTS.emitBus,
+        };
+      }
+
+      // Extract MetricSemantics (domain-specific evaluation axis semantics)
+      if (rb.metricSemantics) {
+        this._metricSemantics = rb.metricSemantics as MetricSemantics;
+        console.log(`[SphereClient] MetricSemantics: [${this._metricSemantics.names.join(",")}] hit=${this._metricSemantics.hitThreshold} miss=${this._metricSemantics.missThreshold}`);
+      }
+
+      console.log(`[SphereClient] Preconnect OK: energy=${this.energy}`);
+    } catch (e) {
+      console.warn(`[SphereClient] Preconnect failed (using defaults): ${e}`);
+    }
   }
 
   // --- Connection lifecycle ---

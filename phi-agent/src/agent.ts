@@ -174,8 +174,18 @@ export class PhiAgent {
       this.log(`Species profile: not found for ${loadoutName} (no profile or empty)`);
     }
 
-    // Construct FastGate with full species bias (including learned_δ)
-    this.gate = new FastGate(this.config.query, loadout, speciesBias);
+    // Pre-flight: fetch rulebook for MetricSemantics before FastGate construction
+    this.log("Preconnect: fetching rulebook...");
+    await this.sphere.preconnect();
+    const metricSemantics = this.sphere.metricSemantics;
+    if (metricSemantics) {
+      this.log(`MetricSemantics: [${metricSemantics.names.join(",")}] hit=${metricSemantics.hitThreshold} miss=${metricSemantics.missThreshold}`);
+    }
+
+    // Construct FastGate with species bias + MetricSemantics
+    this.gate = new FastGate(this.config.query, loadout, speciesBias, metricSemantics);
+    // Re-create PromptBuilder with MetricSemantics (overrides constructor default)
+    this.prompt = new PromptBuilder(this.config.query, this.ollama.modelName, metricSemantics);
     this.log(this.gate.deltaDebug);
 
     try {
@@ -758,9 +768,11 @@ export class PhiAgent {
 
   // ===== Species Memory =====
 
-  /** Compute reproducibility hash from agent config (loadout + model + evalFocus) */
+  /** Compute reproducibility hash from agent config (loadout + model).
+   *  evalFocus excluded: it varies with MetricSemantics per Sphere domain,
+   *  but species identity should be loadout personality + sensory organ (model). */
   private computeConfigHash(): string {
-    const input = `${this.gate.loadoutName}:${this.ollama.modelName}:${this.gate.evalFocus ?? ""}`;
+    const input = `${this.gate.loadoutName}:${this.ollama.modelName}`;
     return createHash("sha256").update(input).digest("hex").slice(0, 12);
   }
 
