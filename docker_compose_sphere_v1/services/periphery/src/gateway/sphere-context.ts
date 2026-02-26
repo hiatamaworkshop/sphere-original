@@ -695,15 +695,6 @@ export class SphereContextImpl implements SphereContext {
 
     // === New Movement System ===
 
-    // Handle drift mode
-    if (intent.drift) {
-      const internalIntent: InternalMoveIntent = {
-        drift: intent.drift,
-        steps: intent.steps,
-      };
-      return this.executeInternalMove(internalIntent, previousFocusNodeId);
-    }
-
     // Handle toward (signature - number)
     if (typeof intent.toward === "number") {
       const internalIntent: InternalMoveIntent = {

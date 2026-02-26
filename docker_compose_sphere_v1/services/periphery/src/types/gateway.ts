@@ -605,7 +605,6 @@ export type { ScanResult } from "./movement.js";
 export type {
   DistanceLevel,
   HeatLevel,
-  DriftMode,
   MoveConfig,
   ScanConfig,
 } from "./movement.js";

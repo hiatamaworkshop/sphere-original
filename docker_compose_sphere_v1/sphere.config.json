@@ -40,10 +40,7 @@
 
   "physical_constants": {
     "_layer": "L1 Physics",
-    "dimension": 384,
-    "gravity_constant": 0.1,
-    "ambient_temperature": 0.5,
-    "vacuum_decay": 0.01
+    "dimension": 384
   },
 
   "perception": {

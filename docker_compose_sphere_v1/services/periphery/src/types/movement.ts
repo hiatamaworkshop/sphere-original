@@ -10,18 +10,6 @@
 import type { NodeKind } from "@sphere/renal-core";
 
 // ============================================================
-// Drift Modes
-// ============================================================
-
-/**
- * Drift mode determines how agent moves when exploring
- */
-export type DriftMode =
-  | "wander"     // Random walk (exploration)
-  | "follow"     // Follow nearby heat gradient
-  | "orbit";     // Circle around current area
-
-// ============================================================
 // Move Intent (What agent wants to do)
 // ============================================================
 
@@ -29,12 +17,12 @@ export type DriftMode =
  * Move Intent: Agent's movement intention
  *
  * [Layer Costs]
- *   Layer 0: drift - lowest cost, exploration
  *   Layer 1: toward signature - low cost, tracking
  *   Layer 2: toNode - medium cost, revisiting known node
+ *
+ * [Removed] drift/gravity system — was dead code
  */
 export type MoveIntent =
-  | { drift: DriftMode; steps?: number }
   | { toward: number; steps?: number }    // signature from scan
   | { toNode: string; steps?: number };   // node ID from focus
 

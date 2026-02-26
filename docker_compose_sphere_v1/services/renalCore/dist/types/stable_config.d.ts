@@ -12,9 +12,6 @@ import type { PulseConfig } from "./pulse.js";
  */
 export interface PhysicalConstants {
     dimension: number;
-    gravity_constant: number;
-    ambient_temperature: number;
-    vacuum_decay: number;
 }
 /**
  * Active Bus: AI Native Language での限定的コミュニケーション
