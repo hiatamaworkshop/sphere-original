@@ -197,6 +197,7 @@ services:
     container_name: sphere-digestor
     environment:
       DATA_DIR: /app/data
+      SPHERE_URL: http://periphery:3001
       DIGEST_INTERVAL_MS: "${DIGEST_INTERVAL_MS:-10800000}"
       HALF_LIFE_HOURS: "${HALF_LIFE_HOURS:-72}"
       MIN_EVALS: "50"
