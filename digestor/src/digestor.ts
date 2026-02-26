@@ -15,13 +15,17 @@ import { createHash } from "node:crypto";
 import { computeScore, computeHunger, prune } from "./scoring.js";
 import type { FlatEval, ScoredEval } from "./scoring.js";
 import { buildProfile } from "./profiler.js";
+import type { WeightDelta } from "./profiler.js";
 import { startServer } from "./server.js";
+import { computeSessionMetrics, aggregateSpeciesTrajectory, MIN_WAYPOINTS, MIN_SPECIES_TRAILS } from "./trajectory-statistics.js";
+import type { TrailEntry, TrajectoryStats, SphereAverages } from "./trajectory-statistics.js";
 
 // ---- Config (environment variables) ----
 
 export const DATA_DIR = process.env.DATA_DIR ?? "/app/data";
 export const EVAL_LOG = join(DATA_DIR, "eval-log.jsonl");
 export const NARRATIVE_LOG = join(DATA_DIR, "narrative-log.jsonl");
+export const TRAIL_LOG = join(DATA_DIR, "trail-log.jsonl");
 export const PROFILE_OUT = join(DATA_DIR, "species-profile.json");
 export const GEN_DIR = join(DATA_DIR, "generations");
 const GATEWAY_PORT = parseInt(process.env.GATEWAY_PORT ?? "5000");
@@ -230,6 +234,93 @@ function truncateLog(survived: ScoredEval[]): void {
   console.log(`[digestor] eval-log truncated: ${entries.length} sessions (from survived evals)`);
 }
 
+// ---- Previous generation delta loader ----
+
+function loadPreviousDeltas(): Record<string, WeightDelta> | undefined {
+  if (!existsSync(GEN_DIR)) return undefined;
+  const files = readdirSync(GEN_DIR).filter(f => /^gen-\d+\.json$/.test(f));
+  if (files.length === 0) return undefined;
+  const nums = files.map(f => parseInt(f.match(/gen-(\d+)\.json/)![1], 10));
+  const latest = Math.max(...nums);
+  const padded = String(latest).padStart(3, "0");
+  const path = join(GEN_DIR, `gen-${padded}.json`);
+  try {
+    const raw = readFileSync(path, "utf-8");
+    const gen = JSON.parse(raw) as { species?: Record<string, { weightDelta?: WeightDelta }> };
+    if (!gen.species) return undefined;
+    const deltas: Record<string, WeightDelta> = {};
+    for (const [name, entry] of Object.entries(gen.species)) {
+      if (entry.weightDelta) {
+        deltas[name] = entry.weightDelta;
+      }
+    }
+    return Object.keys(deltas).length > 0 ? deltas : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+// ---- Trail reading ----
+
+function readTrails(): TrailEntry[] {
+  if (!existsSync(TRAIL_LOG)) return [];
+  const raw = readFileSync(TRAIL_LOG, "utf-8");
+  const trails: TrailEntry[] = [];
+  for (const line of raw.split("\n")) {
+    if (!line.trim()) continue;
+    try {
+      trails.push(JSON.parse(line));
+    } catch { /* skip malformed */ }
+  }
+  return trails;
+}
+
+// ---- Trajectory digest (trail-log → per-species trajectory stats) ----
+
+function trajectoryDigest(
+  sphereSnapshot: SphereSnapshot | null,
+): Record<string, TrajectoryStats> | null {
+  const trails = readTrails();
+  if (trails.length === 0) return null;
+
+  // Sphere averages for bias computation
+  const sphereAvg: SphereAverages | undefined = sphereSnapshot ? {
+    avgHeat: sphereSnapshot.heatDistribution.mean,
+    avgWeight: sphereSnapshot.weightDistribution.mean,
+  } : undefined;
+
+  // Compute per-session metrics, group by species
+  const sessionsBySpecies = new Map<string, ReturnType<typeof computeSessionMetrics>[]>();
+  let computed = 0;
+  let skipped = 0;
+
+  for (const trail of trails) {
+    const metrics = computeSessionMetrics(trail, sphereAvg);
+    if (!metrics) { skipped++; continue; }
+    computed++;
+    const list = sessionsBySpecies.get(metrics.loadout) ?? [];
+    list.push(metrics);
+    sessionsBySpecies.set(metrics.loadout, list);
+  }
+
+  console.log(`[digestor] Trajectory: ${trails.length} trails, ${computed} computed, ${skipped} skipped (< ${MIN_WAYPOINTS} waypoints)`);
+
+  // Aggregate per species
+  const result: Record<string, TrajectoryStats> = {};
+  for (const [loadout, sessions] of sessionsBySpecies) {
+    const valid = sessions.filter((s): s is NonNullable<typeof s> => s !== null);
+    const stats = aggregateSpeciesTrajectory(valid);
+    if (stats) {
+      result[loadout] = stats;
+      console.log(`[digestor]   ${loadout}: ${stats.sessions} sessions, spread=${stats.avgSpread.toFixed(2)}, path=${stats.avgPathLength.toFixed(1)}, straight=${stats.avgStraightness.toFixed(2)}${stats.avgHeatBias !== undefined ? `, hBias=${stats.avgHeatBias.toFixed(2)}` : ""}${stats.avgWeightBias !== undefined ? `, wBias=${stats.avgWeightBias.toFixed(2)}` : ""}${stats.avgDecayBias !== undefined ? `, dBias=${stats.avgDecayBias.toFixed(2)}` : ""}`);
+    } else {
+      console.log(`[digestor]   ${loadout}: ${valid.length} sessions (< ${MIN_SPECIES_TRAILS} minimum)`);
+    }
+  }
+
+  return Object.keys(result).length > 0 ? result : null;
+}
+
 // ---- Main digest cycle ----
 
 async function digest(): Promise<void> {
@@ -258,8 +349,22 @@ async function digest(): Promise<void> {
   const survived = prune(scored, hunger, MIN_PER_SPECIES);
   console.log(`[digestor] Survived: ${survived.length}/${flat.length} (${(survived.length / flat.length * 100).toFixed(0)}%)`);
 
-  // Step 3: Build species profile (aggregate + environmental blend)
-  const profile = buildProfile(survived, flat.length);
+  // Step 3: Build species profile (aggregate + environmental blend + learned delta)
+  const previousDeltas = loadPreviousDeltas();
+  if (previousDeltas) {
+    console.log(`[digestor] Loaded previous deltas for: ${Object.keys(previousDeltas).join(", ")}`);
+  }
+  const profile = buildProfile(survived, flat.length, previousDeltas);
+
+  // Step 3.5: Trajectory analysis (trail-log → per-species trajectoryStats)
+  const trajectoryResult = trajectoryDigest(sphereSnapshot);
+  if (trajectoryResult) {
+    for (const [loadout, stats] of Object.entries(trajectoryResult)) {
+      if (profile.species[loadout]) {
+        profile.species[loadout].trajectoryStats = stats;
+      }
+    }
+  }
 
   // Step 4: Write profile (overwrite)
   writeFileSync(PROFILE_OUT, JSON.stringify(profile, null, 2), "utf-8");
@@ -276,7 +381,8 @@ async function digest(): Promise<void> {
   for (const [name, sp] of Object.entries(profile.species)) {
     const ec = sp.evaluationConsistency;
     const ecStr = ec ? `, consistency=${ec.score.toFixed(2)} (${ec.nodes} nodes)` : "";
-    console.log(`  ${name}: ${sp.evaluations} evals, h=${sp.avgH.toFixed(1)} w=${sp.avgW.toFixed(1)} d=${sp.avgD.toFixed(1)}, ${sp.hotNodes.length} nodes, ${sp.commonTags.length} tags${ecStr}`);
+    const wdStr = sp.weightDelta ? `, δ=[qv:${sp.weightDelta.qualityVector.map(v => (v >= 0 ? "+" : "") + (v * 100).toFixed(0) + "%").join(",")} rw:${sp.weightDelta.returnWeights.map(v => (v >= 0 ? "+" : "") + (v * 100).toFixed(0) + "%").join(",")}]` : "";
+    console.log(`  ${name}: ${sp.evaluations} evals, h=${sp.avgH.toFixed(1)} w=${sp.avgW.toFixed(1)} d=${sp.avgD.toFixed(1)}, ${sp.hotNodes.length} nodes, ${sp.commonTags.length} tags${ecStr}${wdStr}`);
   }
 }
 
@@ -289,12 +395,13 @@ function sleep(ms: number): Promise<void> {
 async function main(): Promise<void> {
   console.log(`[digestor] Starting — ${ONCE ? "one-shot" : `interval=${INTERVAL_MS}ms`}, half_life=${HALF_LIFE_HOURS}h, min_evals=${MIN_EVALS}`);
   console.log(`[digestor] Source: ${EVAL_LOG}`);
+  console.log(`[digestor] Trails: ${TRAIL_LOG}`);
   console.log(`[digestor] Output: ${PROFILE_OUT}`);
   console.log(`[digestor] Sphere: ${SPHERE_URL} (for snapshot)`);
 
   // Start IO Gateway (HTTP server)
   if (!ONCE) {
-    startServer(GATEWAY_PORT, { dataDir: DATA_DIR, evalLog: EVAL_LOG, narrativeLog: NARRATIVE_LOG, profileOut: PROFILE_OUT, genDir: GEN_DIR });
+    startServer(GATEWAY_PORT, { dataDir: DATA_DIR, evalLog: EVAL_LOG, narrativeLog: NARRATIVE_LOG, trailLog: TRAIL_LOG, profileOut: PROFILE_OUT, genDir: GEN_DIR });
   }
 
   // Run immediately on startup

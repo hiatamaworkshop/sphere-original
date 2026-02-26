@@ -225,6 +225,12 @@ export class GatewayServer {
   /** Callback for agent count changes (for Dormancy feature) */
   private onAgentCountChange?: (count: number) => void;
 
+  /**
+   * [2026-02-25] Callback for session end (trajectory export hook)
+   * Fired at acknowledge with full trail data for external push (Facade locker, etc.)
+   */
+  private onSessionEnd?: (trail: ReturnType<SphereContextImpl["getTrail"]>) => void;
+
   constructor(
     private ticketIssuer: TicketIssuer,
     private entryBuffer: EntryBuffer,
@@ -275,6 +281,15 @@ export class GatewayServer {
    */
   setOnAgentCountChange(callback: (count: number) => void): void {
     this.onAgentCountChange = callback;
+  }
+
+  /**
+   * [2026-02-25] Set callback for session end (trajectory export)
+   * Called at acknowledge with the full trail data.
+   * External services (Facade locker, trajectory archive) can subscribe here.
+   */
+  setOnSessionEnd(callback: (trail: ReturnType<SphereContextImpl["getTrail"]>) => void): void {
+    this.onSessionEnd = callback;
   }
 
   getConnectionCount(): number {
@@ -533,6 +548,10 @@ export class GatewayServer {
       activeBusLayer: this.activeBusLayer,
       sessionConfig: this.sessionConfig,
       energyConfig: this.energyConfig,
+      // [2026-02-25] Cross-session metadata for trajectory analysis
+      agentId: msg.request.agentId,
+      initialQuery: msg.request.query,
+      sphereId: this.sphereId,
     });
 
     // Set up context event handlers
@@ -844,6 +863,15 @@ export class GatewayServer {
       }
 
       case "acknowledge": {
+        // [2026-02-25] Fire session end hook before cleanup (trajectory export)
+        if (this.onSessionEnd) {
+          try {
+            const trail = context.getTrail();
+            this.onSessionEnd(trail);
+          } catch (err) {
+            console.error(`[GatewayServer] onSessionEnd hook error:`, err);
+          }
+        }
         // Clear vestibule TTL
         const vtTimer = this.vestibuleTtlTimers.get(sessionId);
         if (vtTimer) {

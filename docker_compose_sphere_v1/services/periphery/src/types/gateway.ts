@@ -82,6 +82,14 @@ export interface EntryRequest {
    * Example: ["distributed-systems", "consensus", "raft"]
    */
   tags: string[];
+
+  /**
+   * Cross-session agent identifier (optional)
+   * [2026-02-25] For trajectory linkage across sessions.
+   * Facade journeyId or external agent ID.
+   * If provided, recorded in ActionLog for cross-session analysis.
+   */
+  agentId?: string;
 }
 
 /**

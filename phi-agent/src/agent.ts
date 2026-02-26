@@ -25,9 +25,9 @@ import { SphereClient } from "./sphere-client.js";
 import type { WalkMode, BusMessage, ScanNode, NodeDetail } from "./sphere-client.js";
 import { PromptBuilder, parseAction } from "./prompt-builder.js";
 import { FastGate, LOADOUTS } from "./fast-gate.js";
-import type { Loadout, LoadoutName } from "./fast-gate.js";
-import { appendEvalLog, appendNarrative, loadSpeciesProfile } from "./eval-log.js";
-import type { EvalLogEntry, NarrativeEntry } from "./eval-log.js";
+import type { Loadout, LoadoutName, SpeciesMemoryBias } from "./fast-gate.js";
+import { appendEvalLog, appendNarrative, appendTrail, loadSpeciesProfile } from "./eval-log.js";
+import type { EvalLogEntry, NarrativeEntry, TrailEntry } from "./eval-log.js";
 import { renderBroadcast } from "./broadcast-renderer.js";
 
 /** Species-specific voice guidance for return responses */
@@ -96,7 +96,7 @@ export class PhiAgent {
   private ollama: OllamaClient;
   private sphere: SphereClient;
   private prompt: PromptBuilder;
-  private gate: FastGate;
+  private gate!: FastGate;
   private config: AgentConfig;
   private stats: AgentStats;
   private running = false;
@@ -131,12 +131,6 @@ export class PhiAgent {
     this.sphere = sphere;
     this.config = { ...DEFAULT_AGENT_CONFIG, ...config };
     this.prompt = new PromptBuilder(this.config.query, this.ollama.modelName);
-    const loadout = typeof this.config.loadout === "string"
-      ? LOADOUTS[this.config.loadout]
-      : this.config.loadout;
-
-    // Species memory is loaded asynchronously in run() via IO Gateway or file
-    this.gate = new FastGate(this.config.query, loadout);
     this.stats = {
       cycles: 0,
       nodesExamined: 0,
@@ -154,20 +148,34 @@ export class PhiAgent {
     this.sessionStart = Date.now();
     this.stats.status = "connecting";
 
-    // Load species memory — pre-blended profile from Digestor
+    // Phase 2: Load species memory BEFORE FastGate construction
+    // so learned_δ (weightDelta) is applied to base weights in constructor.
     // (0.7 × own species + 0.3 × global, via IO Gateway or file)
     const loadoutName = typeof this.config.loadout === "string"
       ? this.config.loadout : this.config.loadout.name;
+    const loadout = typeof this.config.loadout === "string"
+      ? LOADOUTS[this.config.loadout]
+      : this.config.loadout;
     const profile = await loadSpeciesProfile(loadoutName);
+
+    let speciesBias: SpeciesMemoryBias | undefined;
     if (profile) {
-      this.gate.setSpeciesBias({
+      speciesBias = {
         hotNodeIds: profile.hotNodeIds,
         tags: profile.tags,
-      });
-      this.log(`Species profile: ${profile.sessions} evals, ${profile.hotNodeIds.size} nodes, ${profile.tags.length} tags (${loadoutName})`);
+        weightDelta: profile.weightDelta ? {
+          flagBias: profile.weightDelta.flagBias,
+          returnWeights: profile.weightDelta.returnWeights,
+          qualityVector: profile.weightDelta.qualityVector,
+        } : undefined,
+      };
+      this.log(`Species profile: ${profile.sessions} evals, ${profile.hotNodeIds.size} nodes, ${profile.tags.length} tags (${loadoutName})${profile.weightDelta ? " +learned_δ" : ""}`);
     } else {
       this.log(`Species profile: not found for ${loadoutName} (no profile or empty)`);
     }
+
+    // Construct FastGate with full species bias (including learned_δ)
+    this.gate = new FastGate(this.config.query, loadout, speciesBias);
     this.log(this.gate.deltaDebug);
 
     try {
@@ -243,6 +251,30 @@ export class PhiAgent {
           const events = trail?.events ?? trail;
           const steps = Array.isArray(events) ? events.length : 0;
           this.log(`Trail: ${steps} actions recorded (${((trail?.duration ?? 0) / 1000).toFixed(1)}s)`);
+
+          // Persist trail — agent attaches loadout (Sphere doesn't know species)
+          if (trail && Array.isArray(trail.events) && trail.events.length > 0) {
+            const loadoutName = typeof this.config.loadout === "string"
+              ? this.config.loadout : this.config.loadout.name;
+            const trailEntry: TrailEntry = {
+              sessionId: trail.sessionId,
+              loadout: loadoutName,
+              model: this.ollama.modelName,
+              agentId: trail.agentId,
+              sphereId: trail.sphereId,
+              timestamp: this.sessionStart,
+              duration: trail.duration,
+              initialQuery: trail.initialQuery ?? this.config.query,
+              lastPosition: trail.lastPosition,
+              events: trail.events,
+            };
+            try {
+              await appendTrail(trailEntry);
+              this.log(`Trail persisted to Digestor (${steps} events)`);
+            } catch (err) {
+              this.log(`Trail persist failed: ${err}`);
+            }
+          }
         } catch { /* optional */ }
 
         try {

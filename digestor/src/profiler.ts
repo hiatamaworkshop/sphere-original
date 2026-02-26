@@ -7,6 +7,24 @@
 // phi-agent reads the profile and uses it directly (no re-blending).
 
 import type { ScoredEval } from "./scoring.js";
+import type { TrajectoryStats } from "./trajectory-statistics.js";
+
+// ---- Weight Delta (learned_weight Phase 2) ----
+//
+// effective = base × (1 + δ)
+// δ accumulates across generations, clamped to ±DELTA_CLAMP.
+// Computed from evaluation_consistency + evaluation patterns.
+// See: LEARNED_WEIGHT_DESIGN.md §Phase 2
+
+export interface WeightDelta {
+  flagBias: Record<string, number>;
+  returnWeights: [number, number, number, number];
+  qualityVector: [number, number, number, number];
+}
+
+const LEARNING_RATE = 0.03;   // base ε per generation
+const DELTA_CLAMP = 0.3;      // max ±30% total deviation (matches fast-gate.ts)
+const MIN_CONSISTENCY_NODES = 3;  // minimum revisited nodes for learning
 
 // ---- Types ----
 
@@ -39,6 +57,10 @@ export interface SpeciesEntry {
   totalRevisits?: number;
   /** Sensor consistency: same node → same score? (not blended — species-own metric) */
   evaluationConsistency?: EvalConsistency;
+  /** Learned weight delta — accumulated across generations (Phase 2) */
+  weightDelta?: WeightDelta;
+  /** Spatial trajectory statistics (Phase 2 — computed from trail-log) */
+  trajectoryStats?: TrajectoryStats;
 }
 
 export interface SpeciesProfile {
@@ -199,9 +221,74 @@ function blendEntry(species: SpeciesEntry, global: SpeciesEntry): SpeciesEntry {
   };
 }
 
+// ---- Weight Delta computation ----
+
+function clampDelta(d: number): number {
+  return Math.max(-DELTA_CLAMP, Math.min(DELTA_CLAMP, d));
+}
+
+/**
+ * Compute learned_δ from evaluation patterns + consistency.
+ *
+ * Algorithm:
+ *   1. evaluation_consistency gates the learning rate (noisy sensor → small updates)
+ *   2. Evaluation averages (h, w, d) indicate species preferences
+ *   3. Delta accumulates on top of previous generation (momentum)
+ *   4. Clamped to ±0.3
+ *
+ * flagBias: carried forward from previous (needs per-node flag data for learning — future)
+ * returnWeights: consistency → trust satisfaction; inconsistency → trust frustration
+ * qualityVector: evaluation pattern → what this species considers "good"
+ */
+function computeWeightDelta(
+  species: SpeciesEntry,
+  prev?: WeightDelta,
+): WeightDelta | undefined {
+  const ec = species.evaluationConsistency;
+  if (!ec || ec.nodes < MIN_CONSISTENCY_NODES) return prev; // not enough data, carry forward
+
+  const lr = LEARNING_RATE * ec.score; // scale by consistency (0-1)
+
+  // --- Quality vector delta ---
+  // avgH/W/D on ~1-9 scale, neutral=5. Deviation = species preference.
+  const hSignal = (species.avgH - 5) / 5;   // -1 to +1
+  const wSignal = (species.avgW - 5) / 5;
+  const dSignal = (species.avgD - 5) / 5;
+
+  const prevQV = prev?.qualityVector ?? [0, 0, 0, 0] as [number, number, number, number];
+  const qualityVector: [number, number, number, number] = [
+    clampDelta(prevQV[0] + lr * hSignal),      // h tendency
+    clampDelta(prevQV[1] + lr * wSignal),      // w tendency
+    clampDelta(prevQV[2] + lr * (-dSignal)),   // preservation (invert d)
+    clampDelta(prevQV[3]),                      // hitRate: no direct signal, hold
+  ];
+
+  // --- Return weights delta ---
+  // Consistent sensor → satisfaction is reliable → boost sat weight
+  // Inconsistent sensor → frustration should kick in → boost frust weight
+  const prevRW = prev?.returnWeights ?? [0, 0, 0, 0] as [number, number, number, number];
+  const returnWeights: [number, number, number, number] = [
+    clampDelta(prevRW[0] + lr * ec.score),              // sat: boost when consistent
+    clampDelta(prevRW[1] + lr * (1 - ec.score)),        // frust: boost when inconsistent
+    clampDelta(prevRW[2]),                                // stamina: physics, not learned
+    clampDelta(prevRW[3] + lr * (1 - ec.score) * 0.5),  // stale: mild boost when inconsistent
+  ];
+
+  // --- Flag bias delta ---
+  // Carry forward previous. Per-node flag correlation requires flag data
+  // in eval-log (future enhancement). For now, no flag-level learning.
+  const flagBias: Record<string, number> = { ...(prev?.flagBias ?? {}) };
+
+  return { flagBias, returnWeights, qualityVector };
+}
+
 // ---- Profile builder ----
 
-export function buildProfile(survived: ScoredEval[], totalEvaluations: number): SpeciesProfile {
+export function buildProfile(
+  survived: ScoredEval[],
+  totalEvaluations: number,
+  previousDeltas?: Record<string, WeightDelta>,
+): SpeciesProfile {
   // Group by loadout
   const groups = new Map<string, ScoredEval[]>();
   for (const e of survived) {
@@ -213,11 +300,15 @@ export function buildProfile(survived: ScoredEval[], totalEvaluations: number): 
   // Global aggregation (all species combined)
   const global = aggregateGroup(survived);
 
-  // Per-species aggregation with environmental blend
+  // Per-species aggregation with environmental blend + learned delta
   const species: Record<string, SpeciesEntry> = {};
   for (const [loadout, evals] of groups) {
     const raw = aggregateGroup(evals);
-    species[loadout] = blendEntry(raw, global);
+    const blended = blendEntry(raw, global);
+    // Compute learned_δ from raw (unblended) consistency + previous delta
+    const prevDelta = previousDeltas?.[loadout];
+    blended.weightDelta = computeWeightDelta(raw, prevDelta);
+    species[loadout] = blended;
   }
 
   return {

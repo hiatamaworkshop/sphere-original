@@ -172,16 +172,13 @@ export const QUALITY_PRESETS = {
 export type ReturnWeights = [number, number, number, number];
 
 // ============================================================
-// Weight Delta — individual fluctuation (learned_weight scaffold)
+// Weight Delta — learned adaptation (Digestor → Agent)
 // ============================================================
 //
 // effective = base × (1 + δ)
 //   base     = species genetics (Loadout definition, immutable)
-//   δ        = learned adaptation + session noise
+//   δ        = learned adaptation from Digestor (accumulated across generations)
 //   clamp    ∈ [-0.3, +0.3]
-//
-// Phase 1 (current): δ = session random noise (±NOISE_AMPLITUDE)
-// Phase 2 (future):  δ = Digestor learned_δ + residual noise
 //
 // "learned_weight = 環境が発見した物理定数"
 // — INFORMATION_PHYSICS_ENGINE_DESIGN.md
@@ -192,7 +189,6 @@ export interface WeightDelta {
   qualityVector: [number, number, number, number];
 }
 
-const NOISE_AMPLITUDE = 0.1;  // ±10% session noise
 const DELTA_CLAMP = 0.3;      // max ±30% total deviation (design doc spec)
 
 // ============================================================
@@ -641,7 +637,7 @@ export interface SpeciesMemoryBias {
   hotNodeIds: Map<string, number>;
   /** Top tags from species evaluation history */
   tags: string[];
-  /** Learned weight delta from Digestor (Phase 2: replaces random noise) */
+  /** Learned weight delta from Digestor (accumulated across generations) */
   weightDelta?: Partial<WeightDelta>;
 }
 
@@ -713,21 +709,20 @@ export class FastGate {
   get walkPreference(): WalkMode { return this._walkPreference; }
   get evalFocus(): string { return this._evalFocus; }
 
-  // --- Weight Delta: individual fluctuation ---
+  // --- Weight Delta: learned adaptation ---
   //
   // effective = base × (1 + δ)
-  // δ = learned (from Digestor) + noise (session random)
+  // δ = learned (from Digestor, accumulated across generations)
   // Applied once at construction to: flagBias, returnWeights, qualityVector
 
   private applyWeightDelta(learned?: Partial<WeightDelta>): WeightDelta {
-    const noise = () => (Math.random() * 2 - 1) * NOISE_AMPLITUDE;
     const clamp = (d: number) => Math.max(-DELTA_CLAMP, Math.min(DELTA_CLAMP, d));
 
     // flagBias
     const flagKeys = Object.keys(this.weapon.flagBias) as (keyof Weapon["flagBias"])[];
     const flagDelta = {} as Record<keyof Weapon["flagBias"], number>;
     for (const k of flagKeys) {
-      const δ = clamp((learned?.flagBias?.[k] ?? 0) + noise());
+      const δ = clamp(learned?.flagBias?.[k] ?? 0);
       flagDelta[k] = δ;
       this.weapon.flagBias[k] *= (1 + δ);
     }
@@ -735,7 +730,7 @@ export class FastGate {
     // returnWeights
     const returnDelta: [number, number, number, number] = [0, 0, 0, 0];
     for (let i = 0; i < 4; i++) {
-      const δ = clamp((learned?.returnWeights?.[i] ?? 0) + noise());
+      const δ = clamp(learned?.returnWeights?.[i] ?? 0);
       returnDelta[i] = δ;
       this.returnWeights[i] *= (1 + δ);
     }
@@ -743,7 +738,7 @@ export class FastGate {
     // qualityVector
     const qualityDelta: [number, number, number, number] = [0, 0, 0, 0];
     for (let i = 0; i < 4; i++) {
-      const δ = clamp((learned?.qualityVector?.[i] ?? 0) + noise());
+      const δ = clamp(learned?.qualityVector?.[i] ?? 0);
       qualityDelta[i] = δ;
       this.qualityVector[i] *= (1 + δ);
     }

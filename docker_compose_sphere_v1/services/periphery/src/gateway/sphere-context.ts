@@ -222,7 +222,9 @@ export class SphereContextImpl implements SphereContext {
     sessionConfig?: PeripheryConfig["session"],
     energyConfig?: PeripheryConfig["energy"],
     globalFieldLayer?: GlobalFieldLayer,
-    activeBusLayer?: ActiveBusLayer
+    activeBusLayer?: ActiveBusLayer,
+    /** [2026-02-25] Cross-session metadata */
+    sessionMeta?: { agentId?: string; initialQuery?: string; sphereId?: string }
   ) {
     this._sessionId = sessionId;
     this._embeddingVector = initialVector;
@@ -255,7 +257,8 @@ export class SphereContextImpl implements SphereContext {
     this._sessionBuffer = createSessionBuffer(sessionId, this._layer);
 
     // Initialize action log for AutoCapsule generation
-    this._actionLog = createActionLog(sessionId);
+    // [2026-02-25] Pass cross-session metadata for trajectory analysis
+    this._actionLog = createActionLog(sessionId, sessionMeta);
 
     // Initialize movement state
     this.movementState = new AgentMovementState(initialVector, {
@@ -533,7 +536,10 @@ export class SphereContextImpl implements SphereContext {
       nodeId,
       kind: detail.kind,
       heatAtFocus: detail.heat,
+      weightAtFocus: detail.weight,   // Trajectory: authority/importance at focus
+      decayAtFocus: detail.decay,     // Trajectory: volatility at focus
       sourceNodeId: detail.sourceNodeId,  // L3: track derivation for depth awareness
+      positionSnapshot: [...this._embeddingVector],  // Trajectory analysis: agent position at focus
     });
 
     // Log nearby ghosts if any
@@ -1401,15 +1407,37 @@ export class SphereContextImpl implements SphereContext {
 
   /**
    * Get exploration trail from action log (Vestibule command)
+   * [2026-02-25] Extended with positionSnapshot, metadata, lastPosition for trajectory analysis
    */
-  getTrail(): { sessionId: string; duration: number; events: { type: string; timestamp: number; nodeId?: string }[] } {
+  getTrail(): {
+    sessionId: string;
+    agentId?: string;
+    initialQuery?: string;
+    sphereId?: string;
+    duration: number;
+    lastPosition?: number[];
+    events: { type: string; timestamp: number; nodeId?: string; positionSnapshot?: number[]; heat?: number; weight?: number; decay?: number }[];
+  } {
     const duration = Date.now() - this._actionLog.startTime;
     const events = this._actionLog.events.map(e => ({
       type: e.type,
       timestamp: e.timestamp,
       nodeId: "nodeId" in e ? (e as any).nodeId : undefined,
+      // Include position snapshot + node metrics only for focus events (trajectory waypoints)
+      positionSnapshot: e.type === "focus" ? (e as any).positionSnapshot : undefined,
+      heat: e.type === "focus" ? (e as any).heatAtFocus : undefined,
+      weight: e.type === "focus" ? (e as any).weightAtFocus : undefined,
+      decay: e.type === "focus" ? (e as any).decayAtFocus : undefined,
     }));
-    return { sessionId: this._sessionId, duration, events };
+    return {
+      sessionId: this._sessionId,
+      agentId: this._actionLog.agentId,
+      initialQuery: this._actionLog.initialQuery,
+      sphereId: this._actionLog.sphereId,
+      duration,
+      lastPosition: this._autoCapsule?.lastPosition,
+      events,
+    };
   }
 
   /**
@@ -1748,6 +1776,10 @@ export interface CreateSphereContextOptions {
   energyConfig?: PeripheryConfig["energy"];
   globalFieldLayer?: GlobalFieldLayer;
   activeBusLayer?: ActiveBusLayer;
+  /** [2026-02-25] Cross-session metadata for trajectory analysis */
+  agentId?: string;
+  initialQuery?: string;
+  sphereId?: string;
 }
 
 /**
@@ -1772,7 +1804,9 @@ export function createSphereContext(options: CreateSphereContextOptions): Sphere
     options.sessionConfig,
     options.energyConfig,
     options.globalFieldLayer,
-    options.activeBusLayer
+    options.activeBusLayer,
+    // [2026-02-25] Cross-session metadata for trajectory analysis
+    { agentId: options.agentId, initialQuery: options.initialQuery, sphereId: options.sphereId }
   );
 }
 
