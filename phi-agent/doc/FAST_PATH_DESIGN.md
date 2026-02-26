@@ -456,6 +456,83 @@ returnProb  = sigmoid(satisfaction - threshold)
 
 ---
 
+## MetricSemantics — ドメイン可変の評価軸 (2026-02-26)
+
+### 背景
+
+FastGate の閾値 (`h >= 7` → hit, `h < 5` → miss) と SessionMemory の正規化 (`1 - d/10`)、
+PromptBuilder の評価プロンプト (`"heat = motion/attention"`) は全てハードコードだった。
+ライフログスフィア等でドメイン固有の評価軸 (例: honesty/worth/danger) を使う場合、
+これらを config 駆動にする必要があった。
+
+### MetricSemantics 型
+
+```typescript
+// fast-gate.ts
+interface MetricSemantics {
+  names: [string, string, string];        // 軸名 (プロンプト + ログ)
+  descriptions: [string, string, string]; // スケール説明 (プロンプト)
+  inversion: [boolean, boolean, boolean]; // true = 高い値が良い → 1-v/10 で正規化
+  hitThreshold: number;                   // h >= これ → "deep" 移動
+  missThreshold: number;                  // h < これ → "explore" 移動
+}
+```
+
+DEFAULT_METRIC_SEMANTICS は従来のハードコード値と完全一致 → 後方互換。
+
+### データフロー
+
+```
+sphere.config.json  metadata.metricSemantics
+        ↓
+Periphery  GET /rulebook  (getRulebookResponse に metricSemantics を含める)
+        ↓
+phi-agent  SphereClient.preconnect()  ← dive() 前の HTTP GET
+        ↓
+    ┌───┴───┐
+FastGate   PromptBuilder
+(閾値+正規化)  (評価プロンプト生成)
+```
+
+**preconnect() の必要性**: WebSocket welcome 内の fetchRulebook は FastGate 構築後に実行される。
+MetricSemantics は FastGate/PromptBuilder の構築時に必要なため、dive() 前に HTTP で取得する。
+
+### FastGate への影響
+
+| 箇所 | Before | After |
+|------|--------|-------|
+| SessionMemory.record hit 判定 | `h >= 7` | `h >= ms.hitThreshold` |
+| SessionMemory.record miss 判定 | `h < 5` | `h < ms.missThreshold` |
+| state snapshot 第 3 要素 | `1 - d/10` | `inv[2] ? 1 - d/10 : d/10` |
+| qualityProfile | `(totalH/n)/10, (totalW/n)/10, 1-(totalD/n)/10` | inversion 配列で制御 |
+| computeNextMove | 変更なし (threshold は record 経由で追従) | — |
+
+### PromptBuilder への影響
+
+| 箇所 | Before | After |
+|------|--------|-------|
+| evaluateNode() メトリクスガイド | ハードコード `"heat = motion..."` | `metricGuide()` が ms.names/descriptions から生成 |
+| evaluateNode() 出力テンプレート | `"h": <heat/activity>` | `"h": <${ms.names[0]}>` |
+| evaluateDimension() | ハードコード dimInfo | ms から動的生成 |
+
+### evalFocus の分離
+
+Loadout の evalFocus にはメトリクスガイドが埋め込まれていた:
+```
+"Observe this node as a neutral explorer.\n\nRate (0-10):\nheat = motion/attention..."
+```
+
+**変更後**: evalFocus は役割記述のみ。メトリクスガイドは PromptBuilder が MetricSemantics から生成。
+```
+evalFocus: "Observe this node as a neutral explorer."
+metricGuide(): "Rate (0-10, 5=neutral):\nhonesty = factual reliability..."
+```
+
+これにより configHash から evalFocus を除外 (`loadoutName:modelName` のみ)。
+ドメインを変えても species profile の継続性が維持される。
+
+---
+
 ## まとめ
 
 **Fast Path の本質**:
