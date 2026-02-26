@@ -685,6 +685,9 @@ export class PeripheryServer {
           kind: node.kind,
           tags: node.payload?.tags ?? [],
           heat: node.metrics.h,
+          weight: node.metrics.w,
+          decay: node.metrics.d,
+          timestamp: node.timestamp,
           flags: node.metrics.flg,
           ref_url: node.payload?.ref_url,
         }));

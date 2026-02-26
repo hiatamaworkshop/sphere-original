@@ -14,11 +14,11 @@
     "confidenceHints": {},
     "metricSemantics": {
       "_comment": "Evaluation axis semantics — domain-dependent interpretation of h/w/d",
-      "names": ["honesty", "worth", "danger"],
+      "names": ["heat", "weight", "decay"],
       "descriptions": [
-        "factual reliability (0=unreliable, 10=highly reliable)",
-        "knowledge value (0=trivial, 10=essential)",
-        "volatility / ephemeral nature (0=long-lived, 10=short-lived)"
+        "motion/attention (0=still, 10=active)",
+        "density (0=light, 10=heavy)",
+        "fade rate (0=long-lived, 10=short-lived)"
       ],
       "inversion": [false, false, true],
       "_inversion_note": "true = higher value means LESS of the quality (d: high=ephemeral=less preservation)",
@@ -145,8 +145,8 @@
       "_comment": "Arbiter settings (state transition judgment)",
 
       "dynamicFlags": {
-        "_comment": "Hot = baseHeat(100) + 2 max evals(50) = 150",
-        "hotHeatThreshold": 150
+        "_comment": "Hot flag effectively disabled (threshold unreachable). Original design used h>150 but heat-only criterion creates positive feedback loop. Future: replace with heat-delta based detection.",
+        "hotHeatThreshold": 1000
       },
 
       "ascension": {

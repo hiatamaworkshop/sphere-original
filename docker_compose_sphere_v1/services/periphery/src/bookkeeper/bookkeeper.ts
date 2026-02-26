@@ -57,6 +57,7 @@ export class Bookkeeper {
   private static readonly SEEP_DECAY = 0.995;      // 毎サイクル 0.5% 蒸発
   private static readonly SEEP_MIN_FLUX = 0.1;     // この値以下でエントリ削除
   private static readonly SEEP_RADIUS = 1.0;       // queryNearby の cosine distance 上限
+  private static readonly EVAL_FLUX_FACTOR = 0.1;   // eval |hDelta| → flux deposit 係数
 
   private fluxPool: Map<string, { position: number[]; amount: number }> = new Map();
 
@@ -621,6 +622,20 @@ export class Bookkeeper {
       // Update node in ProjDB
       await this.projectionRepo.set(node.id, node);
       applied++;
+
+      // [Eval Flux] Deposit flux at evaluated node's position
+      // Nearby nodes (including fossils) benefit from agent evaluation activity
+      const absH = Math.abs(hDelta);
+      if (absH > 0 && node.vector?.length) {
+        const fluxAmount = absH * Bookkeeper.EVAL_FLUX_FACTOR;
+        const key = `eval:${node.id}`;
+        const existing = this.fluxPool.get(key);
+        if (existing) {
+          existing.amount += fluxAmount;
+        } else {
+          this.fluxPool.set(key, { position: node.vector, amount: fluxAmount });
+        }
+      }
 
       // Debug log for significant changes
       if (Math.abs(hDelta) >= 25 || Math.abs(wDelta) >= 12) {
