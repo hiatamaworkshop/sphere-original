@@ -539,6 +539,7 @@ export class PeripheryServer {
       // --- Distributions ---
       const heats: number[] = [];
       const weights: number[] = [];
+      const decays: number[] = [];
       const flagCounts: Record<number, number> = {};
 
       // All defined flag bits for distribution
@@ -554,6 +555,7 @@ export class PeripheryServer {
         counts.total++;
         heats.push(node.metrics.h);
         weights.push(node.metrics.w);
+        decays.push(node.metrics.d);
 
         // Count each flag bit
         for (const bit of flagBits) {
@@ -592,6 +594,7 @@ export class PeripheryServer {
         nodeCount: counts,
         heatDistribution: computeStats(heats),
         weightDistribution: computeStats(weights),
+        decayDistribution: computeStats(decays),
         flagDistribution: flagCounts,
         flux: { total: Math.round(fluxTotal * 100) / 100 },
         field: field ? {

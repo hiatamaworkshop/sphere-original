@@ -106,6 +106,7 @@ interface SphereSnapshot {
   nodeCount: Record<string, number>;
   heatDistribution: { mean: number; std: number; min: number; max: number };
   weightDistribution: { mean: number; std: number; min: number; max: number };
+  decayDistribution?: { mean: number; std: number; min: number; max: number };
   flagDistribution: Record<number, number>;
   flux: { total: number };
   field: { intensity: number; dominantFlags: number; volatility: number } | null;
@@ -130,6 +131,7 @@ function computeSphereHash(snapshot: SphereSnapshot, generation: number): string
     nodeCount: snapshot.nodeCount,
     heatDistribution: snapshot.heatDistribution,
     weightDistribution: snapshot.weightDistribution,
+    decayDistribution: snapshot.decayDistribution,
     flagDistribution: snapshot.flagDistribution,
     flux: snapshot.flux,
     generation,
@@ -287,6 +289,7 @@ function trajectoryDigest(
   const sphereAvg: SphereAverages | undefined = sphereSnapshot ? {
     avgHeat: sphereSnapshot.heatDistribution.mean,
     avgWeight: sphereSnapshot.weightDistribution.mean,
+    avgDecay: sphereSnapshot.decayDistribution?.mean,
   } : undefined;
 
   // Compute per-session metrics, group by species
