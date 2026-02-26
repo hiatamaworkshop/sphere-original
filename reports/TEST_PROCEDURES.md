@@ -355,11 +355,24 @@ MSYS_NO_PATHCONV=1 docker compose exec digestor /bin/sh -c "ONCE=1 node dist/dig
 # eval-log の行数 (phi-agent コンテナ内)
 docker compose exec phi-agent wc -l /app/data/eval-log.jsonl
 
+# trail-log の行数
+MSYS_NO_PATHCONV=1 docker compose exec digestor wc -l /app/data/trail-log.jsonl
+
 # 最新世代の確認
 docker compose exec phi-agent ls -la /app/data/generations/
 
 # species-profile の確認
 docker compose exec phi-agent cat /app/data/species-profile.json | head -50
+
+# species-profile の trajectoryStats 確認
+MSYS_NO_PATHCONV=1 docker compose exec digestor cat /app/data/species-profile.json | node -e "
+  process.stdin.on('data',d=>{
+    const j=JSON.parse(d);
+    Object.entries(j.species).forEach(([k,v])=>{
+      const t=v.trajectoryStats;
+      console.log(k, t ? 'sessions='+t.sessions+' sig=['+t.signature.map(x=>x.toFixed(2)).join(',')+']' : '(no trajectory)');
+    });
+  })"
 
 # periphery の統合ステータス (nodes, gateway, field, sanctification 等)
 curl -s http://localhost:3001/sphere/status | jq
@@ -502,6 +515,9 @@ curl -s http://localhost:3001/metrics | jq
 | `GET /generations` | 世代一覧 |
 | `GET /generations/:id` | 単一世代 |
 | `GET /stats` | eval-log 集計 |
+| `POST /trails` | trail 受付 (phi-agent → trail-log.jsonl) |
+| `GET /trails?limit=&loadout=` | trail 一覧 |
+| `GET /trails/:sessionId` | 単一 trail |
 
 ---
 
