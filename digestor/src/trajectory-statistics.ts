@@ -11,11 +11,13 @@
 //   spread       — normalized spatial distribution breadth
 //   heatBias     — tendency toward high/low-heat nodes
 //   weightBias   — tendency toward high/low-weight nodes
+//   decayBias    — tendency toward high/low-decay nodes
 //   pathLength   — total movement distance in 384D
 //   straightness — goal orientation (direct vs winding)
 //
+// Signature: [spread, heatBias, weightBias, decayBias, straightness]
+//
 // Future:
-//   decayBias    — needs decay distribution in Sphere snapshot
 //   revisitRate  — needs cross-session centroid (Phase 3)
 
 // ---- Constants ----
@@ -59,6 +61,7 @@ export interface SessionMetrics {
   spread: number;
   heatBias?: number;
   weightBias?: number;
+  decayBias?: number;
   pathLength: number;
   straightness: number;
   centroid: number[];
@@ -71,16 +74,18 @@ export interface TrajectoryStats {
   avgSpread: number;
   avgHeatBias?: number;
   avgWeightBias?: number;
+  avgDecayBias?: number;
   avgPathLength: number;
   avgStraightness: number;
-  /** [spread, heatBias, straightness] — species fingerprint */
-  signature: [number, number, number];
+  /** [spread, heatBias, weightBias, decayBias, straightness] — species fingerprint */
+  signature: [number, number, number, number, number];
 }
 
 /** Sphere averages for bias computation */
 export interface SphereAverages {
   avgHeat: number;
   avgWeight: number;
+  avgDecay?: number;
 }
 
 // ---- Vector math (384D) ----
@@ -170,12 +175,21 @@ export function computeSessionMetrics(
     weightBias = (meanWeight - sphereAvg.avgWeight) / sphereAvg.avgWeight;
   }
 
+  // Decay bias: (mean_visited_decay - sphere_avg) / sphere_avg
+  let decayBias: number | undefined;
+  const withDecay = waypoints.filter(w => w.decay !== undefined);
+  if (sphereAvg?.avgDecay && sphereAvg.avgDecay > 0 && withDecay.length > 0) {
+    const meanDecay = withDecay.reduce((s, w) => s + (w.decay ?? 0), 0) / withDecay.length;
+    decayBias = (meanDecay - sphereAvg.avgDecay) / sphereAvg.avgDecay;
+  }
+
   return {
     sessionId: trail.sessionId,
     loadout: trail.loadout,
     spread,
     heatBias,
     weightBias,
+    decayBias,
     pathLength,
     straightness,
     centroid,
@@ -210,10 +224,17 @@ export function aggregateSpeciesTrajectory(
     ? weightBiased.reduce((s, m) => s + m.weightBias!, 0) / weightBiased.length
     : undefined;
 
-  // Signature: [spread, heatBias, straightness]
-  const signature: [number, number, number] = [
+  const decayBiased = sessions.filter(m => m.decayBias !== undefined);
+  const avgDecayBias = decayBiased.length > 0
+    ? decayBiased.reduce((s, m) => s + m.decayBias!, 0) / decayBiased.length
+    : undefined;
+
+  // Signature: [spread, heatBias, weightBias, decayBias, straightness]
+  const signature: [number, number, number, number, number] = [
     avgSpread,
     avgHeatBias ?? 0,
+    avgWeightBias ?? 0,
+    avgDecayBias ?? 0,
     avgStraightness,
   ];
 
@@ -222,6 +243,7 @@ export function aggregateSpeciesTrajectory(
     avgSpread,
     avgHeatBias,
     avgWeightBias,
+    avgDecayBias,
     avgPathLength,
     avgStraightness,
     signature,

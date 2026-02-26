@@ -312,7 +312,7 @@ function trajectoryDigest(
     const stats = aggregateSpeciesTrajectory(valid);
     if (stats) {
       result[loadout] = stats;
-      console.log(`[digestor]   ${loadout}: ${stats.sessions} sessions, spread=${stats.avgSpread.toFixed(2)}, path=${stats.avgPathLength.toFixed(1)}, straight=${stats.avgStraightness.toFixed(2)}${stats.avgHeatBias !== undefined ? `, hBias=${stats.avgHeatBias.toFixed(2)}` : ""}${stats.avgWeightBias !== undefined ? `, wBias=${stats.avgWeightBias.toFixed(2)}` : ""}`);
+      console.log(`[digestor]   ${loadout}: ${stats.sessions} sessions, spread=${stats.avgSpread.toFixed(2)}, path=${stats.avgPathLength.toFixed(1)}, straight=${stats.avgStraightness.toFixed(2)}${stats.avgHeatBias !== undefined ? `, hBias=${stats.avgHeatBias.toFixed(2)}` : ""}${stats.avgWeightBias !== undefined ? `, wBias=${stats.avgWeightBias.toFixed(2)}` : ""}${stats.avgDecayBias !== undefined ? `, dBias=${stats.avgDecayBias.toFixed(2)}` : ""}`);
     } else {
       console.log(`[digestor]   ${loadout}: ${valid.length} sessions (< ${MIN_SPECIES_TRAILS} minimum)`);
     }
