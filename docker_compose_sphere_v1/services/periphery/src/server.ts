@@ -636,6 +636,7 @@ export class PeripheryServer {
         mode: (this.sphereMetadata.mode as string) ?? "core",
         apiVersion: (this.sphereMetadata.apiVersion as string) ?? "1",
         confidenceHints: (this.sphereMetadata.confidenceHints as Record<string, number>) ?? {},
+        metricSemantics: (this.sphereMetadata.metricSemantics as Record<string, unknown>) ?? null,
       });
     });
 

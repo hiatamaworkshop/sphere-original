@@ -11,7 +11,20 @@
     "_mode_note": "core = full metabolism. sanctuary = read-only, no metabolism (frozen sphere for standalone deployment)",
     "tags": ["general", "experimental", "development"],
     "language": ["ja", "en"],
-    "confidenceHints": {}
+    "confidenceHints": {},
+    "metricSemantics": {
+      "_comment": "Evaluation axis semantics — domain-dependent interpretation of h/w/d",
+      "names": ["honesty", "worth", "danger"],
+      "descriptions": [
+        "factual reliability (0=unreliable, 10=highly reliable)",
+        "knowledge value (0=trivial, 10=essential)",
+        "volatility / ephemeral nature (0=long-lived, 10=short-lived)"
+      ],
+      "inversion": [false, false, true],
+      "_inversion_note": "true = higher value means LESS of the quality (d: high=ephemeral=less preservation)",
+      "hitThreshold": 7,
+      "missThreshold": 5
+    }
   },
 
   "physical_constants": {
@@ -77,7 +90,14 @@
     },
 
     "tagger": {
-      "topTierCount": 3
+      "topTierCount": 3,
+      "cognitivePatterns": {
+        "_comment": "Domain-specific Cognitive layer (bits 8-11). Override per Sphere domain.",
+        "Sharp":   { "pattern": "\\b(definition|theorem|proof|conclusion|precisely|exact|formula|axiom|law)\\b", "description": "clear, unambiguous" },
+        "Fuzzy":   { "pattern": "\\b(hypothesis|maybe|perhaps|unclear|ambiguous|uncertain|speculative|conjecture|tentative|approximate)\\b", "description": "ambiguous, multiple interpretations" },
+        "Tensile": { "pattern": "\\b(debate|controversy|paradox|contradiction|versus|conflict|unresolved|dilemma|tension|disputed)\\b", "description": "internal contradiction, unresolved" },
+        "Settled": { "pattern": "\\b(established|consensus|standard|proven|accepted|settled|canonical|codified|ratified|definitive)\\b", "description": "consensus reached, converged" }
+      }
     },
 
     "packer": {

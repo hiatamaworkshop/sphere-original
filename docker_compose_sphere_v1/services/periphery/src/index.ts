@@ -584,7 +584,8 @@ const entryBuffer = new EntryBuffer(parser, {
 const gatekeeper = new Gatekeeper(schemaRegistry);  // Schema-driven validation
 const incarnationVectorBuffer = new IncarnationBuffer(parser);  // summary vectorization buffer (batch)
 const incarnationParser = new IncarnationParser(incarnationVectorBuffer);  // summary → vector (spatial coordinates)
-const tagger = new Tagger();  // tags → 16bit flags (semantic classification)
+const cognitivePatterns = sphereConfig.periphery?.tagger?.cognitivePatterns;
+const tagger = new Tagger(cognitivePatterns);  // tags → 16bit flags (semantic classification)
 const packer = new Packer(config);
 
 // Evaluation config (2-Layer coefficients from sphere.config.json)
