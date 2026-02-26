@@ -11,7 +11,7 @@
 // Endpoints:
 //   POST /evaluations            — eval 受付 (phi-agent → eval-log.jsonl)
 //   POST /narratives             — narrative 受付 (phi-agent → narrative-log.jsonl)
-//   POST /trails                 — trail 受付 (periphery → trail-log.jsonl)
+//   POST /trails                 — trail 受付 (phi-agent → trail-log.jsonl)
 //   GET  /narratives             — narrative 一覧 (?limit=N&loadout=X&type=return|stream)
 //   GET  /narratives/:id         — 単一 narrative
 //   GET  /trails                 — trail 一覧 (?limit=N&loadout=X)
@@ -122,7 +122,7 @@ export function startServer(port: number, config: GatewayConfig): void {
       return;
     }
 
-    // POST /trails — accept trail entries (periphery → trail-log.jsonl)
+    // POST /trails — accept trail entries (phi-agent → trail-log.jsonl)
     if (req.method === "POST" && parts[0] === "trails") {
       try {
         const body = await readBody(req);

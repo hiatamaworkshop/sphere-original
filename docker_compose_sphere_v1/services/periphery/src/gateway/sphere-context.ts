@@ -1414,15 +1414,16 @@ export class SphereContextImpl implements SphereContext {
     sphereId?: string;
     duration: number;
     lastPosition?: number[];
-    events: { type: string; timestamp: number; nodeId?: string; positionSnapshot?: number[] }[];
+    events: { type: string; timestamp: number; nodeId?: string; positionSnapshot?: number[]; heat?: number }[];
   } {
     const duration = Date.now() - this._actionLog.startTime;
     const events = this._actionLog.events.map(e => ({
       type: e.type,
       timestamp: e.timestamp,
       nodeId: "nodeId" in e ? (e as any).nodeId : undefined,
-      // Include position snapshot only for focus events (trajectory waypoints)
+      // Include position snapshot + heat only for focus events (trajectory waypoints)
       positionSnapshot: e.type === "focus" ? (e as any).positionSnapshot : undefined,
+      heat: e.type === "focus" ? (e as any).heatAtFocus : undefined,
     }));
     return {
       sessionId: this._sessionId,

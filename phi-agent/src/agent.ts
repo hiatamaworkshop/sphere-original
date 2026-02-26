@@ -26,8 +26,8 @@ import type { WalkMode, BusMessage, ScanNode, NodeDetail } from "./sphere-client
 import { PromptBuilder, parseAction } from "./prompt-builder.js";
 import { FastGate, LOADOUTS } from "./fast-gate.js";
 import type { Loadout, LoadoutName, SpeciesMemoryBias } from "./fast-gate.js";
-import { appendEvalLog, appendNarrative, loadSpeciesProfile } from "./eval-log.js";
-import type { EvalLogEntry, NarrativeEntry } from "./eval-log.js";
+import { appendEvalLog, appendNarrative, appendTrail, loadSpeciesProfile } from "./eval-log.js";
+import type { EvalLogEntry, NarrativeEntry, TrailEntry } from "./eval-log.js";
 import { renderBroadcast } from "./broadcast-renderer.js";
 
 /** Species-specific voice guidance for return responses */
@@ -251,6 +251,30 @@ export class PhiAgent {
           const events = trail?.events ?? trail;
           const steps = Array.isArray(events) ? events.length : 0;
           this.log(`Trail: ${steps} actions recorded (${((trail?.duration ?? 0) / 1000).toFixed(1)}s)`);
+
+          // Persist trail — agent attaches loadout (Sphere doesn't know species)
+          if (trail && Array.isArray(trail.events) && trail.events.length > 0) {
+            const loadoutName = typeof this.config.loadout === "string"
+              ? this.config.loadout : this.config.loadout.name;
+            const trailEntry: TrailEntry = {
+              sessionId: trail.sessionId,
+              loadout: loadoutName,
+              model: this.ollama.modelName,
+              agentId: trail.agentId,
+              sphereId: trail.sphereId,
+              timestamp: this.sessionStart,
+              duration: trail.duration,
+              initialQuery: trail.initialQuery ?? this.config.query,
+              lastPosition: trail.lastPosition,
+              events: trail.events,
+            };
+            try {
+              await appendTrail(trailEntry);
+              this.log(`Trail persisted to Digestor (${steps} events)`);
+            } catch (err) {
+              this.log(`Trail persist failed: ${err}`);
+            }
+          }
         } catch { /* optional */ }
 
         try {
