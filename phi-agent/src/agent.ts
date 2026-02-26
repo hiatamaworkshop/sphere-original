@@ -25,7 +25,7 @@ import { SphereClient } from "./sphere-client.js";
 import type { WalkMode, BusMessage, ScanNode, NodeDetail } from "./sphere-client.js";
 import { PromptBuilder, parseAction } from "./prompt-builder.js";
 import { FastGate, LOADOUTS } from "./fast-gate.js";
-import type { Loadout, LoadoutName } from "./fast-gate.js";
+import type { Loadout, LoadoutName, SpeciesMemoryBias } from "./fast-gate.js";
 import { appendEvalLog, appendNarrative, loadSpeciesProfile } from "./eval-log.js";
 import type { EvalLogEntry, NarrativeEntry } from "./eval-log.js";
 import { renderBroadcast } from "./broadcast-renderer.js";
@@ -96,7 +96,7 @@ export class PhiAgent {
   private ollama: OllamaClient;
   private sphere: SphereClient;
   private prompt: PromptBuilder;
-  private gate: FastGate;
+  private gate!: FastGate;
   private config: AgentConfig;
   private stats: AgentStats;
   private running = false;
@@ -131,12 +131,6 @@ export class PhiAgent {
     this.sphere = sphere;
     this.config = { ...DEFAULT_AGENT_CONFIG, ...config };
     this.prompt = new PromptBuilder(this.config.query, this.ollama.modelName);
-    const loadout = typeof this.config.loadout === "string"
-      ? LOADOUTS[this.config.loadout]
-      : this.config.loadout;
-
-    // Species memory is loaded asynchronously in run() via IO Gateway or file
-    this.gate = new FastGate(this.config.query, loadout);
     this.stats = {
       cycles: 0,
       nodesExamined: 0,
@@ -154,20 +148,34 @@ export class PhiAgent {
     this.sessionStart = Date.now();
     this.stats.status = "connecting";
 
-    // Load species memory — pre-blended profile from Digestor
+    // Phase 2: Load species memory BEFORE FastGate construction
+    // so learned_δ (weightDelta) is applied to base weights in constructor.
     // (0.7 × own species + 0.3 × global, via IO Gateway or file)
     const loadoutName = typeof this.config.loadout === "string"
       ? this.config.loadout : this.config.loadout.name;
+    const loadout = typeof this.config.loadout === "string"
+      ? LOADOUTS[this.config.loadout]
+      : this.config.loadout;
     const profile = await loadSpeciesProfile(loadoutName);
+
+    let speciesBias: SpeciesMemoryBias | undefined;
     if (profile) {
-      this.gate.setSpeciesBias({
+      speciesBias = {
         hotNodeIds: profile.hotNodeIds,
         tags: profile.tags,
-      });
-      this.log(`Species profile: ${profile.sessions} evals, ${profile.hotNodeIds.size} nodes, ${profile.tags.length} tags (${loadoutName})`);
+        weightDelta: profile.weightDelta ? {
+          flagBias: profile.weightDelta.flagBias,
+          returnWeights: profile.weightDelta.returnWeights,
+          qualityVector: profile.weightDelta.qualityVector,
+        } : undefined,
+      };
+      this.log(`Species profile: ${profile.sessions} evals, ${profile.hotNodeIds.size} nodes, ${profile.tags.length} tags (${loadoutName})${profile.weightDelta ? " +learned_δ" : ""}`);
     } else {
       this.log(`Species profile: not found for ${loadoutName} (no profile or empty)`);
     }
+
+    // Construct FastGate with full species bias (including learned_δ)
+    this.gate = new FastGate(this.config.query, loadout, speciesBias);
     this.log(this.gate.deltaDebug);
 
     try {

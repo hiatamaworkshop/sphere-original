@@ -15,6 +15,7 @@ import { createHash } from "node:crypto";
 import { computeScore, computeHunger, prune } from "./scoring.js";
 import type { FlatEval, ScoredEval } from "./scoring.js";
 import { buildProfile } from "./profiler.js";
+import type { WeightDelta } from "./profiler.js";
 import { startServer } from "./server.js";
 
 // ---- Config (environment variables) ----
@@ -230,6 +231,32 @@ function truncateLog(survived: ScoredEval[]): void {
   console.log(`[digestor] eval-log truncated: ${entries.length} sessions (from survived evals)`);
 }
 
+// ---- Previous generation delta loader ----
+
+function loadPreviousDeltas(): Record<string, WeightDelta> | undefined {
+  if (!existsSync(GEN_DIR)) return undefined;
+  const files = readdirSync(GEN_DIR).filter(f => /^gen-\d+\.json$/.test(f));
+  if (files.length === 0) return undefined;
+  const nums = files.map(f => parseInt(f.match(/gen-(\d+)\.json/)![1], 10));
+  const latest = Math.max(...nums);
+  const padded = String(latest).padStart(3, "0");
+  const path = join(GEN_DIR, `gen-${padded}.json`);
+  try {
+    const raw = readFileSync(path, "utf-8");
+    const gen = JSON.parse(raw) as { species?: Record<string, { weightDelta?: WeightDelta }> };
+    if (!gen.species) return undefined;
+    const deltas: Record<string, WeightDelta> = {};
+    for (const [name, entry] of Object.entries(gen.species)) {
+      if (entry.weightDelta) {
+        deltas[name] = entry.weightDelta;
+      }
+    }
+    return Object.keys(deltas).length > 0 ? deltas : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 // ---- Main digest cycle ----
 
 async function digest(): Promise<void> {
@@ -258,8 +285,12 @@ async function digest(): Promise<void> {
   const survived = prune(scored, hunger, MIN_PER_SPECIES);
   console.log(`[digestor] Survived: ${survived.length}/${flat.length} (${(survived.length / flat.length * 100).toFixed(0)}%)`);
 
-  // Step 3: Build species profile (aggregate + environmental blend)
-  const profile = buildProfile(survived, flat.length);
+  // Step 3: Build species profile (aggregate + environmental blend + learned delta)
+  const previousDeltas = loadPreviousDeltas();
+  if (previousDeltas) {
+    console.log(`[digestor] Loaded previous deltas for: ${Object.keys(previousDeltas).join(", ")}`);
+  }
+  const profile = buildProfile(survived, flat.length, previousDeltas);
 
   // Step 4: Write profile (overwrite)
   writeFileSync(PROFILE_OUT, JSON.stringify(profile, null, 2), "utf-8");
@@ -276,7 +307,8 @@ async function digest(): Promise<void> {
   for (const [name, sp] of Object.entries(profile.species)) {
     const ec = sp.evaluationConsistency;
     const ecStr = ec ? `, consistency=${ec.score.toFixed(2)} (${ec.nodes} nodes)` : "";
-    console.log(`  ${name}: ${sp.evaluations} evals, h=${sp.avgH.toFixed(1)} w=${sp.avgW.toFixed(1)} d=${sp.avgD.toFixed(1)}, ${sp.hotNodes.length} nodes, ${sp.commonTags.length} tags${ecStr}`);
+    const wdStr = sp.weightDelta ? `, δ=[qv:${sp.weightDelta.qualityVector.map(v => (v >= 0 ? "+" : "") + (v * 100).toFixed(0) + "%").join(",")} rw:${sp.weightDelta.returnWeights.map(v => (v >= 0 ? "+" : "") + (v * 100).toFixed(0) + "%").join(",")}]` : "";
+    console.log(`  ${name}: ${sp.evaluations} evals, h=${sp.avgH.toFixed(1)} w=${sp.avgW.toFixed(1)} d=${sp.avgD.toFixed(1)}, ${sp.hotNodes.length} nodes, ${sp.commonTags.length} tags${ecStr}${wdStr}`);
   }
 }
 

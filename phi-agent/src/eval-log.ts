@@ -268,6 +268,12 @@ interface ProfileNodeCount {
   count: number;
 }
 
+interface ProfileWeightDelta {
+  flagBias: Record<string, number>;
+  returnWeights: [number, number, number, number];
+  qualityVector: [number, number, number, number];
+}
+
 interface ProfileSpeciesEntry {
   evaluations: number;
   avgH: number;
@@ -275,6 +281,7 @@ interface ProfileSpeciesEntry {
   avgD: number;
   hotNodes: ProfileNodeCount[];
   commonTags: string[];
+  weightDelta?: ProfileWeightDelta;
 }
 
 interface ProfileData {
@@ -289,6 +296,8 @@ export interface SpeciesProfileBias {
   hotNodeIds: Map<string, number>;
   tags: string[];
   sessions: number;
+  /** Learned weight delta from Digestor (Phase 2) */
+  weightDelta?: ProfileWeightDelta;
 }
 
 /**
@@ -309,7 +318,7 @@ export async function loadSpeciesProfile(loadout: string): Promise<SpeciesProfil
       for (const n of entry.hotNodes ?? []) {
         hotNodeIds.set(n.nodeId, n.count);
       }
-      return { hotNodeIds, tags: entry.commonTags ?? [], sessions: entry.evaluations };
+      return { hotNodeIds, tags: entry.commonTags ?? [], sessions: entry.evaluations, weightDelta: entry.weightDelta };
     } catch {
       return undefined;
     }
@@ -332,6 +341,7 @@ export async function loadSpeciesProfile(loadout: string): Promise<SpeciesProfil
       hotNodeIds,
       tags: entry.commonTags ?? [],
       sessions: entry.evaluations,
+      weightDelta: entry.weightDelta,
     };
   } catch {
     return undefined;
