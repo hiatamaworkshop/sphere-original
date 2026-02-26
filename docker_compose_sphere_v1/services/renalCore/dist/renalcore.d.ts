@@ -30,9 +30,6 @@ export interface RenalCoreConfig {
     weightDecayFactor: number;
     amberHeatThreshold: number;
     amberWeightThreshold: number;
-    fossilHeatThreshold: number;
-    erosionHeatThreshold: number;
-    ghostHeatThreshold: number;
     ghostTTLMultiplier: number;
     planktonConversionRate: number;
     fluxDecayRate: number;

@@ -67,10 +67,6 @@ export interface RenalCoreConfig {
   thresholds: {
     amberHeat: number;
     amberWeight: number;
-    fossilHeat: number;
-    erosionHeat: number;
-    ghostHeat: number;
-    evaporationHeat: number;
   };
   ghost: { ttlMultiplier: number };
   spatial: {

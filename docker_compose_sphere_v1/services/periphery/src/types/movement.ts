@@ -94,7 +94,7 @@ export interface HeatBoostConfig {
 /**
  * Scan Configuration
  *
- * [Design] Heat extends visibility range
+ * [Design] Presence (h + w) determines visibility
  * [Design] maxResults limits computation cost
  */
 export interface ScanConfig {
@@ -104,8 +104,8 @@ export interface ScanConfig {
   heatBoost: HeatBoostConfig;
   /** Maximum results (computation cost limit) */
   maxResults: number;
-  /** Minimum heat to be visible */
-  minHeat: number;
+  /** Minimum presence (h + w) to be visible — domain-independent */
+  minPresence: number;
 }
 
 /**
@@ -119,7 +119,7 @@ export const DEFAULT_SCAN_CONFIG: ScanConfig = {
     high: 0.2,
   },
   maxResults: 20,
-  minHeat: 0.1,
+  minPresence: 0.1,
 };
 
 // ============================================================

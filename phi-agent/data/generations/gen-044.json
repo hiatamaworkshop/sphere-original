@@ -1,7 +1,53 @@
 {
-  "generated": "2026-02-26T16:37:35.516Z",
-  "totalEvaluations": 449,
+  "generation": 44,
+  "timestamp": "2026-02-26T16:37:35.834Z",
+  "sphereHash": "1f6f330a214c6245",
+  "inputEvaluations": 449,
   "survivedEvaluations": 382,
+  "hunger": 0.4988,
+  "halfLifeHours": 72,
+  "sphereSnapshot": {
+    "nodeCount": {
+      "active": 158,
+      "amber": 0,
+      "ghost": 0,
+      "fossil": 0,
+      "relic": 10,
+      "environment": 0,
+      "total": 168
+    },
+    "heatDistribution": {
+      "mean": 479.34,
+      "std": 70.19,
+      "min": 200,
+      "max": 507.95
+    },
+    "weightDistribution": {
+      "mean": 111.78,
+      "std": 47.36,
+      "min": 99.68,
+      "max": 300
+    },
+    "flagDistribution": {
+      "1": 18,
+      "2": 10,
+      "8": 168,
+      "16": 22,
+      "128": 1,
+      "256": 1,
+      "1024": 4,
+      "2048": 2,
+      "8192": 10
+    },
+    "flux": {
+      "total": 0
+    },
+    "field": {
+      "intensity": 0.3214596839654497,
+      "dominantFlags": 8,
+      "volatility": 1
+    }
+  },
   "species": {
     "scholar": {
       "evaluations": 52,

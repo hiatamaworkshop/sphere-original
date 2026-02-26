@@ -82,11 +82,7 @@
     "thresholds": {
       "_comment": "Integer scale: threshold 1000 for Ascension",
       "amberHeat": 1000,
-      "amberWeight": 1000,
-      "fossilHeat": 0.5,
-      "erosionHeat": 100,
-      "ghostHeat": 0.5,
-      "evaporationHeat": 0.01
+      "amberWeight": 1000
     },
 
     "ghost": {

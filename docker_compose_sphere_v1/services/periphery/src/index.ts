@@ -108,9 +108,7 @@ const renalConfig = {
   weightDecayFactor: decayValues.weightDecayFactor * decayIntensity,
   amberHeatThreshold: sphereConfig.renal_core.thresholds.amberHeat,
   amberWeightThreshold: sphereConfig.renal_core.thresholds.amberWeight,
-  fossilHeatThreshold: sphereConfig.renal_core.thresholds.fossilHeat,
-  erosionHeatThreshold: sphereConfig.renal_core.thresholds.erosionHeat,
-  ghostHeatThreshold: sphereConfig.renal_core.thresholds.ghostHeat,
+
   ghostTTLMultiplier: sphereConfig.renal_core.ghost.ttlMultiplier,
   planktonConversionRate: sphereConfig.renal_core.spatial.planktonConversionRate,
   fluxDecayRate: decayValues.fluxDecayRate * decayIntensity,

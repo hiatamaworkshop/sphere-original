@@ -168,7 +168,7 @@ function quantizeHeat(
  *
  * [Design] Uniform range (baseRange only). Heat-based visibility was removed —
  *          detection bias belongs in agent layer (modeWeights / Weapon).
- * [Design] Cold nodes are invisible (minHeat filter)
+ * [Design] Low-presence nodes are invisible (minPresence filter: h + w)
  * [Design] Results are capped (maxResults)
  */
 function scan(
@@ -184,8 +184,8 @@ function scan(
     // Skip nodes without vector
     if (!node.vector || node.vector.length === 0) continue;
 
-    // Skip cold nodes
-    if (node.metrics.h < config.minHeat) continue;
+    // Skip low-presence nodes (h + w below threshold)
+    if ((node.metrics.h + node.metrics.w) < config.minPresence) continue;
 
     const dist = cosineDistance(agentVector, node.vector);
 
@@ -235,7 +235,7 @@ function calculateGravity(
 
   for (const node of nodes) {
     if (!node.vector || node.vector.length !== dim) continue;
-    if (node.metrics.h < config.scan.minHeat) continue;
+    if ((node.metrics.h + node.metrics.w) < config.scan.minPresence) continue;
 
     const dist = cosineDistance(agentVector, node.vector);
     if (dist < 0.001) continue; // Skip self or very close
