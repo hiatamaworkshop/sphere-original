@@ -23,6 +23,7 @@ import { startServer } from "./server.js";
 export const DATA_DIR = process.env.DATA_DIR ?? "/app/data";
 export const EVAL_LOG = join(DATA_DIR, "eval-log.jsonl");
 export const NARRATIVE_LOG = join(DATA_DIR, "narrative-log.jsonl");
+export const TRAIL_LOG = join(DATA_DIR, "trail-log.jsonl");
 export const PROFILE_OUT = join(DATA_DIR, "species-profile.json");
 export const GEN_DIR = join(DATA_DIR, "generations");
 const GATEWAY_PORT = parseInt(process.env.GATEWAY_PORT ?? "5000");
@@ -321,12 +322,13 @@ function sleep(ms: number): Promise<void> {
 async function main(): Promise<void> {
   console.log(`[digestor] Starting — ${ONCE ? "one-shot" : `interval=${INTERVAL_MS}ms`}, half_life=${HALF_LIFE_HOURS}h, min_evals=${MIN_EVALS}`);
   console.log(`[digestor] Source: ${EVAL_LOG}`);
+  console.log(`[digestor] Trails: ${TRAIL_LOG}`);
   console.log(`[digestor] Output: ${PROFILE_OUT}`);
   console.log(`[digestor] Sphere: ${SPHERE_URL} (for snapshot)`);
 
   // Start IO Gateway (HTTP server)
   if (!ONCE) {
-    startServer(GATEWAY_PORT, { dataDir: DATA_DIR, evalLog: EVAL_LOG, narrativeLog: NARRATIVE_LOG, profileOut: PROFILE_OUT, genDir: GEN_DIR });
+    startServer(GATEWAY_PORT, { dataDir: DATA_DIR, evalLog: EVAL_LOG, narrativeLog: NARRATIVE_LOG, trailLog: TRAIL_LOG, profileOut: PROFILE_OUT, genDir: GEN_DIR });
   }
 
   // Run immediately on startup
