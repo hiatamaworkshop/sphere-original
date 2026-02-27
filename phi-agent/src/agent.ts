@@ -24,8 +24,8 @@ import { OllamaClient } from "./ollama-client.js";
 import { SphereClient } from "./sphere-client.js";
 import type { WalkMode, BusMessage, ScanNode, NodeDetail } from "./sphere-client.js";
 import { PromptBuilder, parseAction } from "./prompt-builder.js";
-import { FastGate, LOADOUTS } from "./fast-gate.js";
-import type { Loadout, LoadoutName, SpeciesMemoryBias } from "./fast-gate.js";
+import { FastGate, LOADOUTS, DEFAULT_HARVEST_POLICY } from "./fast-gate.js";
+import type { Loadout, LoadoutName, SpeciesMemoryBias, HarvestPolicy } from "./fast-gate.js";
 import { appendEvalLog, appendNarrative, appendTrail, loadSpeciesProfile } from "./eval-log.js";
 import type { EvalLogEntry, NarrativeEntry, TrailEntry } from "./eval-log.js";
 import { renderBroadcast } from "./broadcast-renderer.js";
@@ -60,6 +60,10 @@ interface Encounter {
   w: number;
   d: number;
   flags: number;
+  // HarvestPolicy-controlled optional fields
+  content?: string;
+  kind?: string;
+  refUrl?: string;
 }
 
 /** Sphere-side trail data (action log with embeddings) */
@@ -149,6 +153,8 @@ export class PhiAgent {
   private orientResults: ScanNode[] | null = null;
 
   private encounters: Encounter[] = [];
+  /** Sphere-configurable harvest policy (what to carry back from exploration) */
+  private harvestPolicy: HarvestPolicy = DEFAULT_HARVEST_POLICY;
 
   /** Session start time for duration tracking */
   private sessionStart = Date.now();
@@ -211,6 +217,11 @@ export class PhiAgent {
     const metricSemantics = this.sphere.metricSemantics;
     if (metricSemantics) {
       this.log(`MetricSemantics: [${metricSemantics.names.join(",")}] hit=${metricSemantics.hitThreshold} miss=${metricSemantics.missThreshold}`);
+    }
+    const harvestPolicy = this.sphere.harvestPolicy;
+    if (harvestPolicy) {
+      this.harvestPolicy = harvestPolicy;
+      this.log(`HarvestPolicy: carryContent=${harvestPolicy.carryContent} summaryMax=${harvestPolicy.summaryMaxLength}`);
     }
 
     // Construct FastGate with species bias + MetricSemantics
@@ -532,12 +543,18 @@ export class PhiAgent {
     this.gate.memory.record(nodeId, h, w, d, detail.tags, expression);
 
     // Store encounter for return response (agent "remembers" what it saw)
+    const hp = this.harvestPolicy;
     this.encounters.push({
       nodeId,
       tags: detail.tags ?? [],
-      summary: (detail.summary ?? "").slice(0, 200),
+      summary: (detail.summary ?? "").slice(0, hp.summaryMaxLength),
       h, w, d,
       flags,
+      ...(hp.carryContent && detail.content && {
+        content: detail.content.slice(0, hp.contentMaxLength),
+      }),
+      ...(hp.carryKind && detail.kind && { kind: detail.kind }),
+      ...(hp.carryRefUrl && detail.ref_url && { refUrl: detail.ref_url }),
     });
 
     // Emit cycle JSON for UI (structured output, always printed)
@@ -678,12 +695,18 @@ export class PhiAgent {
         this.log(`Collected: [${detail.kind}] ${detail.tags?.join(", ") ?? ""} — ${(detail.summary ?? "").slice(0, 60)}`);
 
         // Store encounter without scores (liaison = read-only)
+        const hp = this.harvestPolicy;
         this.encounters.push({
           nodeId: target.id,
           tags: detail.tags ?? [],
-          summary: (detail.summary ?? "").slice(0, 200),
+          summary: (detail.summary ?? "").slice(0, hp.summaryMaxLength),
           h: 0, w: 0, d: 0,
           flags: target.flags,
+          ...(hp.carryContent && detail.content && {
+            content: detail.content.slice(0, hp.contentMaxLength),
+          }),
+          ...(hp.carryKind && detail.kind && { kind: detail.kind }),
+          ...(hp.carryRefUrl && detail.ref_url && { refUrl: detail.ref_url }),
         });
 
         this.emitCycleJson("explore", nodes.length, {

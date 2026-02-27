@@ -8,7 +8,7 @@
 // Energy tracking uses costs from the Rulebook (config-authoritative).
 
 import WebSocket from "ws";
-import type { MetricSemantics } from "./fast-gate.js";
+import type { MetricSemantics, HarvestPolicy } from "./fast-gate.js";
 
 // ============================================================
 // Types (mirroring gateway protocol)
@@ -139,6 +139,7 @@ export class SphereClient {
   private positionedResolve: (() => void) | null = null;
   private positionedPromise: Promise<void> | null = null;
   private _metricSemantics: MetricSemantics | undefined;
+  private _harvestPolicy: HarvestPolicy | undefined;
 
   constructor(config: Partial<SphereConfig> = {}) {
     this.config = { ...DEFAULT_CONFIG, ...config };
@@ -147,6 +148,11 @@ export class SphereClient {
   /** MetricSemantics from Sphere rulebook (available after preconnect) */
   get metricSemantics(): MetricSemantics | undefined {
     return this._metricSemantics;
+  }
+
+  /** HarvestPolicy from Sphere rulebook (available after preconnect) */
+  get harvestPolicy(): HarvestPolicy | undefined {
+    return this._harvestPolicy;
   }
 
   onEvent(handler: SphereEventHandler): void {
@@ -189,6 +195,12 @@ export class SphereClient {
       if (rb.metricSemantics) {
         this._metricSemantics = rb.metricSemantics as MetricSemantics;
         console.log(`[SphereClient] MetricSemantics: [${this._metricSemantics.names.join(",")}] hit=${this._metricSemantics.hitThreshold} miss=${this._metricSemantics.missThreshold}`);
+      }
+
+      // Extract HarvestPolicy (Sphere-configurable data carry-back rules)
+      if (rb.harvestPolicy) {
+        this._harvestPolicy = rb.harvestPolicy as HarvestPolicy;
+        console.log(`[SphereClient] HarvestPolicy: carryContent=${this._harvestPolicy.carryContent} summaryMax=${this._harvestPolicy.summaryMaxLength}`);
       }
 
       console.log(`[SphereClient] Preconnect OK: energy=${this.energy}`);

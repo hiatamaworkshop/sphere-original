@@ -715,6 +715,7 @@ export class PeripheryServer {
         session: this.config.session,
         energy: this.config.energy,
         metricSemantics: this.sphereMetadata.metricSemantics as Record<string, unknown>,
+        harvestPolicy: this.sphereMetadata.harvestPolicy as Record<string, unknown>,
       }));
     });
 

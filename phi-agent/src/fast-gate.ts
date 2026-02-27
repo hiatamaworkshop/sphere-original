@@ -85,6 +85,38 @@ export const DEFAULT_METRIC_SEMANTICS: MetricSemantics = {
 };
 
 // ============================================================
+// HarvestPolicy — Sphere-configurable data carry-back rules
+// ============================================================
+//
+// Controls what data phi-agent carries back from exploration.
+// Knowledge Sphere: summary-only (content is heavy, used for LLM then discarded)
+// Lifelog Sphere: carry content (short one-liners, actual payload for consumers)
+//
+// Loaded from sphere.config.json via /rulebook endpoint (preconnect).
+// Applied in agent.ts evalAndRecord() when building Encounter objects.
+
+export interface HarvestPolicy {
+  /** Include full node content in encounters (default: false) */
+  carryContent: boolean;
+  /** Max content length if carryContent=true (default: 500) */
+  contentMaxLength: number;
+  /** Max summary chars (default: 200) */
+  summaryMaxLength: number;
+  /** Include ref_url in encounters (default: false) */
+  carryRefUrl: boolean;
+  /** Include node kind active/amber/relic (default: true) */
+  carryKind: boolean;
+}
+
+export const DEFAULT_HARVEST_POLICY: HarvestPolicy = {
+  carryContent: false,
+  contentMaxLength: 500,
+  summaryMaxLength: 200,
+  carryRefUrl: false,
+  carryKind: true,
+};
+
+// ============================================================
 // Scoring Weights — base layer (linear: metrics + keyword)
 // ============================================================
 

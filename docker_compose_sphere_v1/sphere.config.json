@@ -9,7 +9,7 @@
 
 
   "metadata": {
-    "_layer": "L0 Identity + L2 Interpretation (metricSemantics)",
+    "_layer": "L0 Identity + L2 Interpretation (metricSemantics, harvestPolicy)",
     "sphereId": "sphere-genesis",
     "sphere_name": "Sphere Genesis",
     "description": "汎用知識スフィア — 実験・開発用",
@@ -34,6 +34,14 @@
       "_inversion_note": "true = higher value means LESS of the quality (d: high=ephemeral=less preservation)",
       "hitThreshold": 7,
       "missThreshold": 5
+    },
+    "harvestPolicy": {
+      "_comment": "L2 — Controls what data agent carries back from exploration",
+      "carryContent": false,
+      "contentMaxLength": 500,
+      "summaryMaxLength": 200,
+      "carryRefUrl": true,
+      "carryKind": true
     }
   },
 
