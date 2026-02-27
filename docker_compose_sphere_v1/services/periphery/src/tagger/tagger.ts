@@ -60,7 +60,7 @@ export interface CognitivePatternsConfig {
  *   - Special (bits 12-15): system/user metadata       — ユニバーサル
  *
  * [Dynamic flags — Arbiter/Bookkeeper 管轄, Tagger は付与しない]
- *   - Hot (0x0008): h >= hotHeatThreshold で Arbiter が付与
+ *   - 0x0008: Reserved (was Hot — removed: heat-only flag violates metric independence)
  *   - SystemCore (0x2000): Relic seed / Amber ascension で Bookkeeper が付与 (代謝凍結)
  *   - Compressed (0x4000): Fossil 化時に Arbiter が付与
  *   - Candidate (0x8000): Ascension 冷却期間中に Arbiter が付与

@@ -203,15 +203,10 @@ console.log("[Init] Starting RenalCore heartbeat (1 tick/second)...");
 // Arbiter - observes, judges, and queues state transitions
 // [Design] RenalCore handles physics only, Arbiter queues transitions, Bookkeeper executes
 const arbiterSettings = sphereConfig.periphery?.arbiter ?? {};
-// [Config Priority] nodeFlags.dynamicThresholds > arbiter.dynamicFlags
-const dynamicThresholds = config.nodeFlags?.dynamicThresholds;
 const arbiterConfig = {
   erosionScoreThreshold: arbiterSettings.erosion?.scoreThreshold ?? 200,
   erosionCooldownMs: arbiterSettings.erosion?.cooldownMs ?? 300000,
   pauseErosionBoost: renalConfig.pauseErosionBoost,
-  // Dynamic Flags thresholds (from unified nodeFlags config)
-  hotHeatThreshold: dynamicThresholds?.hotHeatThreshold
-    ?? arbiterSettings.dynamicFlags?.hotHeatThreshold ?? 150,
   // Ascension cooldown settings (evaluation freeze + composite score)
   ascensionCooldownMs: arbiterSettings.ascension?.cooldownMs ?? 600000,
   ascensionScoreThreshold: arbiterSettings.ascension?.scoreThreshold ?? 1100,

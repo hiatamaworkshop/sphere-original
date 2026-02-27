@@ -544,7 +544,7 @@ export class PeripheryServer {
 
       // All defined flag bits for distribution
       const flagBits = [
-        NodeFlag.TemporalShort, NodeFlag.TemporalLong, NodeFlag.TemporalCyclic, NodeFlag.Hot,
+        NodeFlag.TemporalShort, NodeFlag.TemporalLong, NodeFlag.TemporalCyclic,
         NodeFlag.Dense, NodeFlag.Sparse, NodeFlag.Composite, NodeFlag.Authority,
         NodeFlag.Sharp, NodeFlag.Fuzzy, NodeFlag.Tensile, NodeFlag.Settled,
         NodeFlag.UserMarked, NodeFlag.SystemCore, NodeFlag.Compressed, NodeFlag.Candidate,

@@ -166,11 +166,6 @@
     "arbiter": {
       "_layer": "L1 Physics (state transition judgment)",
 
-      "dynamicFlags": {
-        "_comment": "Hot flag effectively disabled (threshold unreachable). Original design used h>150 but heat-only criterion creates positive feedback loop. Future: replace with heat-delta based detection.",
-        "hotHeatThreshold": 1000
-      },
-
       "ascension": {
         "_comment": "Ascension cooldown: evaluation freeze + h+w score + lower threshold",
         "_comment_cooldown": "5min (300000ms) for testing. Production: 10min (600000). Heat decays faster than weight, so cooldown acts as a heat-purge filter — burst-evaluated nodes drop out, weight-stable nodes survive.",
