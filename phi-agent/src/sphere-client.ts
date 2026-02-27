@@ -368,6 +368,20 @@ export class SphereClient {
     return (await this.sendRequest<{ data: any }>("viewDiscoveries", {})).data;
   }
 
+  /** Submit an ExperienceCapsule with NodeSeeds for incarnation (Vestibule command).
+   *  Only available in vestibule. Requires Gatekeeper validation on server.
+   *  Type defined inline (phi-agent does not depend on periphery types). */
+  async submitCapsule(capsule: {
+    schemaVersion: number;
+    topTier: Array<{ tags: string[]; summary: string; content?: string; flags: number; sourceNodeId?: string; links?: string[]; ref_url?: string }>;
+    normalNodes: Array<{ tags: string[]; summary: string; content?: string; flags: number; sourceNodeId?: string; links?: string[]; ref_url?: string }>;
+    ghostNodes: Array<{ tags: string[]; summary: string; content?: string; flags: number; sourceNodeId?: string; links?: string[]; ref_url?: string }>;
+    evaluations: Array<{ nodeId: string; h: number; w: number; d: number }>;
+    timestamp: number;
+  }): Promise<{ success: boolean; nodeCount: number; evaluationCount: number; errors?: string[] }> {
+    return this.sendRequest("submitCapsule", { capsule });
+  }
+
   /** Acknowledge and disconnect. Server sends farewell then closes. */
   async acknowledge(): Promise<void> {
     try {

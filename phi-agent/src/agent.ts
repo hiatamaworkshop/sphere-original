@@ -51,7 +51,15 @@ interface BusHint {
   receivedAt: number;
 }
 
-/** Node encountered during exploration — what the agent "saw" */
+/** Node encountered during exploration — what the agent "saw".
+ *  Base fields (nodeId..flags) are always present.
+ *  Optional fields (content, kind, refUrl) are controlled by HarvestPolicy.
+ *
+ *  Relationship to ExperienceCapsule:
+ *  - Encounter = observation record (Sphere → agent → external consumer)
+ *  - NodeSeed  = contribution record (agent → Sphere, via submitCapsule)
+ *  - Conversion: buildCapsuleFromEncounters() extracts evaluations from encounters.
+ *    High-end agents may also generate NodeSeeds with original content. */
 interface Encounter {
   nodeId: string;
   tags: string[];
@@ -846,6 +854,36 @@ export class PhiAgent {
       timestamp: this.sessionStart,
     });
     return posts.map(p => p.text);
+  }
+
+  /** Convert encounters to ExperienceCapsule format for submission.
+   *  Future: high-end agents can contribute synthesized knowledge back to Sphere.
+   *  phi-agent (phi3:mini) does not call this — evaluate-only agent.
+   *  Capsule schema v4: topTier/normalNodes carry NodeSeeds, evaluations carry opinions. */
+  private buildCapsuleFromEncounters(): {
+    schemaVersion: number;
+    topTier: Array<{ tags: string[]; summary: string; content?: string; flags: number; ref_url?: string }>;
+    normalNodes: Array<{ tags: string[]; summary: string; content?: string; flags: number; ref_url?: string }>;
+    ghostNodes: never[];
+    evaluations: Array<{ nodeId: string; h: number; w: number; d: number }>;
+    timestamp: number;
+  } {
+    // Evaluations: all encounters with non-zero scores
+    const evaluations = this.encounters
+      .filter(e => e.h > 0 || e.w > 0 || e.d > 0)
+      .map(e => ({ nodeId: e.nodeId, h: e.h, w: e.w, d: e.d }));
+
+    // NodeSeeds: placeholder — high-end agent would generate original content here.
+    // phi-agent has no content generation capability, so topTier/normalNodes stay empty.
+    // A capable agent would populate these with synthesized knowledge (new nodes).
+    return {
+      schemaVersion: 4,
+      topTier: [],
+      normalNodes: [],
+      ghostNodes: [],
+      evaluations,
+      timestamp: Date.now(),
+    };
   }
 
   // ===== Species Memory =====
