@@ -60,7 +60,7 @@ interface BusHint {
  *  - NodeSeed  = contribution record (agent → Sphere, via submitCapsule)
  *  - Conversion: buildCapsuleFromEncounters() extracts evaluations from encounters.
  *    High-end agents may also generate NodeSeeds with original content. */
-interface Encounter {
+export interface Encounter {
   nodeId: string;
   tags: string[];
   summary: string;
@@ -131,6 +131,16 @@ export interface AgentStats {
   error?: string;
 }
 
+/** Full result of a phi-agent session — stats + harvested data.
+ *  App receives this as the return value of agent.run(). */
+export interface AgentResult {
+  stats: AgentStats;
+  encounters: Encounter[];
+  broadcastPosts: string[];
+  narrative: string | null;
+  receipt: { evaluationsApplied: number; autoCapsuleSaved: boolean } | null;
+}
+
 const DEFAULT_AGENT_CONFIG: AgentConfig = {
   query: "knowledge exploration",
   loadout: "balanced",
@@ -187,7 +197,7 @@ export class PhiAgent {
     };
   }
 
-  async run(): Promise<AgentStats> {
+  async run(): Promise<AgentResult> {
     this.running = true;
     this.stats.startTime = Date.now();
     this.sessionStart = Date.now();
@@ -297,7 +307,20 @@ export class PhiAgent {
       this.stats.status = "completed";
       const harvest = await this.harvest();
       await this.depart();
-      await this.homecoming(harvest);
+      const narrative = await this.homecoming(harvest);
+
+      // Optional: push session report to Observatory
+      await this.reportToObservatory(harvest, narrative);
+
+      this.stats.endTime = Date.now();
+      this.running = false;
+      return {
+        stats: this.stats,
+        encounters: harvest.encounters,
+        broadcastPosts: harvest.broadcastPosts,
+        narrative,
+        receipt: harvest.receipt,
+      };
 
     } catch (err) {
       this.stats.status = "completed";  // graceful — not "failed"
@@ -308,7 +331,13 @@ export class PhiAgent {
 
     this.stats.endTime = Date.now();
     this.running = false;
-    return this.stats;
+    return {
+      stats: this.stats,
+      encounters: [],
+      broadcastPosts: [],
+      narrative: null,
+      receipt: null,
+    };
   }
 
   stop(): void {
@@ -784,9 +813,10 @@ export class PhiAgent {
 
   /** Homecoming: post-disconnect persistence and output.
    *  All external writes (Digestor, console) happen here — no Sphere connection needed.
-   *  Future: reportToFacade(harvest) would be called between depart() and homecoming(). */
-  private async homecoming(harvest: SessionHarvest): Promise<void> {
+   *  Returns the narrative string (or null if response=false / no encounters). */
+  private async homecoming(harvest: SessionHarvest): Promise<string | null> {
     const loadoutName = this.gate.loadoutName;
+    let narrative: string | null = null;
 
     // 1. eval-log → Digestor (species memory)
     await this.persistEvalLog();
@@ -828,6 +858,7 @@ export class PhiAgent {
       try {
         const response = await this.generateReturnResponse();
         if (response) {
+          narrative = response;
           console.log("\n== NARRATIVE START ==");
           console.log(response);
           console.log("== NARRATIVE END ==\n");
@@ -836,6 +867,47 @@ export class PhiAgent {
       } catch (err) {
         this.log(`Return response failed: ${err}`);
       }
+    }
+
+    return narrative;
+  }
+
+  /** Push session report to Observatory (optional, fire-and-forget).
+   *  Enabled by OBSERVATORY_URL env var. Failure is non-fatal. */
+  private async reportToObservatory(
+    harvest: SessionHarvest,
+    narrative: string | null,
+  ): Promise<void> {
+    const url = process.env.OBSERVATORY_URL;
+    if (!url) return;
+
+    const report = {
+      type: "agent-session",
+      loadout: this.gate.loadoutName,
+      model: this.ollama.modelName,
+      query: this.config.query,
+      timestamp: this.sessionStart,
+      duration: Date.now() - this.sessionStart,
+      stats: {
+        cycles: this.stats.cycles,
+        nodesExamined: this.stats.nodesExamined,
+        evaluations: this.stats.evaluations,
+      },
+      encounters: harvest.encounters,
+      broadcastPosts: harvest.broadcastPosts,
+      narrative,
+    };
+
+    try {
+      const res = await fetch(`${url}/report`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(report),
+      });
+      if (res.ok) this.log(`Observatory report sent`);
+      else this.log(`Observatory report failed: ${res.status}`);
+    } catch (err) {
+      this.log(`Observatory unreachable: ${err}`);
     }
   }
 
