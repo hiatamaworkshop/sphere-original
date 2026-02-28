@@ -10,8 +10,8 @@
 
   "metadata": {
     "_layer": "L0 Identity + L2 Interpretation (metricSemantics, harvestPolicy)",
-    "sphereId": "sphere-genesis",
-    "sphere_name": "Sphere Genesis",
+    "sphereId": "sphere-original",
+    "sphere_name": "Sphere Original",
     "description": "汎用知識スフィア — 実験・開発用",
     "version": "0.3.0",
     "apiVersion": "1",
@@ -42,6 +42,25 @@
       "summaryMaxLength": 200,
       "carryRefUrl": true,
       "carryKind": true
+    },
+    "services": {
+      "_comment": "L0 — Infrastructure dependencies exposed in /sphere/manifest",
+      "embedding": {
+        "provider": "local",
+        "model": "Xenova/all-MiniLM-L6-v2",
+        "dimension": 384
+      },
+      "refDb": {
+        "backend": "turso",
+        "_fallback": "map (in-memory)",
+        "note": "REFDB_BACKEND env selects backend at runtime"
+      },
+      "projDb": {
+        "backend": "in-memory",
+        "snapshot": "turso",
+        "note": "Map in process, periodic snapshot to Turso"
+      },
+      "infrastructure": ["redis", "postgres-pgvector", "minio"]
     }
   },
 

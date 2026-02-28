@@ -30,7 +30,7 @@ import type { SanctificationNeuron } from "./sanctification/index.js";
 const SPHERE_VERSION = "0.1.0";
 const SPHERE_NAME = "Sphere";
 const SPHERE_DESCRIPTION = "A high-dimensional semantic space where information metabolizes and evolves";
-const SPHERE_ID_DEFAULT = "sphere-unknown";
+const SPHERE_ID_DEFAULT = "sphere-original";
 
 /**
  * External Service Guard Middleware
@@ -643,6 +643,7 @@ export class PeripheryServer {
         apiVersion: (this.sphereMetadata.apiVersion as string) ?? "1",
         confidenceHints: (this.sphereMetadata.confidenceHints as Record<string, number>) ?? {},
         metricSemantics: (this.sphereMetadata.metricSemantics as Record<string, unknown>) ?? null,
+        services: (this.sphereMetadata.services as Record<string, unknown>) ?? null,
       });
     });
 
