@@ -36,29 +36,31 @@ import type {
 } from "../types/capsule.js";
 import { NodeFlag } from "@sphere/renal-core";
 
+type FlagPattern = { pattern: RegExp; flags: number };
+
 /**
- * Tag patterns for 16bit classification (3-layer + Special)
+ * Config shape for domain-specific Cognitive layer patterns.
+ * Loaded from sphere.config.json → periphery.tagger.cognitivePatterns
+ * See: LIFELOG_SPHERE_DESIGN.md §9.2
+ */
+export interface CognitivePatternsConfig {
+  Sharp?:   { pattern: string; description?: string };
+  Fuzzy?:   { pattern: string; description?: string };
+  Tensile?: { pattern: string; description?: string };
+  Settled?: { pattern: string; description?: string };
+}
+
+/**
+ * Fixed flag patterns — universal across all Sphere domains.
+ * These are NOT configurable. Physics-layer classification.
  *
  * [Design] FLAG_SYSTEM_REDESIGN.md
  *   - Temporal (bits 0-3): when does this matter?     — ユニバーサル
  *   - Density (bits 4-7): how much is packed in?      — ユニバーサル
- *   - Cognitive (bits 8-11): epistemic state            — ドメイン固有 (text gate)
  *   - Special (bits 12-15): system/user metadata       — ユニバーサル
  *
- * [Cognitive Layer — Domain Specific]
- *   text gate:    Sharp / Fuzzy / Tensile / Settled
- *   numeric gate: Precise / Noisy / Volatile / Stable (将来)
- *   signal gate:  Coherent / Distorted / Transient / Steady (将来)
- *   → ビット位置は共通、意味テーブルのみ差し替え
- *
- * [Philosophy] Sparse patterns. Agents compensate via Loadout.
- * [Principle] ビットポジションの確定が本質。物理効果は後から配線できる。
- *   - Temporal/Special: 物理配線済み
- *   - Density: Authority のみ配線。Dense/Sparse/Composite の物理効果は未確定
- *   - Cognitive: 物理効果なし (FastGate scoring のみ — 意図通り)
- *
  * [Dynamic flags — Arbiter/Bookkeeper 管轄, Tagger は付与しない]
- *   - Hot (0x0008): h >= hotHeatThreshold で Arbiter が付与
+ *   - 0x0008: Reserved (was Hot — removed: heat-only flag violates metric independence)
  *   - SystemCore (0x2000): Relic seed / Amber ascension で Bookkeeper が付与 (代謝凍結)
  *   - Compressed (0x4000): Fossil 化時に Arbiter が付与
  *   - Candidate (0x8000): Ascension 冷却期間中に Arbiter が付与
@@ -70,7 +72,7 @@ import { NodeFlag } from "@sphere/renal-core";
  *   - tierFlags.top = 0x0002 (config) → topTier に TemporalLong 自動付与 (Packer 側)
  *     trending topTier は TemporalShort + TemporalLong が共存する
  */
-const TAG_FLAG_PATTERNS: { pattern: RegExp; flags: number }[] = [
+const FIXED_FLAG_PATTERNS: FlagPattern[] = [
   // --- Temporal Layer (bits 0-3) ---
 
   // TemporalShort (0x0001): time-sensitive, decays quickly
@@ -117,35 +119,6 @@ const TAG_FLAG_PATTERNS: { pattern: RegExp; flags: number }[] = [
     flags: NodeFlag.Authority,
   },
 
-  // --- Cognitive Layer (bits 8-11) --- ドメイン固有 (text gate)
-  // Conservative start: regex-detectable patterns only
-  // Future: LLM-based Tagger, or entirely different gate type (numeric/signal/graph)
-  // Bit positions (0x0100-0x0800) are universal; semantic meaning changes per gate type
-
-  // Sharp (0x0100): 明確、一意的解釈、境界明瞭
-  {
-    pattern: /\b(definition|theorem|proof|conclusion|precisely|exact|formula|axiom|law)\b/i,
-    flags: NodeFlag.Sharp,
-  },
-
-  // Fuzzy (0x0200): 曖昧、複数解釈可能、未確定
-  {
-    pattern: /\b(hypothesis|maybe|perhaps|unclear|ambiguous|uncertain|speculative|conjecture|tentative|approximate)\b/i,
-    flags: NodeFlag.Fuzzy,
-  },
-
-  // Tensile (0x0400): 内部対立・矛盾を内包、未解決
-  {
-    pattern: /\b(debate|controversy|paradox|contradiction|versus|conflict|unresolved|dilemma|tension|disputed)\b/i,
-    flags: NodeFlag.Tensile,
-  },
-
-  // Settled (0x0800): 決着済み、合意形成済み、収束
-  {
-    pattern: /\b(established|consensus|standard|proven|accepted|settled|canonical|codified|ratified|definitive)\b/i,
-    flags: NodeFlag.Settled,
-  },
-
   // --- Special Layer (bits 12-15) ---
 
   // UserMarked (0x1000): user bookmarks
@@ -156,34 +129,89 @@ const TAG_FLAG_PATTERNS: { pattern: RegExp; flags: number }[] = [
 
   // SystemCore (0x2000): 付与禁止 — 代謝凍結フラグのため Tagger が付与してはならない
   // Relic seed data と Bookkeeper (Amber ascension) のみが管理する
-  // See: Dynamic flags コメント (上記)
 ];
 
 /**
- * Compute 16bit flags from tags array
+ * Default Cognitive layer patterns — knowledge sphere (text gate).
+ * Used when sphere.config.json has no cognitivePatterns section.
  *
- * [Algorithm]
- *   1. Combine all tags into searchable text
- *   2. Match against known patterns
- *   3. OR all matching flags together
+ * [Cognitive Layer (bits 8-11) — Domain Specific]
+ *   text gate:    Sharp / Fuzzy / Tensile / Settled
+ *   numeric gate: Precise / Noisy / Volatile / Stable (将来)
+ *   signal gate:  Coherent / Distorted / Transient / Steady (将来)
+ *   → ビット位置は共通、意味テーブルのみ差し替え
  *
- * @param tags - Array of tag strings
- * @returns 16bit NodeFlag combination
+ * [Philosophy] Sparse patterns. Agents compensate via Loadout.
+ * [Principle] ビットポジションの確定が本質。物理効果は後から配線できる。
+ *   - Cognitive: 物理効果なし (FastGate scoring のみ — 意図通り)
  */
-function computeClassificationFlags(tags: string[]): number {
-  const tagText = tags.join(" ").toLowerCase();
-  let flags = 0;
+const DEFAULT_COGNITIVE_PATTERNS: CognitivePatternsConfig = {
+  Sharp:   { pattern: "\\b(definition|theorem|proof|conclusion|precisely|exact|formula|axiom|law)\\b" },
+  Fuzzy:   { pattern: "\\b(hypothesis|maybe|perhaps|unclear|ambiguous|uncertain|speculative|conjecture|tentative|approximate)\\b" },
+  Tensile: { pattern: "\\b(debate|controversy|paradox|contradiction|versus|conflict|unresolved|dilemma|tension|disputed)\\b" },
+  Settled: { pattern: "\\b(established|consensus|standard|proven|accepted|settled|canonical|codified|ratified|definitive)\\b" },
+};
 
-  for (const { pattern, flags: flagValue } of TAG_FLAG_PATTERNS) {
-    if (pattern.test(tagText)) {
-      flags |= flagValue;
+/** Cognitive flag name → NodeFlag bit mapping (fixed — bit positions are universal) */
+const COGNITIVE_FLAG_MAP: Record<string, number> = {
+  Sharp:   NodeFlag.Sharp,    // 0x0100
+  Fuzzy:   NodeFlag.Fuzzy,    // 0x0200
+  Tensile: NodeFlag.Tensile,  // 0x0400
+  Settled: NodeFlag.Settled,  // 0x0800
+};
+
+/** Build Cognitive layer FlagPatterns from config (or defaults) */
+function buildCognitivePatterns(config?: CognitivePatternsConfig): FlagPattern[] {
+  const src = { ...DEFAULT_COGNITIVE_PATTERNS, ...config };
+  const patterns: FlagPattern[] = [];
+
+  for (const [name, flagBit] of Object.entries(COGNITIVE_FLAG_MAP)) {
+    const entry = src[name as keyof CognitivePatternsConfig];
+    if (!entry?.pattern) continue;
+    try {
+      patterns.push({ pattern: new RegExp(entry.pattern, "i"), flags: flagBit });
+    } catch (e) {
+      console.warn(`[Tagger] Invalid cognitive pattern for ${name}: ${(e as Error).message}`);
     }
   }
 
-  return flags;
+  return patterns;
 }
 
 export class Tagger {
+  private readonly patterns: FlagPattern[];
+
+  constructor(cognitiveConfig?: CognitivePatternsConfig) {
+    this.patterns = [
+      ...FIXED_FLAG_PATTERNS,
+      ...buildCognitivePatterns(cognitiveConfig),
+    ];
+    const cogSrc = cognitiveConfig ? "config" : "defaults";
+    const cogCount = this.patterns.length - FIXED_FLAG_PATTERNS.length;
+    console.log(`[Tagger] initialized: ${FIXED_FLAG_PATTERNS.length} fixed + ${cogCount} cognitive (${cogSrc})`);
+  }
+
+  /**
+   * Compute 16bit flags from tags array
+   *
+   * [Algorithm]
+   *   1. Combine all tags into searchable text
+   *   2. Match against fixed + cognitive patterns
+   *   3. OR all matching flags together
+   */
+  private computeClassificationFlags(tags: string[]): number {
+    const tagText = tags.join(" ").toLowerCase();
+    let flags = 0;
+
+    for (const { pattern, flags: flagValue } of this.patterns) {
+      if (pattern.test(tagText)) {
+        flags |= flagValue;
+      }
+    }
+
+    return flags;
+  }
+
   /**
    * Tag capsule nodes with tier, rank, and classification flags
    *
@@ -205,7 +233,7 @@ export class Tagger {
       ...seed,
       tier: "top" as const,
       rank: i,
-      classificationFlags: computeClassificationFlags(seed.tags),
+      classificationFlags: this.computeClassificationFlags(seed.tags),
     }));
 
     // === Normal: Add tier/rank/flags ===
@@ -213,7 +241,7 @@ export class Tagger {
       ...seed,
       tier: "normal" as const,
       rank: i + capsule.topTier.length,
-      classificationFlags: computeClassificationFlags(seed.tags),
+      classificationFlags: this.computeClassificationFlags(seed.tags),
     }));
 
     // === Ghost: Add tier/rank/flags ===
@@ -221,7 +249,7 @@ export class Tagger {
       ...seed,
       tier: "ghost" as const,
       rank: i + capsule.topTier.length + capsule.normalNodes.length,
-      classificationFlags: computeClassificationFlags(seed.tags),
+      classificationFlags: this.computeClassificationFlags(seed.tags),
     }));
 
     // === Evaluations: Pass-through unchanged ===

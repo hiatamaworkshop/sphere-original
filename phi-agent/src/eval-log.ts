@@ -115,7 +115,7 @@ export interface NarrativeEntry {
   duration?: number;
   /** LLM-generated narrative text */
   narrative: string;
-  /** Nodes encountered during session */
+  /** Nodes encountered during session (matches Encounter interface in agent.ts) */
   encounters?: Array<{
     nodeId: string;
     tags: string[];
@@ -123,7 +123,10 @@ export interface NarrativeEntry {
     h: number;
     w: number;
     d: number;
-    flags?: number;
+    flags: number;
+    content?: string;
+    kind?: string;
+    refUrl?: string;
   }>;
   /** Agent feelings at return time */
   feelings?: {

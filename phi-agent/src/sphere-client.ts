@@ -8,6 +8,7 @@
 // Energy tracking uses costs from the Rulebook (config-authoritative).
 
 import WebSocket from "ws";
+import type { MetricSemantics, HarvestPolicy } from "./fast-gate.js";
 
 // ============================================================
 // Types (mirroring gateway protocol)
@@ -137,9 +138,21 @@ export class SphereClient {
   private readonly minRequestInterval = 350; // ms — gateway rate limit: 3 actions/sec
   private positionedResolve: (() => void) | null = null;
   private positionedPromise: Promise<void> | null = null;
+  private _metricSemantics: MetricSemantics | undefined;
+  private _harvestPolicy: HarvestPolicy | undefined;
 
   constructor(config: Partial<SphereConfig> = {}) {
     this.config = { ...DEFAULT_CONFIG, ...config };
+  }
+
+  /** MetricSemantics from Sphere rulebook (available after preconnect) */
+  get metricSemantics(): MetricSemantics | undefined {
+    return this._metricSemantics;
+  }
+
+  /** HarvestPolicy from Sphere rulebook (available after preconnect) */
+  get harvestPolicy(): HarvestPolicy | undefined {
+    return this._harvestPolicy;
   }
 
   onEvent(handler: SphereEventHandler): void {
@@ -148,6 +161,52 @@ export class SphereClient {
 
   private emit(event: SphereEvent): void {
     this.eventHandler?.(event);
+  }
+
+  // --- Pre-flight: fetch rulebook before WebSocket dive ---
+
+  /**
+   * Pre-flight: fetch rulebook via HTTP before WebSocket dive.
+   * Extracts MetricSemantics and energy costs so FastGate can be
+   * configured BEFORE entering the Sphere.
+   */
+  async preconnect(): Promise<void> {
+    try {
+      const res = await fetch(`${this.config.peripheryUrl}/rulebook`);
+      if (!res.ok) throw new Error(`${res.status}`);
+      const rb = (await res.json()) as any;
+
+      // Extract energy config (same logic as fetchRulebook)
+      const ec = rb.constraints?.energy;
+      if (ec) {
+        this.energy = ec.initial ?? FALLBACK_INITIAL_ENERGY;
+        this.costs = {
+          sense:    ec.costs?.sense    ?? FALLBACK_COSTS.sense,
+          scanL1:   ec.costs?.scanL1   ?? FALLBACK_COSTS.scanL1,
+          move:     ec.costs?.move     ?? FALLBACK_COSTS.move,
+          focus:    ec.costs?.focus    ?? FALLBACK_COSTS.focus,
+          warp:     ec.costs?.warp     ?? FALLBACK_COSTS.warp,
+          evaluate: ec.costs?.evaluate ?? FALLBACK_COSTS.evaluate,
+          emitBus:  ec.costs?.emitBus  ?? FALLBACK_COSTS.emitBus,
+        };
+      }
+
+      // Extract MetricSemantics (domain-specific evaluation axis semantics)
+      if (rb.metricSemantics) {
+        this._metricSemantics = rb.metricSemantics as MetricSemantics;
+        console.log(`[SphereClient] MetricSemantics: [${this._metricSemantics.names.join(",")}] hit=${this._metricSemantics.hitThreshold} miss=${this._metricSemantics.missThreshold}`);
+      }
+
+      // Extract HarvestPolicy (Sphere-configurable data carry-back rules)
+      if (rb.harvestPolicy) {
+        this._harvestPolicy = rb.harvestPolicy as HarvestPolicy;
+        console.log(`[SphereClient] HarvestPolicy: carryContent=${this._harvestPolicy.carryContent} summaryMax=${this._harvestPolicy.summaryMaxLength}`);
+      }
+
+      console.log(`[SphereClient] Preconnect OK: energy=${this.energy}`);
+    } catch (e) {
+      console.warn(`[SphereClient] Preconnect failed (using defaults): ${e}`);
+    }
   }
 
   // --- Connection lifecycle ---
@@ -307,6 +366,20 @@ export class SphereClient {
   /** View notable nodes visited, ranked by focus count. */
   async viewDiscoveries(): Promise<any> {
     return (await this.sendRequest<{ data: any }>("viewDiscoveries", {})).data;
+  }
+
+  /** Submit an ExperienceCapsule with NodeSeeds for incarnation (Vestibule command).
+   *  Only available in vestibule. Requires Gatekeeper validation on server.
+   *  Type defined inline (phi-agent does not depend on periphery types). */
+  async submitCapsule(capsule: {
+    schemaVersion: number;
+    topTier: Array<{ tags: string[]; summary: string; content?: string; flags: number; sourceNodeId?: string; links?: string[]; ref_url?: string }>;
+    normalNodes: Array<{ tags: string[]; summary: string; content?: string; flags: number; sourceNodeId?: string; links?: string[]; ref_url?: string }>;
+    ghostNodes: Array<{ tags: string[]; summary: string; content?: string; flags: number; sourceNodeId?: string; links?: string[]; ref_url?: string }>;
+    evaluations: Array<{ nodeId: string; h: number; w: number; d: number }>;
+    timestamp: number;
+  }): Promise<{ success: boolean; nodeCount: number; evaluationCount: number; errors?: string[] }> {
+    return this.sendRequest("submitCapsule", { capsule });
   }
 
   /** Acknowledge and disconnect. Server sends farewell then closes. */

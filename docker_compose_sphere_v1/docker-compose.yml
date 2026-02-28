@@ -101,6 +101,9 @@ services:
       MINIO_PORT: 9000
       MINIO_ACCESS_KEY: ${MINIO_ROOT_USER:-sphere_admin}
       MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-sphere_admin_password}
+      REFDB_BACKEND: "${REFDB_BACKEND:-map}"
+      TURSO_URL: "${TURSO_URL:-}"
+      TURSO_AUTH_TOKEN: "${TURSO_AUTH_TOKEN:-}"
     ports:
       - "3001:3001"
     volumes:
@@ -197,11 +200,15 @@ services:
     container_name: sphere-digestor
     environment:
       DATA_DIR: /app/data
+      SPHERE_URL: http://periphery:3001
       DIGEST_INTERVAL_MS: "${DIGEST_INTERVAL_MS:-10800000}"
       HALF_LIFE_HOURS: "${HALF_LIFE_HOURS:-72}"
       MIN_EVALS: "50"
       MIN_PER_SPECIES: "20"
       GATEWAY_PORT: "5000"
+      STORAGE_BACKEND: "${STORAGE_BACKEND:-file}"
+      TURSO_URL: "${TURSO_URL:-}"
+      TURSO_AUTH_TOKEN: "${TURSO_AUTH_TOKEN:-}"
     ports:
       - "5000:5000"
     volumes:

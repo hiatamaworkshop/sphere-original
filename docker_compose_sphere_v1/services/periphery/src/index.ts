@@ -47,6 +47,8 @@ import {
   MapReferenceRepository,
   MapProjectionRepository,
   MapSpatialFieldRepository,
+  TursoReferenceRepository,
+  ProjectionSnapshot,
 } from "./repository/index.js";
 import { SphereCoreAdapter } from "./gateway/sphere-core-adapter.js";
 
@@ -108,9 +110,7 @@ const renalConfig = {
   weightDecayFactor: decayValues.weightDecayFactor * decayIntensity,
   amberHeatThreshold: sphereConfig.renal_core.thresholds.amberHeat,
   amberWeightThreshold: sphereConfig.renal_core.thresholds.amberWeight,
-  fossilHeatThreshold: sphereConfig.renal_core.thresholds.fossilHeat,
-  erosionHeatThreshold: sphereConfig.renal_core.thresholds.erosionHeat,
-  ghostHeatThreshold: sphereConfig.renal_core.thresholds.ghostHeat,
+
   ghostTTLMultiplier: sphereConfig.renal_core.ghost.ttlMultiplier,
   planktonConversionRate: sphereConfig.renal_core.spatial.planktonConversionRate,
   fluxDecayRate: decayValues.fluxDecayRate * decayIntensity,
@@ -139,10 +139,22 @@ console.log(`🌐 Sphere Project - Phase 3: Periphery [${sphereMode.toUpperCase(
 console.log("=".repeat(60));
 
 // ===== Initialize Repositories (DB Abstraction Layer) =====
-console.log("\n[Init] Creating repositories (Map implementation for dev)...");
+const refDbBackend = process.env.REFDB_BACKEND ?? "map";
+console.log(`\n[Init] Creating repositories (RefDB: ${refDbBackend})...`);
 
-// Repository instances (swap to Redis/PostgreSQL in production)
-const referenceRepo = new MapReferenceRepository();
+// RefDB: Map (dev) or Turso (production — write-through)
+let referenceRepo: MapReferenceRepository | TursoReferenceRepository;
+if (refDbBackend === "turso") {
+  const tursoUrl = process.env.TURSO_URL;
+  if (!tursoUrl) throw new Error("REFDB_BACKEND=turso requires TURSO_URL");
+  referenceRepo = new TursoReferenceRepository(tursoUrl, process.env.TURSO_AUTH_TOKEN);
+  await (referenceRepo as TursoReferenceRepository).init();
+  console.log("  ✅ TursoReferenceRepository (RefDB — write-through)");
+} else {
+  referenceRepo = new MapReferenceRepository();
+  console.log("  ✅ MapReferenceRepository (RefDB — in-memory)");
+}
+
 const projectionRepo = new MapProjectionRepository();
 const spatialRepo = new MapSpatialFieldRepository();
 
@@ -152,8 +164,20 @@ const projectionDB = projectionRepo.getInternalMap();
 const referenceDB = referenceRepo.getInternalMap();
 const spatialFields = spatialRepo.getInternalMap();
 
-console.log("  ✅ MapReferenceRepository (RefDB)");
-console.log("  ✅ MapProjectionRepository (ProjDB)");
+// ProjDB Snapshot: Restore from Turso if RefDB backend is Turso
+// [Design] ProjDB snapshot captures evolved metrics (h/w/d/ttl/kind after physics).
+//   RefDB holds node identity + initial state; snapshot holds runtime state.
+let projectionSnapshot: ProjectionSnapshot | null = null;
+if (refDbBackend === "turso") {
+  const tursoUrl = process.env.TURSO_URL!;
+  projectionSnapshot = new ProjectionSnapshot(tursoUrl, process.env.TURSO_AUTH_TOKEN);
+  await projectionSnapshot.init();
+  const restored = await projectionSnapshot.restore(projectionDB, referenceDB);
+  console.log(`  ✅ ProjectionSnapshot (ProjDB — ${restored} nodes restored from Turso)`);
+} else {
+  console.log("  ✅ MapProjectionRepository (ProjDB — in-memory)");
+}
+
 console.log("  ✅ MapSpatialFieldRepository");
 
 // ===== Initialize RenalCore (Core mode only) =====
@@ -205,15 +229,10 @@ console.log("[Init] Starting RenalCore heartbeat (1 tick/second)...");
 // Arbiter - observes, judges, and queues state transitions
 // [Design] RenalCore handles physics only, Arbiter queues transitions, Bookkeeper executes
 const arbiterSettings = sphereConfig.periphery?.arbiter ?? {};
-// [Config Priority] nodeFlags.dynamicThresholds > arbiter.dynamicFlags
-const dynamicThresholds = config.nodeFlags?.dynamicThresholds;
 const arbiterConfig = {
   erosionScoreThreshold: arbiterSettings.erosion?.scoreThreshold ?? 200,
   erosionCooldownMs: arbiterSettings.erosion?.cooldownMs ?? 300000,
   pauseErosionBoost: renalConfig.pauseErosionBoost,
-  // Dynamic Flags thresholds (from unified nodeFlags config)
-  hotHeatThreshold: dynamicThresholds?.hotHeatThreshold
-    ?? arbiterSettings.dynamicFlags?.hotHeatThreshold ?? 150,
   // Ascension cooldown settings (evaluation freeze + composite score)
   ascensionCooldownMs: arbiterSettings.ascension?.cooldownMs ?? 600000,
   ascensionScoreThreshold: arbiterSettings.ascension?.scoreThreshold ?? 1100,
@@ -547,6 +566,14 @@ setInterval(async () => {
       if (patrolResult.decomposed.length > 0) {
         await bookkeeper.applyDecomposition(patrolResult.decomposed);
       }
+
+      // === ProjDB Snapshot: Save evolved metrics to Turso ===
+      // [Design] Piggyback on Patrol interval (30 min) — "細かくする必要は全くない"
+      if (projectionSnapshot) {
+        const snapshotCount = projectionDB.size;
+        await projectionSnapshot.snapshot(projectionDB);
+        console.log(`[ProjDB] Snapshot: ${snapshotCount} nodes saved to Turso`);
+      }
     }
   }
 }, 1000); // 1 tick per second
@@ -584,7 +611,8 @@ const entryBuffer = new EntryBuffer(parser, {
 const gatekeeper = new Gatekeeper(schemaRegistry);  // Schema-driven validation
 const incarnationVectorBuffer = new IncarnationBuffer(parser);  // summary vectorization buffer (batch)
 const incarnationParser = new IncarnationParser(incarnationVectorBuffer);  // summary → vector (spatial coordinates)
-const tagger = new Tagger();  // tags → 16bit flags (semantic classification)
+const cognitivePatterns = sphereConfig.periphery?.tagger?.cognitivePatterns;
+const tagger = new Tagger(cognitivePatterns);  // tags → 16bit flags (semantic classification)
 const packer = new Packer(config);
 
 // Evaluation config (2-Layer coefficients from sphere.config.json)
@@ -818,6 +846,13 @@ async function shutdown(signal: string) {
   await incarnationVectorBuffer.forceFlush();
   await nodeIngestBuffer.forceFlush();
   console.log("[Shutdown] ✅ Buffers flushed");
+
+  // Save final ProjDB snapshot to Turso
+  if (projectionSnapshot) {
+    await projectionSnapshot.snapshot(projectionDB);
+    projectionSnapshot.close();
+    console.log("[Shutdown] ✅ ProjDB snapshot saved");
+  }
 
   console.log("[Shutdown] 👋 Goodbye");
   process.exit(0);

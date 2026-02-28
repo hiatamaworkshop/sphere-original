@@ -178,6 +178,8 @@ export const rulebook = {
 export function getRulebookResponse(configOverrides?: {
   session?: { ttlSeconds: number; warningBeforeEndSeconds: number };
   energy?: { initial: number; warningThreshold: number; costs: Record<string, number> };
+  metricSemantics?: Record<string, unknown>;
+  harvestPolicy?: Record<string, unknown>;
 }) {
   // Build agent-facing constraints (exclude incarnation — internal only)
   const { incarnation: _inc, ...agentConstraints } = rulebook.constraints;
@@ -220,6 +222,9 @@ export function getRulebookResponse(configOverrides?: {
     contribution: rulebook.contribution,
     greeting: rulebook.greeting,
     constraints,
+    // Domain-specific metric interpretation (from sphere.config.json metadata)
+    ...(configOverrides?.metricSemantics && { metricSemantics: configOverrides.metricSemantics }),
+    ...(configOverrides?.harvestPolicy && { harvestPolicy: configOverrides.harvestPolicy }),
   };
 }
 

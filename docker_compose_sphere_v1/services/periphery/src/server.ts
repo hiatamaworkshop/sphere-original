@@ -539,11 +539,12 @@ export class PeripheryServer {
       // --- Distributions ---
       const heats: number[] = [];
       const weights: number[] = [];
+      const decays: number[] = [];
       const flagCounts: Record<number, number> = {};
 
       // All defined flag bits for distribution
       const flagBits = [
-        NodeFlag.TemporalShort, NodeFlag.TemporalLong, NodeFlag.TemporalCyclic, NodeFlag.Hot,
+        NodeFlag.TemporalShort, NodeFlag.TemporalLong, NodeFlag.TemporalCyclic,
         NodeFlag.Dense, NodeFlag.Sparse, NodeFlag.Composite, NodeFlag.Authority,
         NodeFlag.Sharp, NodeFlag.Fuzzy, NodeFlag.Tensile, NodeFlag.Settled,
         NodeFlag.UserMarked, NodeFlag.SystemCore, NodeFlag.Compressed, NodeFlag.Candidate,
@@ -554,6 +555,7 @@ export class PeripheryServer {
         counts.total++;
         heats.push(node.metrics.h);
         weights.push(node.metrics.w);
+        decays.push(node.metrics.d);
 
         // Count each flag bit
         for (const bit of flagBits) {
@@ -592,6 +594,7 @@ export class PeripheryServer {
         nodeCount: counts,
         heatDistribution: computeStats(heats),
         weightDistribution: computeStats(weights),
+        decayDistribution: computeStats(decays),
         flagDistribution: flagCounts,
         flux: { total: Math.round(fluxTotal * 100) / 100 },
         field: field ? {
@@ -633,6 +636,7 @@ export class PeripheryServer {
         mode: (this.sphereMetadata.mode as string) ?? "core",
         apiVersion: (this.sphereMetadata.apiVersion as string) ?? "1",
         confidenceHints: (this.sphereMetadata.confidenceHints as Record<string, number>) ?? {},
+        metricSemantics: (this.sphereMetadata.metricSemantics as Record<string, unknown>) ?? null,
       });
     });
 
@@ -681,6 +685,9 @@ export class PeripheryServer {
           kind: node.kind,
           tags: node.payload?.tags ?? [],
           heat: node.metrics.h,
+          weight: node.metrics.w,
+          decay: node.metrics.d,
+          timestamp: node.timestamp,
           flags: node.metrics.flg,
           ref_url: node.payload?.ref_url,
         }));
@@ -707,6 +714,8 @@ export class PeripheryServer {
       res.json(getRulebookResponse({
         session: this.config.session,
         energy: this.config.energy,
+        metricSemantics: this.sphereMetadata.metricSemantics as Record<string, unknown>,
+        harvestPolicy: this.sphereMetadata.harvestPolicy as Record<string, unknown>,
       }));
     });
 

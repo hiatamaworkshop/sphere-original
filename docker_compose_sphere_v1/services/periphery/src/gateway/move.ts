@@ -7,9 +7,10 @@
  *   - Computation Layer: 384-dim precise (internal)
  *
  * [Movement Layers]
- *   Layer 0: drift - exploration, follow heat gradient
  *   Layer 1: toward signature - tracking scan result
  *   Layer 2: toNode - revisiting known node
+ *
+ * [Removed] drift/gravity system — was dead code (always received empty nodes array)
  */
 
 import type { SphereNode } from "@sphere/renal-core";
@@ -18,8 +19,6 @@ import {
   normalize,
   add,
   scale,
-  weightedSum,
-  randomUnitVector,
   subtract,
 } from "../lib/vector.js";
 import type {
@@ -31,7 +30,6 @@ import type {
   MoveResultInternal,
   DistanceLevel,
   HeatLevel,
-  DriftMode,
 } from "../types/movement.js";
 import { DEFAULT_MOVE_CONFIG, DEFAULT_SCAN_CONFIG } from "../types/movement.js";
 
@@ -168,7 +166,7 @@ function quantizeHeat(
  *
  * [Design] Uniform range (baseRange only). Heat-based visibility was removed —
  *          detection bias belongs in agent layer (modeWeights / Weapon).
- * [Design] Cold nodes are invisible (minHeat filter)
+ * [Design] Low-presence nodes are invisible (minPresence filter: h + w)
  * [Design] Results are capped (maxResults)
  */
 function scan(
@@ -184,8 +182,8 @@ function scan(
     // Skip nodes without vector
     if (!node.vector || node.vector.length === 0) continue;
 
-    // Skip cold nodes
-    if (node.metrics.h < config.minHeat) continue;
+    // Skip low-presence nodes (h + w below threshold)
+    if ((node.metrics.h + node.metrics.w) < config.minPresence) continue;
 
     const dist = cosineDistance(agentVector, node.vector);
 
@@ -216,101 +214,6 @@ function scan(
 }
 
 // ============================================================
-// Drift Calculation
-// ============================================================
-
-/**
- * Calculate gravity vector from nearby nodes
- *
- * [Formula] attraction = (heat / distance²) × weight
- * [Design] Aggregates all nearby attractions into single direction
- */
-function calculateGravity(
-  agentVector: number[],
-  nodes: SphereNode[],
-  config: MoveConfig
-): number[] {
-  const dim = agentVector.length;
-  const gravity = new Array(dim).fill(0);
-
-  for (const node of nodes) {
-    if (!node.vector || node.vector.length !== dim) continue;
-    if (node.metrics.h < config.scan.minHeat) continue;
-
-    const dist = cosineDistance(agentVector, node.vector);
-    if (dist < 0.001) continue; // Skip self or very close
-
-    // Direction toward node (in 384-dim space)
-    const direction = normalize(subtract(node.vector, agentVector));
-
-    // Attraction strength: heat / distance² × weight
-    const attraction =
-      (node.metrics.h / (dist * dist)) * node.metrics.w;
-
-    // Add to gravity
-    for (let i = 0; i < dim; i++) {
-      gravity[i] += direction[i] * attraction;
-    }
-  }
-
-  return gravity;
-}
-
-/**
- * Calculate drift direction based on mode
- *
- * [Modes]
- *   wander: random + slight gravity
- *   follow: gravity dominant
- *   orbit: perpendicular to gravity (not fully implemented)
- */
-function calculateDrift(
-  agentVector: number[],
-  mode: DriftMode,
-  nodes: SphereNode[],
-  velocity: number[],
-  config: MoveConfig = DEFAULT_MOVE_CONFIG
-): number[] {
-  const dim = agentVector.length;
-  const gravity = calculateGravity(agentVector, nodes, config);
-  const noise = randomUnitVector(dim);
-
-  let direction: number[];
-
-  switch (mode) {
-    case "wander":
-      // Noise dominant, slight gravity, some inertia
-      direction = weightedSum(
-        [noise, normalize(gravity), velocity],
-        [0.6, 0.2, config.physics.inertiaWeight]
-      );
-      break;
-
-    case "follow":
-      // Gravity dominant, slight noise, strong inertia
-      direction = weightedSum(
-        [normalize(gravity), noise, velocity],
-        [0.6, config.physics.noiseWeight, config.physics.inertiaWeight]
-      );
-      break;
-
-    case "orbit":
-      // Perpendicular to gravity (simplified: just use gravity + noise)
-      // Full implementation would calculate cross product in high-dim
-      direction = weightedSum(
-        [noise, normalize(gravity), velocity],
-        [0.4, 0.3, config.physics.inertiaWeight]
-      );
-      break;
-
-    default:
-      direction = noise;
-  }
-
-  return normalize(direction);
-}
-
-// ============================================================
 // Move Execution
 // ============================================================
 
@@ -332,15 +235,7 @@ function executeMove(
   let direction: number[];
 
   // Resolve direction based on intent type
-  if ("drift" in intent) {
-    direction = calculateDrift(
-      agentVector,
-      intent.drift,
-      nodes,
-      velocity,
-      config
-    );
-  } else if ("toward" in intent) {
+  if ("toward" in intent) {
     const targetVector = signatureRegistry.resolve(intent.toward, agentVector);
     if (!targetVector) {
       return {
@@ -389,7 +284,6 @@ function executeMove(
  * Extract steps from intent
  */
 function getSteps(intent: MoveIntent): number {
-  if ("drift" in intent) return intent.steps ?? 1;
   if ("toward" in intent) return intent.steps ?? 1;
   if ("toNode" in intent) return intent.steps ?? 1;
   return 1;

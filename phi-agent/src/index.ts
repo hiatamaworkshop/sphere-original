@@ -203,7 +203,8 @@ async function runOnce(config: ParsedArgs): Promise<number> {
     agent.stop();
   });
 
-  const stats = await agent.run();
+  const result = await agent.run();
+  const { stats } = result;
 
   console.log();
   console.log("========================================");
@@ -215,6 +216,15 @@ async function runOnce(config: ParsedArgs): Promise<number> {
   console.log(`Evaluations: ${stats.evaluations}`);
   console.log(`Heat delta:  ${stats.totalHeatDelta > 0 ? "+" : ""}${stats.totalHeatDelta}`);
   console.log(`Duration:    ${((stats.endTime - stats.startTime) / 1000).toFixed(1)}s`);
+  if (result.encounters.length > 0) {
+    console.log(`Encounters:  ${result.encounters.length}`);
+  }
+  if (result.broadcastPosts.length > 0) {
+    console.log(`Broadcasts:  ${result.broadcastPosts.length}`);
+  }
+  if (result.narrative) {
+    console.log(`Narrative:   ${result.narrative.length} chars`);
+  }
 
   if (stats.error) {
     console.log(`Error:       ${stats.error}`);

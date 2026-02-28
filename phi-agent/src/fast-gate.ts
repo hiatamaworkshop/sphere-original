@@ -28,7 +28,7 @@ const Flag = {
   TemporalShort:  0x0001,
   TemporalLong:   0x0002,
   TemporalCyclic: 0x0004,
-  Hot:            0x0008,  // Dynamic: Arbiter-assigned
+  _Reserved0008:  0x0008,  // Reserved (was Hot)
 
   // Density (bits 4-7)
   Dense:      0x0010,
@@ -49,6 +49,72 @@ const Flag = {
   Candidate:   0x8000,
 
 } as const;
+
+// ============================================================
+// MetricSemantics — domain-configurable evaluation axis semantics
+// ============================================================
+//
+// Loaded from sphere.config.json via /rulebook endpoint (preconnect).
+// Determines how h/w/d scores are interpreted by SessionMemory
+// and how evaluation prompts are constructed by PromptBuilder.
+//
+// [Design] LIFELOG_SPHERE_DESIGN.md §9.1
+//   - names/descriptions: domain-specific axis labels (prompt layer)
+//   - inversion: which metrics are "higher = less quality" (qualityProfile)
+//   - hitThreshold/missThreshold: satisfaction/frustration triggers
+//   - Defaults match current knowledge sphere behavior
+
+export interface MetricSemantics {
+  names: [string, string, string];
+  descriptions: [string, string, string];
+  inversion: [boolean, boolean, boolean];
+  hitThreshold: number;
+  missThreshold: number;
+}
+
+export const DEFAULT_METRIC_SEMANTICS: MetricSemantics = {
+  names: ["heat", "weight", "decay"],
+  descriptions: [
+    "motion/attention (0=still, 10=active)",
+    "density (0=light, 10=heavy)",
+    "fade rate (0=long-lived, 10=short-lived)",
+  ],
+  inversion: [false, false, true],
+  hitThreshold: 7,
+  missThreshold: 5,
+};
+
+// ============================================================
+// HarvestPolicy — Sphere-configurable data carry-back rules
+// ============================================================
+//
+// Controls what data phi-agent carries back from exploration.
+// Knowledge Sphere: summary-only (content is heavy, used for LLM then discarded)
+// Lifelog Sphere: carry content (short one-liners, actual payload for consumers)
+//
+// Loaded from sphere.config.json via /rulebook endpoint (preconnect).
+// Applied in agent.ts evalAndRecord() when building Encounter objects.
+
+export interface HarvestPolicy {
+  /** Include full node content in encounters (default: false) */
+  carryContent: boolean;
+  /** Max content length if carryContent=true (default: 500) */
+  contentMaxLength: number;
+  /** Max summary chars (default: 200) */
+  summaryMaxLength: number;
+  /** Include ref_url in encounters (default: false) */
+  carryRefUrl: boolean;
+  /** Include node kind active/amber/relic (default: true) */
+  carryKind: boolean;
+}
+
+export const DEFAULT_HARVEST_POLICY: HarvestPolicy = {
+  carryContent: false,
+  contentMaxLength: 500,
+  summaryMaxLength: 200,
+  carryRefUrl: false,
+  carryKind: true,
+};
 
 // ============================================================
 // Scoring Weights — base layer (linear: metrics + keyword)
@@ -80,7 +146,7 @@ export const DEFAULT_WEIGHTS: FastGateWeights = {
 // Weapon — multiplicative scoring layers
 // ============================================================
 //
-// score = linear(metrics) × gate(flags) × state(hot/systemCore) × ratio(h/w)
+// score = linear(metrics) × gate(flags) × state(systemCore) × ratio(h/w)
 //
 // All biases are soft gates (1.0 = neutral, never 0).
 // Flag present → bias applied. Flag absent → 1.0 (neutral).
@@ -104,7 +170,6 @@ export interface Weapon {
     settled: number;
   };
   stateBias: {
-    hot: number;
     systemCore: number;
   };
   ratioBias: {
@@ -133,7 +198,7 @@ export const DEFAULT_WEAPON: Weapon = {
     tensile: 1.0,
     settled: 1.0,
   },
-  stateBias: { hot: 1.0, systemCore: 1.0 },
+  stateBias: { systemCore: 1.0 },
   ratioBias: { heatDensity: 0, stability: 0 },
 };
 
@@ -232,7 +297,7 @@ export const LOADOUTS: Record<string, Loadout> = {
     name: "balanced",
     weapon: {
       flagBias: { authority: 1.2, temporalShort: 1.1, temporalLong: 1.1 },
-      stateBias: { hot: 1.2, systemCore: 0.8 },
+      stateBias: { systemCore: 0.8 },
       ratioBias: { heatDensity: 0.2, stability: 0.1 },
     },
     qualityVector: QUALITY_PRESETS.balanced,
@@ -250,14 +315,14 @@ export const LOADOUTS: Record<string, Loadout> = {
     },
     stepScale: 1.0,
     actionThreshold: 0.5,
-    evalFocus: "Observe this node as a neutral explorer.\n\nRate (0–10, 5=neutral):\nheat = motion/attention (0=still, 10=active)\nweight = density (0=light, 10=heavy)\ndecay = fade rate (0=long-lived, 10=short-lived)",
+    evalFocus: "Observe this node as a neutral explorer.",
   },
   scholar: {
     name: "scholar",
     weights: { metrics: { ...DEFAULT_WEIGHTS.metrics, weight: 0.5, distance: -1 } },
     weapon: {
       flagBias: { authority: 1.5, temporalLong: 1.3, dense: 1.3, composite: 1.2, sharp: 1.2, fuzzy: 0.8, temporalShort: 0.8 },
-      stateBias: { hot: 0.8, systemCore: 1.3 },
+      stateBias: { systemCore: 1.3 },
       ratioBias: { stability: 0.5 },
     },
     qualityVector: QUALITY_PRESETS.scholar,
@@ -274,14 +339,14 @@ export const LOADOUTS: Record<string, Loadout> = {
     },
     stepScale: 0.7,
     actionThreshold: 0.6,
-    evalFocus: "Observe this node as a scholar seeking knowledge.\n\nRate (0–10, 5=neutral):\nheat = motion/attention (0=still, 10=active)\nweight = density (0=light, 10=heavy)\ndecay = fade rate (0=long-lived, 10=short-lived)",
+    evalFocus: "Observe this node as a scholar seeking knowledge.",
   },
   scout: {
     name: "scout",
     weights: { metrics: { ...DEFAULT_WEIGHTS.metrics, heat: 0.8, distance: -3 } },
     weapon: {
       flagBias: { temporalShort: 1.5, sparse: 1.2, fuzzy: 1.2, authority: 0.85, settled: 0.85 },
-      stateBias: { hot: 1.5, systemCore: 0.5 },
+      stateBias: { systemCore: 0.5 },
       ratioBias: { heatDensity: 0.3 },
     },
     qualityVector: QUALITY_PRESETS.scout,
@@ -323,8 +388,7 @@ export const LOADOUTS: Record<string, Loadout> = {
         tensile: 0.8          // can't handle unresolved conflict (prefers settled)
       },
       stateBias: {
-        hot: 0.6,      // hermit+archivist average
-        systemCore: 1.4    // hermit+archivist average
+        systemCore: 1.4
       },
       ratioBias: {
         stability: 0.5   // hermit integration: strong stability bias
@@ -344,14 +408,14 @@ export const LOADOUTS: Record<string, Loadout> = {
     },
     stepScale: 0.6,
     actionThreshold: 0.6,
-    evalFocus: "Observe this node as an archivist seeking stable knowledge.\n\nRate (0–10, 5=neutral):\nheat = motion/attention (0=still, 10=active)\nweight = density (0=light, 10=heavy)\ndecay = fade rate (0=long-lived, 10=short-lived)",
+    evalFocus: "Observe this node as an archivist seeking stable knowledge.",
   },
   hunter: {
     name: "hunter",
     weights: { metrics: { ...DEFAULT_WEIGHTS.metrics, heat: 0.8 } },
     weapon: {
       flagBias: { temporalShort: 1.3, tensile: 1.2, fuzzy: 1.15, authority: 0.8, settled: 0.8 },
-      stateBias: { hot: 1.5, systemCore: 0.5 },
+      stateBias: { systemCore: 0.5 },
       ratioBias: { heatDensity: 0.4 },
     },
     qualityVector: QUALITY_PRESETS.hunter,
@@ -368,7 +432,7 @@ export const LOADOUTS: Record<string, Loadout> = {
     },
     stepScale: 1.0,
     actionThreshold: 0.4,
-    evalFocus: "Observe this node as a hunter seeking high-value targets.\n\nRate (0–10, 5=neutral):\nheat = motion/attention (0=still, 10=active)\nweight = density (0=light, 10=heavy)\ndecay = fade rate (0=long-lived, 10=short-lived)",
+    evalFocus: "Observe this node as a hunter seeking high-value targets.",
   },
   // --- Extreme patterns (experimental) ---
   moth: {
@@ -376,7 +440,7 @@ export const LOADOUTS: Record<string, Loadout> = {
     weights: { metrics: { ...DEFAULT_WEIGHTS.metrics, heat: 2.0, weight: 0, decay: 0, distance: -1 }, keywordMatch: 0 },
     weapon: {
       flagBias: { temporalShort: 1.5, sharp: 1.5, settled: 0.75 },
-      stateBias: { hot: 1.8, systemCore: 0.5 },
+      stateBias: { systemCore: 0.5 },
       ratioBias: { heatDensity: 0.5 },
     },
     qualityVector: [0.8, 0.0, 0.0, 0.2],
@@ -414,14 +478,14 @@ export const LOADOUTS: Record<string, Loadout> = {
     },
     stepScale: 1.0,
     actionThreshold: 0.5,
-    evalFocus: "Observe this node without bias.\n\nRate (0–10, 5=neutral):\nheat = motion/attention (0=still, 10=active)\nweight = density (0=light, 10=heavy)\ndecay = fade rate (0=long-lived, 10=short-lived)",
+    evalFocus: "Observe this node without bias.",
   },
   sniper: {
     name: "sniper",
     weights: { metrics: { ...DEFAULT_WEIGHTS.metrics, heat: 1.0 }, keywordMatch: 20 },
     weapon: {
       flagBias: { authority: 1.5, temporalShort: 1.2, composite: 0.8 },
-      stateBias: { hot: 1.3, systemCore: 0.5 },
+      stateBias: { systemCore: 0.5 },
       ratioBias: { heatDensity: 0.3, stability: 0.2 },
     },
     qualityVector: [0.1, 0.1, 0.0, 0.8],
@@ -438,7 +502,7 @@ export const LOADOUTS: Record<string, Loadout> = {
     },
     stepScale: 1.0,
     actionThreshold: 0.45,
-    evalFocus: "Observe this node as a sniper seeking precision targets.\n\nRate (0–10, 5=neutral):\nheat = motion/attention (0=still, 10=active)\nweight = density (0=light, 10=heavy)\ndecay = fade rate (0=long-lived, 10=short-lived)",
+    evalFocus: "Observe this node as a sniper seeking precision targets.",
   },
 };
 
@@ -462,16 +526,21 @@ export class SessionMemory {
   private _totalH = 0;
   private _totalW = 0;
   private _totalD = 0;
-  private _hits = 0;  // h >= 7
-  private _misses = 0;  // h < 5
-  private _peakH = 0;  // best h ever seen
+  private _hits = 0;
+  private _misses = 0;
+  private _peakH = 0;
   private _visitedNodeIds = new Set<string>();
   private _allTags = new Set<string>();
+  private readonly _ms: MetricSemantics;
 
   // --- Delta Profile (observation only, doesn't affect decisions) ---
-  // Δ = [h/10, w/10, 1-d/10, hitDelta, tagDiversity]
+  // Δ = [metric0, metric1, metric2, hitDelta, tagDiversity] (inversion-aware)
   private _deltas: number[][] = [];
   private _prevState: number[] | null = null;
+
+  constructor(ms: MetricSemantics = DEFAULT_METRIC_SEMANTICS) {
+    this._ms = ms;
+  }
 
   /**
    * Record an evaluation.
@@ -485,8 +554,8 @@ export class SessionMemory {
     this._totalH += h;
     this._totalW += w;
     this._totalD += d;
-    if (h >= 7) this._hits++;
-    if (h < 5) this._misses++;
+    if (h >= this._ms.hitThreshold) this._hits++;
+    if (h < this._ms.missThreshold) this._misses++;
     this._peakH = Math.max(this._peakH, h);
     this._visitedNodeIds.add(nodeId);
 
@@ -498,13 +567,14 @@ export class SessionMemory {
     for (const t of tags) this._allTags.add(t);
     const newTags = this._allTags.size - prevTagCount;
 
-    // Compute current state snapshot
+    // Compute current state snapshot (inversion-aware normalization)
+    const inv = this._ms.inversion;
     const state = [
-      h / 10,                      // heat (this eval, normalized)
-      w / 10,                      // weight (this eval, normalized)
-      1 - d / 10,                  // preservation (inverted decay)
-      h >= 7 ? 1 : 0,             // hit (binary)
-      newTags / Math.max(tags.length, 1),  // novelty (ratio of new tags)
+      inv[0] ? 1 - h / 10 : h / 10,
+      inv[1] ? 1 - w / 10 : w / 10,
+      inv[2] ? 1 - d / 10 : d / 10,
+      h >= this._ms.hitThreshold ? 1 : 0,
+      newTags / Math.max(tags.length, 1),
     ];
 
     // Record delta from previous state
@@ -524,20 +594,24 @@ export class SessionMemory {
   get cycleCount(): number { return this.evals.length; }
   wasVisited(nodeId: string): boolean { return this._visitedNodeIds.has(nodeId); }
 
-  /** 4D quality profile: [relevance, authority, preservation, hitRate] */
+  /** 4D quality profile: [metric0, metric1, metric2, hitRate] (inversion-aware) */
   get qualityProfile(): QualityVector {
     const n = this.evals.length;
     if (n === 0) return [0, 0, 0, 0];
+    const inv = this._ms.inversion;
+    const rawH = (this._totalH / n) / 10;
+    const rawW = (this._totalW / n) / 10;
+    const rawD = (this._totalD / n) / 10;
     return [
-      (this._totalH / n) / 10,       // avg_h normalized 0-1
-      (this._totalW / n) / 10,       // avg_w normalized 0-1
-      1 - (this._totalD / n) / 10,   // inverted avg_d (low d = high value)
-      this._hits / n,                 // hit rate (h >= 7)
+      inv[0] ? 1 - rawH : rawH,
+      inv[1] ? 1 - rawW : rawW,
+      inv[2] ? 1 - rawD : rawD,
+      this._hits / n,
     ];
   }
 
   /** Frustration: max(missRate, recentDecline, belowPeak).
-   *  missRate: proportion of h < 5 evaluations
+   *  missRate: proportion of h < missThreshold evaluations
    *  recentDecline: latest h dropped vs previous (immediate disappointment)
    *  belowPeak: latest h vs best ever seen (lingering dissatisfaction)
    *  All signals are 0-1. Personality weights determine which loadouts respond. */
@@ -664,12 +738,14 @@ export class FastGate {
   private _speciesHotNodes: Map<string, number>;
   private _speciesTags: string[];
   private _appliedDelta: WeightDelta;
-  readonly memory = new SessionMemory();
+  readonly memory: SessionMemory;
   readonly loadoutName: string;
 
-  constructor(query: string, loadout?: Loadout, speciesBias?: SpeciesMemoryBias) {
+  constructor(query: string, loadout?: Loadout, speciesBias?: SpeciesMemoryBias, metricSemantics?: MetricSemantics) {
     const l = loadout ?? LOADOUTS.balanced;
+    const ms = metricSemantics ?? DEFAULT_METRIC_SEMANTICS;
     this.loadoutName = l.name;
+    this.memory = new SessionMemory(ms);
     this.queryTokens = query
       .toLowerCase()
       .split(/[\s,]+/)
@@ -760,7 +836,7 @@ export class FastGate {
   //
   // score = base(metrics + keyword)
   //       × flagGate(authority, catalyst, freshness, sticky)
-  //       × stateGate(hot, systemCore)
+  //       × stateGate(systemCore)
   //       × ratioMod(heatDensity, stability)
   //
   // All gates are soft (1.0 = neutral, floor 0.1).
@@ -833,7 +909,6 @@ export class FastGate {
 
       // --- State gate: multiplicative (dynamic flags) ---
       let stateGate = 1.0;
-      if (n.flags & Flag.Hot)    stateGate *= wp.stateBias.hot;
       if (n.flags & Flag.SystemCore) stateGate *= wp.stateBias.systemCore;
 
       // --- Ratio modifier ---
@@ -858,7 +933,7 @@ export class FastGate {
   // When sense returns 0 nodes, agent uses scanL1 (wider range) to find
   // candidates and warps to the best one based on species preferences.
   //
-  // Scoring: tag overlap (query + species memory) + hot node bonus + distance penalty
+  // Scoring: tag overlap (query + species memory) + distance penalty
 
   pickWarpTarget(scanned: ScanNode[]): number {
     if (scanned.length === 0) return -1;

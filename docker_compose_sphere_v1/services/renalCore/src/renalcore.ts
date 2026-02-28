@@ -42,11 +42,8 @@ export interface RenalCoreConfig {
   // 代謝閾値
   amberHeatThreshold: number;         // Amber化に必要なHeat閾値
   amberWeightThreshold: number;       // Amber化に必要なWeight閾値
-  fossilHeatThreshold: number;        // Fossil化する Heat閾値
-  erosionHeatThreshold: number;       // Erosion（Amber→Active）の閾値
 
-  // ゴースト化設定 (未使用だが互換性のため保持)
-  ghostHeatThreshold: number;         // Ghost化する Heat閾値
+  // ゴースト化設定
   ghostTTLMultiplier: number;         // Ghost の TTL 減衰倍率
 
   // 空間管理

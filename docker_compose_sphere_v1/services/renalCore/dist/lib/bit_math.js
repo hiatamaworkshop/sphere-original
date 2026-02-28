@@ -74,11 +74,7 @@ export const computeEffectiveDecayRate = (baseDecayRate, flags, config) => {
  * @returns フラグ修正後の熱量
  */
 export const computeEffectiveHeat = (baseHeat, flags, config) => {
-    let heat = baseHeat;
-    // const mods = config?.physicsModifiers ?? DEFAULT_MODIFIERS;
-    // No flag-based heat modifiers currently applied
-    // (TemporalShort affects decay, not heat)
-    return heat;
+    return baseHeat;
 };
 /**
  * フラグに基づいて実効的なTTL減衰率を計算する
@@ -111,11 +107,7 @@ export const computeEffectiveTTLDecay = (baseTTLDecay, flags, config) => {
  * @returns フラグ修正後のWeight
  */
 export const computeEffectiveWeight = (baseWeight, flags, config) => {
-    let weight = baseWeight;
-    // const mods = config?.physicsModifiers ?? DEFAULT_MODIFIERS;
-    // No flag-based weight modifiers currently applied
-    // (Hub removed, Dense/Authority applied elsewhere)
-    return weight;
+    return baseWeight;
 };
 /**
  * フラグに基づいて実効的なWeight減衰率を計算する
