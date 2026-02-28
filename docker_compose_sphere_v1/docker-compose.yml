@@ -203,6 +203,9 @@ services:
       MIN_EVALS: "50"
       MIN_PER_SPECIES: "20"
       GATEWAY_PORT: "5000"
+      STORAGE_BACKEND: "${STORAGE_BACKEND:-file}"
+      TURSO_URL: "${TURSO_URL:-}"
+      TURSO_AUTH_TOKEN: "${TURSO_AUTH_TOKEN:-}"
     ports:
       - "5000:5000"
     volumes:

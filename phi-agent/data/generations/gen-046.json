@@ -1,7 +1,52 @@
 {
-  "generated": "2026-02-27T15:36:34.904Z",
-  "totalEvaluations": 446,
+  "generation": 46,
+  "timestamp": "2026-02-27T15:36:35.414Z",
+  "sphereHash": "dbe69bdbfc08b5f5",
+  "inputEvaluations": 446,
   "survivedEvaluations": 408,
+  "hunger": 0.4952,
+  "halfLifeHours": 72,
+  "sphereSnapshot": {
+    "nodeCount": {
+      "active": 158,
+      "amber": 0,
+      "ghost": 0,
+      "fossil": 0,
+      "relic": 10,
+      "environment": 0,
+      "total": 168
+    },
+    "heatDistribution": {
+      "mean": 467.65,
+      "std": 66.98,
+      "min": 200,
+      "max": 500.09
+    },
+    "weightDistribution": {
+      "mean": 110.55,
+      "std": 47.69,
+      "min": 90.56,
+      "max": 300
+    },
+    "flagDistribution": {
+      "1": 18,
+      "2": 10,
+      "16": 22,
+      "128": 1,
+      "256": 1,
+      "1024": 4,
+      "2048": 2,
+      "8192": 10
+    },
+    "flux": {
+      "total": 0
+    },
+    "field": {
+      "intensity": 0.3202373324608798,
+      "dominantFlags": 0,
+      "volatility": 0.9996969696969695
+    }
+  },
   "species": {
     "moth": {
       "evaluations": 58,
