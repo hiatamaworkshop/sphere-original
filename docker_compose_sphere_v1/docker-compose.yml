@@ -101,6 +101,9 @@ services:
       MINIO_PORT: 9000
       MINIO_ACCESS_KEY: ${MINIO_ROOT_USER:-sphere_admin}
       MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-sphere_admin_password}
+      REFDB_BACKEND: "${REFDB_BACKEND:-map}"
+      TURSO_URL: "${TURSO_URL:-}"
+      TURSO_AUTH_TOKEN: "${TURSO_AUTH_TOKEN:-}"
     ports:
       - "3001:3001"
     volumes:
