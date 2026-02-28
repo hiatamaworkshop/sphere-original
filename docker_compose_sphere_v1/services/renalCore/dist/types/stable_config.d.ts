@@ -58,7 +58,6 @@ export interface RenalCoreConfig {
     };
     thresholds: {
         amberHeat: number;
-        amberWeight: number;
     };
     ghost: {
         ttlMultiplier: number;

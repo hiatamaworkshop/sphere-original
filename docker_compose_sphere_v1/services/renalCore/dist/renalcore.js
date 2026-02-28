@@ -26,9 +26,8 @@ import { computeEffectiveDecayRate, computeEffectiveTTLDecay, computeEffectiveWe
  * 純粋な物理エンジン。Decay のみを担当。
  */
 export class RenalCore {
-    // データベース
+    // データベース (NodeStore: size + values() のみ。Map は構造的に互換)
     projectionDB;
-    referenceDB;
     spatialFields;
     // 設定
     config;
@@ -37,9 +36,8 @@ export class RenalCore {
     idleTickCount = 0; // Pause判定用の連続Idle Tick数
     lastNodeCount = 0; // 前回のノード数
     agentCount = 0; // 接続中エージェント数（Dormancy判定用）
-    constructor(projectionDB, referenceDB, spatialFields, config) {
+    constructor(projectionDB, spatialFields, config) {
         this.projectionDB = projectionDB;
-        this.referenceDB = referenceDB;
         this.spatialFields = spatialFields;
         this.config = config;
     }

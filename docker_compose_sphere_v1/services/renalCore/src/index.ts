@@ -44,7 +44,7 @@ export type { FlagPhysicsModifiers } from "./lib/physics.js";
 
 // === Phase 2+: RenalCore のエクスポート ===
 export { RenalCore } from "./renalcore.js";
-export type { RenalCoreConfig as RenalCoreClassConfig } from "./renalcore.js";
+export type { RenalCoreConfig as RenalCoreClassConfig, NodeStore } from "./renalcore.js";
 
 // === Phase 4: Agent System ===
 export type {

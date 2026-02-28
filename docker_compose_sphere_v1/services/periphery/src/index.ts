@@ -108,8 +108,6 @@ const renalConfig = {
   alpha: decayValues.alpha * decayIntensity,
   heatDecayFactor: decayValues.heatDecayFactor * decayIntensity,
   weightDecayFactor: decayValues.weightDecayFactor * decayIntensity,
-  amberHeatThreshold: sphereConfig.renal_core.thresholds.amberHeat,
-  amberWeightThreshold: sphereConfig.renal_core.thresholds.amberWeight,
 
   ghostTTLMultiplier: sphereConfig.renal_core.ghost.ttlMultiplier,
   planktonConversionRate: sphereConfig.renal_core.spatial.planktonConversionRate,
@@ -218,7 +216,6 @@ if (sphereMode === "core") {
 console.log("[Init] Initializing RenalCore metabolism engine...");
 renalCore = new RenalCore(
   projectionDB,
-  referenceDB,
   spatialFields,
   renalConfig
 );
@@ -279,7 +276,8 @@ const transitionThresholds = {
 // PulseBroadcaster - UDP broadcast of environment signals
 pulseBroadcaster = new PulseBroadcaster({
   pulse: pulseConfig,
-  amberHeatThreshold: renalConfig.amberHeatThreshold,
+  amberHeatThreshold: sphereConfig.renal_core.thresholds.amberHeat,
+  sphereId: sphereConfig.metadata?.sphereId ?? "unknown",
 });
 
 // Observation interval: Arbiter + CleanerFish cycle (10 ticks = 10 sec)

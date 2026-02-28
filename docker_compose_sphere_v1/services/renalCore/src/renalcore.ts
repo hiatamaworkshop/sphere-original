@@ -20,7 +20,7 @@
  */
 
 import type { SphereNode } from "./types/sphere_node.js";
-import type { ReferenceRecord, SpatialField } from "./core/types.js";
+import type { SpatialField } from "./core/types.js";
 import { NodeFlag } from "./core/types.js";
 import {
   computeEffectiveDecayRate,
@@ -39,10 +39,6 @@ export interface RenalCoreConfig {
   heatDecayFactor: number;            // 熱量減衰係数（毎Tick）
   weightDecayFactor: number;          // 重み減衰係数（毎Tick、heatより緩やか）
 
-  // 代謝閾値
-  amberHeatThreshold: number;         // Amber化に必要なHeat閾値
-  amberWeightThreshold: number;       // Amber化に必要なWeight閾値
-
   // ゴースト化設定
   ghostTTLMultiplier: number;         // Ghost の TTL 減衰倍率
 
@@ -56,15 +52,23 @@ export interface RenalCoreConfig {
 }
 
 /**
+ * RenalCore が必要とする最小限のコレクションインターフェース
+ * Map<string, T> は構造的にこれを満たす
+ */
+export interface NodeStore<T> {
+  readonly size: number;
+  values(): IterableIterator<T>;
+}
+
+/**
  * RenalCore クラス
  *
  * 純粋な物理エンジン。Decay のみを担当。
  */
 export class RenalCore {
-  // データベース
-  projectionDB: Map<string, SphereNode>;
-  referenceDB: Map<string, ReferenceRecord>;
-  spatialFields: Map<string, SpatialField>;
+  // データベース (NodeStore: size + values() のみ。Map は構造的に互換)
+  projectionDB: NodeStore<SphereNode>;
+  spatialFields: NodeStore<SpatialField>;
 
   // 設定
   config: RenalCoreConfig;
@@ -76,13 +80,11 @@ export class RenalCore {
   agentCount: number = 0;         // 接続中エージェント数（Dormancy判定用）
 
   constructor(
-    projectionDB: Map<string, SphereNode>,
-    referenceDB: Map<string, ReferenceRecord>,
-    spatialFields: Map<string, SpatialField>,
+    projectionDB: NodeStore<SphereNode>,
+    spatialFields: NodeStore<SpatialField>,
     config: RenalCoreConfig
   ) {
     this.projectionDB = projectionDB;
-    this.referenceDB = referenceDB;
     this.spatialFields = spatialFields;
     this.config = config;
   }

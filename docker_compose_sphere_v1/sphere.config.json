@@ -81,13 +81,24 @@
       "_comment": "preset: archive | natural | flow | dev (未指定時は NODE_ENV から自動判定)",
       "preset": "archive",
       "decayIntensity": 0.5,
-      "_decayIntensity_note": "Global multiplier on all decay factors (alpha, heat, weight, flux). 1.0=preset default, 0.5=half decay, 0.33=1/3 decay. Applied on top of preset values."
+      "_decayIntensity_note": "Global multiplier on all decay factors (alpha, heat, weight, flux). 1.0=preset default, 0.5=half decay, 0.33=1/3 decay. Applied on top of preset values.",
+      "_tuning_chain": [
+        "eval input (0-10)",
+        "→ delta = (input - neutral) × coefficient     [periphery.arbiter.evaluation]",
+        "→ node.metrics.h += deltaH                    [bookkeeper]",
+        "→ h -= h × heatDecayFactor × immuneMod /tick  [renalCore, this preset]",
+        "→ score = h + w >= scoreThreshold              [periphery.arbiter.ascension]",
+        "→ cooldown (cooldownMs) + lowerThresholdRatio  [periphery.arbiter.ascension]",
+        "→ Amber or dropout"
+      ],
+      "overrides": {
+        "_comment": "Override individual preset values (optional). Merged on top of preset. Keys: alpha, heatDecayFactor, weightDecayFactor, fluxDecayRate, minLoadFactor"
+      }
     },
 
     "thresholds": {
-      "_comment": "Integer scale: threshold 1000 for Ascension",
-      "amberHeat": 1000,
-      "amberWeight": 1000
+      "_comment": "PulseBroadcaster 用 (Burst/Bloom 検知閾値)",
+      "amberHeat": 1000
     },
 
     "ghost": {

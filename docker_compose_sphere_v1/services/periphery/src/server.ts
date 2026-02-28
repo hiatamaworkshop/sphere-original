@@ -317,7 +317,7 @@ export class PeripheryServer {
 
     // Health check endpoint
     this.app.get("/health", (_req, res) => {
-      res.json({ status: "ok", service: "periphery" });
+      res.json({ status: "ok", service: "periphery", sphereId: this.sphereId });
     });
 
     // Sanctification Neuron status endpoint
@@ -341,6 +341,7 @@ export class PeripheryServer {
       const field = this.globalFieldLayer?.getGlobalField();
 
       res.json({
+        sphereId: this.sphereId,
         uptime: process.uptime(),
         nodeCount,
         agents,
@@ -394,6 +395,7 @@ export class PeripheryServer {
       const mem = process.memoryUsage();
 
       res.json({
+        sphereId: this.sphereId,
         timestamp: new Date().toISOString(),
         uptime: process.uptime(),
 
@@ -590,6 +592,7 @@ export class PeripheryServer {
       const field = this.globalFieldLayer?.getGlobalField();
 
       res.json({
+        sphereId: this.sphereId,
         timestamp: new Date().toISOString(),
         nodeCount: counts,
         heatDistribution: computeStats(heats),
@@ -627,7 +630,10 @@ export class PeripheryServer {
       res.json({
         sphereId: this.sphereId,
         name: this.sphereName,
+        version: (this.sphereMetadata.version as string) ?? SPHERE_VERSION,
         description: (this.sphereMetadata.description as string) ?? "",
+        ethos: (this.sphereMetadata.ethos as string) ?? "",
+        forked_from: (this.sphereMetadata.forked_from as string) ?? "origin",
         tags: (this.sphereMetadata.tags as string[]) ?? [],
         language: (this.sphereMetadata.language as string[]) ?? [],
         nodeCount,
@@ -711,12 +717,15 @@ export class PeripheryServer {
     // ===== Agent Rulebook Endpoint =====
     // Provides rules, constraints, and guidance for agents
     this.app.get("/rulebook", (_req, res) => {
-      res.json(getRulebookResponse({
-        session: this.config.session,
-        energy: this.config.energy,
-        metricSemantics: this.sphereMetadata.metricSemantics as Record<string, unknown>,
-        harvestPolicy: this.sphereMetadata.harvestPolicy as Record<string, unknown>,
-      }));
+      res.json({
+        sphereId: this.sphereId,
+        ...getRulebookResponse({
+          session: this.config.session,
+          energy: this.config.energy,
+          metricSemantics: this.sphereMetadata.metricSemantics as Record<string, unknown>,
+          harvestPolicy: this.sphereMetadata.harvestPolicy as Record<string, unknown>,
+        }),
+      });
     });
 
     // ===== Dive Ticket Request Endpoint =====

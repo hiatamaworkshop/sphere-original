@@ -70,6 +70,7 @@ const PRESETS: Record<DecayPresetName, DecayPresetValues> = {
  */
 export function resolveDecayPreset(decayConfig: {
   preset?: string;
+  overrides?: Partial<DecayPresetValues>;
 }): { resolved: DecayPresetValues; presetName: string } {
   const presetName = decayConfig.preset
     ?? (isDevelopment ? "dev" : "natural");
@@ -77,10 +78,14 @@ export function resolveDecayPreset(decayConfig: {
   const preset = PRESETS[presetName as DecayPresetName];
   if (!preset) {
     console.warn(`[DecayPreset] Unknown preset "${presetName}", falling back to natural`);
-    return { presetName: "natural", resolved: PRESETS.natural };
+    return { presetName: "natural", resolved: { ...PRESETS.natural, ...(decayConfig.overrides ?? {}) } };
   }
 
-  return { presetName, resolved: preset };
+  const resolved = decayConfig.overrides
+    ? { ...preset, ...decayConfig.overrides }
+    : preset;
+
+  return { presetName, resolved };
 }
 
 /**

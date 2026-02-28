@@ -62,8 +62,7 @@ export interface RenalCoreConfig {
   heartbeat: { tickIntervalMs: number };
   decay: { alpha: number; heatDecayFactor: number };
   thresholds: {
-    amberHeat: number;
-    amberWeight: number;
+    amberHeat: number;    // PulseBroadcaster 用 (Burst/Bloom 検知閾値)
   };
   ghost: { ttlMultiplier: number };
   spatial: {

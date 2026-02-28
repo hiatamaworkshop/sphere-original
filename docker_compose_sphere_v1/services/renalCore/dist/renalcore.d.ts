@@ -19,7 +19,7 @@
  * - Pulse Broadcast: PulseBroadcaster（Periphery）
  */
 import type { SphereNode } from "./types/sphere_node.js";
-import type { ReferenceRecord, SpatialField } from "./core/types.js";
+import type { SpatialField } from "./core/types.js";
 /**
  * RenalCore 設定
  * sphere.config.json から読み込むことを想定
@@ -28,8 +28,6 @@ export interface RenalCoreConfig {
     alpha: number;
     heatDecayFactor: number;
     weightDecayFactor: number;
-    amberHeatThreshold: number;
-    amberWeightThreshold: number;
     ghostTTLMultiplier: number;
     planktonConversionRate: number;
     fluxDecayRate: number;
@@ -37,20 +35,27 @@ export interface RenalCoreConfig {
     pauseErosionBoost: number;
 }
 /**
+ * RenalCore が必要とする最小限のコレクションインターフェース
+ * Map<string, T> は構造的にこれを満たす
+ */
+export interface NodeStore<T> {
+    readonly size: number;
+    values(): IterableIterator<T>;
+}
+/**
  * RenalCore クラス
  *
  * 純粋な物理エンジン。Decay のみを担当。
  */
 export declare class RenalCore {
-    projectionDB: Map<string, SphereNode>;
-    referenceDB: Map<string, ReferenceRecord>;
-    spatialFields: Map<string, SpatialField>;
+    projectionDB: NodeStore<SphereNode>;
+    spatialFields: NodeStore<SpatialField>;
     config: RenalCoreConfig;
     tickCount: number;
     idleTickCount: number;
     lastNodeCount: number;
     agentCount: number;
-    constructor(projectionDB: Map<string, SphereNode>, referenceDB: Map<string, ReferenceRecord>, spatialFields: Map<string, SpatialField>, config: RenalCoreConfig);
+    constructor(projectionDB: NodeStore<SphereNode>, spatialFields: NodeStore<SpatialField>, config: RenalCoreConfig);
     /**
      * 1心拍 (Tick) の実行
      * 物理的減衰のみを実行
