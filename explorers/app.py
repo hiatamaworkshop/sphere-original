@@ -277,7 +277,7 @@ def create_ui():
     }
     """
 
-    with gr.Blocks(title="Explorers -- Sphere") as app:
+    with gr.Blocks(title="Explorers -- Sphere", theme=theme, css=css) as app:
 
         gr.Markdown(f"""
         # Explorers -- Sphere
@@ -422,15 +422,13 @@ def create_ui():
         sphere_status = gr.Textbox(visible=False)
         app.load(fn=lambda: wake_sphere(SPHERE_URL), outputs=sphere_status)
 
-    return app, theme, css
+    return app
 
 
 if __name__ == "__main__":
-    app, theme, css = create_ui()
+    app = create_ui()
     app.launch(
         server_name="0.0.0.0",
         server_port=7860,
         share=False,
-        theme=theme,
-        css=css
     )
