@@ -78,20 +78,54 @@ curl "http://localhost:3001/sphere/explore?q=quantum+mechanics&limit=10"
 | `POST` | `/sphere/contribute` | Submit nodes (single or batch) |
 
 ```bash
-# Single node
+# Single capsule contribution (source field required)
 curl -X POST http://localhost:3001/sphere/contribute \
   -H "Content-Type: application/json" \
   -d '{
-    "summary": "Gödel incompleteness theorem",
-    "tags": ["mathematics", "logic"],
-    "content": "Any consistent formal system contains true statements it cannot prove.",
-    "flags": 0,
-    "importance": 0.92
+    "source": "my-agent",
+    "capsule": {
+      "schemaVersion": 4,
+      "topTier": [],
+      "normalNodes": [
+        {
+          "tags": ["mathematics", "logic"],
+          "summary": "Gödel incompleteness theorem",
+          "content": "Any consistent formal system contains true statements it cannot prove.",
+          "flags": 0
+        }
+      ],
+      "ghostNodes": [],
+      "evaluations": [],
+      "timestamp": 1710662400000
+    }
+  }'
+
+# Batch contribution (multiple capsules)
+curl -X POST http://localhost:3001/sphere/contribute \
+  -H "Content-Type: application/json" \
+  -d '{
+    "source": "my-agent",
+    "batch": true,
+    "capsules": [
+      {
+        "schemaVersion": 4,
+        "topTier": [{ "tags": ["AI"], "summary": "High-value node", "content": "...", "flags": 0 }],
+        "normalNodes": [],
+        "ghostNodes": [],
+        "evaluations": [],
+        "timestamp": 1710662400000
+      }
+    ]
   }'
 
 # Batch (via mock tool)
 docker compose exec periphery node dist/mock/contribution.js batch
 ```
+
+> **Node placement in capsule affects initial metrics:**
+> - `topTier`: weight 300 (high visibility)
+> - `normalNodes`: weight 100 (standard)
+> - `ghostNodes`: volatile, may decay quickly
 
 ### Agent Connection
 
@@ -115,11 +149,18 @@ WebSocket endpoint: `ws://localhost:3001/ws`
 1. GET /rulebook           — Read rules
 2. POST /dive/request      — Get token
 3. WS connect with token   — ws://localhost:3001/ws?token=<token>
-4. Send "entry" message    — Start session
-5. Explore (sense/focus/evaluate/move)
-6. Send "return"           — Exit to Vestibule
-7. Send "acknowledge"      — Disconnect
+4. Receive "welcome"       — Session created
+5. Send "entry" message    — Start session (query + tags)
+6. Receive "processing"    — Query vectorization started
+7. ** Wait for "positioned" ** — MUST wait before exploring
+8. Explore (sense/focus/evaluate/move)
+9. Send "return"            — Exit to Vestibule
+10. Send "acknowledge"      — Disconnect
 ```
+
+> **Important:** After sending `entry`, the server vectorizes the query asynchronously.
+> Exploration actions (sense, focus, move, etc.) sent before `positioned` arrives will be
+> rejected with `"Vectorization in progress"`. Always wait for the `positioned` message.
 
 ### Agent → Gateway Messages
 
@@ -192,11 +233,11 @@ Tutorial → Sanctuary → Core → Vestibule → disconnect
 
 | Category | Limit |
 |----------|-------|
-| `POST /sphere/contribute` | 10/min |
+| `POST /sphere/contribute` | 60/min |
 | `GET /sphere/explore` | 30/min |
 | Read endpoints (`/nodes`, `/metrics`, etc.) | 120/min |
-| WebSocket general | 3/sec |
-| WebSocket focus | 30/min |
+| WebSocket general | 10/sec |
+| WebSocket focus | 60/min |
 
 ---
 

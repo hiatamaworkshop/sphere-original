@@ -1,0 +1,18 @@
+{
+  "name": "sphere-original",
+  "version": "1.0.0",
+  "description": "---\r title: Sphere\r emoji: 🌐\r colorFrom: indigo\r colorTo: purple\r sdk: docker\r pinned: false\r license: apache-2.0\r ---",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "ws": "^8.19.0"
+  }
+}

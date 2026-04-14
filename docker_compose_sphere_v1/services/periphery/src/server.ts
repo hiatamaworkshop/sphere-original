@@ -166,10 +166,10 @@ export class PeripheryServer {
     // Heavy operations: contribute (incarnation pipeline), forge
     const heavyLimiter = rateLimit({
       windowMs: 60_000,
-      max: 10,
+      max: 60,
       standardHeaders: true,
       legacyHeaders: false,
-      message: { success: false, error: "Rate limit exceeded (10/min)" },
+      message: { success: false, error: "Rate limit exceeded (60/min)" },
     });
     // Medium operations: explore (vector search), quest
     const mediumLimiter = rateLimit({

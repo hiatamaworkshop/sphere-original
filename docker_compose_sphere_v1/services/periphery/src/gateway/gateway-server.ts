@@ -157,8 +157,8 @@ interface WsRateLimitConfig {
 }
 
 const DEFAULT_WS_RATE_LIMIT: WsRateLimitConfig = {
-  actionsPerTick: 3,
-  focusPerMinute: 30,
+  actionsPerTick: 10,
+  focusPerMinute: 60,
 };
 
 class WsRateLimiter {
@@ -693,6 +693,15 @@ export class GatewayServer {
     // When in vestibule layer, only vestibule commands are available
     if (context.layer === "vestibule") {
       await this.handleVestibuleMessage(conn, msg, requestId);
+      return;
+    }
+
+    // === Positioned Gate ===
+    // Block exploration actions until query vectorization completes (positioned sent).
+    // Layer transitions and exit are always allowed.
+    if (!context.queryReady && type !== "entry" && type !== "return" && type !== "acknowledge"
+        && type !== "enterSanctuary" && type !== "enterCore") {
+      this.sendError(socket, requestId, "Vectorization in progress — wait for 'positioned' before exploring");
       return;
     }
 
