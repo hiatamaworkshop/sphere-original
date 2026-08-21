@@ -174,6 +174,8 @@ export class SphereContextImpl implements SphereContext {
 
   // Energy management
   private _energy: number;
+  /** consumeEnergy() がエネルギー枯渇で追い出したか。返金で回復したら解除する */
+  private _expelledByEnergy = false;
   private _energyConfig: typeof DEFAULT_ENERGY;
   private _lowEnergyWarned = false;
 
@@ -476,6 +478,19 @@ export class SphereContextImpl implements SphereContext {
 
     console.log(`[SphereContext] focus(nodeId=${nodeId}) -10 energy`);
 
+    // [Design] 課金は先頭で行うため、以降のあらゆる失敗は「払ったのに得られなかった」
+    //          状態になる。本体を分離して包み、失敗したら必ず返金する。
+    //          guard を増やしても自動的に返金対象になるのがこの形の狙い。
+    try {
+      return await this.focusInner(nodeId);
+    } catch (e) {
+      this.refundEnergy("focus", e instanceof Error ? e.message : String(e));
+      throw e;
+    }
+  }
+
+  /** focus() の本体。課金済みの状態で呼ばれる。throw すれば呼び出し元が返金する。 */
+  private async focusInner(nodeId: string): Promise<FocusResult> {
     // Proximity check: only sense() results can be focused (nearby confirmed)
     // [Design] scan gives IDs but not proximity — focus requires sense()
     if (this._sensedNodeIds.size > 0 && !this._sensedNodeIds.has(nodeId)) {
@@ -507,9 +522,15 @@ export class SphereContextImpl implements SphereContext {
         detail = focusResult.node;
         nearbyGhosts = focusResult.nearbyGhosts;
       } else {
-        // If node not found or ghost/fossil (cannot focus directly), fall back to mock
-        console.warn(`[SphereContext] Node ${nodeId} not focusable (not found or ghost/fossil), using mock`);
-        detail = this.mockFocus(nodeId);
+        // [Fix] adapter があるのに null = 本当に focus できないノード。
+        //       ここで mockFocus に落とすと、捏造した heat/weight/kind が
+        //       「成功した focus」としてエージェントに届いてしまう。
+        //       ghost/fossil は L3 アクセス不可 (reports/DESIGN_GHOST_FOSSIL_FOCUS.md)。
+        //       失敗として投げれば focus() が課金を返金する。
+        throw new Error(
+          `Node ${nodeId} cannot be focused (ghost/fossil have no L3 content, or node not found). ` +
+          `Use sense/scan results and evaluate instead.`
+        );
       }
     } else {
       detail = this.mockFocus(nodeId);
@@ -618,14 +639,16 @@ export class SphereContextImpl implements SphereContext {
       return { success: false, reason: "not_in_possession" };
     }
 
+    // Validate input range (0-10)
+    // [Design] 課金より前に検証する。値域外は要求そのものが不正なので、
+    //          「払わせてから返す」ではなく最初から払わせない。
+    if (h < 0 || h > 10 || w < 0 || w > 10 || d < 0 || d > 10) {
+      throw new Error("Evaluation values must be between 0 and 10");
+    }
+
     // Consume energy
     if (!this.consumeEnergy("evaluate")) {
       return { success: false, reason: "insufficient_energy" };
-    }
-
-    // Validate input range (0-10)
-    if (h < 0 || h > 10 || w < 0 || w > 10 || d < 0 || d > 10) {
-      throw new Error("Evaluation values must be between 0 and 10");
     }
 
     console.log(`[SphereContext] evaluate(nodeId=${nodeId}, h=${h}, w=${w}, d=${d}, layer=${this._layer})`);
@@ -775,6 +798,7 @@ export class SphereContextImpl implements SphereContext {
     // Get target node's vector
     if (!this.coreAdapter) {
       console.warn(`[SphereContext] Warp failed: no coreAdapter`);
+      this.refundEnergy("warp", "no coreAdapter");
       return {
         success: false,
         error: "not_found",
@@ -784,6 +808,7 @@ export class SphereContextImpl implements SphereContext {
     const targetVector = await this.coreAdapter.getNodeVector(nodeId);
     if (!targetVector) {
       console.log(`[SphereContext] Warp failed: node ${nodeId} has no vector`);
+      this.refundEnergy("warp", `node ${nodeId} has no vector`);
       return {
         success: false,
         error: "no_vector",
@@ -862,6 +887,7 @@ export class SphereContextImpl implements SphereContext {
     const needsVisibleNodes = mode !== "random" && mode !== "flow";
     if (needsVisibleNodes && this._visibleNodes.size === 0) {
       console.log(`[SphereContext] Move failed: mode=${mode} requires sense() first`);
+      this.refundEnergy("move", `mode=${mode} requires sense() first`);
       return {
         success: false,
         distance: 0,
@@ -1497,9 +1523,7 @@ export class SphereContextImpl implements SphereContext {
 
     // Partial energy recovery on Core entry
     // [Design] Reward efficient Sanctuary exploration — not full recovery
-    const before = this._energy;
-    this._energy = Math.min(this._energyConfig.initial, this._energy + CORE_ENTRY_ENERGY_RECOVERY);
-    console.log(`[SphereContext] Core entry energy recovery: +${this._energy - before} (${before} → ${this._energy})`);
+    this.restoreEnergy(CORE_ENTRY_ENERGY_RECOVERY, "core entry recovery");
 
     // Update layer (buffer is preserved, not cleared)
     this._layer = "core";
@@ -1580,6 +1604,42 @@ export class SphereContextImpl implements SphereContext {
    * @param action Action name for cost lookup
    * @returns true if action can proceed, false if insufficient energy
    */
+  /**
+   * Add energy back, clamped to the session's initial allocation.
+   *
+   * [Design] Core entry recovery と失敗時の返金で共有する唯一の加算経路。
+   *          クランプがあるので、返金で初期値を超えることはない。
+   */
+  private restoreEnergy(amount: number, reason: string): void {
+    if (amount <= 0) return;
+    const before = this._energy;
+    this._energy = Math.min(this._energyConfig.initial, this._energy + amount);
+    console.log(
+      `[SphereContext] ⚡ energy +${this._energy - before} (${before} → ${this._energy}) — ${reason}`
+    );
+
+    // エネルギー枯渇で追い出した直後の返金なら、追い出しを取り消す
+    // [Reason] 残り10で ghost に focus → 0 で追い出し → 返金で10 という順序があり得る
+    if (this._expelledByEnergy && this._energy > 0) {
+      this._expelledByEnergy = false;
+      this._session.state = "connected";
+      console.log(`[SphereContext] Expulsion revoked by refund (energy ${this._energy})`);
+    }
+  }
+
+  /**
+   * Refund an action's cost after it failed post-charge.
+   *
+   * [Design] consumeEnergy() と同じ式で層倍率を掛け直す。
+   *          Sanctuary で5引かれたなら5返す (10ではない)。
+   */
+  private refundEnergy(action: keyof typeof DEFAULT_ENERGY.costs, reason: string): void {
+    const cost = Math.round(
+      this._energyConfig.costs[action] * LAYER_ENERGY_MULTIPLIER[this._layer]
+    );
+    this.restoreEnergy(cost, `refund: ${action} — ${reason}`);
+  }
+
   private consumeEnergy(action: keyof typeof DEFAULT_ENERGY.costs): boolean {
     const baseCost = this._energyConfig.costs[action];
     const multiplier = LAYER_ENERGY_MULTIPLIER[this._layer];
@@ -1607,6 +1667,7 @@ export class SphereContextImpl implements SphereContext {
 
     // Check for energy exhaustion
     if (this._energy <= 0) {
+      this._expelledByEnergy = true;
       this._session.state = "expired";
       this.emit("expelled", "Energy exhausted");
       console.log(`[SphereContext] Session ${this._sessionId} expelled: energy exhausted`);
@@ -1691,7 +1752,7 @@ export class SphereContextImpl implements SphereContext {
     return {
       id: nodeId,
       distance: 0,
-      summary: `⚠️ Mock data - This node (ghost/fossil) cannot be focused directly. Use sense/scan + evaluate instead.`,
+      summary: `⚠️ Mock data - no core adapter attached (mock mode).`,
       heat: 50,
       weight: 0.7,
       decay: 500,   // Medium decay
@@ -1699,7 +1760,7 @@ export class SphereContextImpl implements SphereContext {
       kind: "active",
       flags: 0,
       tags: ["⚠️-mock"],
-      content: "⚠️ Ghost/Fossil nodes cannot be focused. You can still evaluate them from sense/scan results.",
+      content: "⚠️ Mock mode: this Sphere instance has no core adapter, so no real node content is available.",
     };
   }
 
