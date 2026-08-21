@@ -1,13 +1,17 @@
 {
   "name": "sphere-original",
   "version": "1.0.0",
-  "description": "---\r title: Sphere\r emoji: 🌐\r colorFrom: indigo\r colorTo: purple\r sdk: docker\r pinned: false\r license: apache-2.0\r ---",
+  "description": "An autonomous metabolic information infrastructure for AI agents",
   "main": "index.js",
   "directories": {
     "doc": "docs"
   },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "test:refund": "node sphere-dive-manual.mjs ./sphere-dive-plan.test-refund.mjs",
+    "test:emitbus": "node sphere-dive-manual.mjs ./sphere-dive-plan.test-emitbus.mjs",
+    "test:walkmode": "node sphere-dive-manual.mjs ./sphere-dive-plan.test-walkmode.mjs",
+    "test:regression": "npm run test:refund && npm run test:emitbus && npm run test:walkmode"
   },
   "keywords": [],
   "author": "",
