@@ -1,3 +1,10 @@
+# [2026-08-21] Compose project 名を明示する。
+# 4つの sphere 系リポジトリはディレクトリ名が全て docker_compose_sphere_v1 で、
+# name: が無いと project 名が衝突し、イメージ (docker_compose_sphere_v1-periphery) と
+# container_name を共有してしまう。他リポジトリでの build が正史のイメージを
+# 上書き破壊するため、リポジトリごとに固有名を与える。
+name: sphere-original
+
 services:
   # ============================================================================
   # Infrastructure Layer

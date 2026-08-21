@@ -329,15 +329,35 @@ export class GatewayServer {
    * @param serverOrPort - http.Server for same-port mode (production), number for standalone port (dev)
    */
   start(serverOrPort?: HttpServer | number): void {
+    // [Fix 2026-08-21] Attached mode では this.config.port (独立ポート設定値、既定 0) が
+    //                  実際の待ち受けポートではない。そのまま案内に使うと
+    //                  ws://localhost:0 という到達不能な URL を表示してしまう。
+    //                  実ポートは HTTP サーバが listen した後にしか判明しないため、
+    //                  listening を待ってから案内を出す。
+    let announceConnectUrl: () => void;
+
     if (serverOrPort && typeof serverOrPort !== "number") {
       // Attached mode: share HTTP server port (production / Render / HF Spaces)
-      this.wss = new WebSocketServer({ server: serverOrPort });
+      const httpServer = serverOrPort;
+      this.wss = new WebSocketServer({ server: httpServer });
       console.log(`[GatewayServer] WebSocket attached to HTTP server (same port)`);
+
+      const logUrl = () => {
+        const addr = httpServer.address();
+        const port = addr && typeof addr === "object" ? addr.port : this.config.port;
+        console.log(`[GatewayServer] Connect with: ws://localhost:${port}?token=<ticket>`);
+      };
+      announceConnectUrl = () => {
+        if (httpServer.listening) logUrl();
+        else httpServer.once("listening", logUrl);
+      };
     } else {
       // Standalone mode: dedicated port (local dev)
       const port = typeof serverOrPort === "number" ? serverOrPort : this.config.port;
       this.wss = new WebSocketServer({ port });
       console.log(`[GatewayServer] WebSocket server listening on port ${port}`);
+      announceConnectUrl = () =>
+        console.log(`[GatewayServer] Connect with: ws://localhost:${port}?token=<ticket>`);
     }
 
     this.wss.on("connection", (socket, request) => {
@@ -348,7 +368,7 @@ export class GatewayServer {
       console.error("[GatewayServer] WebSocket server error:", error);
     });
 
-    console.log(`[GatewayServer] Connect with: ws://localhost:${this.config.port}?token=<ticket>`);
+    announceConnectUrl();
   }
 
   /**

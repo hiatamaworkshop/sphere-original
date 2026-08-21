@@ -38,6 +38,7 @@ import type {
   EvaluationResult,
   SessionBuffer,
 } from "../types/experience-layer.js";
+import { DEFAULT_ENERGY_CONFIG } from "../types/config.js";
 import type { ActionLog, AutoCapsule } from "../types/auto-capsule.js";
 import { createActionLog, logAction, buildAutoCapsule } from "../types/auto-capsule.js";
 import {
@@ -70,19 +71,14 @@ const DEFAULT_WARNING_BEFORE_END = 30;
 /** Default sense radius (multiplier) */
 const DEFAULT_SENSE_RADIUS = 1.0;
 
-/** Default energy settings */
-const DEFAULT_ENERGY = {
-  initial: 100,
-  warningThreshold: 10,
-  costs: {
-    scan: 1,      // scanL1() (perception); internal scan() has no cost
-    sense: 3,
-    move: 5,
-    focus: 10,
-    warp: 15,
-    evaluate: 3,
-  },
-};
+/**
+ * Default energy settings.
+ *
+ * [Design] 以前はここに独自のコスト表を持っていたが、rulebook 側の表と
+ *          食い違っていたため types/config.ts の正典を参照する。
+ *          scan は scanL1() (perception) のコスト。内部 scan() は無料。
+ */
+const DEFAULT_ENERGY = DEFAULT_ENERGY_CONFIG;
 
 /**
  * Layer-specific energy cost multipliers
@@ -1245,13 +1241,22 @@ export class SphereContextImpl implements SphereContext {
     this.checkSession();
     this.updateActivity();
 
+    // [Fix 2026-08-21] rulebook は emitBus を cost 20 と公表していたが、
+    //                  ここに課金が無く実際には無料だった。公表どおり課金する。
+    if (!this.consumeEnergy("emitBus")) {
+      console.log(`[SphereContext] emitBus blocked: insufficient energy`);
+      return false;
+    }
+
     if (!this.activeBusLayer) {
       console.log(`[SphereContext] emitBus failed: ActiveBus not available`);
+      this.refundEnergy("emitBus", "ActiveBus not available");
       return false;
     }
 
     const message = this.activeBusLayer.emit(this._sessionId, payload);
     if (!message) {
+      this.refundEnergy("emitBus", "ActiveBus rejected the message");
       return false;
     }
 

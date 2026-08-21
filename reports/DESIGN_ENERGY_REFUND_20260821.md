@@ -144,11 +144,66 @@ focus(active) → -10 (81 → 71)   ← 返金後の残量から正しく引か�
 
 proximity guard (sense していないノード) と存在しない ID でも返金を確認済み。
 
+## 追補 (同日) — コスト表が4つに分裂していた
+
+残件の `emitBus` を確認したところ、より根の深い問題が出た。
+
+### emitBus は課金されていなかった
+
+`emitBus()` に `consumeEnergy` が無く、**rulebook が cost 20 と公表しているのに実際は無料**
+だった。エージェントは 64 バイトを無制限に同報できた。公表どおり課金し、
+ActiveBus が使えない場合・emit が拒否された場合は返金するようにした。
+
+### コスト表が4箇所に散在し、互いに食い違っていた
+
+| 場所 | 内容 |
+|---|---|
+| `types/config.ts` の `DEFAULT_PERIPHERY_CONFIG.energy` | sense 3 / scan 1、emitBus 無し |
+| `gateway/sphere-context.ts` の `DEFAULT_ENERGY` | 上とは別の同内容リテラル |
+| `rulebook/index.ts` の `constraints.energy.costs` | **sense 2 / scanL1 2**、emitBus 20 |
+| `rulebook/index.ts` の `actions[]` | **scanL1 2** (同じファイル内で上と不一致) |
+
+`getRulebookResponse()` は config で上書きするが、config が値を省略すると
+rulebook 自身のリテラルにフォールバックするため、**実際に引かれる額と
+公表される額が別々の既定値に落ちる**構造だった。
+実測では sense は 3 引かれるのに、rulebook は 2 と公表していた。
+
+エージェントにとって rulebook は世界との契約なので、これは返金漏れより悪い。
+
+**対応**: `types/config.ts` に `DEFAULT_ENERGY_CONFIG` を正典として置き、
+sphere-context と rulebook の両方がこれを参照する。
+`actions[]` の cost は解決済みのコスト表から引き直して生成し、
+同一ファイル内での乖離も構造的に起こらないようにした。
+
+修正後の `/rulebook`:
+
+```json
+constraints: {"sense":3,"scanL1":1,"move":5,"focus":10,"warp":15,"evaluate":3,"emitBus":20}
+actions    : {"move":5,"scanL1":1,"sense":3,"focus":10,"evaluate":3,"warp":15,"emitBus":20,"return":0}
+```
+
+実測 (`sphere-dive-plan.test-emitbus.mjs`): `emit` 2回で 100 → 80 → 60。
+
+### moveIntent
+
+`consumeEnergy` を一切呼んでいないが、`gateway-server.ts` に対応する case が無く
+**WebSocket からは到達できない**。`types/gateway.ts` のインターフェースに
+宣言があるだけの内部 API なので、悪用経路は無い。公開する場合は課金が必要。
+
 ## 残件
 
 - `sense` / `scanL1` には課金後の失敗経路が無いため未対応 (現状で正しい)
-- `moveIntent()` は未確認。同型の穴がある可能性がある
-- `emitBus` は未確認
+- `moveIntent()` を公開するなら課金を入れること (現状は到達不能)
 - 2026-02-09 に FastGate へ入れた ghost/fossil 除外は、サーバ側が正しく
   失敗を返すようになったため**カップリング層の責務としては不要**になった。
   ただしエネルギーの無駄撃ちを避ける最適化としては依然有効なので残置。
+
+## 訂正
+
+初版で「全ノードの `decay` が 1000 で止まっているのは `dormancy: true` が
+原因の可能性がある」と書いたが、**これは誤り**。`dormancy` は
+「6回連続でエージェント不在を観測」で立つフラグ (`sanctification-neuron.ts`) で、
+エージェントが接続すれば解除される。実際、dive 後は `dormancy: false` になった。
+その状態でも 180ノード中 178ノードの decay は 1000 のままで、
+動いたのは評価を受けた2ノード (970 / 985) だけだった。
+decay は時間ではなく評価に反応している。dormancy とは無関係。

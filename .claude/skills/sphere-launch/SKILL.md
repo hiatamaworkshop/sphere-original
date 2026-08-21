@@ -263,20 +263,39 @@ Tutorial は無料、Sanctuary は半額、Core は全額。
    ghost/fossil への focus は正しくエラーになる。
 3. ~~`⚠️ Mock data` が混入している~~ → `mockFocus` は adapter 無しのモックモード専用になった。
 
-検証は `node sphere-dive-manual.mjs ./sphere-dive-plan.test-refund.mjs` で再現できる。
+4. ~~`ws://localhost:0` の表示バグ~~ → attached mode では HTTP サーバが listen した後に
+   実ポートを引いて案内するようにした。`ws://localhost:3001?token=<ticket>` と出る。
+5. **`emitBus` が無課金だった。** rulebook は cost 20 と公表しているのに `consumeEnergy` が
+   無く、同報が無料だった。公表どおり課金するようにした。
+6. **コスト表が4箇所に分裂して食い違っていた。** rulebook は sense を 2 と公表していたが
+   実際は 3 引かれていた。`types/config.ts` の `DEFAULT_ENERGY_CONFIG` を正典に統一。
+
+検証は以下で再現できる。
+
+```bash
+node sphere-dive-manual.mjs ./sphere-dive-plan.test-refund.mjs    # 返金
+node sphere-dive-manual.mjs ./sphere-dive-plan.test-emitbus.mjs   # emitBus 課金
+```
+
+### 綻びではなかったもの
+
+- **`viewTrail` の 384次元ベクトル。** 意図的な設計だった。`lastPosition` は
+  セッションをまたいだ再開用 (2026-02-25 に追加)、`events[].positionSnapshot` は
+  軌跡解析の waypoint。どちらも phi-agent が `appendTrail` で永続化し digestor が使う。
+- **`dormancy: true`。** 「6回連続でエージェント不在を観測」で立つフラグ
+  (`sanctification-neuron.ts`)。エージェントが接続すれば解除される。dive 後は `false` になった。
 
 ### 未修正
 
-4. **Sanctuary が実質空。** amber が 0件なので `sense` しても 0件。3層構造の真ん中が機能していない。
-5. **`viewTrail` が 384次元の生ベクトルを返す。** 航跡として使いにくく、ペイロードも大きい。
-6. **`/nodes/:id` の 429。** 上記のとおり連続取得で落ちる。
-7. **`[GatewayServer] Connect with: ws://localhost:0?token=<ticket>`** — 独立ポート設定値(0=アタッチ)をそのまま出す表示バグ。実際の接続先は 3001。
+- **Sanctuary が実質空。** amber が 0件なので `sense` しても 0件。3層構造の真ん中が機能していない。
+- **`/nodes/:id` の 429。** 連続取得で落ちる (180件中61件が失敗)。
+- **`moveIntent()` に課金が無い。** ただし Gateway に case が無く WebSocket からは到達不能。
+  公開するなら課金が要る。
 
-**世界が休眠している。**
-`/sphere/status` の `sanctification` が
-`{"epoch":0,"health":0.61,"metabolicMode":"archive","dormancy":true}` を返す。
-全ノードの `decay` が一律 1000 で止まっているのはこれが原因の可能性がある(未確認)。
-腐敗が実際に進む世界はまだ観測できていない。
+**decay はほとんど動かない。**
+`dormancy: false` の状態でも 180ノード中 178ノードの decay は 1000 のまま。
+動いたのは評価を受けた2ノード (970 / 985) だけだった。
+decay は時間ではなく評価に反応している。腐敗が進む世界はまだ観測できていない。
 
 ---
 
