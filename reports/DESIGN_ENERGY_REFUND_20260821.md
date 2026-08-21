@@ -207,3 +207,10 @@ actions    : {"move":5,"scanL1":1,"sense":3,"focus":10,"evaluate":3,"warp":15,"e
 その状態でも 180ノード中 178ノードの decay は 1000 のままで、
 動いたのは評価を受けた2ノード (970 / 985) だけだった。
 decay は時間ではなく評価に反応している。dormancy とは無関係。
+
+さらに追って調べた結果、`metrics.d` は**時間で変化する量ではない**ことが確定した。
+`RenalCore.processDecay()` は `d` に一切触れておらず、書き込むのは
+`Bookkeeper.applyEvaluations()` だけ。API が `d` を "decay" と呼んでいるのが
+紛らわしいだけで、時間で減る寿命は `ttl` の方。
+この定数 1000 を `move` の `deep` / `fresh` が分母に使っていた欠陥については
+`DESIGN_WALKMODE_GRADIENT_20260821.md` を参照。

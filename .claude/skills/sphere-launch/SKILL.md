@@ -270,12 +270,36 @@ Tutorial は無料、Sanctuary は半額、Core は全額。
 6. **コスト表が4箇所に分裂して食い違っていた。** rulebook は sense を 2 と公表していたが
    実際は 3 引かれていた。`types/config.ts` の `DEFAULT_ENERGY_CONFIG` を正典に統一。
 
+7. **`move` の `deep` / `fresh` が機能していなかった。** 重み式が `d` を定数 1000 で
+   割っていたが、`d` は時間では動かず評価を受けるまで baseline 1000 に張り付く。
+   結果 `deep` は全ノード weight 0 → `totalWeight === 0` で **random に落ちていた**。
+   `fresh` は `h × 1.0` で **`hot` と完全に同一**だった。
+   `d` と `freshness` を「可視ノード集合内での相対位置 (0.5〜1.5)」に変換する方式に変更。
+   併せて `types/gateway.ts` の WalkMode 定義が実装と食い違っていたのを直した
+   (`fresh` を timestamp ベースと書いていた / `explore` を distance ベースと書いていた /
+   `flow` の field を 0.7 と書いていた)。**エネルギーのコスト表と同じ仕様分裂**。
+
 検証は以下で再現できる。
 
 ```bash
-node sphere-dive-manual.mjs ./sphere-dive-plan.test-refund.mjs    # 返金
-node sphere-dive-manual.mjs ./sphere-dive-plan.test-emitbus.mjs   # emitBus 課金
+node sphere-dive-manual.mjs ./sphere-dive-plan.test-refund.mjs     # 返金
+node sphere-dive-manual.mjs ./sphere-dive-plan.test-emitbus.mjs    # emitBus 課金
+node sphere-dive-manual.mjs ./sphere-dive-plan.test-walkmode.mjs   # WalkMode 勾配
 ```
+
+実測した重み (可視8ノード、うち6ノードが d=1000):
+
+```
+  id       kind    d     |  旧fresh   旧deep  |  新fresh    新deep     hot
+  565b5138 active  1000  |    517.0    0.000  |   1162.3     50.7   517.0
+  32ecdcaf active  1000  |    434.4    0.000  |    325.8    143.6   434.4
+  6938b22b fossil   985  |    479.7    0.811  |    243.5     54.1   487.0
+  9cef886b active   970  |    467.1    3.519  |    120.4    175.9   481.5
+```
+
+旧 `deep` は非ゼロが2件だけで、その 81% が d=970 の1ノード、19% が **fossil**。
+「安定して評価された方向」を名乗りながら崩れかけのノードへ向かっていた。
+旧 `fresh` は hot 列と数値が完全一致している。
 
 ### 綻びではなかったもの
 
@@ -292,10 +316,33 @@ node sphere-dive-manual.mjs ./sphere-dive-plan.test-emitbus.mjs   # emitBus 課�
 - **`moveIntent()` に課金が無い。** ただし Gateway に case が無く WebSocket からは到達不能。
   公開するなら課金が要る。
 
-**decay はほとんど動かない。**
-`dormancy: false` の状態でも 180ノード中 178ノードの decay は 1000 のまま。
-動いたのは評価を受けた2ノード (970 / 985) だけだった。
-decay は時間ではなく評価に反応している。腐敗が進む世界はまだ観測できていない。
+### `decay` は「残量」ではなく「係数」(綻びではない)
+
+`/nodes/metrics` の `decay` は `node.metrics.d`。**時間では変化しない。**
+`RenalCore.processDecay()` が毎 tick 書き換えるのは `ttl` / `h` / `w` / `immuneMod` / `flux` の
+5つだけで、renalCore 全体に `metrics.d` への参照は 1件も無い。
+
+`d` に書き込むのは periphery の2箇所のみ。
+
+| 場所 | 契機 |
+|---|---|
+| `bookkeeper.ts` (applyEvaluations) | `d = max(0, d + (eval.d - neutral) × 5)` — **評価時のみ** |
+| `bookkeeper.ts` (resetMetrics) | メトリクスのリセット |
+
+初期値 1000 は `packer.standardDecayCoefficient`。誰も評価しなければ 1000 のまま動かない。
+180ノード中 178 が 1000 なのは正常。
+
+**寿命は `ttl` の方**で、こちらは archive preset に従ってちゃんと減っている。
+
+```
+[RenalCore] decay node=c5d1ec72 ttl=86392.4 heat=498.951 weight=99.9
+```
+
+TTL は `normal: 86400` (1日) / `top: 172800` (2日) から開始する。
+稼働中の decay preset は `archive × intensity=0.5` (alpha=0.5)。
+
+> `ttl` という残量と `d` という係数があり、API が後者を "decay" と呼んでいる。
+> 「decay が減らない」と見えるのはこの命名の食い違いによる。
 
 ---
 

@@ -46,12 +46,14 @@ export const rulebook = {
     { name: "return", cost: 0, description: "End exploration → enter Vestibule. Your evaluations are auto-flushed. Use Vestibule commands before disconnect." },
   ],
 
-  // Move modes — each follows a different gradient
+  // Move modes — each follows a different gradient.
+  // fresh/deep weigh decay and age RELATIVE to the nodes you currently sense,
+  // not against absolute thresholds. A mode never collapses to random.
   moveModes: {
     random:  { field: 0.0, description: "Pure random. Ignores magnetic field." },
     hot:     { field: 0.5, description: "Toward high-heat nodes." },
-    fresh:   { field: 0.5, description: "Toward high-heat AND high-decay (volatile, active)." },
-    deep:    { field: 0.5, description: "Toward high-weight AND low-decay (stable, trusted)." },
+    fresh:   { field: 0.5, description: "Toward high-heat, high-decay AND recently-updated nodes (volatile, active)." },
+    deep:    { field: 0.5, description: "Toward high-weight AND low-decay nodes (stable, trusted)." },
     explore: { field: 0.3, description: "Toward low-weight (unvisited). Resists the field." },
     flow:    { field: 1.0, description: "Surrenders to the magnetic field completely." },
   },

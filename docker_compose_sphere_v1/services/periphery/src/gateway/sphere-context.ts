@@ -135,8 +135,9 @@ function projectTo3D(vector: number[]): Vector {
  *
  * [Metrics for WalkMode]
  *   heat (h): 可視性・人気度 → "hot" mode
- *   decay (d): 揮発性係数 → "fresh" mode (h × d)
- *   weight (w): 安定性 → "deep" mode (w × (1-d/1000))
+ *   decay (d): 揮発性係数 → "fresh" / "deep" mode (可視集合内での相対位置で使う)
+ *   weight (w): 安定性 → "deep" mode
+ *   freshness: timestamp 由来の新しさ → "fresh" mode
  *   explore: 未知探索 → 1/(w+1)
  */
 interface VisibleNodeInfo {
@@ -144,9 +145,40 @@ interface VisibleNodeInfo {
   kind: string;          // Node kind (for cost calculation)
   heat: number;          // h - Popularity metric
   decay: number;         // d - Decay coefficient (0-2000 range)
-  freshness: number;     // timestamp-based (legacy, for fallback)
+  freshness: number;     // timestamp 由来の新しさ 1/(1+age/3600000) — "fresh" mode で使用
   weight: number;        // w - Stability metric
   distance: number;      // Distance from agent
+  /**
+   * メトリクスが実測値か。
+   * sense() 由来 = true。L1 scan 由来は heat/weight/decay を持たない
+   * プレースホルダなので false — 相対スケールの母集団から除外する。
+   */
+  measured: boolean;
+}
+
+/**
+ * 値の集合を「集合内での相対位置 → 0.5〜1.5 の係数」に変換する関数を返す。
+ *
+ * [Why] WalkMode の重み付けに絶対値の閾値を焼き込むと、その指標が
+ * baseline に張り付いている環境で式が定数に潰れる (d の 1000 がこれだった)。
+ * 集合内の相対位置なら、指標が動いていなくても壊れない。
+ *
+ * [Design]
+ *   - 全要素が同値 = その軸は情報を持たない → 常に 1.0 (重み付けに影響しない)
+ *   - 下限 0.5 / 上限 1.5 で 0 を返さない → totalWeight が消えて random に
+ *     落ちることがない
+ */
+function buildRelativeScale(values: number[]): (v: number) => number {
+  let min = Infinity;
+  let max = -Infinity;
+  for (const v of values) {
+    if (!Number.isFinite(v)) continue;
+    if (v < min) min = v;
+    if (v > max) max = v;
+  }
+  const span = max - min;
+  if (!Number.isFinite(span) || span < 1e-9) return () => 1.0;
+  return (v: number) => (Number.isFinite(v) ? 0.5 + (v - min) / span : 1.0);
 }
 
 // ============================================================
@@ -332,7 +364,7 @@ export class SphereContextImpl implements SphereContext {
     this._sensedNodeIds.clear(); // Proximity-confirmed nodes reset
     for (const node of nodes) {
       const age = now - (node.timestamp || now);
-      const freshness = 1 / (1 + age / 3600000);  // 1 hour half-life (legacy fallback)
+      const freshness = 1 / (1 + age / 3600000);  // 1 hour half-life
       this._visibleNodes.set(node.id, {
         vector: [],  // Fetched on demand during gradient calculation
         kind: node.kind,
@@ -341,6 +373,7 @@ export class SphereContextImpl implements SphereContext {
         freshness,
         weight: node.weight,
         distance: node.distance,
+        measured: true,
       });
       this._sensedNodeIds.add(node.id);
     }
@@ -452,6 +485,7 @@ export class SphereContextImpl implements SphereContext {
             decay: 0,
             distance: 0,
             freshness: 0,
+            measured: false,
           });
         }
       }
@@ -1021,9 +1055,20 @@ export class SphereContextImpl implements SphereContext {
    *
    * [Design] Mode determines which aspect of the field to follow:
    *   - hot:     h (heat) で重み付け → 活気のある方向
-   *   - fresh:   h × (d/1000) で重み付け → 新鮮で活発な方向
-   *   - deep:    w × (1-d/1000) で重み付け → 安定して評価された方向
+   *   - fresh:   h × 揮発性(d) × 新しさ(timestamp) → 新鮮で活発な方向
+   *   - deep:    w × 安定性(低 d) → 安定して評価された方向
    *   - explore: 1/(w+1) で重み付け → 未知・未判定の方向
+   *
+   * [Relative gradient] d / freshness は絶対値ではなく「可視ノード集合内での
+   * 相対位置」に変換してから使う。move は "見えているものの中でどちらへ進むか"
+   * を決める操作なので、絶対スケールには意味がない。
+   *
+   * 旧実装は d を定数 1000 で割っていたが、d は時間では変化せず
+   * (RenalCore.processDecay は d に触れない)、評価を受けるまで
+   * packer の baseline 1000 に張り付く。結果として未評価のスフィアでは
+   *   fresh → h × 1.0  = hot と完全に同一
+   *   deep  → w × 0    = 全ノード weight 0 → totalWeight 0 → random 化
+   * となり、2モードが設計意図を失っていた。
    *
    * [Algorithm] Weighted centroid toward visible nodes
    */
@@ -1031,6 +1076,11 @@ export class SphereContextImpl implements SphereContext {
     const dim = this._embeddingVector.length;
     const weightedSum = new Array(dim).fill(0);
     let totalWeight = 0;
+
+    // 可視ノード集合を基準にした相対スケールを先に作る (0.5〜1.5)
+    const measured = [...this._visibleNodes.values()].filter((n) => n.measured);
+    const decayScale = buildRelativeScale(measured.map((n) => n.decay));
+    const freshScale = buildRelativeScale(measured.map((n) => n.freshness));
 
     // Fetch vectors for visible nodes
     for (const [nodeId, info] of this._visibleNodes) {
@@ -1058,14 +1108,15 @@ export class SphereContextImpl implements SphereContext {
           weight = info.heat;
           break;
         case "fresh":
-          // 新鮮で活発な方向 (h × d)
+          // 新鮮で活発な方向 (h × 揮発性 × 新しさ)
           // d が高い = 揮発性が高い = 新しいか不安定 → 好奇心が惹かれる
-          weight = info.heat * (info.decay / 1000);  // d is 0-2000 range
+          // d が横並びのときは timestamp 由来の新しさが差を作る (hot と別物になる)
+          weight = info.heat * decayScale(info.decay) * freshScale(info.freshness);
           break;
         case "deep":
-          // 安定して評価された方向 (w × (1-d/1000))
-          // d が低い = 安定 → 信頼できる情報
-          weight = info.weight * Math.max(0, 1 - info.decay / 1000);
+          // 安定して評価された方向 (w × 安定性)
+          // d が低い = 安定 → 信頼できる情報。相対スケールを反転して使う
+          weight = info.weight * (2.0 - decayScale(info.decay));
           break;
         case "explore":
           // 未知・未判定の方向 (w が低いものを好む)
