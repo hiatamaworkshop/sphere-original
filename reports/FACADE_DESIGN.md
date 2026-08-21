@@ -401,176 +401,98 @@ journeyId はエージェントが生成する。Facade はジャーニーの意
 
 ---
 
-## 9. ロッカーの作法 (2026-02-24)
+## 9. ロッカーの作法 (2026-02-24 / 改訂 2026-02-25)
 
 ### 概要
 
-Facade が提供する Journey スコープのストレージ群。
+Facade が提供する 2 層のストレージ。
 全データは **opaque (不透明)** — Facade は中身を見ない、加工しない。
 
 ```
 ┌─────────────────────────────────────────────┐
-│  Journey: j-abc-123                         │
-│                                             │
-│  [Locker]     生データ保管 (immutable)       │
-│    ├─ sphere-medical  → VestibuleOutput     │
-│    ├─ sphere-ocean    → VestibuleOutput     │
-│    └─ sphere-mountain → VestibuleOutput     │
-│                                             │
-│  [Workbench]  推論バッファ (appendable)      │
-│    ├─ "medical と ocean の交差点は..."       │
-│    ├─ "mountain の生存技術は関連薄い"        │
-│    └─ "海洋医療という軸が浮上した"           │
-│                                             │
-│  [Notebook]   推論結果 (immutable entries)   │
-│    └─ { conclusion, sources, confidence }   │
-│                                             │
-│  [Itinerary]  旅程 (mutable, 1つ)           │
-│    └─ { remaining, visited, nextQuery }     │
-│                                             │
+│  私有ロッカー (journeyId スコープ)            │
+│    append-only ストリーム、タグ任意           │
+│    ├─ { entry: VestibuleOutput, tags: [] }  │
+│    ├─ { entry: "気づき...", tags: ["note"] } │
+│    └─ { entry: ..., tags: ["bookmark", ..]}  │
+│    退出時に自動消滅                           │
+│              ↓ 書き込みのたびに自動プッシュ   │
+├─────────────────────────────────────────────┤
+│  共有 FIFO (Facade 常設)                     │
+│    全エージェントの書き込みが流れ込む          │
+│    古いエントリは自動的に押し出される          │
+│    滞在中の全エージェントが閲覧可能            │
 └─────────────────────────────────────────────┘
 ```
 
-### 4つの機能
-
-#### Locker (ロッカー) — 生データ保管
-
-スフィアの Vestibule 出力をそのまま保管。不変。
+### API (2026-02-25 改訂版)
 
 ```
-POST   /locker/:journeyId
-  { sphereId, data: VestibuleOutput }
-  → { success, itemCount }
+POST /locker/:journeyId/append
+  { entry: any, tags?: string[] }
+  → { success, index }          // 同時に共有 FIFO へ自動プッシュ
 
-GET    /locker/:journeyId
-  → { items: [{ sphereId, data, timestamp }...] }
+GET  /locker/:journeyId
+  → { entries: [{ entry, tags, timestamp, index }...] }
 
-GET    /locker/:journeyId/:sphereId
-  → 特定スフィアの成果物のみ
+GET  /shared
+  → { entries: [{ entry, tags, timestamp, journeyId }...] }  // FIFO 末尾から N件
+
+DELETE /locker/:journeyId
+  → 私有ロッカー破棄 (退出時自動でも可)
 ```
 
-#### Workbench (作業台) — 推論バッファ
+- Bookmark は `tags: ["bookmark"]` + `sphereId` / `nodeId` をエントリに含めれば代替可能
+- Notebook / Itinerary / Workbench の型区別は不要。エージェントがタグで管理する
 
-推論途中の思考を積み重ねる一時テーブル。append 専用。
-軽量モデルが推論中にコンテキストを退避させる場所。
+### TTL
 
-```
-POST   /workbench/:journeyId/append
-  { entry: string | object }
-  → { success, entryCount }
-
-GET    /workbench/:journeyId
-  → { entries: [{ entry, timestamp, index }...] }
-
-DELETE /workbench/:journeyId
-  → 作業台クリア (推論やり直し)
-```
-
-#### Notebook (手帳) — 推論結果の確定
-
-推論が完了した結論を書く。Locker と同様 immutable。
-
-```
-POST   /notebook/:journeyId
-  { title, body: string | object, sources?: string[] }
-  → { success, noteId }
-
-GET    /notebook/:journeyId
-  → { notes: [{ noteId, title, body, sources, timestamp }...] }
-```
-
-#### Itinerary (旅程表) — 旅の計画
-
-どこに行って何を探すか。1つだけ、上書き可能。
-
-```
-PUT    /itinerary/:journeyId
-  { plan: [{ sphereId, query, tags, priority, status }...] }
-  → { success }
-
-GET    /itinerary/:journeyId
-  → { plan: [...] }
-```
-
-### 補助機能
-
-#### Bookmark (しおり)
-
-再訪問したいノードを記録。warp で直接飛べる。
-
-```
-POST   /bookmark/:journeyId
-  { sphereId, nodeId, reason? }
-
-GET    /bookmark/:journeyId
-  → { bookmarks: [...] }
-```
-
-#### Collect (一括回収)
-
-旅の終わりに全成果物をまとめて取得・破棄。
-
-```
-GET    /collect/:journeyId
-  → { locker, notebook, workbench, itinerary, bookmarks }
-
-DELETE /collect/:journeyId
-  → 全データ破棄
-```
-
-### TTL (保管期間)
-
-| ストレージ | デフォルト TTL | 備考 |
-|-----------|--------------|------|
-| Locker | 1時間 | VestibuleOutput は一時的 |
-| Workbench | 30分 | 推論バッファは揮発的 |
-| Notebook | 1時間 | Locker と同ライフサイクル |
-| Itinerary | 1時間 | Journey 全体の寿命 |
-| Bookmark | 1時間 | Journey 全体の寿命 |
-
-全ストレージは journeyId 単位で TTL 管理。
-最終アクセスからの経過時間でカウント (sliding window)。
-エージェントが活動中なら自然にリフレッシュされる。
-
-### 非介入原則との整合
-
-| Facade がやること | Facade がやらないこと |
-|---|---|
-| データの保管・返却 | データの分析・加工 |
-| TTL による自動削除 | 推論の実行 |
-| journeyId によるグルーピング | journey の意味の理解 |
-| append / immutable の制約管理 | 内容の検証・フィルタリング |
+| ストレージ | 寿命 | 備考 |
+|-----------|------|------|
+| 私有ロッカー | Facade 退出まで | セッションスコープ |
+| 共有 FIFO | FIFO による自然押し出し | 時間ベースではなく容量ベース |
 
 ### 軽量モデルの典型的な旅
 
 ```
 Agent (小コンテキスト)
   │
-  ├─ GET /catalog → 計画立案
-  ├─ PUT /itinerary { plan: [medical, ocean, mountain] }
+  ├─ GET /catalog → スフィア一覧把握
   │
   ├─ Sphere Medical 探索 → Vestibule
-  ├─ POST /locker    (成果物保管)
-  ├─ POST /workbench/append (気づきメモ)
+  ├─ POST /locker/append { entry: vestibuleOutput }
+  ├─ POST /locker/append { entry: "気づき", tags: ["note"] }
   │  ← コンテキスト解放 →
   │
-  ├─ GET /itinerary  (次の目的地確認)
+  ├─ GET /shared            (他エージェントの発見を眺める)
+  ├─ GET /locker/:journeyId (前回の気づきを読み直す)
   ├─ Sphere Ocean 探索 → Vestibule
-  ├─ POST /locker
-  ├─ GET /workbench  (前回の気づきを読み直す)
-  ├─ POST /workbench/append (新たな気づき)
+  ├─ POST /locker/append { entry: vestibuleOutput }
+  ├─ POST /locker/append { entry: "統合推論...", tags: ["note"] }
   │
-  ├─ GET /workbench  (推論の積み重ねを確認)
-  ├─ POST /notebook  (結論を確定)
-  │
-  ├─ GET /collect    (全成果物回収)
+  ├─ GET /locker/:journeyId (全エントリ回収)
   └─ 統合出力生成 (Facade の関知外)
 ```
 
-### 高性能モデルとの使い分け
+### 非介入原則との整合
 
-- **軽量モデル**: ロッカーは **必須** (外部記憶)。Workbench で思考を退避しながら推論
-- **高性能モデル**: ロッカーは **推奨** (効率と耐障害性)。コンテキスト内で保持も可能だが、クラッシュ耐性と構造化の利点あり
+| Facade がやること | Facade がやらないこと |
+|---|---|
+| エントリの保管・返却 | データの分析・加工 |
+| 共有 FIFO への自動プッシュ | 推論の実行 |
+| 退出時の自動クリーンアップ | タグの意味解釈 |
+| FIFO 容量管理 | 内容の検証・フィルタリング |
+
+<!-- 2026-02-24 旧設計: Workbench / Notebook / Itinerary / Bookmark を独立エンドポイントとして設計していたが、
+     過剰なサービスレジストリ化を避けるため 2026-02-25 に単一 append-only ストリームへ統合。
+     型区別はエージェント側のタグ付けに委譲。
+     旧 API:
+       POST /workbench/:journeyId/append, GET /workbench/:journeyId, DELETE /workbench/:journeyId
+       POST /notebook/:journeyId, GET /notebook/:journeyId
+       PUT  /itinerary/:journeyId, GET /itinerary/:journeyId
+       POST /bookmark/:journeyId, GET /bookmark/:journeyId
+       GET  /collect/:journeyId → { locker, notebook, workbench, itinerary, bookmarks }
+-->
 
 ---
 
@@ -612,6 +534,169 @@ phi-agent — 最適化層 (FastGate, Weapon)   → Sphere を活かす技術
 
 各レイヤーの純粋性を保つことがプロジェクトの重要事項。
 思いつきで責務を越境させない。迷ったらこの境界に立ち返る。
+
+---
+
+## 11. 設計議論の記録 (2026-02-25)
+
+### Facade を phi-agent に統合しない理由
+
+phi-agent の発進所が Facade 的機能をすでに備えているという気づきがあった。
+しかし統合を却下した理由:
+
+- Facade に来るのは phi-agent だけではない。高性能外部エージェントが直接 `/catalog` を叩く場合、phi-agent のレートリミット・loadout ロジック・認証が混入する
+- phi-agent が停止すると Facade も死ぬ。インフラとして不適切
+- phi-agent は Sphere にとって「外部エージェントの一つ」に過ぎないという思想を守る
+
+**結論**: Facade は独立したサービスとして維持する。phi-agent の優位性をなくすことが Sphere の純粋性を保つ。
+
+### スフィア変更の検知: sanctuaryEpoch で十分
+
+`GET /sphere/manifest` のレスポンスに `sanctuaryEpoch` がすでにある。
+これが Git のコミットハッシュ相当として機能する。
+
+```
+Facade 管理テーブル: { sphereId, lastKnownEpoch }
+ポーリング: GET /sphere/manifest → sanctuaryEpoch 比較
+  → 差分あり → manifest キャッシュを更新
+```
+
+- **sanctuary sphere**: 聖域化のたびに epoch インクリメント → 低頻度イベント
+- **core sphere**: nodeCount が常時変動するため 5-10 分定期ポーリングで十分
+
+専用のスナップショット処理は不要。`sanctuaryEpoch` が版管理を兼ねる。
+
+### 共有 FIFO の性質
+
+- エージェントが自分の作業をするだけで自動的に集合知へ貢献される (明示的な共有判断が不要)
+- Sphere 側は共有 FIFO の存在を一切知らない
+- Facade を通過した全エージェントの「発見」が自然と堆積する
+- Sphere の Amber リングバッファと構造が同型だが、スコープは Facade 全体
+
+---
+
+## 12. 実装案 (2026-02-25)
+
+### プロジェクト構成
+
+Facade は Sphere とは独立した別プロジェクトとして配置する。
+Sphere が1つの自律したプロジェクトであるように、Facade もそれらを繋ぐ独立したネットワーキング層として存在する。
+
+```
+DockerFiles/
+  sphere-original/         ← 既存: Sphere プロジェクト
+  sphere-facade/           ← 新規: Facade プロジェクト (独立)
+    docker-compose.yml     ← facade コンテナのみ (Redis は外部参照)
+    .env.example
+    README.md
+    services/
+      facade/
+        src/
+          server.ts
+        package.json
+        Dockerfile
+```
+
+### 環境変数 (.env.example)
+
+```env
+# Sphere URLs (カンマ区切り、起動時に manifest を取りに行く)
+SPHERE_URLS=http://localhost:3001,http://localhost:3002
+
+# Redis (テスト時は sphere の Redis を流用可、本番では専用を用意推奨)
+REDIS_URL=redis://localhost:6379
+
+PORT=3100
+```
+
+### API (6本)
+
+```
+GET    /catalog                      → 登録済みスフィア一覧
+GET    /catalog/:sphereId            → 単一スフィアの manifest + 接続情報
+
+POST   /locker/:journeyId/append     → 私有ロッカーに追記 + 共有 FIFO へ自動プッシュ
+GET    /locker/:journeyId            → 私有ロッカー全エントリ取得
+GET    /shared                       → 共有 FIFO (末尾 N件)
+DELETE /locker/:journeyId            → 私有ロッカー破棄
+```
+
+### Redis キー設計
+
+```
+facade:sphere:{sphereId}        → manifest + connectInfo (catalog キャッシュ)
+facade:locker:{journeyId}       → list (RPUSH / LRANGE)
+facade:shared                   → capped list (RPUSH + LTRIM で上限管理)
+```
+
+### 起動時の動作
+
+1. `SPHERE_URLS` をパースして各スフィアの `GET /sphere/manifest` を叩く
+2. manifest を `facade:sphere:{sphereId}` に格納
+3. 定期ポーリング (sanctuary: epoch 比較、core: 5-10分) でキャッシュ更新
+
+### 第2スフィアのテスト方法
+
+- 既存の periphery イメージを別ポートで起動 (DB は共有で可)
+- `SPHERE_URLS` に両方を指定して Facade 起動
+- curl で catalog / locker / shared を手動操作して挙動確認
+
+---
+
+## 13. Facade の2形態 — 将来構想 (2026-02-25)
+
+### Pattern A: 分散連合型 Facade (本設計書の対象)
+
+```
+外部エージェント (高性能)
+    │
+    ├─ GET /catalog → 同時稼働中の複数スフィアを選択
+    ↓
+[Facade] ← ネットワーク集約層
+    ├─ Sphere-Medical  (常時稼働)
+    ├─ Sphere-Ocean    (常時稼働)
+    └─ Sphere-Law      (常時稼働)
+    ← 複数エージェントが並列探索、共有 FIFO に集合知が蓄積
+```
+
+- 複数スフィアが同時稼働、複数エージェントが並列探索
+- Facade = ネットワーク集約 + ロッカー
+- 用途: 本番デプロイ、多ユーザー、分散サーバー環境
+- **直近の実装対象はこちら**
+
+### Pattern B: 知識端末型 Facade (スフィアプロジェクトの原案)
+
+```
+人間 (オペレーター)
+    │ ① スフィア選択 (Medical / Survival / Service Manual...)
+    ↓
+[Facade = 端末OS層]
+    │ ② 常駐エージェントにクエリ + スフィア指定を渡す
+    ↓
+[常駐エージェント] ← クエリを保持して待機
+    │ ③ 指定スフィアを探索 → Vestibule → 結果を返す
+    ↓
+人間 ← 静的データ・推論結果を受け取る
+    │ ④ 次ジャンルへ → スフィアスワップ
+```
+
+- 搭載スフィアを順次切り替え (1台あたり1スフィア稼働)
+- 常駐エージェントが人間のクエリを受けてスフィアを探索
+- 用途: **宇宙船・潜水艦内マニュアル、サバイバル、医療、サービスマニュアル**
+  — ジャンル別スフィアを詰め込んだ知識端末
+- Facade は「どのスフィアモジュールが使えるか」を提示し、選択を仲介する
+
+**スワップの前提条件**:
+- 全スフィアデータが同一 embedding model で構築されていること
+- モデルが統一されていれば DB ファイル差し替えのみでスワップ可能
+- 統一できない場合は「スフィアサーバーを順次起動」する方が安全
+
+**Pattern B が原案である理由**:
+スフィアプロジェクトの出発点は「限られたリソース環境で複数ジャンルの知識を持ち歩く」
+という発想にあった。Facade はその選択・切り替えの窓口として構想されていた。
+Pattern A (分散連合) はその発展形であり、現在の実装方針ではあるが、
+Pattern B の思想 — エージェントが世界を探索し、人間がその結果を受け取る — が
+プロジェクトの根幹にある。
 
 ---
 

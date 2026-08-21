@@ -8,7 +8,10 @@
  * Human-readable documentation lives in sphere-ui/public/docs/.
  */
 
+import { DEFAULT_ENERGY_CONFIG } from "../types/config.js";
+
 export const RULEBOOK_VERSION = "2.3.0";
+
 
 /**
  * Agent Rulebook — compact edition for LLM consumption
@@ -43,12 +46,14 @@ export const rulebook = {
     { name: "return", cost: 0, description: "End exploration → enter Vestibule. Your evaluations are auto-flushed. Use Vestibule commands before disconnect." },
   ],
 
-  // Move modes — each follows a different gradient
+  // Move modes — each follows a different gradient.
+  // fresh/deep weigh decay and age RELATIVE to the nodes you currently sense,
+  // not against absolute thresholds. A mode never collapses to random.
   moveModes: {
     random:  { field: 0.0, description: "Pure random. Ignores magnetic field." },
     hot:     { field: 0.5, description: "Toward high-heat nodes." },
-    fresh:   { field: 0.5, description: "Toward high-heat AND high-decay (volatile, active)." },
-    deep:    { field: 0.5, description: "Toward high-weight AND low-decay (stable, trusted)." },
+    fresh:   { field: 0.5, description: "Toward high-heat, high-decay AND recently-updated nodes (volatile, active)." },
+    deep:    { field: 0.5, description: "Toward high-weight AND low-decay nodes (stable, trusted)." },
     explore: { field: 0.3, description: "Toward low-weight (unvisited). Resists the field." },
     flow:    { field: 1.0, description: "Surrenders to the magnetic field completely." },
   },
@@ -129,16 +134,17 @@ export const rulebook = {
       maxLinks: 5,
     },
     energy: {
-      initial: 100,
-      warningThreshold: 10,
+      initial: DEFAULT_ENERGY_CONFIG.initial,
+      warningThreshold: DEFAULT_ENERGY_CONFIG.warningThreshold,
+      // [Design] 実際に課金される値をそのまま公表する。ここに数値を直書きしない。
       costs: {
-        sense: 2,
-        scanL1: 2,
-        move: 5,
-        focus: 10,
-        warp: 15,
-        evaluate: 3,
-        emitBus: 20,
+        sense: DEFAULT_ENERGY_CONFIG.costs.sense,
+        scanL1: DEFAULT_ENERGY_CONFIG.costs.scan,
+        move: DEFAULT_ENERGY_CONFIG.costs.move,
+        focus: DEFAULT_ENERGY_CONFIG.costs.focus,
+        warp: DEFAULT_ENERGY_CONFIG.costs.warp,
+        evaluate: DEFAULT_ENERGY_CONFIG.costs.evaluate,
+        emitBus: DEFAULT_ENERGY_CONFIG.costs.emitBus,
       },
     },
     session: {
@@ -178,6 +184,8 @@ export const rulebook = {
 export function getRulebookResponse(configOverrides?: {
   session?: { ttlSeconds: number; warningBeforeEndSeconds: number };
   energy?: { initial: number; warningThreshold: number; costs: Record<string, number> };
+  metricSemantics?: Record<string, unknown>;
+  harvestPolicy?: Record<string, unknown>;
 }) {
   // Build agent-facing constraints (exclude incarnation — internal only)
   const { incarnation: _inc, ...agentConstraints } = rulebook.constraints;
@@ -202,15 +210,27 @@ export function getRulebookResponse(configOverrides?: {
         focus: configOverrides.energy.costs.focus ?? constraints.energy.costs.focus,
         warp: configOverrides.energy.costs.warp ?? constraints.energy.costs.warp,
         evaluate: configOverrides.energy.costs.evaluate ?? constraints.energy.costs.evaluate,
+        emitBus: configOverrides.energy.costs.emitBus ?? constraints.energy.costs.emitBus,
       },
     };
   }
+
+  // [Design] actions[] の cost は説明文と一緒にベタ書きされており、
+  //          constraints.energy.costs と乖離していた (scanL1 が 2 対 1 など)。
+  //          解決済みのコスト表から引き直して、2つの表が食い違わないようにする。
+  // constraints 側は rulebook のアクション名 (scanL1 等) でキーを持つので、
+  // return のような対応の無いものだけ元の値 (0) が残る。
+  const resolvedCosts = constraints.energy.costs as Record<string, number>;
+  const actions = rulebook.actions.map((a) => ({
+    ...a,
+    cost: resolvedCosts[a.name] ?? a.cost,
+  }));
 
   return {
     version: rulebook.version,
     world: rulebook.world,
     phases: rulebook.phases,
-    actions: rulebook.actions,
+    actions,
     moveModes: rulebook.moveModes,
     nodeKinds: rulebook.nodeKinds,
     metrics: rulebook.metrics,
@@ -220,6 +240,9 @@ export function getRulebookResponse(configOverrides?: {
     contribution: rulebook.contribution,
     greeting: rulebook.greeting,
     constraints,
+    // Domain-specific metric interpretation (from sphere.config.json metadata)
+    ...(configOverrides?.metricSemantics && { metricSemantics: configOverrides.metricSemantics }),
+    ...(configOverrides?.harvestPolicy && { harvestPolicy: configOverrides.harvestPolicy }),
   };
 }
 

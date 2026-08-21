@@ -1,0 +1,928 @@
+{
+  "generation": 44,
+  "timestamp": "2026-02-26T16:37:35.834Z",
+  "sphereHash": "1f6f330a214c6245",
+  "inputEvaluations": 449,
+  "survivedEvaluations": 382,
+  "hunger": 0.4988,
+  "halfLifeHours": 72,
+  "sphereSnapshot": {
+    "nodeCount": {
+      "active": 158,
+      "amber": 0,
+      "ghost": 0,
+      "fossil": 0,
+      "relic": 10,
+      "environment": 0,
+      "total": 168
+    },
+    "heatDistribution": {
+      "mean": 479.34,
+      "std": 70.19,
+      "min": 200,
+      "max": 507.95
+    },
+    "weightDistribution": {
+      "mean": 111.78,
+      "std": 47.36,
+      "min": 99.68,
+      "max": 300
+    },
+    "flagDistribution": {
+      "1": 18,
+      "2": 10,
+      "8": 168,
+      "16": 22,
+      "128": 1,
+      "256": 1,
+      "1024": 4,
+      "2048": 2,
+      "8192": 10
+    },
+    "flux": {
+      "total": 0
+    },
+    "field": {
+      "intensity": 0.3214596839654497,
+      "dominantFlags": 8,
+      "volatility": 1
+    }
+  },
+  "species": {
+    "scholar": {
+      "evaluations": 52,
+      "avgH": 5.920459122029802,
+      "avgW": 6.677577527184857,
+      "avgD": 5.056212243254128,
+      "hotNodes": [
+        {
+          "nodeId": "ad0692f4836319a4",
+          "count": 10.899999999999999
+        },
+        {
+          "nodeId": "84bed15fb3e8faa2",
+          "count": 6.8999999999999995
+        },
+        {
+          "nodeId": "1a139bd48be36f21",
+          "count": 6.8999999999999995
+        },
+        {
+          "nodeId": "64aa843488ccebf1",
+          "count": 6.799999999999999
+        },
+        {
+          "nodeId": "23396eac969c602f",
+          "count": 5.3999999999999995
+        },
+        {
+          "nodeId": "7dd64c0d44a58234",
+          "count": 4.699999999999999
+        },
+        {
+          "nodeId": "986d134bc0736432",
+          "count": 4.5
+        },
+        {
+          "nodeId": "8ed68d6579cfe00c",
+          "count": 4.2
+        },
+        {
+          "nodeId": "49dcf8ad122f38ce",
+          "count": 3.9
+        },
+        {
+          "nodeId": "f7dcec2535f28615",
+          "count": 3
+        }
+      ],
+      "commonTags": [
+        "philosophy",
+        "linguistics",
+        "theory",
+        "physics",
+        "cognition",
+        "economics",
+        "mathematics",
+        "game-theory",
+        "computation",
+        "culture",
+        "epistemology",
+        "history",
+        "semiotics",
+        "reality",
+        "mystery"
+      ],
+      "evaluationConsistency": {
+        "score": 0.7663839212251099,
+        "nodes": 15,
+        "meanStdH": 1.02,
+        "meanStdW": 1.116,
+        "meanStdD": 0.667
+      },
+      "weightDelta": {
+        "flagBias": {},
+        "returnWeights": [
+          0.11842565418103172,
+          0.027409353853547248,
+          0,
+          0.013704676926773624
+        ],
+        "qualityVector": [
+          0.05366136129306687,
+          0.07968025803039289,
+          -0.000326170524819983,
+          0
+        ]
+      },
+      "trajectoryStats": {
+        "sessions": 9,
+        "avgSpread": 0.6797744430499375,
+        "avgHeatBias": -0.2810861524469317,
+        "avgWeightBias": 0.817764422441207,
+        "avgPathLength": 2.945187829271154,
+        "avgStraightness": 0.5218990466129231,
+        "signature": [
+          0.6797744430499375,
+          -0.2810861524469317,
+          0.817764422441207,
+          0,
+          0.5218990466129231
+        ]
+      }
+    },
+    "hunter": {
+      "evaluations": 60,
+      "avgH": 5.854048865619546,
+      "avgW": 6.5923211169284475,
+      "avgD": 5.633263525305409,
+      "hotNodes": [
+        {
+          "nodeId": "23396eac969c602f",
+          "count": 8.899999999999999
+        },
+        {
+          "nodeId": "84bed15fb3e8faa2",
+          "count": 8.3
+        },
+        {
+          "nodeId": "ad0692f4836319a4",
+          "count": 8.1
+        },
+        {
+          "nodeId": "64aa843488ccebf1",
+          "count": 7.499999999999999
+        },
+        {
+          "nodeId": "986d134bc0736432",
+          "count": 7.3
+        },
+        {
+          "nodeId": "8ed68d6579cfe00c",
+          "count": 7
+        },
+        {
+          "nodeId": "1a139bd48be36f21",
+          "count": 6.8999999999999995
+        },
+        {
+          "nodeId": "7dd64c0d44a58234",
+          "count": 5.3999999999999995
+        },
+        {
+          "nodeId": "49dcf8ad122f38ce",
+          "count": 3.9
+        },
+        {
+          "nodeId": "f7dcec2535f28615",
+          "count": 3
+        }
+      ],
+      "commonTags": [
+        "philosophy",
+        "physics",
+        "psychology",
+        "game-theory",
+        "economics",
+        "mathematics",
+        "cognition",
+        "behavior",
+        "pseudoscience",
+        "bias",
+        "social",
+        "neuroscience",
+        "entropy",
+        "determinism",
+        "AI"
+      ],
+      "evaluationConsistency": {
+        "score": 0.7266612642686918,
+        "nodes": 16,
+        "meanStdH": 1.072,
+        "meanStdW": 1.252,
+        "meanStdD": 0.955
+      },
+      "weightDelta": {
+        "flagBias": {},
+        "returnWeights": [
+          0.0890015405996478,
+          0.037532424209669735,
+          0,
+          0.018766212104834867
+        ],
+        "qualityVector": [
+          0.03599150319728815,
+          0.05824430464220097,
+          -0.01087295625658104,
+          0
+        ]
+      },
+      "trajectoryStats": {
+        "sessions": 9,
+        "avgSpread": 0.7046343545111345,
+        "avgHeatBias": -0.243846031054504,
+        "avgWeightBias": 0.6413661712875381,
+        "avgPathLength": 3.7523781441984756,
+        "avgStraightness": 0.4239446121924657,
+        "signature": [
+          0.7046343545111345,
+          -0.243846031054504,
+          0.6413661712875381,
+          0,
+          0.4239446121924657
+        ]
+      }
+    },
+    "balanced": {
+      "evaluations": 39,
+      "avgH": 5.696100147670828,
+      "avgW": 6.233346757954088,
+      "avgD": 5.222237884279769,
+      "hotNodes": [
+        {
+          "nodeId": "ad0692f4836319a4",
+          "count": 9.5
+        },
+        {
+          "nodeId": "1a139bd48be36f21",
+          "count": 6.199999999999999
+        },
+        {
+          "nodeId": "64aa843488ccebf1",
+          "count": 5.3999999999999995
+        },
+        {
+          "nodeId": "23396eac969c602f",
+          "count": 5.3999999999999995
+        },
+        {
+          "nodeId": "84bed15fb3e8faa2",
+          "count": 4.8
+        },
+        {
+          "nodeId": "986d134bc0736432",
+          "count": 4.5
+        },
+        {
+          "nodeId": "8ed68d6579cfe00c",
+          "count": 4.2
+        },
+        {
+          "nodeId": "49dcf8ad122f38ce",
+          "count": 3.9
+        },
+        {
+          "nodeId": "f7dcec2535f28615",
+          "count": 3.7
+        },
+        {
+          "nodeId": "7dd64c0d44a58234",
+          "count": 3.3
+        }
+      ],
+      "commonTags": [
+        "physics",
+        "philosophy",
+        "theory",
+        "cosmology",
+        "mathematics",
+        "cognition",
+        "psychology",
+        "epistemology",
+        "astronomy",
+        "distributed",
+        "thermodynamics",
+        "civilization",
+        "existentialism",
+        "consciousness",
+        "causality"
+      ],
+      "evaluationConsistency": {
+        "score": 0.71875,
+        "nodes": 4,
+        "meanStdH": 1,
+        "meanStdW": 0.875,
+        "meanStdD": 1.5
+      },
+      "weightDelta": {
+        "flagBias": {},
+        "returnWeights": [
+          0.08730939865101538,
+          0.03801075308933066,
+          0,
+          0.01900537654466533
+        ],
+        "qualityVector": [
+          0.019882477734849694,
+          0.03587603160313829,
+          -0.003070809442519139,
+          0
+        ]
+      },
+      "trajectoryStats": {
+        "sessions": 6,
+        "avgSpread": 0.5765281819403542,
+        "avgHeatBias": -0.2864210703558924,
+        "avgWeightBias": 0.7547922563338888,
+        "avgPathLength": 3.6025759203958856,
+        "avgStraightness": 0.4384446653506604,
+        "signature": [
+          0.5765281819403542,
+          -0.2864210703558924,
+          0.7547922563338888,
+          0,
+          0.4384446653506604
+        ]
+      }
+    },
+    "scout": {
+      "evaluations": 29,
+      "avgH": 6.671520129987362,
+      "avgW": 6.391171691641091,
+      "avgD": 4.9034934103628816,
+      "hotNodes": [
+        {
+          "nodeId": "ad0692f4836319a4",
+          "count": 9.5
+        },
+        {
+          "nodeId": "23396eac969c602f",
+          "count": 6.799999999999999
+        },
+        {
+          "nodeId": "64aa843488ccebf1",
+          "count": 6.1
+        },
+        {
+          "nodeId": "49dcf8ad122f38ce",
+          "count": 6
+        },
+        {
+          "nodeId": "84bed15fb3e8faa2",
+          "count": 4.8
+        },
+        {
+          "nodeId": "1a139bd48be36f21",
+          "count": 4.8
+        },
+        {
+          "nodeId": "986d134bc0736432",
+          "count": 4.5
+        },
+        {
+          "nodeId": "8ed68d6579cfe00c",
+          "count": 4.2
+        },
+        {
+          "nodeId": "7dd64c0d44a58234",
+          "count": 3.3
+        },
+        {
+          "nodeId": "f7dcec2535f28615",
+          "count": 3
+        }
+      ],
+      "commonTags": [
+        "psychology",
+        "physics",
+        "linguistics",
+        "cognition",
+        "theory",
+        "computation",
+        "mathematics",
+        "cosmology",
+        "behavior",
+        "philosophy",
+        "culture",
+        "thermodynamics",
+        "metaphor",
+        "social",
+        "language"
+      ],
+      "evaluationConsistency": {
+        "score": 0.7166527156189637,
+        "nodes": 4,
+        "meanStdH": 0.971,
+        "meanStdW": 1.264,
+        "meanStdD": 1.165
+      },
+      "weightDelta": {
+        "flagBias": {},
+        "returnWeights": [
+          0.09245076853665884,
+          0.03616653120102657,
+          0,
+          0.018083265600513286
+        ],
+        "qualityVector": [
+          0.04024437073014582,
+          0.030383387224223447,
+          -0.012580643511540122,
+          0
+        ]
+      }
+    },
+    "moth": {
+      "evaluations": 52,
+      "avgH": 6.714689891260571,
+      "avgW": 6.717962142569473,
+      "avgD": 4.975443012484897,
+      "hotNodes": [
+        {
+          "nodeId": "ad0692f4836319a4",
+          "count": 9.5
+        },
+        {
+          "nodeId": "64aa843488ccebf1",
+          "count": 8.899999999999999
+        },
+        {
+          "nodeId": "23396eac969c602f",
+          "count": 8.899999999999999
+        },
+        {
+          "nodeId": "1a139bd48be36f21",
+          "count": 7.6
+        },
+        {
+          "nodeId": "84bed15fb3e8faa2",
+          "count": 6.199999999999999
+        },
+        {
+          "nodeId": "7dd64c0d44a58234",
+          "count": 4.699999999999999
+        },
+        {
+          "nodeId": "986d134bc0736432",
+          "count": 4.5
+        },
+        {
+          "nodeId": "8ed68d6579cfe00c",
+          "count": 4.2
+        },
+        {
+          "nodeId": "49dcf8ad122f38ce",
+          "count": 3.9
+        },
+        {
+          "nodeId": "f7dcec2535f28615",
+          "count": 3
+        }
+      ],
+      "commonTags": [
+        "philosophy",
+        "psychology",
+        "theory",
+        "linguistics",
+        "game-theory",
+        "economics",
+        "mathematics",
+        "epistemology",
+        "behavior",
+        "computation",
+        "culture",
+        "cognition",
+        "sociology",
+        "social",
+        "consciousness"
+      ],
+      "evaluationConsistency": {
+        "score": 0.6679004098957317,
+        "nodes": 14,
+        "meanStdH": 1.309,
+        "meanStdW": 1.31,
+        "meanStdD": 1.366
+      },
+      "weightDelta": {
+        "flagBias": {},
+        "returnWeights": [
+          0.09812620195890319,
+          0.03454885370850758,
+          0,
+          0.01727442685425379
+        ],
+        "qualityVector": [
+          0.06794531646088453,
+          0.07151256538518912,
+          0.011647772697482272,
+          0
+        ]
+      },
+      "trajectoryStats": {
+        "sessions": 8,
+        "avgSpread": 0.7050520566089176,
+        "avgHeatBias": -0.25470892457925987,
+        "avgWeightBias": 0.7125378810029052,
+        "avgPathLength": 3.417026095755341,
+        "avgStraightness": 0.42764633043497075,
+        "signature": [
+          0.7050520566089176,
+          -0.25470892457925987,
+          0.7125378810029052,
+          0,
+          0.42764633043497075
+        ]
+      }
+    },
+    "wanderer": {
+      "evaluations": 54,
+      "avgH": 4.845530347101027,
+      "avgW": 5.503432228039557,
+      "avgD": 6.029930191972076,
+      "hotNodes": [
+        {
+          "nodeId": "ad0692f4836319a4",
+          "count": 13.7
+        },
+        {
+          "nodeId": "23396eac969c602f",
+          "count": 7.499999999999999
+        },
+        {
+          "nodeId": "986d134bc0736432",
+          "count": 7.3
+        },
+        {
+          "nodeId": "8ed68d6579cfe00c",
+          "count": 7
+        },
+        {
+          "nodeId": "64aa843488ccebf1",
+          "count": 5.3999999999999995
+        },
+        {
+          "nodeId": "84bed15fb3e8faa2",
+          "count": 4.8
+        },
+        {
+          "nodeId": "1a139bd48be36f21",
+          "count": 4.8
+        },
+        {
+          "nodeId": "f7dcec2535f28615",
+          "count": 4.4
+        },
+        {
+          "nodeId": "49dcf8ad122f38ce",
+          "count": 3.9
+        },
+        {
+          "nodeId": "7dd64c0d44a58234",
+          "count": 3.3
+        }
+      ],
+      "commonTags": [
+        "physics",
+        "cognition",
+        "philosophy",
+        "linguistics",
+        "culture",
+        "psychology",
+        "cosmology",
+        "pseudoscience",
+        "behavior",
+        "mathematics",
+        "thermodynamics",
+        "neuroscience",
+        "determinism",
+        "entropy",
+        "quantum"
+      ],
+      "evaluationConsistency": {
+        "score": 0.6522707359680104,
+        "nodes": 11,
+        "meanStdH": 1.232,
+        "meanStdW": 1.757,
+        "meanStdD": 1.184
+      },
+      "weightDelta": {
+        "flagBias": {},
+        "returnWeights": [
+          0.08005204161755794,
+          0.039936021492214216,
+          0,
+          0.019968010746107108
+        ],
+        "qualityVector": [
+          0.016595786813710933,
+          0.030005045065760013,
+          -0.011743843065739692,
+          0
+        ]
+      },
+      "trajectoryStats": {
+        "sessions": 11,
+        "avgSpread": 0.6768209572802686,
+        "avgHeatBias": -0.26994146281968434,
+        "avgWeightBias": 0.696937940229445,
+        "avgPathLength": 3.9211920695804525,
+        "avgStraightness": 0.3942908888002878,
+        "signature": [
+          0.6768209572802686,
+          -0.26994146281968434,
+          0.696937940229445,
+          0,
+          0.3942908888002878
+        ]
+      }
+    },
+    "sniper": {
+      "evaluations": 34,
+      "avgH": 5.391499846011703,
+      "avgW": 5.981536803202957,
+      "avgD": 5.940714505697567,
+      "hotNodes": [
+        {
+          "nodeId": "ad0692f4836319a4",
+          "count": 10.899999999999999
+        },
+        {
+          "nodeId": "986d134bc0736432",
+          "count": 5.9
+        },
+        {
+          "nodeId": "8ed68d6579cfe00c",
+          "count": 5.6
+        },
+        {
+          "nodeId": "64aa843488ccebf1",
+          "count": 5.3999999999999995
+        },
+        {
+          "nodeId": "23396eac969c602f",
+          "count": 5.3999999999999995
+        },
+        {
+          "nodeId": "49dcf8ad122f38ce",
+          "count": 5.3
+        },
+        {
+          "nodeId": "84bed15fb3e8faa2",
+          "count": 4.8
+        },
+        {
+          "nodeId": "1a139bd48be36f21",
+          "count": 4.8
+        },
+        {
+          "nodeId": "7dd64c0d44a58234",
+          "count": 3.3
+        },
+        {
+          "nodeId": "f7dcec2535f28615",
+          "count": 3
+        }
+      ],
+      "commonTags": [
+        "linguistics",
+        "philosophy",
+        "cognition",
+        "mathematics",
+        "theory",
+        "culture",
+        "physics",
+        "computation",
+        "game-theory",
+        "economics",
+        "history",
+        "civilization",
+        "semiotics",
+        "phonology",
+        "AI"
+      ],
+      "evaluationConsistency": {
+        "score": 0.761685539743611,
+        "nodes": 7,
+        "meanStdH": 0.839,
+        "meanStdW": 1.079,
+        "meanStdD": 0.943
+      },
+      "weightDelta": {
+        "flagBias": {},
+        "returnWeights": [
+          0.06664136987377182,
+          0.04190628043806585,
+          0,
+          0.020953140219032926
+        ],
+        "qualityVector": [
+          0.020203453134619288,
+          0.04273615483087082,
+          -0.008066414082847986,
+          0
+        ]
+      },
+      "trajectoryStats": {
+        "sessions": 6,
+        "avgSpread": 0.7225250733582506,
+        "avgHeatBias": -0.20293788341295527,
+        "avgWeightBias": 0.5243625860056902,
+        "avgPathLength": 3.706668169501356,
+        "avgStraightness": 0.438979226789111,
+        "signature": [
+          0.7225250733582506,
+          -0.20293788341295527,
+          0.5243625860056902,
+          0,
+          0.438979226789111
+        ]
+      }
+    },
+    "archivist": {
+      "evaluations": 62,
+      "avgH": 5.744156392501266,
+      "avgW": 6.9498479986488775,
+      "avgD": 4.836919439283905,
+      "hotNodes": [
+        {
+          "nodeId": "ad0692f4836319a4",
+          "count": 10.2
+        },
+        {
+          "nodeId": "64aa843488ccebf1",
+          "count": 8.2
+        },
+        {
+          "nodeId": "84bed15fb3e8faa2",
+          "count": 7.6
+        },
+        {
+          "nodeId": "23396eac969c602f",
+          "count": 6.799999999999999
+        },
+        {
+          "nodeId": "f7dcec2535f28615",
+          "count": 5.8
+        },
+        {
+          "nodeId": "7dd64c0d44a58234",
+          "count": 5.3999999999999995
+        },
+        {
+          "nodeId": "1a139bd48be36f21",
+          "count": 4.8
+        },
+        {
+          "nodeId": "986d134bc0736432",
+          "count": 4.5
+        },
+        {
+          "nodeId": "8ed68d6579cfe00c",
+          "count": 4.2
+        },
+        {
+          "nodeId": "49dcf8ad122f38ce",
+          "count": 3.9
+        }
+      ],
+      "commonTags": [
+        "mathematics",
+        "physics",
+        "theory",
+        "economics",
+        "game-theory",
+        "philosophy",
+        "linguistics",
+        "cosmology",
+        "algorithm",
+        "information",
+        "sociology",
+        "time",
+        "quantum",
+        "computer-science",
+        "civilization"
+      ],
+      "evaluationConsistency": {
+        "score": 0.7488860043490342,
+        "nodes": 19,
+        "meanStdH": 1.259,
+        "meanStdW": 0.918,
+        "meanStdD": 0.837
+      },
+      "weightDelta": {
+        "flagBias": {},
+        "returnWeights": [
+          0.10321327014390566,
+          0.03223189694903694,
+          0,
+          0.01611594847451847
+        ],
+        "qualityVector": [
+          0.028771413913255675,
+          0.0649820855570009,
+          0.012591351800708432,
+          0
+        ]
+      },
+      "trajectoryStats": {
+        "sessions": 10,
+        "avgSpread": 0.7450232690026843,
+        "avgHeatBias": -0.28525659806327697,
+        "avgWeightBias": 0.7531279022775842,
+        "avgPathLength": 2.587645332996962,
+        "avgStraightness": 0.6079105480060898,
+        "signature": [
+          0.7450232690026843,
+          -0.28525659806327697,
+          0.7531279022775842,
+          0,
+          0.6079105480060898
+        ]
+      }
+    }
+  },
+  "global": {
+    "evaluations": 382,
+    "avgH": 5.824607329842932,
+    "avgW": 6.4188481675392675,
+    "avgD": 5.321989528795812,
+    "hotNodes": [
+      {
+        "nodeId": "ad0692f4836319a4",
+        "count": 27
+      },
+      {
+        "nodeId": "64aa843488ccebf1",
+        "count": 18
+      },
+      {
+        "nodeId": "23396eac969c602f",
+        "count": 18
+      },
+      {
+        "nodeId": "84bed15fb3e8faa2",
+        "count": 16
+      },
+      {
+        "nodeId": "1a139bd48be36f21",
+        "count": 16
+      },
+      {
+        "nodeId": "986d134bc0736432",
+        "count": 15
+      },
+      {
+        "nodeId": "8ed68d6579cfe00c",
+        "count": 14
+      },
+      {
+        "nodeId": "49dcf8ad122f38ce",
+        "count": 13
+      },
+      {
+        "nodeId": "7dd64c0d44a58234",
+        "count": 11
+      },
+      {
+        "nodeId": "f7dcec2535f28615",
+        "count": 10
+      }
+    ],
+    "commonTags": [
+      "philosophy",
+      "physics",
+      "linguistics",
+      "cognition",
+      "mathematics",
+      "theory",
+      "economics",
+      "psychology",
+      "game-theory",
+      "culture",
+      "computation",
+      "cosmology",
+      "epistemology",
+      "behavior",
+      "pseudoscience"
+    ],
+    "revisitedNodes": 49,
+    "totalRevisits": 359,
+    "evaluationConsistency": {
+      "score": 0.6219677568012718,
+      "nodes": 49,
+      "meanStdH": 1.53,
+      "meanStdW": 1.554,
+      "meanStdD": 1.452
+    }
+  }
+}

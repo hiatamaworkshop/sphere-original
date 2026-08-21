@@ -12,7 +12,7 @@ export { hasFlag, decayHeat, computeEffectiveDecayRate, computeEffectiveHeat, co
 export { computePhysicsModifiers } from "./lib/physics.js";
 export type { FlagPhysicsModifiers } from "./lib/physics.js";
 export { RenalCore } from "./renalcore.js";
-export type { RenalCoreConfig as RenalCoreClassConfig } from "./renalcore.js";
+export type { RenalCoreConfig as RenalCoreClassConfig, NodeStore } from "./renalcore.js";
 export type { Vector3, EmbeddingVector, AgentPersonalityType, AgentPersonality, AgentState, AgentActionState, SphereAgent, PerceivedHeat, PerceivedCongestion, RadarData, FocusData, AgentPerception, AgentEvaluation, AggregatedEvaluation, EvaluationField, AgentActionType, AgentAction, FocusQueueEntry, FocusBuffer, FocusEcho, ReceivedEcho, ExperienceCapsule, ExplorationReport, AgentDiscovery, GhostPulse, VoxelState, SpatialFieldV2, AgentConfig, NodeSeed, SubmissionCapsule, IncarnationResult, IIncarnationPipeline, } from "./types/index.js";
 export { DEFAULT_AGENT_CONFIG } from "./types/index.js";
 export { AgentManager } from "./agent/agent-manager.js";

@@ -43,6 +43,8 @@ export type PulseFlagValue = (typeof PulseFlag)[keyof typeof PulseFlag];
  * 軽量なバイナリ形式での送信も視野に入れた設計。
  */
 export interface PulsePacket {
+    /** Sphere ID: 発信元スフィアの識別子 (multi-sphere Observatory 用) */
+    sphereId: string;
     /** Cell ID: 空間セルの識別子 */
     cid: string;
     /** Timestamp: パケット生成時刻 */

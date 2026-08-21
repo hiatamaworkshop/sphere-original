@@ -24,7 +24,7 @@ export var NodeFlag;
     NodeFlag[NodeFlag["TemporalShort"] = 1] = "TemporalShort";
     NodeFlag[NodeFlag["TemporalLong"] = 2] = "TemporalLong";
     NodeFlag[NodeFlag["TemporalCyclic"] = 4] = "TemporalCyclic";
-    NodeFlag[NodeFlag["Hot"] = 8] = "Hot";
+    NodeFlag[NodeFlag["_Reserved0008"] = 8] = "_Reserved0008";
     // Density (bits 4-7)
     NodeFlag[NodeFlag["Dense"] = 16] = "Dense";
     NodeFlag[NodeFlag["Sparse"] = 32] = "Sparse";

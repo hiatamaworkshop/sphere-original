@@ -108,6 +108,7 @@ export interface PeripheryConfig {
       focus: number;     // デフォルト: 10
       warp: number;      // デフォルト: 15
       evaluate: number;  // デフォルト: 3
+      emitBus: number;   // デフォルト: 20
     };
   };
 
@@ -180,7 +181,7 @@ export interface PeripheryConfig {
   //     0x0001 = TemporalShort  - decay ×1.3, ttl_decay ×1.2 (trending)
   //     0x0002 = TemporalLong   - decay ×0.8, ttl_decay ×0.7 (timeless)
   //     0x0004 = TemporalCyclic - TBD (seasonal)
-  //     0x0008 = Hot            - Dynamic: heat > threshold (Arbiter)
+  //     0x0008 = (Reserved)     - was Hot, removed: heat-only flag violates metric independence
   //   Density (bits 4-7):
   //     0x0010 = Dense          - weight ×1.2 (theory, formula)
   //     0x0020 = Sparse         - weight ×0.9 (casual, brief)
@@ -208,15 +209,6 @@ export interface PeripheryConfig {
       ghost: number;    // Default: 0x0000
     };
 
-    /**
-     * Dynamic flag thresholds (Arbiter)
-     * [Usage] Arbiter sets/clears flags based on node state
-     * Hub/Isolated removed — linkCounts never supplied. Static flags via Tagger unaffected.
-     */
-    dynamicThresholds: {
-      /** heat > this → Hot flag ON, heat <= this → Hot flag OFF */
-      hotHeatThreshold: number;       // Default: 150
-    };
   };
 }
 
@@ -238,6 +230,31 @@ export interface ExternalServiceConfig {
 /**
  * Default Periphery Configuration
  */
+/**
+ * エネルギー設定の正典。
+ *
+ * [Design] 以前は sphere-context.ts と rulebook/index.ts がそれぞれ独自の
+ *          コスト表とフォールバック値を持っており、config が値を省略すると
+ *          「実際に引かれる額」と「rulebook が公表する額」が食い違っていた
+ *          (sense は実測3に対し rulebook は2、emitBus は公表20だが課金ゼロ)。
+ *          コストを触るときはここだけを直すこと。
+ *
+ *          scan は scanL1() (perception) のコスト。内部 scan() は無料。
+ */
+export const DEFAULT_ENERGY_CONFIG: NonNullable<PeripheryConfig["energy"]> = {
+  initial: 100,
+  warningThreshold: 10,  // 10% で lowEnergy 警告
+  costs: {
+    scan: 1,
+    sense: 3,
+    move: 5,
+    focus: 10,
+    warp: 15,
+    evaluate: 3,
+    emitBus: 20,
+  },
+};
+
 export const DEFAULT_PERIPHERY_CONFIG: PeripheryConfig = {
   membrane: {
     prohibitedPatterns: ["<script>", "javascript:", "http://", "https://"],
@@ -295,18 +312,7 @@ export const DEFAULT_PERIPHERY_CONFIG: PeripheryConfig = {
     ttlSeconds: 180,              // 3分間のダイブセッション
     warningBeforeEndSeconds: 30,  // 終了30秒前に警告
   },
-  energy: {
-    initial: 100,
-    warningThreshold: 10,  // 10% で lowEnergy 警告
-    costs: {
-      scan: 1,
-      sense: 3,
-      move: 5,
-      focus: 10,
-      warp: 15,
-      evaluate: 3,
-    },
-  },
+  energy: DEFAULT_ENERGY_CONFIG,
   vestibule: {
     ttlSeconds: 120,  // 2 minutes in vestibule before forced disconnect
   },
@@ -363,9 +369,6 @@ export const DEFAULT_PERIPHERY_CONFIG: PeripheryConfig = {
       normal: 0x0000,   // No special flags
       ghost: 0x0000,    // No special flags (Ephemeral could be added)
     },
-    // Dynamic flag thresholds (by Arbiter)
-    dynamicThresholds: {
-      hotHeatThreshold: 150,      // heat > 150 → Hot flag
-    },
   },
 };
+

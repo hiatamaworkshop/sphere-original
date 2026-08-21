@@ -14,11 +14,11 @@
  *   npm run observe           # Metabolic observer (3 waves × 5 boost agents)
  *   npm run observe:fast      # Quick observation test
  *   npm run contribute        # Data injection (10 items)
- *   npm run contribute:batch  # All 77 items
+ *   npm run contribute:batch  # All items
  *   npm run explore           # Single-agent full test
  *
  * [Data]
- *   mock_data.json      - 77 test items (62 factual + 15 misinformation flags=1)
+ *   mock_data.json      - 158 test items (140 factual + 18 misinformation flags=1)
  *   wave-injection.json - Curated data with expected flag values
  *   relics.json         - 10 core knowledge pillars (flags=0x2000)
  */

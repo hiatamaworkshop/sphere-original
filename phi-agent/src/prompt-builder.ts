@@ -8,6 +8,8 @@
 //   post-evaluate → "Where should I move next?"
 
 import type { NearbyNode, NodeDetail, WalkMode } from "./sphere-client.js";
+import type { MetricSemantics } from "./fast-gate.js";
+import { DEFAULT_METRIC_SEMANTICS } from "./fast-gate.js";
 
 // System prompt that establishes phi's role as a Sphere agent
 const SYSTEM_PROMPT = `You are an autonomous agent exploring a knowledge Sphere — a living semantic space where information nodes metabolize, decay, and evolve based on attention.
@@ -24,9 +26,18 @@ Respond ONLY with valid JSON. No explanations, no markdown.`;
 
 export class PromptBuilder {
   private query: string;
+  private ms: MetricSemantics;
 
-  constructor(query: string, _modelName: string = "") {
+  constructor(query: string, _modelName: string = "", metricSemantics?: MetricSemantics) {
     this.query = query;
+    this.ms = metricSemantics ?? DEFAULT_METRIC_SEMANTICS;
+  }
+
+  /** Build metric rating guide from MetricSemantics config */
+  private metricGuide(): string {
+    const [n0, n1, n2] = this.ms.names;
+    const [d0, d1, d2] = this.ms.descriptions;
+    return `Rate (0-10, 5=neutral):\n${n0} = ${d0}\n${n1} = ${d1}\n${n2} = ${d2}`;
   }
 
   get systemPrompt(): string {
@@ -62,6 +73,9 @@ If none are relevant: { "action": "move", "mode": "<walkmode>", "reason": "<brie
       ? `\nPerspective: ${evalFocus}`
       : "";
 
+    const guide = this.metricGuide();
+    const [n0, n1, n2] = this.ms.names;
+
     return `My query: "${this.query}"
 
 I focused on this node:
@@ -71,8 +85,8 @@ I focused on this node:
 - Current heat: ${node.heat}, weight: ${node.weight}
 - Kind: ${node.kind}
 ${perspective}
-Rate this node (0-10 each):
-{ "h": <heat/activity>, "w": <weight/authority>, "d": <decay/ephemeral>, "expression": "____", "reason": "<brief>" }`;
+${guide}
+{ "h": <${n0}>, "w": <${n1}>, "d": <${n2}>, "expression": "____", "reason": "<brief>" }`;
   }
 
   /**
@@ -87,20 +101,22 @@ Rate this node (0-10 each):
     const tags = node.tags?.join(", ") || "(none)";
     const content = node.content?.slice(0, 500) || "(no content)";
 
-    const dimInfo: Record<string, { scale: string; key: string }> = {
-      heat:      { scale: "motion/attention (0=dormant, 5=steady, 10=viral)", key: "h" },
-      weight:    { scale: "density/authority (0=superficial, 5=moderate, 10=authoritative)", key: "w" },
-      longevity: { scale: "relevance duration (0=ephemeral, 5=months, 10=timeless)", key: "longevity" },
+    // Map dimension alias to metric index and response key
+    const dimMap: Record<string, { idx: number; key: string }> = {
+      heat:      { idx: 0, key: "h" },
+      weight:    { idx: 1, key: "w" },
+      longevity: { idx: 2, key: this.ms.inversion[2] ? "longevity" : "d" },
     };
-
-    const { scale, key } = dimInfo[dimension];
+    const { idx, key } = dimMap[dimension] ?? dimMap.heat;
+    const name = this.ms.names[idx];
+    const scale = this.ms.descriptions[idx];
 
     return `My query: "${this.query}"
 
 Node: ${tags} — ${node.summary}
 Content: ${content}
 
-Rate ${dimension.toUpperCase()} (0-10): ${scale}
+Rate ${name.toUpperCase()} (0-10): ${scale}
 
 {"${key}": <0-10>, "reason": "<brief>"}`;
   }

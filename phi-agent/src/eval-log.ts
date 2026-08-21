@@ -115,7 +115,7 @@ export interface NarrativeEntry {
   duration?: number;
   /** LLM-generated narrative text */
   narrative: string;
-  /** Nodes encountered during session */
+  /** Nodes encountered during session (matches Encounter interface in agent.ts) */
   encounters?: Array<{
     nodeId: string;
     tags: string[];
@@ -123,7 +123,10 @@ export interface NarrativeEntry {
     h: number;
     w: number;
     d: number;
-    flags?: number;
+    flags: number;
+    content?: string;
+    kind?: string;
+    refUrl?: string;
   }>;
   /** Agent feelings at return time */
   feelings?: {
@@ -161,6 +164,74 @@ export async function appendNarrative(entry: NarrativeEntry): Promise<void> {
   }
   if (!entry.id) entry.id = `${entry.timestamp}-${entry.loadout}`;
   appendFileSync(NARRATIVE_FILE, JSON.stringify(entry) + "\n", "utf-8");
+}
+
+// ============================================================
+// Trail Log — exploration trajectory persistence
+// ============================================================
+//
+// Trail = agent's souvenir from the Sphere.
+// Sphere computes it (ActionLog), agent carries it out (vestibule),
+// agent posts it to Digestor (same pattern as eval-log / narrative).
+
+const TRAIL_FILE = join(DATA_DIR, "trail-log.jsonl");
+
+export interface TrailEntry {
+  /** Session identifier (from Sphere) */
+  sessionId: string;
+  /** Loadout name (attached by agent — Sphere doesn't know) */
+  loadout: string;
+  /** LLM model used */
+  model?: string;
+  /** Cross-session agent identifier */
+  agentId?: string;
+  /** Which sphere was dived into */
+  sphereId?: string;
+  /** Epoch ms (session start) */
+  timestamp: number;
+  /** Session duration in ms */
+  duration: number;
+  /** Initial query text */
+  initialQuery?: string;
+  /** Final embedding position */
+  lastPosition?: number[];
+  /** Raw action events (focus events contain positionSnapshot + h/w/d for waypoints) */
+  events: Array<{
+    type: string;
+    timestamp: number;
+    nodeId?: string;
+    positionSnapshot?: number[];
+    heat?: number;
+    weight?: number;
+    decay?: number;
+  }>;
+}
+
+/**
+ * Persist a trail entry (agent's exploration trajectory).
+ * HTTP mode (DIGESTOR_URL): POST to IO Gateway.
+ * File mode (fallback): direct append to trail-log.jsonl.
+ */
+export async function appendTrail(entry: TrailEntry): Promise<void> {
+  if (!entry.events || entry.events.length === 0) return;
+
+  if (DIGESTOR_URL) {
+    const res = await fetch(`${DIGESTOR_URL}/trails`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(entry),
+    });
+    if (!res.ok) {
+      throw new Error(`IO Gateway POST /trails failed: ${res.status} ${await res.text()}`);
+    }
+    return;
+  }
+
+  // File mode (legacy)
+  if (!existsSync(DATA_DIR)) {
+    mkdirSync(DATA_DIR, { recursive: true });
+  }
+  appendFileSync(TRAIL_FILE, JSON.stringify(entry) + "\n", "utf-8");
 }
 
 // ============================================================
@@ -268,6 +339,12 @@ interface ProfileNodeCount {
   count: number;
 }
 
+interface ProfileWeightDelta {
+  flagBias: Record<string, number>;
+  returnWeights: [number, number, number, number];
+  qualityVector: [number, number, number, number];
+}
+
 interface ProfileSpeciesEntry {
   evaluations: number;
   avgH: number;
@@ -275,6 +352,7 @@ interface ProfileSpeciesEntry {
   avgD: number;
   hotNodes: ProfileNodeCount[];
   commonTags: string[];
+  weightDelta?: ProfileWeightDelta;
 }
 
 interface ProfileData {
@@ -289,6 +367,8 @@ export interface SpeciesProfileBias {
   hotNodeIds: Map<string, number>;
   tags: string[];
   sessions: number;
+  /** Learned weight delta from Digestor (Phase 2) */
+  weightDelta?: ProfileWeightDelta;
 }
 
 /**
@@ -309,7 +389,7 @@ export async function loadSpeciesProfile(loadout: string): Promise<SpeciesProfil
       for (const n of entry.hotNodes ?? []) {
         hotNodeIds.set(n.nodeId, n.count);
       }
-      return { hotNodeIds, tags: entry.commonTags ?? [], sessions: entry.evaluations };
+      return { hotNodeIds, tags: entry.commonTags ?? [], sessions: entry.evaluations, weightDelta: entry.weightDelta };
     } catch {
       return undefined;
     }
@@ -332,6 +412,7 @@ export async function loadSpeciesProfile(loadout: string): Promise<SpeciesProfil
       hotNodeIds,
       tags: entry.commonTags ?? [],
       sessions: entry.evaluations,
+      weightDelta: entry.weightDelta,
     };
   } catch {
     return undefined;

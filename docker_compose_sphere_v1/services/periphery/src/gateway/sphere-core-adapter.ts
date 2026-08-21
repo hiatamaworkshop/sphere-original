@@ -465,7 +465,8 @@ export class SphereCoreAdapter {
     }
 
     // [Design] Ghost/Fossil cannot be focused directly
-    // Use focus on Active node to get nearby Ghost/Fossil info
+    // Evaluate is possible via nearby ghost info from focus on Active nodes.
+    // Revival path (fossil → ghost → active) relies on eval flux + direct evaluation.
     if (node.kind === "ghost" || node.kind === "fossil") {
       console.log(`[SphereCore] focus_rejected: ${node.kind} cannot be focused directly`);
       return null;

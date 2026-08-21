@@ -24,7 +24,7 @@ export enum NodeFlag {
   TemporalShort  = 0x0001,  // 短命: decay_rate × 1.3, ttl_decay × 1.2 (trending, breaking)
   TemporalLong   = 0x0002,  // 長命: decay_rate × 0.8, ttl_decay × 0.7 (timeless, stable)
   TemporalCyclic = 0x0004,  // 周期: TBD (seasonal resurface)
-  Hot            = 0x0008,  // 高熱: 現在高い熱量を持つ (dynamic, Arbiter-assigned)
+  _Reserved0008  = 0x0008,  // Reserved (was Hot — removed: heat-only flag violates metric independence)
 
   // Density (bits 4-7)
   Dense      = 0x0010,  // 高密度: weight × 1.2 (theory, formula)

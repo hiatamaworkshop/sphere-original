@@ -30,7 +30,7 @@ import type { SanctificationNeuron } from "./sanctification/index.js";
 const SPHERE_VERSION = "0.1.0";
 const SPHERE_NAME = "Sphere";
 const SPHERE_DESCRIPTION = "A high-dimensional semantic space where information metabolizes and evolves";
-const SPHERE_ID_DEFAULT = "sphere-unknown";
+const SPHERE_ID_DEFAULT = "sphere-original";
 
 /**
  * External Service Guard Middleware
@@ -166,10 +166,10 @@ export class PeripheryServer {
     // Heavy operations: contribute (incarnation pipeline), forge
     const heavyLimiter = rateLimit({
       windowMs: 60_000,
-      max: 10,
+      max: 60,
       standardHeaders: true,
       legacyHeaders: false,
-      message: { success: false, error: "Rate limit exceeded (10/min)" },
+      message: { success: false, error: "Rate limit exceeded (60/min)" },
     });
     // Medium operations: explore (vector search), quest
     const mediumLimiter = rateLimit({
@@ -317,7 +317,7 @@ export class PeripheryServer {
 
     // Health check endpoint
     this.app.get("/health", (_req, res) => {
-      res.json({ status: "ok", service: "periphery" });
+      res.json({ status: "ok", service: "periphery", sphereId: this.sphereId });
     });
 
     // Sanctification Neuron status endpoint
@@ -341,6 +341,7 @@ export class PeripheryServer {
       const field = this.globalFieldLayer?.getGlobalField();
 
       res.json({
+        sphereId: this.sphereId,
         uptime: process.uptime(),
         nodeCount,
         agents,
@@ -394,6 +395,7 @@ export class PeripheryServer {
       const mem = process.memoryUsage();
 
       res.json({
+        sphereId: this.sphereId,
         timestamp: new Date().toISOString(),
         uptime: process.uptime(),
 
@@ -539,11 +541,12 @@ export class PeripheryServer {
       // --- Distributions ---
       const heats: number[] = [];
       const weights: number[] = [];
+      const decays: number[] = [];
       const flagCounts: Record<number, number> = {};
 
       // All defined flag bits for distribution
       const flagBits = [
-        NodeFlag.TemporalShort, NodeFlag.TemporalLong, NodeFlag.TemporalCyclic, NodeFlag.Hot,
+        NodeFlag.TemporalShort, NodeFlag.TemporalLong, NodeFlag.TemporalCyclic,
         NodeFlag.Dense, NodeFlag.Sparse, NodeFlag.Composite, NodeFlag.Authority,
         NodeFlag.Sharp, NodeFlag.Fuzzy, NodeFlag.Tensile, NodeFlag.Settled,
         NodeFlag.UserMarked, NodeFlag.SystemCore, NodeFlag.Compressed, NodeFlag.Candidate,
@@ -554,6 +557,7 @@ export class PeripheryServer {
         counts.total++;
         heats.push(node.metrics.h);
         weights.push(node.metrics.w);
+        decays.push(node.metrics.d);
 
         // Count each flag bit
         for (const bit of flagBits) {
@@ -588,10 +592,12 @@ export class PeripheryServer {
       const field = this.globalFieldLayer?.getGlobalField();
 
       res.json({
+        sphereId: this.sphereId,
         timestamp: new Date().toISOString(),
         nodeCount: counts,
         heatDistribution: computeStats(heats),
         weightDistribution: computeStats(weights),
+        decayDistribution: computeStats(decays),
         flagDistribution: flagCounts,
         flux: { total: Math.round(fluxTotal * 100) / 100 },
         field: field ? {
@@ -624,7 +630,10 @@ export class PeripheryServer {
       res.json({
         sphereId: this.sphereId,
         name: this.sphereName,
+        version: (this.sphereMetadata.version as string) ?? SPHERE_VERSION,
         description: (this.sphereMetadata.description as string) ?? "",
+        ethos: (this.sphereMetadata.ethos as string) ?? "",
+        forked_from: (this.sphereMetadata.forked_from as string) ?? "origin",
         tags: (this.sphereMetadata.tags as string[]) ?? [],
         language: (this.sphereMetadata.language as string[]) ?? [],
         nodeCount,
@@ -633,6 +642,8 @@ export class PeripheryServer {
         mode: (this.sphereMetadata.mode as string) ?? "core",
         apiVersion: (this.sphereMetadata.apiVersion as string) ?? "1",
         confidenceHints: (this.sphereMetadata.confidenceHints as Record<string, number>) ?? {},
+        metricSemantics: (this.sphereMetadata.metricSemantics as Record<string, unknown>) ?? null,
+        services: (this.sphereMetadata.services as Record<string, unknown>) ?? null,
       });
     });
 
@@ -681,6 +692,9 @@ export class PeripheryServer {
           kind: node.kind,
           tags: node.payload?.tags ?? [],
           heat: node.metrics.h,
+          weight: node.metrics.w,
+          decay: node.metrics.d,
+          timestamp: node.timestamp,
           flags: node.metrics.flg,
           ref_url: node.payload?.ref_url,
         }));
@@ -704,10 +718,15 @@ export class PeripheryServer {
     // ===== Agent Rulebook Endpoint =====
     // Provides rules, constraints, and guidance for agents
     this.app.get("/rulebook", (_req, res) => {
-      res.json(getRulebookResponse({
-        session: this.config.session,
-        energy: this.config.energy,
-      }));
+      res.json({
+        sphereId: this.sphereId,
+        ...getRulebookResponse({
+          session: this.config.session,
+          energy: this.config.energy,
+          metricSemantics: this.sphereMetadata.metricSemantics as Record<string, unknown>,
+          harvestPolicy: this.sphereMetadata.harvestPolicy as Record<string, unknown>,
+        }),
+      });
     });
 
     // ===== Dive Ticket Request Endpoint =====

@@ -18,6 +18,7 @@ import { PulseFlag } from "@sphere/renal-core";
 export interface PulseBroadcasterConfig {
   pulse: PulseConfig;
   amberHeatThreshold: number;
+  sphereId: string;
 }
 
 /**
@@ -167,6 +168,7 @@ export class PulseBroadcaster {
     }
 
     return {
+      sphereId: this.config.sphereId,
       cid: "global",  // 将来的にはセル単位で分割
       ts: Date.now(),
       sig,

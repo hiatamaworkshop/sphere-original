@@ -1,6 +1,6 @@
 # learned_weight — 環境が発見した物理定数
 
-**Status**: Phase 1 実装済み (2026-02-24)
+**Status**: Phase 2 実装済み (2026-02-26)
 **関連**: `INFORMATION_PHYSICS_ENGINE_DESIGN.md` §3, §5.2
 
 ---
@@ -71,41 +71,58 @@ clamp(δ, -0.3, +0.3)      // DELTA_CLAMP (設計ドキュメント準拠)
 
 ---
 
-## Phase 2 (未実装): Digestor learned_δ
+## Phase 2 (実装済み 2026-02-26): Digestor learned_δ
 
 ### データフロー
 
 ```
-Agent 探索 → evaluations → experience_score 算出
+Agent 探索 → evaluations → eval-log.jsonl
                                     ↓
-                          Digestor: learned_δ 更新
+Digestor gen-NNN:
+  1. evaluation_consistency 算出 (profiler.ts — Phase 1 で実装済み)
+  2. 前世代の weightDelta をロード (generations/gen-NNN.json)
+  3. learned_δ 計算: consistency × evaluation patterns → 累積
+  4. species-profile.json に weightDelta を記録
                                     ↓
-                          次世代の FastGate weights 変化
+次世代 Agent:
+  loadSpeciesProfile → FastGate(query, loadout, fullBias)
+  → learned_δ が base_bias に適用 (effective = base × (1 + δ))
 ```
 
-### experience_score の候補指標
+### experience_score — 採用指標
 
-| 指標 | 定義 | 適合度 |
+| 指標 | 定義 | 採用 |
 |------|------|--------|
-| evaluation_consistency | 同一ノード再評価時のスコア一致度 | ★★★ センサー精度 |
-| coverage_diversity | 訪問ノードの tags エントロピー | ★★☆ 探索幅 |
-| satisfaction | feelings の S·Q | ★☆☆ 主観的 |
+| evaluation_consistency | 同一ノード再評価時のスコア一致度 | ★★★ 採用 |
+| coverage_diversity | 訪問ノードの tags エントロピー | ★★☆ 将来 |
+| satisfaction | feelings の S·Q | ★☆☆ 将来 |
 
-**推奨: evaluation_consistency** — Sphere が測りたいのは「センサーの精度」。
-
-### learned_δ 更新ロジック (構想)
+### learned_δ 更新ロジック (実装済み)
 
 ```
-Digestor gen-NNN 処理時:
-  1. 各種族の evaluation_consistency を算出
-  2. flag 別に「高 consistency 時に活性だった flag」を統計
-  3. 正の相関があった flag の learned_δ を +ε
-  4. 負の相関があった flag の learned_δ を -ε
-  5. clamp(learned_δ, -0.3, +0.3)
-  6. species-profile.json に weightDelta を記録
+profiler.ts: computeWeightDelta(species, previousDelta)
+
+  ec = evaluationConsistency.score    // 0-1 (高 = 安定したセンサー)
+  lr = LEARNING_RATE(0.03) × ec      // consistency がゲート
+
+  qualityVector delta:
+    h_signal = (avgH - 5) / 5        // 種族の評価傾向 (-1 to +1)
+    w_signal = (avgW - 5) / 5
+    d_signal = (avgD - 5) / 5
+    → prev_δ + lr × signal, clamped ±0.3
+
+  returnWeights delta:
+    consistent → satisfaction weight を強化 (信頼できる)
+    inconsistent → frustration weight を強化 (逃げシグナル)
+    stamina → 物理量、学習しない
+    → prev_δ + lr × signal, clamped ±0.3
+
+  flagBias delta:
+    前世代から引き継ぎ (per-node flag データが eval-log にないため)
+    将来: eval-log に flag を記録 → flag レベルの学習
 ```
 
-### species-profile.json への追加 (将来)
+### species-profile.json 出力例
 
 ```json
 {
@@ -114,8 +131,9 @@ Digestor gen-NNN 処理時:
       "evaluations": 50,
       "hotNodes": [...],
       "commonTags": [...],
+      "evaluationConsistency": { "score": 0.82, "nodes": 12, ... },
       "weightDelta": {
-        "flagBias": { "authority": -0.05, "temporalShort": 0.12 },
+        "flagBias": {},
         "returnWeights": [0.03, -0.08, 0.0, 0.05],
         "qualityVector": [-0.02, 0.06, 0.0, -0.04]
       }
@@ -124,19 +142,16 @@ Digestor gen-NNN 処理時:
 }
 ```
 
-### 配線の穴 (Phase 2 で修正)
+### 配線 (Phase 2 で修正済み — Option B)
 
-`setSpeciesBias()` は hotNodes/tags のみコピーし weightDelta を無視。
-Phase 2 では以下のどちらかで対応:
-
-- **A**: `setSpeciesBias` で learned_δ を受け取って再適用 (δ 二重適用に注意)
-- **B (推奨)**: `loadSpeciesProfile` を FastGate constructor の前に移動し、constructor 引数で渡す
-
-B が自然 — agent.ts の初期化順序を変えるだけ:
 ```typescript
-// Before: FastGate → loadSpeciesProfile → setSpeciesBias (hotNodes/tags only)
+// Before: FastGate() → loadSpeciesProfile → setSpeciesBias (hotNodes/tags only, δ ignored)
 // After:  loadSpeciesProfile → FastGate(query, loadout, fullBias) → δ applied with learned
 ```
+
+agent.ts: `loadSpeciesProfile()` を FastGate constructor の前に移動。
+constructor 引数で `speciesBias` (weightDelta 込み) を渡す。
+`applyWeightDelta(learned)` が learned_δ を base に適用 (noise 撤去済み)。
 
 ---
 
@@ -156,5 +171,9 @@ learned_δ でそのスフィア固有の最適な探索者に育つ。
 
 | 定数 | 値 | 定義場所 |
 |------|-----|---------|
-| NOISE_AMPLITUDE | 0.1 | fast-gate.ts L195 |
-| DELTA_CLAMP | 0.3 | fast-gate.ts L196 |
+| DELTA_CLAMP | 0.3 | fast-gate.ts, profiler.ts |
+| LEARNING_RATE | 0.03 | profiler.ts |
+| MIN_CONSISTENCY_NODES | 3 | profiler.ts |
+
+NOISE_AMPLITUDE (0.1) は Phase 1 の足場として存在したが、Phase 2 完成に伴い撤去。
+探索のランダム性は WalkMode とスフィア物理が提供する。

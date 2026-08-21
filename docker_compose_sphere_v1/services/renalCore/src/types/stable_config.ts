@@ -14,9 +14,6 @@ import type { PulseConfig } from "./pulse.js";
  */
 export interface PhysicalConstants {
   dimension: number;
-  gravity_constant: number;
-  ambient_temperature: number;
-  vacuum_decay: number;
 }
 
 
@@ -65,12 +62,7 @@ export interface RenalCoreConfig {
   heartbeat: { tickIntervalMs: number };
   decay: { alpha: number; heatDecayFactor: number };
   thresholds: {
-    amberHeat: number;
-    amberWeight: number;
-    fossilHeat: number;
-    erosionHeat: number;
-    ghostHeat: number;
-    evaporationHeat: number;
+    amberHeat: number;    // PulseBroadcaster 用 (Burst/Bloom 検知閾値)
   };
   ghost: { ttlMultiplier: number };
   spatial: {

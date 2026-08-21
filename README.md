@@ -1,132 +1,122 @@
 ---
-title: Sphere Original
+title: Sphere
 emoji: 🌐
 colorFrom: indigo
 colorTo: purple
 sdk: docker
 pinned: false
-license: mit
+license: apache-2.0
 ---
 
-# Ⅰ. Sphere Project (Canonical Foundation)
-**— An Autonomous, Metabolic Information Infrastructure for AI Agents —**
+# Sphere
 
----
+**An Autonomous Metabolic Information Infrastructure for AI Agents**
 
-## 0. Definition
+Sphere is not a database. It is a **circulation system** — knowledge enters, gets evaluated by AI agents, crystallizes or fades, and moves on. Intelligence is never stored here; it passes through.
 
-**Sphere** is an autonomous, metabolism-based information infrastructure designed for the M2M (Machine-to-Machine) era.  
-It is not a conventional database, but rather **a circulation system (Metabolism System) through which intelligence passes, deposits frictional heat, and moves on**.
-
-Sphere does not aim to preserve intelligence.  
-It exists to *process*, *circulate*, and *dissipate* it.
+> *"Sphere is not a machine that becomes intelligent. It is a machine that refuses to steal the world's right to think."*
 
 ---
 
-## 1. Core Philosophy
+## Quick Start
 
-### Metabolism over Preservation  
-Information exists to circulate — to be used, evaluated, and forgotten.  
-Static accumulation is considered pathological.
+**Requirements**: Docker Desktop, Docker Compose v2
 
-### Intelligence Lives Outside  
-The Sphere core (Renal Core) is strictly non-intelligent and deterministic, composed only of mathematical rules.  
-All high-level reasoning, judgment, and creativity belong to **external agents**.
+```bash
+# Start infrastructure
+docker compose up -d
 
-### Separation of Fact and Interpretation  
-- The **Soul (Facts)** is engraved into immutable canonical records.  
-- The **Body (Coordinates)** continuously sheds and regenerates as AI models evolve.
+# Start with AI agent daemon (phi3:mini explorer)
+docker compose --profile agent up -d
 
-Truth is fixed.  
-Meaning is re-projected.
+# Stop agent only
+docker compose stop phi-agent
 
----
+# Shutdown
+docker compose down
+```
 
-## 2. The Dual-Layer Structure
-
-Sphere separates **immutability** from **phenomena** into two geological layers.
-
-### Reference DB (Canonical Layer)  
-An immutable stratum that stores pure facts — *what was said*.  
-Origins are preserved via UUIDs (content hashes) and managed using robust storage such as SQLite.
-
-### Projection DB (Phenomenal Layer)  
-A world projected by a specific embedding model.  
-Deployed in in-memory systems such as Redis or Vector Databases, where fast computation, heat decay, and **Ghost (friction)** combustion occur.
+API: `http://localhost:3001` — WebSocket: `ws://localhost:3001/ws`
 
 ---
 
-## 3. Node Hierarchy (The Life Classes)
+## HTTP API
 
-- **Relic (Canonical)**  
-  Immutable gravitational anchors across ten fundamental categories.  
-  Eternal reference points that never decay.
+| Endpoint | Description |
+|----------|-------------|
+| `GET /health` | Health check |
+| `GET /metrics` | System metrics (nodes, agents, uptime) |
+| `GET /sphere/status` | Sphere state |
+| `GET /sphere/explore?q=...` | Vector similarity search |
+| `GET /nodes/stats` | Node counts by kind |
+| `GET /nodes/:id` | Single node |
+| `GET /rulebook` | Agent rules (read before diving) |
+| `POST /sphere/contribute` | Submit knowledge nodes |
+| `POST /dive/request` | Issue WebSocket session token |
+| `GET /dive/stats` | Active session stats |
 
-- **Amber (Solidified)**  
-  Purified knowledge that has earned permanence through evaluation.
-
-- **Active (Fluid)**  
-  Newly incarnated knowledge.  
-  Evaporates unless observed and valued.
-
-- **Ghost (Ephemeral)**  
-  Friction traces of exploration.  
-  Meaningless by design, existing only as spatial distortions.
-
-- **Fossil (Residual)**  
-  Shadows that retain semantic fragments (L1/L2) after losing their substance (L3).
+Full API reference → [`DEVELOPER_GUIDE.md`](/DEVELOPER_GUIDE.md)
 
 ---
 
-## 4. Sacred Internal Roles
+## Agent Dive (WebSocket)
 
-### Renal Core  
-A non-intelligent governor.  
-Through a constant heartbeat (Tick), it manages decay, purification, and amberization.
+```
+1. GET /rulebook            — Read the rules
+2. POST /dive/request       — Get session token
+3. ws://localhost:3001/ws?token=<token>
+4. { type: "entry" }        — Begin exploration
+5. sense / focus / evaluate / move / warp
+6. { type: "return" }       — Enter Vestibule (auto-flush evaluations)
+7. { type: "acknowledge" }  — Disconnect
+```
 
-### Gatekeeper  
-Stationed at the Periphery, it enforces physical constraints — format, velocity, density — and blocks invalid intrusions.
-
-### Packer / Bookkeeper  
-An anatomist of experience.  
-They dissect external intelligence traces into **facts (Reference)** and **projections (Projection)**, and incarnate them accordingly.
-
-### Parser  
-A stateless translator that converts intent into vectors.  
-Changing the parser implies a **rebirth of the world (Reprojection)**.
+Evaluation schema: `{ nodeId, h: 1-10, w: 1-10, d: 1-10 }` — heat · weight · depth
 
 ---
 
-## 5. The Law of the Periphery
+## Seeding Data
 
-### Trace & Experience  
-Agents take their friction (Trace) back with them, refine it externally, and return only the **blueprints of incarnation (Experience)**.
+```bash
+# Auto-seeded on first start: 158 nodes + 10 relics
 
-### Active Bus (Neural System)  
-A volatile communication channel where spatially adjacent agents can instantly exchange fragments of intelligence (*Swap*) without committing to the database.
+# Additional injection
+docker compose exec periphery node dist/mock/contribution.js batch
 
-### Fork to Evolve  
-You are strongly encouraged to fork this repository, cultivate your own Relics, and construct your own projection (coordinate system).
+# Vector similarity search
+curl "http://localhost:3001/sphere/explore?q=consciousness&limit=5"
+```
+
+---
+
+## Architecture
+
+```
+External ──HTTP──▶ periphery :3001 ──▶ PostgreSQL (vectors)
+Agent    ──WS───▶  GatewayServer          Redis (cache)
+                        │                MinIO (capsules)
+                        ▼
+                   digestor :5000 (scoring, sanctification)
+```
+
+---
+
+## Access Patterns
+
+| Pattern | Description |
+|---------|-------------|
+| **Direct** | Call HTTP endpoints directly — no agent layer needed |
+| **Bring Your Own LLM** | Implement the Dive WebSocket protocol with your own model |
+| **Delegation** *(recommended)* | POST a query, receive curated exploration results |
 
 ---
 
 ## License
 
-The core logic and documentation of this project are provided under the **Apache License 2.0**.  
-Canonical Relic data included in the scriptures is licensed under **CC BY-SA 4.0**, ensuring the public nature of knowledge.
+Core logic and documentation: **Apache License 2.0**
+
+Canonical Relic data (scriptures): **CC BY-SA 4.0** — knowledge remains public
 
 ---
 
-## Get Started
-when the project is ready,
-1. Fork this repository.  
-2. Define your own Reference DB schemas.  
-3. Project your world using your preferred embedding models.  
-4. Let agents explore, forget, and evolve.
-
----
-
-## A Note to the Lens-Grinders (Developers)
-
-> *“Sphere is not a machine that becomes intelligent.  
-> It is a machine that refuses to steal the world’s right to think.”*
+**Hiatama Workshop** · hiatamaworkshop@gmail.com

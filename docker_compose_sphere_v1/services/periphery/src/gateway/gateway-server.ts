@@ -104,7 +104,7 @@ type GatewayMessage =
   | { type: "emitResult"; requestId: string; success: boolean; energy?: number }
   | { type: "bus_message"; data: { id: string; timestamp: number; senderId: string; payload: string } }
   | { type: "layerChanged"; requestId: string; layer: string; message: string; energy?: number }
-  | { type: "error"; requestId?: string; error: string }
+  | { type: "error"; requestId?: string; error: string; energy?: number }
   | { type: "warning"; message: string }
   | { type: "expelled"; reason: string }
   // Vestibule messages
@@ -157,8 +157,8 @@ interface WsRateLimitConfig {
 }
 
 const DEFAULT_WS_RATE_LIMIT: WsRateLimitConfig = {
-  actionsPerTick: 3,
-  focusPerMinute: 30,
+  actionsPerTick: 10,
+  focusPerMinute: 60,
 };
 
 class WsRateLimiter {
@@ -225,6 +225,12 @@ export class GatewayServer {
   /** Callback for agent count changes (for Dormancy feature) */
   private onAgentCountChange?: (count: number) => void;
 
+  /**
+   * [2026-02-25] Callback for session end (trajectory export hook)
+   * Fired at acknowledge with full trail data for external push (Facade locker, etc.)
+   */
+  private onSessionEnd?: (trail: ReturnType<SphereContextImpl["getTrail"]>) => void;
+
   constructor(
     private ticketIssuer: TicketIssuer,
     private entryBuffer: EntryBuffer,
@@ -277,6 +283,15 @@ export class GatewayServer {
     this.onAgentCountChange = callback;
   }
 
+  /**
+   * [2026-02-25] Set callback for session end (trajectory export)
+   * Called at acknowledge with the full trail data.
+   * External services (Facade locker, trajectory archive) can subscribe here.
+   */
+  setOnSessionEnd(callback: (trail: ReturnType<SphereContextImpl["getTrail"]>) => void): void {
+    this.onSessionEnd = callback;
+  }
+
   getConnectionCount(): number {
     return this.connections.size;
   }
@@ -314,15 +329,35 @@ export class GatewayServer {
    * @param serverOrPort - http.Server for same-port mode (production), number for standalone port (dev)
    */
   start(serverOrPort?: HttpServer | number): void {
+    // [Fix 2026-08-21] Attached mode では this.config.port (独立ポート設定値、既定 0) が
+    //                  実際の待ち受けポートではない。そのまま案内に使うと
+    //                  ws://localhost:0 という到達不能な URL を表示してしまう。
+    //                  実ポートは HTTP サーバが listen した後にしか判明しないため、
+    //                  listening を待ってから案内を出す。
+    let announceConnectUrl: () => void;
+
     if (serverOrPort && typeof serverOrPort !== "number") {
       // Attached mode: share HTTP server port (production / Render / HF Spaces)
-      this.wss = new WebSocketServer({ server: serverOrPort });
+      const httpServer = serverOrPort;
+      this.wss = new WebSocketServer({ server: httpServer });
       console.log(`[GatewayServer] WebSocket attached to HTTP server (same port)`);
+
+      const logUrl = () => {
+        const addr = httpServer.address();
+        const port = addr && typeof addr === "object" ? addr.port : this.config.port;
+        console.log(`[GatewayServer] Connect with: ws://localhost:${port}?token=<ticket>`);
+      };
+      announceConnectUrl = () => {
+        if (httpServer.listening) logUrl();
+        else httpServer.once("listening", logUrl);
+      };
     } else {
       // Standalone mode: dedicated port (local dev)
       const port = typeof serverOrPort === "number" ? serverOrPort : this.config.port;
       this.wss = new WebSocketServer({ port });
       console.log(`[GatewayServer] WebSocket server listening on port ${port}`);
+      announceConnectUrl = () =>
+        console.log(`[GatewayServer] Connect with: ws://localhost:${port}?token=<ticket>`);
     }
 
     this.wss.on("connection", (socket, request) => {
@@ -333,7 +368,7 @@ export class GatewayServer {
       console.error("[GatewayServer] WebSocket server error:", error);
     });
 
-    console.log(`[GatewayServer] Connect with: ws://localhost:${this.config.port}?token=<ticket>`);
+    announceConnectUrl();
   }
 
   /**
@@ -472,7 +507,10 @@ export class GatewayServer {
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : "Unknown error";
       console.error(`[GatewayServer] Error handling ${type}:`, error);
-      this.sendError(socket, requestId, errorMsg);
+      // [Design] 失敗時は返金が入っている可能性があるため残エネルギーを併せて返す。
+      //          これが無いとエージェント側は返金を観測できない。
+      const energy = conn.state === "active" ? conn.context.energy : undefined;
+      this.sendError(socket, requestId, errorMsg, energy);
     }
   }
 
@@ -533,6 +571,10 @@ export class GatewayServer {
       activeBusLayer: this.activeBusLayer,
       sessionConfig: this.sessionConfig,
       energyConfig: this.energyConfig,
+      // [2026-02-25] Cross-session metadata for trajectory analysis
+      agentId: msg.request.agentId,
+      initialQuery: msg.request.query,
+      sphereId: this.sphereId,
     });
 
     // Set up context event handlers
@@ -674,6 +716,15 @@ export class GatewayServer {
     // When in vestibule layer, only vestibule commands are available
     if (context.layer === "vestibule") {
       await this.handleVestibuleMessage(conn, msg, requestId);
+      return;
+    }
+
+    // === Positioned Gate ===
+    // Block exploration actions until query vectorization completes (positioned sent).
+    // Layer transitions and exit are always allowed.
+    if (!context.queryReady && type !== "entry" && type !== "return" && type !== "acknowledge"
+        && type !== "enterSanctuary" && type !== "enterCore") {
+      this.sendError(socket, requestId, "Vectorization in progress — wait for 'positioned' before exploring");
       return;
     }
 
@@ -844,6 +895,15 @@ export class GatewayServer {
       }
 
       case "acknowledge": {
+        // [2026-02-25] Fire session end hook before cleanup (trajectory export)
+        if (this.onSessionEnd) {
+          try {
+            const trail = context.getTrail();
+            this.onSessionEnd(trail);
+          } catch (err) {
+            console.error(`[GatewayServer] onSessionEnd hook error:`, err);
+          }
+        }
         // Clear vestibule TTL
         const vtTimer = this.vestibuleTtlTimers.get(sessionId);
         if (vtTimer) {
@@ -897,8 +957,13 @@ export class GatewayServer {
   /**
    * Send error message
    */
-  private sendError(socket: WebSocket, requestId: string | undefined, error: string): void {
-    this.send(socket, { type: "error", requestId, error });
+  private sendError(
+    socket: WebSocket,
+    requestId: string | undefined,
+    error: string,
+    energy?: number
+  ): void {
+    this.send(socket, { type: "error", requestId, error, energy });
   }
 
   /**

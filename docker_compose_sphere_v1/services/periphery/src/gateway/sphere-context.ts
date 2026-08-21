@@ -38,6 +38,7 @@ import type {
   EvaluationResult,
   SessionBuffer,
 } from "../types/experience-layer.js";
+import { DEFAULT_ENERGY_CONFIG } from "../types/config.js";
 import type { ActionLog, AutoCapsule } from "../types/auto-capsule.js";
 import { createActionLog, logAction, buildAutoCapsule } from "../types/auto-capsule.js";
 import {
@@ -70,19 +71,14 @@ const DEFAULT_WARNING_BEFORE_END = 30;
 /** Default sense radius (multiplier) */
 const DEFAULT_SENSE_RADIUS = 1.0;
 
-/** Default energy settings */
-const DEFAULT_ENERGY = {
-  initial: 100,
-  warningThreshold: 10,
-  costs: {
-    scan: 1,      // scanL1() (perception); internal scan() has no cost
-    sense: 3,
-    move: 5,
-    focus: 10,
-    warp: 15,
-    evaluate: 3,
-  },
-};
+/**
+ * Default energy settings.
+ *
+ * [Design] 以前はここに独自のコスト表を持っていたが、rulebook 側の表と
+ *          食い違っていたため types/config.ts の正典を参照する。
+ *          scan は scanL1() (perception) のコスト。内部 scan() は無料。
+ */
+const DEFAULT_ENERGY = DEFAULT_ENERGY_CONFIG;
 
 /**
  * Layer-specific energy cost multipliers
@@ -139,8 +135,9 @@ function projectTo3D(vector: number[]): Vector {
  *
  * [Metrics for WalkMode]
  *   heat (h): 可視性・人気度 → "hot" mode
- *   decay (d): 揮発性係数 → "fresh" mode (h × d)
- *   weight (w): 安定性 → "deep" mode (w × (1-d/1000))
+ *   decay (d): 揮発性係数 → "fresh" / "deep" mode (可視集合内での相対位置で使う)
+ *   weight (w): 安定性 → "deep" mode
+ *   freshness: timestamp 由来の新しさ → "fresh" mode
  *   explore: 未知探索 → 1/(w+1)
  */
 interface VisibleNodeInfo {
@@ -148,9 +145,40 @@ interface VisibleNodeInfo {
   kind: string;          // Node kind (for cost calculation)
   heat: number;          // h - Popularity metric
   decay: number;         // d - Decay coefficient (0-2000 range)
-  freshness: number;     // timestamp-based (legacy, for fallback)
+  freshness: number;     // timestamp 由来の新しさ 1/(1+age/3600000) — "fresh" mode で使用
   weight: number;        // w - Stability metric
   distance: number;      // Distance from agent
+  /**
+   * メトリクスが実測値か。
+   * sense() 由来 = true。L1 scan 由来は heat/weight/decay を持たない
+   * プレースホルダなので false — 相対スケールの母集団から除外する。
+   */
+  measured: boolean;
+}
+
+/**
+ * 値の集合を「集合内での相対位置 → 0.5〜1.5 の係数」に変換する関数を返す。
+ *
+ * [Why] WalkMode の重み付けに絶対値の閾値を焼き込むと、その指標が
+ * baseline に張り付いている環境で式が定数に潰れる (d の 1000 がこれだった)。
+ * 集合内の相対位置なら、指標が動いていなくても壊れない。
+ *
+ * [Design]
+ *   - 全要素が同値 = その軸は情報を持たない → 常に 1.0 (重み付けに影響しない)
+ *   - 下限 0.5 / 上限 1.5 で 0 を返さない → totalWeight が消えて random に
+ *     落ちることがない
+ */
+function buildRelativeScale(values: number[]): (v: number) => number {
+  let min = Infinity;
+  let max = -Infinity;
+  for (const v of values) {
+    if (!Number.isFinite(v)) continue;
+    if (v < min) min = v;
+    if (v > max) max = v;
+  }
+  const span = max - min;
+  if (!Number.isFinite(span) || span < 1e-9) return () => 1.0;
+  return (v: number) => (Number.isFinite(v) ? 0.5 + (v - min) / span : 1.0);
 }
 
 // ============================================================
@@ -174,6 +202,8 @@ export class SphereContextImpl implements SphereContext {
 
   // Energy management
   private _energy: number;
+  /** consumeEnergy() がエネルギー枯渇で追い出したか。返金で回復したら解除する */
+  private _expelledByEnergy = false;
   private _energyConfig: typeof DEFAULT_ENERGY;
   private _lowEnergyWarned = false;
 
@@ -222,7 +252,9 @@ export class SphereContextImpl implements SphereContext {
     sessionConfig?: PeripheryConfig["session"],
     energyConfig?: PeripheryConfig["energy"],
     globalFieldLayer?: GlobalFieldLayer,
-    activeBusLayer?: ActiveBusLayer
+    activeBusLayer?: ActiveBusLayer,
+    /** [2026-02-25] Cross-session metadata */
+    sessionMeta?: { agentId?: string; initialQuery?: string; sphereId?: string }
   ) {
     this._sessionId = sessionId;
     this._embeddingVector = initialVector;
@@ -255,7 +287,8 @@ export class SphereContextImpl implements SphereContext {
     this._sessionBuffer = createSessionBuffer(sessionId, this._layer);
 
     // Initialize action log for AutoCapsule generation
-    this._actionLog = createActionLog(sessionId);
+    // [2026-02-25] Pass cross-session metadata for trajectory analysis
+    this._actionLog = createActionLog(sessionId, sessionMeta);
 
     // Initialize movement state
     this.movementState = new AgentMovementState(initialVector, {
@@ -331,7 +364,7 @@ export class SphereContextImpl implements SphereContext {
     this._sensedNodeIds.clear(); // Proximity-confirmed nodes reset
     for (const node of nodes) {
       const age = now - (node.timestamp || now);
-      const freshness = 1 / (1 + age / 3600000);  // 1 hour half-life (legacy fallback)
+      const freshness = 1 / (1 + age / 3600000);  // 1 hour half-life
       this._visibleNodes.set(node.id, {
         vector: [],  // Fetched on demand during gradient calculation
         kind: node.kind,
@@ -340,6 +373,7 @@ export class SphereContextImpl implements SphereContext {
         freshness,
         weight: node.weight,
         distance: node.distance,
+        measured: true,
       });
       this._sensedNodeIds.add(node.id);
     }
@@ -451,6 +485,7 @@ export class SphereContextImpl implements SphereContext {
             decay: 0,
             distance: 0,
             freshness: 0,
+            measured: false,
           });
         }
       }
@@ -473,6 +508,19 @@ export class SphereContextImpl implements SphereContext {
 
     console.log(`[SphereContext] focus(nodeId=${nodeId}) -10 energy`);
 
+    // [Design] 課金は先頭で行うため、以降のあらゆる失敗は「払ったのに得られなかった」
+    //          状態になる。本体を分離して包み、失敗したら必ず返金する。
+    //          guard を増やしても自動的に返金対象になるのがこの形の狙い。
+    try {
+      return await this.focusInner(nodeId);
+    } catch (e) {
+      this.refundEnergy("focus", e instanceof Error ? e.message : String(e));
+      throw e;
+    }
+  }
+
+  /** focus() の本体。課金済みの状態で呼ばれる。throw すれば呼び出し元が返金する。 */
+  private async focusInner(nodeId: string): Promise<FocusResult> {
     // Proximity check: only sense() results can be focused (nearby confirmed)
     // [Design] scan gives IDs but not proximity — focus requires sense()
     if (this._sensedNodeIds.size > 0 && !this._sensedNodeIds.has(nodeId)) {
@@ -504,9 +552,15 @@ export class SphereContextImpl implements SphereContext {
         detail = focusResult.node;
         nearbyGhosts = focusResult.nearbyGhosts;
       } else {
-        // If node not found or ghost/fossil (cannot focus directly), fall back to mock
-        console.warn(`[SphereContext] Node ${nodeId} not focusable (not found or ghost/fossil), using mock`);
-        detail = this.mockFocus(nodeId);
+        // [Fix] adapter があるのに null = 本当に focus できないノード。
+        //       ここで mockFocus に落とすと、捏造した heat/weight/kind が
+        //       「成功した focus」としてエージェントに届いてしまう。
+        //       ghost/fossil は L3 アクセス不可 (reports/DESIGN_GHOST_FOSSIL_FOCUS.md)。
+        //       失敗として投げれば focus() が課金を返金する。
+        throw new Error(
+          `Node ${nodeId} cannot be focused (ghost/fossil have no L3 content, or node not found). ` +
+          `Use sense/scan results and evaluate instead.`
+        );
       }
     } else {
       detail = this.mockFocus(nodeId);
@@ -533,7 +587,10 @@ export class SphereContextImpl implements SphereContext {
       nodeId,
       kind: detail.kind,
       heatAtFocus: detail.heat,
+      weightAtFocus: detail.weight,   // Trajectory: authority/importance at focus
+      decayAtFocus: detail.decay,     // Trajectory: volatility at focus
       sourceNodeId: detail.sourceNodeId,  // L3: track derivation for depth awareness
+      positionSnapshot: [...this._embeddingVector],  // Trajectory analysis: agent position at focus
     });
 
     // Log nearby ghosts if any
@@ -612,14 +669,16 @@ export class SphereContextImpl implements SphereContext {
       return { success: false, reason: "not_in_possession" };
     }
 
+    // Validate input range (0-10)
+    // [Design] 課金より前に検証する。値域外は要求そのものが不正なので、
+    //          「払わせてから返す」ではなく最初から払わせない。
+    if (h < 0 || h > 10 || w < 0 || w > 10 || d < 0 || d > 10) {
+      throw new Error("Evaluation values must be between 0 and 10");
+    }
+
     // Consume energy
     if (!this.consumeEnergy("evaluate")) {
       return { success: false, reason: "insufficient_energy" };
-    }
-
-    // Validate input range (0-10)
-    if (h < 0 || h > 10 || w < 0 || w > 10 || d < 0 || d > 10) {
-      throw new Error("Evaluation values must be between 0 and 10");
     }
 
     console.log(`[SphereContext] evaluate(nodeId=${nodeId}, h=${h}, w=${w}, d=${d}, layer=${this._layer})`);
@@ -688,15 +747,6 @@ export class SphereContextImpl implements SphereContext {
     }
 
     // === New Movement System ===
-
-    // Handle drift mode
-    if (intent.drift) {
-      const internalIntent: InternalMoveIntent = {
-        drift: intent.drift,
-        steps: intent.steps,
-      };
-      return this.executeInternalMove(internalIntent, previousFocusNodeId);
-    }
 
     // Handle toward (signature - number)
     if (typeof intent.toward === "number") {
@@ -778,6 +828,7 @@ export class SphereContextImpl implements SphereContext {
     // Get target node's vector
     if (!this.coreAdapter) {
       console.warn(`[SphereContext] Warp failed: no coreAdapter`);
+      this.refundEnergy("warp", "no coreAdapter");
       return {
         success: false,
         error: "not_found",
@@ -787,6 +838,7 @@ export class SphereContextImpl implements SphereContext {
     const targetVector = await this.coreAdapter.getNodeVector(nodeId);
     if (!targetVector) {
       console.log(`[SphereContext] Warp failed: node ${nodeId} has no vector`);
+      this.refundEnergy("warp", `node ${nodeId} has no vector`);
       return {
         success: false,
         error: "no_vector",
@@ -865,6 +917,7 @@ export class SphereContextImpl implements SphereContext {
     const needsVisibleNodes = mode !== "random" && mode !== "flow";
     if (needsVisibleNodes && this._visibleNodes.size === 0) {
       console.log(`[SphereContext] Move failed: mode=${mode} requires sense() first`);
+      this.refundEnergy("move", `mode=${mode} requires sense() first`);
       return {
         success: false,
         distance: 0,
@@ -1002,9 +1055,20 @@ export class SphereContextImpl implements SphereContext {
    *
    * [Design] Mode determines which aspect of the field to follow:
    *   - hot:     h (heat) で重み付け → 活気のある方向
-   *   - fresh:   h × (d/1000) で重み付け → 新鮮で活発な方向
-   *   - deep:    w × (1-d/1000) で重み付け → 安定して評価された方向
+   *   - fresh:   h × 揮発性(d) × 新しさ(timestamp) → 新鮮で活発な方向
+   *   - deep:    w × 安定性(低 d) → 安定して評価された方向
    *   - explore: 1/(w+1) で重み付け → 未知・未判定の方向
+   *
+   * [Relative gradient] d / freshness は絶対値ではなく「可視ノード集合内での
+   * 相対位置」に変換してから使う。move は "見えているものの中でどちらへ進むか"
+   * を決める操作なので、絶対スケールには意味がない。
+   *
+   * 旧実装は d を定数 1000 で割っていたが、d は時間では変化せず
+   * (RenalCore.processDecay は d に触れない)、評価を受けるまで
+   * packer の baseline 1000 に張り付く。結果として未評価のスフィアでは
+   *   fresh → h × 1.0  = hot と完全に同一
+   *   deep  → w × 0    = 全ノード weight 0 → totalWeight 0 → random 化
+   * となり、2モードが設計意図を失っていた。
    *
    * [Algorithm] Weighted centroid toward visible nodes
    */
@@ -1012,6 +1076,11 @@ export class SphereContextImpl implements SphereContext {
     const dim = this._embeddingVector.length;
     const weightedSum = new Array(dim).fill(0);
     let totalWeight = 0;
+
+    // 可視ノード集合を基準にした相対スケールを先に作る (0.5〜1.5)
+    const measured = [...this._visibleNodes.values()].filter((n) => n.measured);
+    const decayScale = buildRelativeScale(measured.map((n) => n.decay));
+    const freshScale = buildRelativeScale(measured.map((n) => n.freshness));
 
     // Fetch vectors for visible nodes
     for (const [nodeId, info] of this._visibleNodes) {
@@ -1039,14 +1108,15 @@ export class SphereContextImpl implements SphereContext {
           weight = info.heat;
           break;
         case "fresh":
-          // 新鮮で活発な方向 (h × d)
+          // 新鮮で活発な方向 (h × 揮発性 × 新しさ)
           // d が高い = 揮発性が高い = 新しいか不安定 → 好奇心が惹かれる
-          weight = info.heat * (info.decay / 1000);  // d is 0-2000 range
+          // d が横並びのときは timestamp 由来の新しさが差を作る (hot と別物になる)
+          weight = info.heat * decayScale(info.decay) * freshScale(info.freshness);
           break;
         case "deep":
-          // 安定して評価された方向 (w × (1-d/1000))
-          // d が低い = 安定 → 信頼できる情報
-          weight = info.weight * Math.max(0, 1 - info.decay / 1000);
+          // 安定して評価された方向 (w × 安定性)
+          // d が低い = 安定 → 信頼できる情報。相対スケールを反転して使う
+          weight = info.weight * (2.0 - decayScale(info.decay));
           break;
         case "explore":
           // 未知・未判定の方向 (w が低いものを好む)
@@ -1222,13 +1292,22 @@ export class SphereContextImpl implements SphereContext {
     this.checkSession();
     this.updateActivity();
 
+    // [Fix 2026-08-21] rulebook は emitBus を cost 20 と公表していたが、
+    //                  ここに課金が無く実際には無料だった。公表どおり課金する。
+    if (!this.consumeEnergy("emitBus")) {
+      console.log(`[SphereContext] emitBus blocked: insufficient energy`);
+      return false;
+    }
+
     if (!this.activeBusLayer) {
       console.log(`[SphereContext] emitBus failed: ActiveBus not available`);
+      this.refundEnergy("emitBus", "ActiveBus not available");
       return false;
     }
 
     const message = this.activeBusLayer.emit(this._sessionId, payload);
     if (!message) {
+      this.refundEnergy("emitBus", "ActiveBus rejected the message");
       return false;
     }
 
@@ -1401,15 +1480,37 @@ export class SphereContextImpl implements SphereContext {
 
   /**
    * Get exploration trail from action log (Vestibule command)
+   * [2026-02-25] Extended with positionSnapshot, metadata, lastPosition for trajectory analysis
    */
-  getTrail(): { sessionId: string; duration: number; events: { type: string; timestamp: number; nodeId?: string }[] } {
+  getTrail(): {
+    sessionId: string;
+    agentId?: string;
+    initialQuery?: string;
+    sphereId?: string;
+    duration: number;
+    lastPosition?: number[];
+    events: { type: string; timestamp: number; nodeId?: string; positionSnapshot?: number[]; heat?: number; weight?: number; decay?: number }[];
+  } {
     const duration = Date.now() - this._actionLog.startTime;
     const events = this._actionLog.events.map(e => ({
       type: e.type,
       timestamp: e.timestamp,
       nodeId: "nodeId" in e ? (e as any).nodeId : undefined,
+      // Include position snapshot + node metrics only for focus events (trajectory waypoints)
+      positionSnapshot: e.type === "focus" ? (e as any).positionSnapshot : undefined,
+      heat: e.type === "focus" ? (e as any).heatAtFocus : undefined,
+      weight: e.type === "focus" ? (e as any).weightAtFocus : undefined,
+      decay: e.type === "focus" ? (e as any).decayAtFocus : undefined,
     }));
-    return { sessionId: this._sessionId, duration, events };
+    return {
+      sessionId: this._sessionId,
+      agentId: this._actionLog.agentId,
+      initialQuery: this._actionLog.initialQuery,
+      sphereId: this._actionLog.sphereId,
+      duration,
+      lastPosition: this._autoCapsule?.lastPosition,
+      events,
+    };
   }
 
   /**
@@ -1478,9 +1579,7 @@ export class SphereContextImpl implements SphereContext {
 
     // Partial energy recovery on Core entry
     // [Design] Reward efficient Sanctuary exploration — not full recovery
-    const before = this._energy;
-    this._energy = Math.min(this._energyConfig.initial, this._energy + CORE_ENTRY_ENERGY_RECOVERY);
-    console.log(`[SphereContext] Core entry energy recovery: +${this._energy - before} (${before} → ${this._energy})`);
+    this.restoreEnergy(CORE_ENTRY_ENERGY_RECOVERY, "core entry recovery");
 
     // Update layer (buffer is preserved, not cleared)
     this._layer = "core";
@@ -1561,6 +1660,42 @@ export class SphereContextImpl implements SphereContext {
    * @param action Action name for cost lookup
    * @returns true if action can proceed, false if insufficient energy
    */
+  /**
+   * Add energy back, clamped to the session's initial allocation.
+   *
+   * [Design] Core entry recovery と失敗時の返金で共有する唯一の加算経路。
+   *          クランプがあるので、返金で初期値を超えることはない。
+   */
+  private restoreEnergy(amount: number, reason: string): void {
+    if (amount <= 0) return;
+    const before = this._energy;
+    this._energy = Math.min(this._energyConfig.initial, this._energy + amount);
+    console.log(
+      `[SphereContext] ⚡ energy +${this._energy - before} (${before} → ${this._energy}) — ${reason}`
+    );
+
+    // エネルギー枯渇で追い出した直後の返金なら、追い出しを取り消す
+    // [Reason] 残り10で ghost に focus → 0 で追い出し → 返金で10 という順序があり得る
+    if (this._expelledByEnergy && this._energy > 0) {
+      this._expelledByEnergy = false;
+      this._session.state = "connected";
+      console.log(`[SphereContext] Expulsion revoked by refund (energy ${this._energy})`);
+    }
+  }
+
+  /**
+   * Refund an action's cost after it failed post-charge.
+   *
+   * [Design] consumeEnergy() と同じ式で層倍率を掛け直す。
+   *          Sanctuary で5引かれたなら5返す (10ではない)。
+   */
+  private refundEnergy(action: keyof typeof DEFAULT_ENERGY.costs, reason: string): void {
+    const cost = Math.round(
+      this._energyConfig.costs[action] * LAYER_ENERGY_MULTIPLIER[this._layer]
+    );
+    this.restoreEnergy(cost, `refund: ${action} — ${reason}`);
+  }
+
   private consumeEnergy(action: keyof typeof DEFAULT_ENERGY.costs): boolean {
     const baseCost = this._energyConfig.costs[action];
     const multiplier = LAYER_ENERGY_MULTIPLIER[this._layer];
@@ -1588,6 +1723,7 @@ export class SphereContextImpl implements SphereContext {
 
     // Check for energy exhaustion
     if (this._energy <= 0) {
+      this._expelledByEnergy = true;
       this._session.state = "expired";
       this.emit("expelled", "Energy exhausted");
       console.log(`[SphereContext] Session ${this._sessionId} expelled: energy exhausted`);
@@ -1672,7 +1808,7 @@ export class SphereContextImpl implements SphereContext {
     return {
       id: nodeId,
       distance: 0,
-      summary: `⚠️ Mock data - This node (ghost/fossil) cannot be focused directly. Use sense/scan + evaluate instead.`,
+      summary: `⚠️ Mock data - no core adapter attached (mock mode).`,
       heat: 50,
       weight: 0.7,
       decay: 500,   // Medium decay
@@ -1680,7 +1816,7 @@ export class SphereContextImpl implements SphereContext {
       kind: "active",
       flags: 0,
       tags: ["⚠️-mock"],
-      content: "⚠️ Ghost/Fossil nodes cannot be focused. You can still evaluate them from sense/scan results.",
+      content: "⚠️ Mock mode: this Sphere instance has no core adapter, so no real node content is available.",
     };
   }
 
@@ -1748,6 +1884,10 @@ export interface CreateSphereContextOptions {
   energyConfig?: PeripheryConfig["energy"];
   globalFieldLayer?: GlobalFieldLayer;
   activeBusLayer?: ActiveBusLayer;
+  /** [2026-02-25] Cross-session metadata for trajectory analysis */
+  agentId?: string;
+  initialQuery?: string;
+  sphereId?: string;
 }
 
 /**
@@ -1772,7 +1912,9 @@ export function createSphereContext(options: CreateSphereContextOptions): Sphere
     options.sessionConfig,
     options.energyConfig,
     options.globalFieldLayer,
-    options.activeBusLayer
+    options.activeBusLayer,
+    // [2026-02-25] Cross-session metadata for trajectory analysis
+    { agentId: options.agentId, initialQuery: options.initialQuery, sphereId: options.sphereId }
   );
 }
 

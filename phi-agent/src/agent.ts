@@ -24,10 +24,10 @@ import type { LlmClient } from "./llm-client.js";
 import { SphereClient } from "./sphere-client.js";
 import type { WalkMode, BusMessage, ScanNode, NodeDetail } from "./sphere-client.js";
 import { PromptBuilder, parseAction } from "./prompt-builder.js";
-import { FastGate, LOADOUTS } from "./fast-gate.js";
-import type { Loadout, LoadoutName } from "./fast-gate.js";
-import { appendEvalLog, appendNarrative, loadSpeciesProfile } from "./eval-log.js";
-import type { EvalLogEntry, NarrativeEntry } from "./eval-log.js";
+import { FastGate, LOADOUTS, DEFAULT_HARVEST_POLICY } from "./fast-gate.js";
+import type { Loadout, LoadoutName, SpeciesMemoryBias, HarvestPolicy } from "./fast-gate.js";
+import { appendEvalLog, appendNarrative, appendTrail, loadSpeciesProfile } from "./eval-log.js";
+import type { EvalLogEntry, NarrativeEntry, TrailEntry } from "./eval-log.js";
 import { renderBroadcast } from "./broadcast-renderer.js";
 
 /** Species-specific voice guidance for return responses */
@@ -49,6 +49,58 @@ interface BusHint {
   w: number;
   expression?: number[];
   receivedAt: number;
+}
+
+/** Node encountered during exploration — what the agent "saw".
+ *  Base fields (nodeId..flags) are always present.
+ *  Optional fields (content, kind, refUrl) are controlled by HarvestPolicy.
+ *
+ *  Relationship to ExperienceCapsule:
+ *  - Encounter = observation record (Sphere → agent → external consumer)
+ *  - NodeSeed  = contribution record (agent → Sphere, via submitCapsule)
+ *  - Conversion: buildCapsuleFromEncounters() extracts evaluations from encounters.
+ *    High-end agents may also generate NodeSeeds with original content. */
+export interface Encounter {
+  nodeId: string;
+  tags: string[];
+  summary: string;
+  h: number;
+  w: number;
+  d: number;
+  flags: number;
+  // HarvestPolicy-controlled optional fields
+  content?: string;
+  kind?: string;
+  refUrl?: string;
+}
+
+/** Sphere-side trail data (action log with embeddings) */
+interface TrailData {
+  sessionId: string;
+  agentId?: string;
+  sphereId?: string;
+  initialQuery?: string;
+  lastPosition?: number[];
+  duration: number;
+  events: Array<{
+    type: string;
+    timestamp: number;
+    nodeId?: string;
+    positionSnapshot?: number[];
+    heat?: number;
+    weight?: number;
+    decay?: number;
+  }>;
+}
+
+/** Structured data collected from Vestibule before disconnect.
+ *  Future: this is the package that Facade would receive. */
+interface SessionHarvest {
+  receipt: { evaluationsApplied: number; autoCapsuleSaved: boolean } | null;
+  trail: TrailData | null;
+  discoveries: { visits: unknown[]; uniqueNodes: number } | null;
+  encounters: Encounter[];
+  broadcastPosts: string[];
 }
 
 export interface AgentConfig {
@@ -79,6 +131,16 @@ export interface AgentStats {
   error?: string;
 }
 
+/** Full result of a phi-agent session — stats + harvested data.
+ *  App receives this as the return value of agent.run(). */
+export interface AgentResult {
+  stats: AgentStats;
+  encounters: Encounter[];
+  broadcastPosts: string[];
+  narrative: string | null;
+  receipt: { evaluationsApplied: number; autoCapsuleSaved: boolean } | null;
+}
+
 const DEFAULT_AGENT_CONFIG: AgentConfig = {
   query: "knowledge exploration",
   loadout: "balanced",
@@ -96,7 +158,7 @@ export class PhiAgent {
   private ollama: LlmClient;
   private sphere: SphereClient;
   private prompt: PromptBuilder;
-  private gate: FastGate;
+  private gate!: FastGate;
   private config: AgentConfig;
   private stats: AgentStats;
   private running = false;
@@ -108,16 +170,9 @@ export class PhiAgent {
   /** Landscape from orient scan — used by first cycle if sense is sparse */
   private orientResults: ScanNode[] | null = null;
 
-  /** Nodes encountered during exploration — what the agent "saw" */
-  private encounters: Array<{
-    nodeId: string;
-    tags: string[];
-    summary: string;
-    h: number;
-    w: number;
-    d: number;
-    flags: number;
-  }> = [];
+  private encounters: Encounter[] = [];
+  /** Sphere-configurable harvest policy (what to carry back from exploration) */
+  private harvestPolicy: HarvestPolicy = DEFAULT_HARVEST_POLICY;
 
   /** Session start time for duration tracking */
   private sessionStart = Date.now();
@@ -131,12 +186,6 @@ export class PhiAgent {
     this.sphere = sphere;
     this.config = { ...DEFAULT_AGENT_CONFIG, ...config };
     this.prompt = new PromptBuilder(this.config.query, this.ollama.modelName);
-    const loadout = typeof this.config.loadout === "string"
-      ? LOADOUTS[this.config.loadout]
-      : this.config.loadout;
-
-    // Species memory is loaded asynchronously in run() via IO Gateway or file
-    this.gate = new FastGate(this.config.query, loadout);
     this.stats = {
       cycles: 0,
       nodesExamined: 0,
@@ -148,26 +197,55 @@ export class PhiAgent {
     };
   }
 
-  async run(): Promise<AgentStats> {
+  async run(): Promise<AgentResult> {
     this.running = true;
     this.stats.startTime = Date.now();
     this.sessionStart = Date.now();
     this.stats.status = "connecting";
 
-    // Load species memory — pre-blended profile from Digestor
+    // Phase 2: Load species memory BEFORE FastGate construction
+    // so learned_δ (weightDelta) is applied to base weights in constructor.
     // (0.7 × own species + 0.3 × global, via IO Gateway or file)
     const loadoutName = typeof this.config.loadout === "string"
       ? this.config.loadout : this.config.loadout.name;
+    const loadout = typeof this.config.loadout === "string"
+      ? LOADOUTS[this.config.loadout]
+      : this.config.loadout;
     const profile = await loadSpeciesProfile(loadoutName);
+
+    let speciesBias: SpeciesMemoryBias | undefined;
     if (profile) {
-      this.gate.setSpeciesBias({
+      speciesBias = {
         hotNodeIds: profile.hotNodeIds,
         tags: profile.tags,
-      });
-      this.log(`Species profile: ${profile.sessions} evals, ${profile.hotNodeIds.size} nodes, ${profile.tags.length} tags (${loadoutName})`);
+        weightDelta: profile.weightDelta ? {
+          flagBias: profile.weightDelta.flagBias,
+          returnWeights: profile.weightDelta.returnWeights,
+          qualityVector: profile.weightDelta.qualityVector,
+        } : undefined,
+      };
+      this.log(`Species profile: ${profile.sessions} evals, ${profile.hotNodeIds.size} nodes, ${profile.tags.length} tags (${loadoutName})${profile.weightDelta ? " +learned_δ" : ""}`);
     } else {
       this.log(`Species profile: not found for ${loadoutName} (no profile or empty)`);
     }
+
+    // Pre-flight: fetch rulebook for MetricSemantics before FastGate construction
+    this.log("Preconnect: fetching rulebook...");
+    await this.sphere.preconnect();
+    const metricSemantics = this.sphere.metricSemantics;
+    if (metricSemantics) {
+      this.log(`MetricSemantics: [${metricSemantics.names.join(",")}] hit=${metricSemantics.hitThreshold} miss=${metricSemantics.missThreshold}`);
+    }
+    const harvestPolicy = this.sphere.harvestPolicy;
+    if (harvestPolicy) {
+      this.harvestPolicy = harvestPolicy;
+      this.log(`HarvestPolicy: carryContent=${harvestPolicy.carryContent} summaryMax=${harvestPolicy.summaryMaxLength}`);
+    }
+
+    // Construct FastGate with species bias + MetricSemantics
+    this.gate = new FastGate(this.config.query, loadout, speciesBias, metricSemantics);
+    // Re-create PromptBuilder with MetricSemantics (overrides constructor default)
+    this.prompt = new PromptBuilder(this.config.query, this.ollama.modelName, metricSemantics);
     this.log(this.gate.deltaDebug);
 
     try {
@@ -231,84 +309,28 @@ export class PhiAgent {
       this.stats.status = "exploring";
       if (this.config.evaluate) {
         await this.exploreLoop();
-        await this.persistEvalLog();
       } else {
         await this.liaisonExplore();
       }
 
-      // Step 8: Vestibule — proper exit protocol
+      // Step 8: Return protocol — harvest → depart → homecoming
       this.stats.status = "completed";
-      const vestibuleResult = await this.sphere.enterVestibule();
-      if (vestibuleResult) {
-        this.log(`Vestibule entered: ${vestibuleResult.auto.evaluationsApplied} evaluations applied, capsule=${vestibuleResult.auto.autoCapsuleSaved}`);
+      const harvest = await this.harvest();
+      await this.depart();
+      const narrative = await this.homecoming(harvest);
 
-        // Execute Vestibule commands (same as any external agent)
-        try {
-          const receipt = await this.sphere.viewReceipt();
-          this.log(`Receipt: ${JSON.stringify(receipt)}`);
-        } catch { /* optional */ }
+      // Optional: push session report to Observatory
+      await this.reportToObservatory(harvest, narrative);
 
-        try {
-          const trail = await this.sphere.viewTrail();
-          const events = trail?.events ?? trail;
-          const steps = Array.isArray(events) ? events.length : 0;
-          this.log(`Trail: ${steps} actions recorded (${((trail?.duration ?? 0) / 1000).toFixed(1)}s)`);
-        } catch { /* optional */ }
-
-        try {
-          const discoveries = await this.sphere.viewDiscoveries();
-          const visits = discoveries?.visits ?? discoveries;
-          const count = Array.isArray(visits) ? visits.length : 0;
-          this.log(`Discoveries: ${count} nodes visited, ${discoveries?.uniqueNodes ?? 0} unique`);
-        } catch { /* optional */ }
-      }
-
-      await this.sphere.acknowledge();
-      this.log("Returned from Sphere");
-
-      // Step 8b: Broadcast — deterministic projection (no LLM, always emitted)
-      let broadcastPosts: string[] = [];
-      if (this.encounters.length > 0) {
-        const posts = renderBroadcast(this.encounters, {
-          loadout: this.gate.loadoutName,
-          query: this.config.query,
-          cycles: this.stats.cycles,
-          nodesExamined: this.stats.nodesExamined,
-          evaluations: this.stats.evaluations,
-          energy: this.sphere.currentEnergy,
-          initialEnergy: this.initialEnergy,
-          duration: Date.now() - this.sessionStart,
-          timestamp: this.sessionStart,
-        });
-        if (posts.length > 0) {
-          console.log("\n== BROADCAST START ==");
-          for (let i = 0; i < posts.length; i++) {
-            if (i > 0) console.log("---");
-            console.log(posts[i].text);
-          }
-          console.log("== BROADCAST END ==\n");
-          broadcastPosts = posts.map(p => p.text);
-        }
-      }
-
-      // Step 6: Return response (only if response flag is on) — runs AFTER disconnect
-      if (this.config.response) {
-        try {
-          const response = await this.generateReturnResponse();
-          if (response) {
-            console.log("\n== NARRATIVE START ==");
-            console.log(response);
-            console.log("== NARRATIVE END ==\n");
-
-            // Persist narrative to Digestor
-            const loadoutName = typeof this.config.loadout === "string"
-              ? this.config.loadout : this.config.loadout.name;
-            await this.persistNarrative(loadoutName, response, broadcastPosts);
-          }
-        } catch (err) {
-          this.log(`Return response failed: ${err}`);
-        }
-      }
+      this.stats.endTime = Date.now();
+      this.running = false;
+      return {
+        stats: this.stats,
+        encounters: harvest.encounters,
+        broadcastPosts: harvest.broadcastPosts,
+        narrative,
+        receipt: harvest.receipt,
+      };
 
     } catch (err) {
       this.stats.status = "completed";  // graceful — not "failed"
@@ -319,7 +341,13 @@ export class PhiAgent {
 
     this.stats.endTime = Date.now();
     this.running = false;
-    return this.stats;
+    return {
+      stats: this.stats,
+      encounters: [],
+      broadcastPosts: [],
+      narrative: null,
+      receipt: null,
+    };
   }
 
   stop(): void {
@@ -562,12 +590,18 @@ export class PhiAgent {
     this.gate.memory.record(nodeId, h, w, d, detail.tags, expression);
 
     // Store encounter for return response (agent "remembers" what it saw)
+    const hp = this.harvestPolicy;
     this.encounters.push({
       nodeId,
       tags: detail.tags ?? [],
-      summary: (detail.summary ?? "").slice(0, 200),
+      summary: (detail.summary ?? "").slice(0, hp.summaryMaxLength),
       h, w, d,
       flags,
+      ...(hp.carryContent && detail.content && {
+        content: detail.content.slice(0, hp.contentMaxLength),
+      }),
+      ...(hp.carryKind && detail.kind && { kind: detail.kind }),
+      ...(hp.carryRefUrl && detail.ref_url && { refUrl: detail.ref_url }),
     });
 
     // Emit cycle JSON for UI (structured output, always printed)
@@ -708,12 +742,18 @@ export class PhiAgent {
         this.log(`Collected: [${detail.kind}] ${detail.tags?.join(", ") ?? ""} — ${(detail.summary ?? "").slice(0, 60)}`);
 
         // Store encounter without scores (liaison = read-only)
+        const hp = this.harvestPolicy;
         this.encounters.push({
           nodeId: target.id,
           tags: detail.tags ?? [],
-          summary: (detail.summary ?? "").slice(0, 200),
+          summary: (detail.summary ?? "").slice(0, hp.summaryMaxLength),
           h: 0, w: 0, d: 0,
           flags: target.flags,
+          ...(hp.carryContent && detail.content && {
+            content: detail.content.slice(0, hp.contentMaxLength),
+          }),
+          ...(hp.carryKind && detail.kind && { kind: detail.kind }),
+          ...(hp.carryRefUrl && detail.ref_url && { refUrl: detail.ref_url }),
         });
 
         this.emitCycleJson("explore", nodes.length, {
@@ -734,11 +774,207 @@ export class PhiAgent {
     this.log(`Liaison exploration complete: ${this.encounters.length} nodes collected`);
   }
 
+  // ===== Return Protocol: harvest → depart → homecoming =====
+
+  /** Harvest: collect all data from Sphere while still connected.
+   *  enterVestibule triggers server-side eval auto-processing,
+   *  then viewReceipt/viewTrail/viewDiscoveries run in parallel. */
+  private async harvest(): Promise<SessionHarvest> {
+    // 1. enterVestibule (BLOCKING — Sphere auto-processes evaluations)
+    const vestibuleResult = await this.sphere.enterVestibule();
+    this.log(`Vestibule entered: ${vestibuleResult?.auto.evaluationsApplied ?? 0} evaluations applied, capsule=${vestibuleResult?.auto.autoCapsuleSaved ?? false}`);
+
+    // 2. Vestibule queries — parallel (all independent, all optional)
+    const [receiptResult, trailResult, discoveriesResult] = await Promise.allSettled([
+      this.sphere.viewReceipt(),
+      this.sphere.viewTrail(),
+      this.sphere.viewDiscoveries(),
+    ]);
+
+    const receiptData = receiptResult.status === "fulfilled" ? receiptResult.value : null;
+    const trailData = trailResult.status === "fulfilled" ? trailResult.value as TrailData : null;
+    const discoveriesData = discoveriesResult.status === "fulfilled" ? discoveriesResult.value : null;
+
+    if (receiptData) this.log(`Receipt: ${JSON.stringify(receiptData)}`);
+    if (trailData) this.log(`Trail: ${trailData.events?.length ?? 0} actions (${((trailData.duration ?? 0) / 1000).toFixed(1)}s)`);
+    if (discoveriesData) this.log(`Discoveries: ${discoveriesData.uniqueNodes ?? 0} unique nodes`);
+
+    // 3. Broadcast generation (deterministic, no Sphere dependency)
+    const broadcastPosts = this.renderBroadcastPosts();
+
+    return {
+      receipt: receiptData
+        ? { evaluationsApplied: receiptData.evaluationsApplied ?? 0, autoCapsuleSaved: receiptData.autoCapsuleSaved ?? false }
+        : vestibuleResult ? vestibuleResult.auto : null,
+      trail: trailData,
+      discoveries: discoveriesData
+        ? { visits: discoveriesData.visits ?? [], uniqueNodes: discoveriesData.uniqueNodes ?? 0 }
+        : null,
+      encounters: this.encounters,
+      broadcastPosts,
+    };
+  }
+
+  /** Depart: acknowledge and disconnect from Sphere. */
+  private async depart(): Promise<void> {
+    await this.sphere.acknowledge();
+    this.log("Returned from Sphere");
+  }
+
+  /** Homecoming: post-disconnect persistence and output.
+   *  All external writes (Digestor, console) happen here — no Sphere connection needed.
+   *  Returns the narrative string (or null if response=false / no encounters). */
+  private async homecoming(harvest: SessionHarvest): Promise<string | null> {
+    const loadoutName = this.gate.loadoutName;
+    let narrative: string | null = null;
+
+    // 1. eval-log → Digestor (species memory)
+    await this.persistEvalLog();
+
+    // 2. trail → Digestor (enriched with loadout/model — Sphere doesn't know species)
+    if (harvest.trail && Array.isArray(harvest.trail.events) && harvest.trail.events.length > 0) {
+      const trailEntry: TrailEntry = {
+        sessionId: harvest.trail.sessionId,
+        loadout: loadoutName,
+        model: this.ollama.modelName,
+        agentId: harvest.trail.agentId,
+        sphereId: harvest.trail.sphereId,
+        timestamp: this.sessionStart,
+        duration: harvest.trail.duration,
+        initialQuery: harvest.trail.initialQuery ?? this.config.query,
+        lastPosition: harvest.trail.lastPosition,
+        events: harvest.trail.events,
+      };
+      try {
+        await appendTrail(trailEntry);
+        this.log(`Trail persisted (${harvest.trail.events.length} events)`);
+      } catch (err) {
+        this.log(`Trail persist failed: ${err}`);
+      }
+    }
+
+    // 3. Broadcast → console
+    if (harvest.broadcastPosts.length > 0) {
+      console.log("\n== BROADCAST START ==");
+      for (let i = 0; i < harvest.broadcastPosts.length; i++) {
+        if (i > 0) console.log("---");
+        console.log(harvest.broadcastPosts[i]);
+      }
+      console.log("== BROADCAST END ==\n");
+    }
+
+    // 4. Narrative → LLM + Digestor (response=true only)
+    if (this.config.response) {
+      try {
+        const response = await this.generateReturnResponse();
+        if (response) {
+          narrative = response;
+          console.log("\n== NARRATIVE START ==");
+          console.log(response);
+          console.log("== NARRATIVE END ==\n");
+          await this.persistNarrative(loadoutName, response, harvest.broadcastPosts);
+        }
+      } catch (err) {
+        this.log(`Return response failed: ${err}`);
+      }
+    }
+
+    return narrative;
+  }
+
+  /** Push session report to Observatory (optional, fire-and-forget).
+   *  Enabled by OBSERVATORY_URL env var. Failure is non-fatal. */
+  private async reportToObservatory(
+    harvest: SessionHarvest,
+    narrative: string | null,
+  ): Promise<void> {
+    const url = process.env.OBSERVATORY_URL;
+    if (!url) return;
+
+    const report = {
+      type: "agent-session",
+      loadout: this.gate.loadoutName,
+      model: this.ollama.modelName,
+      query: this.config.query,
+      timestamp: this.sessionStart,
+      duration: Date.now() - this.sessionStart,
+      stats: {
+        cycles: this.stats.cycles,
+        nodesExamined: this.stats.nodesExamined,
+        evaluations: this.stats.evaluations,
+      },
+      encounters: harvest.encounters,
+      broadcastPosts: harvest.broadcastPosts,
+      narrative,
+    };
+
+    try {
+      const res = await fetch(`${url}/report`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(report),
+      });
+      if (res.ok) this.log(`Observatory report sent`);
+      else this.log(`Observatory report failed: ${res.status}`);
+    } catch (err) {
+      this.log(`Observatory unreachable: ${err}`);
+    }
+  }
+
+  /** Build broadcast post texts from encounters (deterministic, no LLM). */
+  private renderBroadcastPosts(): string[] {
+    if (this.encounters.length === 0) return [];
+    const posts = renderBroadcast(this.encounters, {
+      loadout: this.gate.loadoutName,
+      query: this.config.query,
+      cycles: this.stats.cycles,
+      nodesExamined: this.stats.nodesExamined,
+      evaluations: this.stats.evaluations,
+      energy: this.sphere.currentEnergy,
+      initialEnergy: this.initialEnergy,
+      duration: Date.now() - this.sessionStart,
+      timestamp: this.sessionStart,
+    });
+    return posts.map(p => p.text);
+  }
+
+  /** Convert encounters to ExperienceCapsule format for submission.
+   *  Future: high-end agents can contribute synthesized knowledge back to Sphere.
+   *  phi-agent (phi3:mini) does not call this — evaluate-only agent.
+   *  Capsule schema v4: topTier/normalNodes carry NodeSeeds, evaluations carry opinions. */
+  private buildCapsuleFromEncounters(): {
+    schemaVersion: number;
+    topTier: Array<{ tags: string[]; summary: string; content?: string; flags: number; ref_url?: string }>;
+    normalNodes: Array<{ tags: string[]; summary: string; content?: string; flags: number; ref_url?: string }>;
+    ghostNodes: never[];
+    evaluations: Array<{ nodeId: string; h: number; w: number; d: number }>;
+    timestamp: number;
+  } {
+    // Evaluations: all encounters with non-zero scores
+    const evaluations = this.encounters
+      .filter(e => e.h > 0 || e.w > 0 || e.d > 0)
+      .map(e => ({ nodeId: e.nodeId, h: e.h, w: e.w, d: e.d }));
+
+    // NodeSeeds: placeholder — high-end agent would generate original content here.
+    // phi-agent has no content generation capability, so topTier/normalNodes stay empty.
+    // A capable agent would populate these with synthesized knowledge (new nodes).
+    return {
+      schemaVersion: 4,
+      topTier: [],
+      normalNodes: [],
+      ghostNodes: [],
+      evaluations,
+      timestamp: Date.now(),
+    };
+  }
+
   // ===== Species Memory =====
 
-  /** Compute reproducibility hash from agent config (loadout + model + evalFocus) */
+  /** Compute reproducibility hash from agent config (loadout + model).
+   *  evalFocus excluded: it varies with MetricSemantics per Sphere domain,
+   *  but species identity should be loadout personality + sensory organ (model). */
   private computeConfigHash(): string {
-    const input = `${this.gate.loadoutName}:${this.ollama.modelName}:${this.gate.evalFocus ?? ""}`;
+    const input = `${this.gate.loadoutName}:${this.ollama.modelName}`;
     return createHash("sha256").update(input).digest("hex").slice(0, 12);
   }
 

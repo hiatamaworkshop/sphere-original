@@ -42,34 +42,44 @@ function createLlmClient(): LlmClient {
 
 const VALID_LOADOUTS = Object.keys(LOADOUTS) as LoadoutName[];
 
-// Diverse query pool for daemon mode rotation
-// Covers all mock_data categories: academic, CS, psychology, menial, trending
+// Query pool for daemon mode rotation
+// Mix: direct hits (match mock_data tags), adjacent (related but not exact), wild (no match — tests exploration in sparse space)
 const QUERY_POOL = [
-  // Academic / Theory
-  "fundamental mathematics",
-  "quantum physics concepts",
-  "formal logic and proofs",
-  // CS / Tech
-  "algorithm design patterns",
-  "distributed systems",
-  "cryptography and security",
-  // Psychology / Social
-  "cognitive biases and perception",
-  "social behavior patterns",
-  // Trending / Current
-  "trending viral discussions",
-  "emerging technology shifts",
-  // Menial / Everyday
-  "everyday curious observations",
-  "random trivia and fun facts",
-  "life's small mysteries",
-  "kitchen science and food",
-  "pet behavior and animal quirks",
-  // General / Cross-domain
-  "knowledge exploration",
-  "cross-disciplinary connections",
-  "philosophical foundations",
-  "cultural phenomena and traditions",
+  // --- Direct hits: strong overlap with seed data tags ---
+  "quantum mechanics and uncertainty",
+  "cryptography and network security",
+  "algorithm complexity and sorting",
+  "neuroscience of memory and learning",
+  "evolutionary biology and natural selection",
+  "distributed consensus and fault tolerance",
+  "cognitive biases in decision making",
+  "cosmology dark matter and dark energy",
+  "chemical reactions and catalysis",
+  "philosophy of mind and consciousness",
+
+  // --- Adjacent: related concepts, partial tag overlap ---
+  "game theory and strategic behavior",
+  "information theory and entropy",
+  "ecology and population dynamics",
+  "musical acoustics and harmony",
+  "language evolution and universals",
+  "relativity and spacetime geometry",
+  "functional programming and type theory",
+  "behavioral economics and rationality",
+  "probability paradoxes and intuition",
+  "cellular biology and metabolism",
+
+  // --- Wild: little or no overlap — agent must explore creatively ---
+  "history of cartography and navigation",
+  "fermentation and food science",
+  "ancient mythology and oral traditions",
+  "color theory in visual design",
+  "sleep architecture and dreaming",
+  "ocean currents and climate regulation",
+  "urban planning and public spaces",
+  "origami mathematics and folding",
+  "birdsong and animal communication",
+  "volcanic geology and plate tectonics",
 ];
 
 interface ParsedArgs {
@@ -211,7 +221,8 @@ async function runOnce(config: ParsedArgs): Promise<number> {
     agent.stop();
   });
 
-  const stats = await agent.run();
+  const result = await agent.run();
+  const { stats } = result;
 
   console.log();
   console.log("========================================");
@@ -223,6 +234,15 @@ async function runOnce(config: ParsedArgs): Promise<number> {
   console.log(`Evaluations: ${stats.evaluations}`);
   console.log(`Heat delta:  ${stats.totalHeatDelta > 0 ? "+" : ""}${stats.totalHeatDelta}`);
   console.log(`Duration:    ${((stats.endTime - stats.startTime) / 1000).toFixed(1)}s`);
+  if (result.encounters.length > 0) {
+    console.log(`Encounters:  ${result.encounters.length}`);
+  }
+  if (result.broadcastPosts.length > 0) {
+    console.log(`Broadcasts:  ${result.broadcastPosts.length}`);
+  }
+  if (result.narrative) {
+    console.log(`Narrative:   ${result.narrative.length} chars`);
+  }
 
   if (stats.error) {
     console.log(`Error:       ${stats.error}`);

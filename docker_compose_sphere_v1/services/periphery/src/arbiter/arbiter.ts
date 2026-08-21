@@ -37,10 +37,6 @@ export interface ArbiterConfig {
   // 冷却期間（ミリ秒）- 閾値割れ後、この期間回復しなければ降格。評価は凍結しない。
   erosionCooldownMs?: number;  // default: 300000 (5分)
 
-  // === Dynamic Flags 閾値 ===
-  // Hot: heat がこの閾値を超えると Hot フラグを付与
-  hotHeatThreshold: number;
-
   // === Ascension 冷却期間設定 ===
   // 冷却期間（ミリ秒）- 閾値超過後、この期間生存で Amber 昇格
   ascensionCooldownMs: number;
@@ -148,7 +144,7 @@ export interface TransitionQueue {
   shouldErode: SphereNode[];
   /** Nodes that should revive (fossil → active) */
   shouldRevive: SphereNode[];
-  /** Dynamic flag updates (Hot, Hub, Isolated, etc.) */
+  /** Dynamic flag updates (Candidate, etc.) */
   flagUpdates: FlagUpdate[];
   /** Crystallization results for ascending nodes (nodeId → result) */
   crystallizations: Map<string, CrystallizationResult>;
@@ -299,11 +295,6 @@ export class Arbiter {
         }
       }
 
-      // 4. Dynamic Flags 更新判定
-      const flagUpdate = this.computeFlagUpdate(node);
-      if (flagUpdate) {
-        queue.flagUpdates.push(flagUpdate);
-      }
     }
 
     this.logQueue(queue);
@@ -634,38 +625,6 @@ export class Arbiter {
   // =========================================================================
   // Dynamic Flags 判定
   // =========================================================================
-
-  /**
-   * Compute dynamic flag updates for a node
-   *
-   * [Dynamic Flags]
-   *   - Hot: heat > hotHeatThreshold
-   *
-   * Hub/Isolated dynamic flags removed — linkCounts never supplied.
-   * Static Hub/Isolated via Tagger keyword matching is unaffected.
-   *
-   * @returns FlagUpdate if any changes needed, null otherwise
-   */
-  private computeFlagUpdate(node: SphereNode): FlagUpdate | null {
-    let add = 0;
-    let remove = 0;
-
-    // === Hot Flag ===
-    const isHot = node.metrics.h > this.config.hotHeatThreshold;
-    const hasHot = this.hasFlag(node, NodeFlag.Hot);
-
-    if (isHot && !hasHot) {
-      add |= NodeFlag.Hot;
-    } else if (!isHot && hasHot) {
-      remove |= NodeFlag.Hot;
-    }
-
-    if (add === 0 && remove === 0) {
-      return null;
-    }
-
-    return { node, add, remove };
-  }
 
   // =========================================================================
   // ユーティリティ

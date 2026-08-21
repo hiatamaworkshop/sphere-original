@@ -26,14 +26,21 @@ interface ActionEventBase {
 
 /**
  * Focus action: Agent focused on a node
+ * [2026-02-25] positionSnapshot added for trajectory analysis (Spectral pattern)
  */
 export interface FocusAction extends ActionEventBase {
   type: "focus";
   nodeId: string;
   kind: NodeKind;
   heatAtFocus: number;
+  /** Node weight at focus (authority/importance) */
+  weightAtFocus?: number;
+  /** Node decay at focus (volatility) */
+  decayAtFocus?: number;
   /** L3: Derivation origin (if this node is derived from another) */
   sourceNodeId?: string;
+  /** Agent's embedding position at the moment of focus (for trajectory/Δpos analysis) */
+  positionSnapshot?: number[];
 }
 
 /**
@@ -111,21 +118,37 @@ export type ActionEvent =
  * ActionLog: Complete action history for a session
  *
  * [Usage] Collected during session, used to build AutoCapsule
+ * [2026-02-25] agentId, initialQuery, sphereId added for cross-session linkage
+ *   - agentId: Facade journeyId or external agent identifier (optional)
+ *   - initialQuery: What the agent came to explore
+ *   - sphereId: Which sphere was dived into
  */
 export interface ActionLog {
   sessionId: string;
   startTime: number;
   events: ActionEvent[];
+  /** Cross-session identifier (Facade journeyId or external agent ID) */
+  agentId?: string;
+  /** Initial query text (what the agent came to explore) */
+  initialQuery?: string;
+  /** Sphere identifier */
+  sphereId?: string;
 }
 
 /**
  * Create empty action log
  */
-export function createActionLog(sessionId: string): ActionLog {
+export function createActionLog(
+  sessionId: string,
+  meta?: { agentId?: string; initialQuery?: string; sphereId?: string }
+): ActionLog {
   return {
     sessionId,
     startTime: Date.now(),
     events: [],
+    agentId: meta?.agentId,
+    initialQuery: meta?.initialQuery,
+    sphereId: meta?.sphereId,
   };
 }
 
@@ -173,6 +196,7 @@ export interface SummaryMetrics {
  *
  * [Principle] 真実はサーバーにある
  * [Contents] Only metrics, no meaning
+ * [2026-02-25] lastPosition added for reconnection support
  */
 export interface AutoCapsule {
   sessionId: string;
@@ -182,6 +206,8 @@ export interface AutoCapsule {
   visits: VisitRecord[];
   /** Aggregate metrics */
   summaryMetrics: SummaryMetrics;
+  /** Agent's final embedding position (for reconnection to same location) */
+  lastPosition?: number[];
 }
 
 // ============================================================
@@ -212,6 +238,9 @@ export function buildAutoCapsule(log: ActionLog): AutoCapsule {
     }
   >();
 
+  // Track last focus position for reconnection
+  let lastPosition: number[] | undefined;
+
   // Process events
   for (const event of log.events) {
     switch (event.type) {
@@ -226,6 +255,10 @@ export function buildAutoCapsule(log: ActionLog): AutoCapsule {
         data.focusCount++;
         data.maxHeat = Math.max(data.maxHeat, event.heatAtFocus);
         nodeData.set(event.nodeId, data);
+        // Update last known position (for reconnection)
+        if (event.positionSnapshot) {
+          lastPosition = event.positionSnapshot;
+        }
         break;
       }
 
@@ -278,6 +311,7 @@ export function buildAutoCapsule(log: ActionLog): AutoCapsule {
     sessionId: log.sessionId,
     duration,
     visits,
+    lastPosition,
     summaryMetrics: {
       totalFocus,
       uniqueNodes: nodeData.size,

@@ -1,7 +1,17 @@
 {
+  "_layerGuide": {
+    "L0_Identity": "sphereId, name, version, ethos — who this sphere is",
+    "L1_Physics": "decay, thresholds, field, perception, arbiter, flags — domain-independent laws",
+    "L2_Interpretation": "metricSemantics, cognitivePatterns, evaluation coefficients — domain-dependent meaning of h/w/d",
+    "L3_Ingestion": "membrane, parser, packer, incarnationBuffer — how data enters the sphere",
+    "L4_Infrastructure": "ports, session, pulse, external_services, activeBus, ephemeral — deployment-dependent"
+  },
+
+
   "metadata": {
-    "sphereId": "sphere-genesis",
-    "sphere_name": "Sphere Genesis",
+    "_layer": "L0 Identity + L2 Interpretation (metricSemantics, harvestPolicy)",
+    "sphereId": "sphere-original",
+    "sphere_name": "Sphere Original",
     "description": "汎用知識スフィア — 実験・開発用",
     "version": "0.3.0",
     "apiVersion": "1",
@@ -11,17 +21,57 @@
     "_mode_note": "core = full metabolism. sanctuary = read-only, no metabolism (frozen sphere for standalone deployment)",
     "tags": ["general", "experimental", "development"],
     "language": ["ja", "en"],
-    "confidenceHints": {}
+    "confidenceHints": {},
+    "metricSemantics": {
+      "_comment": "L2 — Evaluation axis semantics — domain-dependent interpretation of h/w/d",
+      "names": ["heat", "weight", "decay"],
+      "descriptions": [
+        "motion/attention (0=still, 10=active)",
+        "density (0=light, 10=heavy)",
+        "fade rate (0=long-lived, 10=short-lived)"
+      ],
+      "inversion": [false, false, true],
+      "_inversion_note": "true = higher value means LESS of the quality (d: high=ephemeral=less preservation)",
+      "hitThreshold": 7,
+      "missThreshold": 5
+    },
+    "harvestPolicy": {
+      "_comment": "L2 — Controls what data agent carries back from exploration",
+      "carryContent": false,
+      "contentMaxLength": 500,
+      "summaryMaxLength": 200,
+      "carryRefUrl": true,
+      "carryKind": true
+    },
+    "services": {
+      "_comment": "L0 — Infrastructure dependencies exposed in /sphere/manifest",
+      "embedding": {
+        "provider": "local",
+        "model": "Xenova/all-MiniLM-L6-v2",
+        "dimension": 384
+      },
+      "refDb": {
+        "backend": "turso",
+        "_fallback": "map (in-memory)",
+        "note": "REFDB_BACKEND env selects backend at runtime"
+      },
+      "projDb": {
+        "backend": "in-memory",
+        "snapshot": "turso",
+        "note": "Map in process, periodic snapshot to Turso"
+      },
+      "infrastructure": ["redis", "postgres-pgvector", "minio"]
+    }
   },
 
+
   "physical_constants": {
-    "dimension": 384,
-    "gravity_constant": 0.1,
-    "ambient_temperature": 0.5,
-    "vacuum_decay": 0.01
+    "_layer": "L1 Physics",
+    "dimension": 384
   },
 
   "perception": {
+    "_layer": "L1 Physics",
     "_comment": "知覚の物理法則: M = T / (a × D)",
     "targetTotalOps": 100000,
     "_formula": "sampleSize = targetTotalOps / (agentCount × dimension)",
@@ -30,6 +80,7 @@
   },
 
   "field": {
+    "_layer": "L1 Physics",
     "_comment": "Global Ambient Field - スフィア全体の気候 (2分周期で更新)",
     "updateIntervalTicks": 120,
     "targetSampleOps": 50000,
@@ -39,95 +90,119 @@
     "emptyIntensity": 0
   },
 
-  "periphery": {
-    "membrane": {
-      "tag_encoding": "UTF-8",
-      "tag_limit_bytes": 64,
-      "prohibited_patterns": ["<script>", "javascript:", "http://", "https://"],
-      "auto_translation_to_core": false
+  "renal_core": {
+    "_layer": "L1 Physics (+ pulse is L4)",
+    "heartbeat": {
+      "tickIntervalMs": 1000
     },
 
-    "parser": {
-      "batchSize": 7,
-      "flushTimeoutMs": 1000,
-      "embeddingProvider": "local",
-      "vectorDimension": 384
-    },
-
-    "gateway": {
-      "basePerceptionRadius": 1.5
-    },
-
-    "evaluation": {
-      "_comment": "2-Layer evaluation coefficients: agent input (0-10) → delta = (input - neutral) × coefficient",
-      "neutral": 5,
-      "coefficients": {
-        "h": 5,
-        "w": 2,
-        "d": 5
-      },
-      "amberMaxHeat": 500,
-      "_maturity_comment": "maturityPreWeight: multiplier on coefficients based on sphere lifecycle phase. Applied as coef × preWeight.",
-      "maturityPreWeight": {
-        "young":  { "h": 1.0, "w": 1.5, "d": 1.0, "_comment": "weight 蓄積を促進 — 初期成長を助ける" },
-        "mature": { "h": 1.0, "w": 1.0, "d": 1.0, "_comment": "標準バランス" },
-        "elder":  { "h": 0.8, "w": 0.8, "d": 1.2, "_comment": "安定性重視 — 変動を抑制、揮発性判定を強化" }
-      },
-      "_maturity_note": "maturityStage is determined by sanctification epoch count: 0=young, 1-2=mature, 3+=elder"
-    },
-
-    "tagger": {
-      "topTierCount": 3
-    },
-
-    "packer": {
-      "_comment": "Integer scale: h/w threshold 1000, d baseline 1000",
-      "baseHeat": 500,
-      "tierWeights": {
-        "top": 300,
-        "normal": 100,
-        "ghost": 50,
-        "relic": 300
-      },
-      "tierTTLs": {
-        "top": 172800,
-        "normal": 86400,
-        "ghost": 300
-      },
-      "standardDecayCoefficient": 1000,
-      "tierFlags": {
-        "top": 2,
-        "normal": 0,
-        "ghost": 0
-      },
-      "initialMetrics": {
-        "stayTime": 0
+    "decay": {
+      "_comment": "preset: archive | natural | flow | dev (未指定時は NODE_ENV から自動判定)",
+      "preset": "archive",
+      "decayIntensity": 0.5,
+      "_decayIntensity_note": "Global multiplier on all decay factors (alpha, heat, weight, flux). 1.0=preset default, 0.5=half decay, 0.33=1/3 decay. Applied on top of preset values.",
+      "_tuning_chain": [
+        "eval input (0-10)",
+        "→ delta = (input - neutral) × coefficient     [periphery.arbiter.evaluation]",
+        "→ node.metrics.h += deltaH                    [bookkeeper]",
+        "→ h -= h × heatDecayFactor × immuneMod /tick  [renalCore, this preset]",
+        "→ score = h + w >= scoreThreshold              [periphery.arbiter.ascension]",
+        "→ cooldown (cooldownMs) + lowerThresholdRatio  [periphery.arbiter.ascension]",
+        "→ Amber or dropout"
+      ],
+      "overrides": {
+        "_comment": "Override individual preset values (optional). Merged on top of preset. Keys: alpha, heatDecayFactor, weightDecayFactor, fluxDecayRate, minLoadFactor"
       }
     },
 
-    "incarnationBuffer": {
-      "batchSize": 3,
-      "flushIntervalMs": 100
+    "thresholds": {
+      "_comment": "PulseBroadcaster 用 (Burst/Bloom 検知閾値)",
+      "amberHeat": 1000
     },
 
-    "server": {
-      "port": 3001,
-      "wsPort": 8081
+    "ghost": {
+      "ttlMultiplier": 0.1
     },
 
-    "session": {
-      "_comment": "Gateway session timeout for Dive connections (phi-agent needs longer TTL for CPU inference)",
-      "ttlSeconds": 300,
-      "warningBeforeEndSeconds": 30
+    "spatial": {
+      "gridSize": 0.1,
+      "planktonConversionRate": 0.3,
+      "fluxDecayRate": 0.01
     },
+
+    "pause": {
+      "idleThreshold": 300,
+      "erosionBoost": 2.0
+    },
+
+    "dormancy": {
+      "_comment": "Metabolism hibernation when no agents connected",
+      "thresholdMs": 60000
+    },
+
+    "flags": {
+      "physicsModifiers": {
+        "TemporalShort": {
+          "decayRateMultiplier": 1.3,
+          "description": "trending — decay加速 (bits 0-3)"
+        },
+        "TemporalLong": {
+          "ttlDecayMultiplier": 0.7,
+          "description": "timeless — ttl減衰に抵抗 (bits 0-3)"
+        },
+        "Dense": {
+          "weightMultiplier": 1.2,
+          "description": "高密度 — weight増幅 (bits 4-7)"
+        },
+        "Authority": {
+          "decayRateMultiplier": 0.95,
+          "description": "権威 — decay減速 (bits 4-7)"
+        },
+        "SystemCore": {
+          "decayRateMultiplier": 0,
+          "ttlDecayMultiplier": 0,
+          "description": "代謝停止 — Relic用 (bits 12-15)"
+        }
+      }
+    },
+
+    "pulse": {
+      "_layer": "L4 Infrastructure",
+      "_comment": "UDP broadcast for external observers (Observatory, etc.)",
+      "enabled": true,
+      "port": 41234,
+      "intervalTicks": 5,
+      "broadcastAddress": "127.0.0.1"
+    }
+  },
+
+  "sanctification": {
+    "_layer": "L1 Physics",
+    "_comment": "Three-party consensus for sphere state sanctification (Hard/Soft/Meta)",
+    "_comment_window": "windowSize auto-derived from arbiter.ascension.cooldownMs (300000ms / 10s = 30 obs)",
+    "epochGrowth": 0,
+    "_epochGrowth_note": "0 = Sphere Original (clean). Set >0 for progressive difficulty per epoch.",
+    "maxWindowSize": 90,
+    "metabolicAutoMode": false,
+    "_metabolicAutoMode_note": "Allostatic: bands relative to Hard baseline. <bl×0.5=flow, <bl=natural, ≥bl=archive. [Testing] false + preset=archive to prevent weight decay from cancelling eval gains in young sphere.",
+    "dormancyObservations": 3,
+    "_dormancyObservations_note": "Consecutive zero-agent observations before hibernation (3 × 10s = ~30s)"
+  },
+
+  "cleanerFish": {
+    "_layer": "L1 Physics",
+    "_comment": "Autonomous GC - hunger scales both target range AND throughput",
+    "count": 10,
+    "baseFossilTTL": 500,
+    "hungerCapacityMultiplier": 4
+  },
+
+
+  "periphery": {
+    "_layer": "Mixed — ordered L1 → L2 → L3 → L4 within",
 
     "arbiter": {
-      "_comment": "Arbiter settings (state transition judgment)",
-
-      "dynamicFlags": {
-        "_comment": "Hot = baseHeat(100) + 2 max evals(50) = 150",
-        "hotHeatThreshold": 150
-      },
+      "_layer": "L1 Physics (state transition judgment)",
 
       "ascension": {
         "_comment": "Ascension cooldown: evaluation freeze + h+w score + lower threshold",
@@ -170,106 +245,109 @@
         "dThreshold": 800,
         "protectionThreshold": 100
       }
-    }
-  },
-
-  "renal_core": {
-    "heartbeat": {
-      "tickIntervalMs": 1000
     },
 
-    "decay": {
-      "_comment": "preset: archive | natural | flow | dev (未指定時は NODE_ENV から自動判定)",
-      "preset": "archive",
-      "decayIntensity": 0.5,
-      "_decayIntensity_note": "Global multiplier on all decay factors (alpha, heat, weight, flux). 1.0=preset default, 0.5=half decay, 0.33=1/3 decay. Applied on top of preset values."
+    "evaluation": {
+      "_layer": "L2 Interpretation",
+      "_comment": "2-Layer evaluation coefficients: agent input (0-10) → delta = (input - neutral) × coefficient",
+      "neutral": 5,
+      "coefficients": {
+        "h": 5,
+        "w": 2,
+        "d": 5
+      },
+      "amberMaxHeat": 500,
+      "_maturity_comment": "maturityPreWeight: multiplier on coefficients based on sphere lifecycle phase. Applied as coef × preWeight.",
+      "maturityPreWeight": {
+        "young":  { "h": 1.0, "w": 1.5, "d": 1.0, "_comment": "weight 蓄積を促進 — 初期成長を助ける" },
+        "mature": { "h": 1.0, "w": 1.0, "d": 1.0, "_comment": "標準バランス" },
+        "elder":  { "h": 0.8, "w": 0.8, "d": 1.2, "_comment": "安定性重視 — 変動を抑制、揮発性判定を強化" }
+      },
+      "_maturity_note": "maturityStage is determined by sanctification epoch count: 0=young, 1-2=mature, 3+=elder"
     },
 
-    "thresholds": {
-      "_comment": "Integer scale: threshold 1000 for Ascension",
-      "amberHeat": 1000,
-      "amberWeight": 1000,
-      "fossilHeat": 0.5,
-      "erosionHeat": 100,
-      "ghostHeat": 0.5,
-      "evaporationHeat": 0.01
-    },
-
-    "ghost": {
-      "ttlMultiplier": 0.1
-    },
-
-    "spatial": {
-      "gridSize": 0.1,
-      "planktonConversionRate": 0.3,
-      "fluxDecayRate": 0.01
-    },
-
-    "pause": {
-      "idleThreshold": 300,
-      "erosionBoost": 2.0
-    },
-
-    "dormancy": {
-      "_comment": "Metabolism hibernation when no agents connected",
-      "thresholdMs": 60000
-    },
-
-    "pulse": {
-      "_comment": "UDP broadcast for external observers (Observatory, etc.)",
-      "enabled": true,
-      "port": 41234,
-      "intervalTicks": 5,
-      "broadcastAddress": "127.0.0.1"
-    },
-
-    "flags": {
-      "physicsModifiers": {
-        "TemporalShort": {
-          "decayRateMultiplier": 1.3,
-          "description": "trending — decay加速 (bits 0-3)"
-        },
-        "TemporalLong": {
-          "ttlDecayMultiplier": 0.7,
-          "description": "timeless — ttl減衰に抵抗 (bits 0-3)"
-        },
-        "Dense": {
-          "weightMultiplier": 1.2,
-          "description": "高密度 — weight増幅 (bits 4-7)"
-        },
-        "Authority": {
-          "decayRateMultiplier": 0.95,
-          "description": "権威 — decay減速 (bits 4-7)"
-        },
-        "SystemCore": {
-          "decayRateMultiplier": 0,
-          "ttlDecayMultiplier": 0,
-          "description": "代謝停止 — Relic用 (bits 12-15)"
-        }
+    "tagger": {
+      "_layer": "L2 Interpretation (cognitivePatterns is domain-dependent)",
+      "topTierCount": 3,
+      "cognitivePatterns": {
+        "_comment": "Domain-specific Cognitive layer (bits 8-11). Override per Sphere domain.",
+        "Sharp":   { "pattern": "\\b(definition|theorem|proof|conclusion|precisely|exact|formula|axiom|law)\\b", "description": "clear, unambiguous" },
+        "Fuzzy":   { "pattern": "\\b(hypothesis|maybe|perhaps|unclear|ambiguous|uncertain|speculative|conjecture|tentative|approximate)\\b", "description": "ambiguous, multiple interpretations" },
+        "Tensile": { "pattern": "\\b(debate|controversy|paradox|contradiction|versus|conflict|unresolved|dilemma|tension|disputed)\\b", "description": "internal contradiction, unresolved" },
+        "Settled": { "pattern": "\\b(established|consensus|standard|proven|accepted|settled|canonical|codified|ratified|definitive)\\b", "description": "consensus reached, converged" }
       }
+    },
+
+    "membrane": {
+      "_layer": "L3 Ingestion",
+      "tag_encoding": "UTF-8",
+      "tag_limit_bytes": 64,
+      "prohibited_patterns": ["<script>", "javascript:", "http://", "https://"],
+      "auto_translation_to_core": false
+    },
+
+    "parser": {
+      "_layer": "L3 Ingestion",
+      "batchSize": 7,
+      "flushTimeoutMs": 1000,
+      "embeddingProvider": "local",
+      "vectorDimension": 384
+    },
+
+    "packer": {
+      "_layer": "L3 Ingestion",
+      "_comment": "Integer scale: h/w threshold 1000, d baseline 1000",
+      "baseHeat": 500,
+      "tierWeights": {
+        "top": 300,
+        "normal": 100,
+        "ghost": 50,
+        "relic": 300
+      },
+      "tierTTLs": {
+        "top": 172800,
+        "normal": 86400,
+        "ghost": 300
+      },
+      "standardDecayCoefficient": 1000,
+      "tierFlags": {
+        "top": 2,
+        "normal": 0,
+        "ghost": 0
+      },
+      "initialMetrics": {
+        "stayTime": 0
+      }
+    },
+
+    "incarnationBuffer": {
+      "_layer": "L3 Ingestion",
+      "batchSize": 3,
+      "flushIntervalMs": 100
+    },
+
+    "gateway": {
+      "_layer": "L3 Ingestion (entry point)",
+      "basePerceptionRadius": 1.5
+    },
+
+    "server": {
+      "_layer": "L4 Infrastructure",
+      "port": 3001,
+      "wsPort": 8081
+    },
+
+    "session": {
+      "_layer": "L4 Infrastructure",
+      "_comment": "Gateway session timeout for Dive connections (phi-agent needs longer TTL for CPU inference)",
+      "ttlSeconds": 300,
+      "warningBeforeEndSeconds": 30
     }
   },
 
-  "sanctification": {
-    "_comment": "Three-party consensus for sphere state sanctification (Hard/Soft/Meta)",
-    "_comment_window": "windowSize auto-derived from arbiter.ascension.cooldownMs (300000ms / 10s = 30 obs)",
-    "epochGrowth": 0,
-    "_epochGrowth_note": "0 = Sphere Original (clean). Set >0 for progressive difficulty per epoch.",
-    "maxWindowSize": 90,
-    "metabolicAutoMode": false,
-    "_metabolicAutoMode_note": "Allostatic: bands relative to Hard baseline. <bl×0.5=flow, <bl=natural, ≥bl=archive. [Testing] false + preset=archive to prevent weight decay from cancelling eval gains in young sphere.",
-    "dormancyObservations": 3,
-    "_dormancyObservations_note": "Consecutive zero-agent observations before hibernation (3 × 10s = ~30s)"
-  },
-
-  "cleanerFish": {
-    "_comment": "Autonomous GC - hunger scales both target range AND throughput",
-    "count": 10,
-    "baseFossilTTL": 500,
-    "hungerCapacityMultiplier": 4
-  },
 
   "activeBus": {
+    "_layer": "L4 Infrastructure",
     "enabled": true,
     "protocol": "AI_NATIVE",
     "maxPayloadBytes": 64,
@@ -278,12 +356,14 @@
   },
 
   "ephemeral": {
+    "_layer": "L4 Infrastructure",
     "_comment": "Ephemeral mode: periodic state reset (for public demo deployment)",
     "enabled": false,
     "resetIntervalMs": 3600000
   },
 
   "external_services": {
+    "_layer": "L4 Infrastructure",
     "_comment": "External services that connect to Sphere via network protocols",
 
     "observatory": {
@@ -310,6 +390,5 @@
         "stayTimeUnit": "ms"
       }
     }
-
   }
 }

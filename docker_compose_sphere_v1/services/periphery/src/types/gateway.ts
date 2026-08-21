@@ -82,6 +82,14 @@ export interface EntryRequest {
    * Example: ["distributed-systems", "consensus", "raft"]
    */
   tags: string[];
+
+  /**
+   * Cross-session agent identifier (optional)
+   * [2026-02-25] For trajectory linkage across sessions.
+   * Facade journeyId or external agent ID.
+   * If provided, recorded in ActionLog for cross-session analysis.
+   */
+  agentId?: string;
 }
 
 /**
@@ -287,17 +295,24 @@ export interface WarpResult {
  * [Design] Agent chooses exploration style based on purpose/personality
  * [Effect] Determines direction calculation in move()
  *
- * [Calculation] Each mode uses direct metrics (no distance² coefficient)
+ * [Calculation] Weighted centroid over the visible node set (sense() 由来)
  *   - random: Pure random direction (sense not required)
- *   - hot: Σ(heat × vector) → toward popular nodes
- *   - fresh: Σ(freshness × vector) → toward new nodes (freshness = 1/(1+age/3600000))
- *   - deep: Σ(weight × vector) → toward stable nodes
- *   - explore: Σ(distance × vector) → toward furthest visible node (boundary exploration)
- *   - flow: Follow magnetic field direction (high field weight, low chaos)
+ *   - hot: Σ(h × vector) → toward popular nodes
+ *   - fresh: Σ(h × 揮発性(d) × 新しさ(timestamp) × vector) → toward volatile/new nodes
+ *   - deep: Σ(w × 安定性(低 d) × vector) → toward stable, well-evaluated nodes
+ *   - explore: Σ(1/(w+1) × vector) → toward low-weight (unvisited) nodes
+ *   - flow: Follow magnetic field direction (field weight 1.0)
+ *
+ * [Relative gradient] fresh / deep が使う d と freshness は絶対値ではなく
+ * 可視ノード集合内での相対位置 (0.5〜1.5 の係数) に変換される。
+ * d は評価でしか動かない係数なので、絶対値で正規化すると
+ * 未評価のスフィアで fresh が hot と同一になり deep が全ノード 0 になる。
+ * 詳細は sphere-context.ts の calculateFieldDirection を参照。
  *
  * [Field Influence] Mode determines magnetic field weight:
+ *   - random: 0.0 field (pure intention)
  *   - explore: 0.3 field, 0.7 intention (意志優位)
- *   - flow: 0.7 field, 0.3 intention (磁場優位)
+ *   - flow: 1.0 field (磁場に全面的に従う)
  *   - others: 0.5 field, 0.5 intention (balanced)
  */
 export type WalkMode = "random" | "hot" | "fresh" | "deep" | "explore" | "flow";
@@ -416,9 +431,9 @@ export interface SphereContext {
    * @param mode Walk mode (default "random")
    *   - "random": Pure random direction (sense not required)
    *   - "hot": Toward high-heat nodes (sense required)
-   *   - "fresh": Toward high-freshness nodes (sense required)
-   *   - "deep": Toward high-weight nodes (sense required)
-   *   - "explore": Away from known nodes (sense required)
+   *   - "fresh": Toward volatile / newly-arrived nodes (sense required)
+   *   - "deep": Toward high-weight, low-decay nodes (sense required)
+   *   - "explore": Toward low-weight (unvisited) nodes (sense required)
    * @returns Move result
    */
   move(step?: number, mode?: WalkMode): Promise<MoveResult>;
@@ -597,7 +612,6 @@ export type { ScanResult } from "./movement.js";
 export type {
   DistanceLevel,
   HeatLevel,
-  DriftMode,
   MoveConfig,
   ScanConfig,
 } from "./movement.js";

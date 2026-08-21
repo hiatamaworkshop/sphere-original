@@ -44,7 +44,7 @@ Sphere にテストデータを投入する。エージェントテストの前�
 # 10件 (デフォルト)
 docker compose exec periphery node dist/mock/contribution.js
 
-# 全153件を一括投入
+# 全158件を一括投入
 docker compose exec periphery node dist/mock/contribution.js batch
 
 # N件を指定
@@ -196,7 +196,7 @@ process ゾンビがいないかチェックすること
 
 | データファイル | 内容 |
 |--------------|------|
-| `mock_data.json` | 153件テストデータ (16bit flag coverage) |
+| `mock_data.json` | 158件テストデータ (140 factual + 18 misinformation) |
 | `wave-injection.json` | フラグ期待値付きデータ (Tagger 検証) |
 | `relics.json` | コアノード 10件 (flags=0x2000) |
 
@@ -206,7 +206,7 @@ process ゾンビがいないかチェックすること
 
 ```
 1. docker compose up -d periphery          # インフラ起動
-2. contribution.js batch                    # 153件投入
+2. contribution.js batch                    # 158件投入
 3. swarm-agent.ts -n 5                      # 5エージェントで代謝テスト
 4. docker compose --profile agent up -d     # デーモンエージェント起動
 5. docker compose logs -f periphery         # Sanctification 観測
@@ -355,11 +355,24 @@ MSYS_NO_PATHCONV=1 docker compose exec digestor /bin/sh -c "ONCE=1 node dist/dig
 # eval-log の行数 (phi-agent コンテナ内)
 docker compose exec phi-agent wc -l /app/data/eval-log.jsonl
 
+# trail-log の行数
+MSYS_NO_PATHCONV=1 docker compose exec digestor wc -l /app/data/trail-log.jsonl
+
 # 最新世代の確認
 docker compose exec phi-agent ls -la /app/data/generations/
 
 # species-profile の確認
 docker compose exec phi-agent cat /app/data/species-profile.json | head -50
+
+# species-profile の trajectoryStats 確認
+MSYS_NO_PATHCONV=1 docker compose exec digestor cat /app/data/species-profile.json | node -e "
+  process.stdin.on('data',d=>{
+    const j=JSON.parse(d);
+    Object.entries(j.species).forEach(([k,v])=>{
+      const t=v.trajectoryStats;
+      console.log(k, t ? 'sessions='+t.sessions+' sig=['+t.signature.map(x=>x.toFixed(2)).join(',')+']' : '(no trajectory)');
+    });
+  })"
 
 # periphery の統合ステータス (nodes, gateway, field, sanctification 等)
 curl -s http://localhost:3001/sphere/status | jq
@@ -502,6 +515,9 @@ curl -s http://localhost:3001/metrics | jq
 | `GET /generations` | 世代一覧 |
 | `GET /generations/:id` | 単一世代 |
 | `GET /stats` | eval-log 集計 |
+| `POST /trails` | trail 受付 (phi-agent → trail-log.jsonl) |
+| `GET /trails?limit=&loadout=` | trail 一覧 |
+| `GET /trails/:sessionId` | 単一 trail |
 
 ---
 
@@ -583,9 +599,9 @@ ps aux | grep "/c/nvm4w/nodejs/node" | grep -v grep | grep -v "Code" | awk '{pri
 
 ### 8.4 batch 投入は不要 (小規模テスト時)
 
-`docker compose up -d` で起動すると **初期シードノード (20件 + relic 10件)** が自動投入される。
+`docker compose up -d` で起動すると **初期シードノード (158件 + relic 10件)** が自動投入される。
 ascension テストでは `contribution.js batch` による追加投入は **不要**。
-77+ノードに eval が分散して threshold 突破が困難になる。
+158ノードに eval が分散するため、threshold 突破には十分な評価密度が必要。
 
 ---
 
@@ -616,7 +632,7 @@ Soft neuron health
 **警告**: `decayIntensity` と `thresholdFloor` を同時に変える場合、
 `effectiveThreshold - 初期score` の差分が eval 数回分に収まることを確認すること。
 
-### 9.3 現在の実効値 (20 active nodes, archive × 0.5)
+### 9.3 現在の実効値 (158 active nodes, archive × 0.5)
 
 | 項目 | 値 |
 |------|-----|
