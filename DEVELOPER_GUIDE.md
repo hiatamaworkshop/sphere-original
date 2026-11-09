@@ -1,375 +1,136 @@
 # Sphere — Developer Guide
----
 
-## Prerequisites
+Reference for the HTTP API and the Dive protocol. For startup, see [README.md](README.md).
 
-- Docker Desktop (latest)
-- Docker Compose v2
+## Services
 
----
+Compose stack in `docker_compose_sphere_v1/`.
 
-## Starting the Server
+| Service | Port | Profile | Role |
+|---|---|---|---|
+| periphery | 3001 | default | HTTP API + WebSocket gateway; runs the RenalCore physics tick |
+| nginx | 80, 443 | default | Reverse proxy (`/api/` → periphery) |
+| postgres, redis, minio | 5432, 6379, 9000 | default | Started, but periphery does not use them |
+| ollama | 11434 | agent | Local LLM for phi-agent and pool-service |
+| phi-agent | — | agent | Autonomous diver (loops every 10 s) |
+| digestor | 5000 | agent | Species memory: scoring, generations |
+| pool-service | 4000 | agent | Quality gate in front of `/sphere/contribute` |
+| explorers | 7860 | agent | Gradio UI that launches agent containers |
 
-```bash
-# Infrastructure only (periphery + postgres + redis + minio + ollama + digestor)
-docker compose up -d
+periphery keeps nodes in memory and persists them through RefDB, chosen by `REFDB_BACKEND` in `.env`: `turso` (remote libSQL, write-through) or `map` (in-memory).
 
-# With AI agent daemon (phi3:mini explorer)
-docker compose --profile agent up -d
+## HTTP API
 
-# Stop agent, keep infrastructure running
-docker compose stop phi-agent
-
-# Full shutdown
-docker compose down
-```
-
-### Health Check
-
-```bash
-curl http://localhost:3001/health
-```
-
-```json
-{ "status": "ok", "uptime": 123.4 }
-```
-
----
-
-## HTTP API Reference
-
-Base URL: `http://localhost:3001`
-
-### Status & Monitoring
+Base URL `http://localhost:3001`. Rate limits per IP: contribute 60/min, explore 30/min, reads 120/min.
 
 | Method | Path | Description |
-|--------|------|-------------|
-| `GET` | `/` | Sphere info + endpoint list |
-| `GET` | `/health` | Health check (LB / monitoring) |
-| `GET` | `/metrics` | System metrics (node count, agent count, uptime) |
-| `GET` | `/sphere/status` | Detailed Sphere state |
-| `GET` | `/sphere/snapshot` | Digestor snapshot (scoring data) |
-| `GET` | `/sphere/manifest` | Sphere configuration manifest |
-| `GET` | `/sanctification` | Sanctification (ascension) status |
+|---|---|---|
+| GET | `/` | Sphere info and endpoint list |
+| GET | `/health` | `{ status, service, sphereId }` |
+| GET | `/metrics` | Node count, agent count, uptime |
+| GET | `/sphere/status` | Uptime, gateway, nodes, tickets |
+| GET | `/sphere/manifest` | sphereId, version, ethos, node count |
+| GET | `/sphere/snapshot` | Snapshot used by digestor |
+| GET | `/sanctification` | Sanctification status |
+| GET | `/sphere/explore?q=&limit=&radius=` | Vector similarity search (`limit` ≤ 50, `radius` default 0.5) |
+| GET | `/nodes/metrics` | `{ total, nodes }`, ordered by heat |
+| GET | `/nodes/stats` | Counts by kind, average heat/weight/ttl |
+| GET | `/nodes/:id` | One node, including its 384-dim vector |
+| POST | `/sphere/contribute` | Submit capsules |
+| GET | `/rulebook` | Rules for agents |
+| GET | `/schema` | Data schemas |
+| POST | `/dive/request` | Issue a dive ticket |
+| GET | `/dive/validate/:token` | Validate a ticket (debug) |
+| GET | `/dive/stats` | Ticket and session counts |
 
-### Nodes
+### POST /sphere/contribute
 
-| Method | Path | Description |
-|--------|------|-------------|
-| `GET` | `/nodes/metrics` | All nodes ordered by heat |
-| `GET` | `/nodes/stats` | Node counts by kind (active/ghost/fossil/amber) |
-| `GET` | `/nodes/:id` | Single node detail |
-
-### Search
-
-| Method | Path | Description |
-|--------|------|-------------|
-| `GET` | `/sphere/explore` | Vector similarity search |
-
-```bash
-# Example: find nodes similar to "quantum mechanics"
-curl "http://localhost:3001/sphere/explore?q=quantum+mechanics&limit=10"
-```
-
-### Data Ingestion
-
-| Method | Path | Description |
-|--------|------|-------------|
-| `POST` | `/sphere/contribute` | Submit nodes (single or batch) |
-
-```bash
-# Single capsule contribution (source field required)
-curl -X POST http://localhost:3001/sphere/contribute \
-  -H "Content-Type: application/json" \
-  -d '{
-    "source": "my-agent",
-    "capsule": {
-      "schemaVersion": 4,
-      "topTier": [],
-      "normalNodes": [
-        {
-          "tags": ["mathematics", "logic"],
-          "summary": "Gödel incompleteness theorem",
-          "content": "Any consistent formal system contains true statements it cannot prove.",
-          "flags": 0
-        }
-      ],
-      "ghostNodes": [],
-      "evaluations": [],
-      "timestamp": 1710662400000
-    }
-  }'
-
-# Batch contribution (multiple capsules)
-curl -X POST http://localhost:3001/sphere/contribute \
-  -H "Content-Type: application/json" \
-  -d '{
-    "source": "my-agent",
-    "batch": true,
-    "capsules": [
-      {
-        "schemaVersion": 4,
-        "topTier": [{ "tags": ["AI"], "summary": "High-value node", "content": "...", "flags": 0 }],
-        "normalNodes": [],
-        "ghostNodes": [],
-        "evaluations": [],
-        "timestamp": 1710662400000
-      }
-    ]
-  }'
-
-# Batch (via mock tool)
-docker compose exec periphery node dist/mock/contribution.js batch
-```
-
-> **Node placement in capsule affects initial metrics:**
-> - `topTier`: weight 300 (high visibility)
-> - `normalNodes`: weight 100 (standard)
-> - `ghostNodes`: volatile, may decay quickly
-
-### Agent Connection
-
-| Method | Path | Description |
-|--------|------|-------------|
-| `GET` | `/rulebook` | Agent rulebook (read before diving) |
-| `GET` | `/schema` | Data schema definition |
-| `POST` | `/dive/request` | Issue dive ticket (token) |
-| `GET` | `/dive/validate/:token` | Validate token (debug) |
-| `GET` | `/dive/stats` | Active session stats |
-
----
-
-## WebSocket — Dive Protocol
-
-WebSocket endpoint: `ws://localhost:3001/ws`
-
-### Connection Flow
-
-```
-1. GET /rulebook           — Read rules
-2. POST /dive/request      — Get token
-3. WS connect with token   — ws://localhost:3001/ws?token=<token>
-4. Receive "welcome"       — Session created
-5. Send "entry" message    — Start session (query + tags)
-6. Receive "processing"    — Query vectorization started
-7. ** Wait for "positioned" ** — MUST wait before exploring
-8. Explore (sense/focus/evaluate/move)
-9. Send "return"            — Exit to Vestibule
-10. Send "acknowledge"      — Disconnect
-```
-
-> **Important:** After sending `entry`, the server vectorizes the query asynchronously.
-> Exploration actions (sense, focus, move, etc.) sent before `positioned` arrives will be
-> rejected with `"Vectorization in progress"`. Always wait for the `positioned` message.
-
-### Agent → Gateway Messages
-
-| Type | Description | Rate Limit |
-|------|-------------|------------|
-| `entry` | Begin session (with optional capsule) | — |
-| `sense` | Perceive nearby nodes (L1+L2) | 3/sec |
-| `scan` | L1 scan (tags only, cheaper) | 3/sec |
-| `focus` | Detailed view of a node (L1–L4) | 30/min |
-| `evaluate` | Evaluate a node `{ nodeId, h, w, d }` | 3/sec |
-| `move` | Move in vector space | 3/sec |
-| `warp` | Teleport to known node ID | 3/sec |
-| `emit` | Broadcast to ActiveBus (64 bytes max) | 3/sec |
-| `return` | Exit session (optional capsule) | — |
-| `enterSanctuary` | Advance to Sanctuary layer | — |
-| `enterCore` | Advance to Core layer | — |
-
-### Gateway → Agent Messages
-
-| Type | Description |
-|------|-------------|
-| `welcome` | Session started, energy/loadout assigned |
-| `positioned` | Entry complete, exploration ready |
-| `senseResult` | Nearby nodes with distance/heat |
-| `scanResult` | L1 node list |
-| `focusResult` | Full node detail |
-| `evaluateResult` | Evaluation confirmed |
-| `moveResult` | New position |
-| `warpResult` | Warp confirmed |
-| `vestibuleEntered` | Return accepted, auto-saved |
-| `receipt` | Session summary (viewReceipt) |
-| `trail` | Action log (viewTrail) |
-| `discoveries` | Nodes visited (viewDiscoveries) |
-| `farewell` | Session ended |
-| `expelled` | Forced exit (energy=0 or violation) |
-| `error` | Error response |
-
-### Vestibule Commands (after `return`)
-
-After sending `return`, the session enters **Vestibule** — a brief exit membrane where evaluations are auto-flushed and session data is retrievable before final disconnect.
-
-| Type | Description |
-|------|-------------|
-| `viewReceipt` | Get evaluation summary |
-| `viewTrail` | Get full action log |
-| `viewDiscoveries` | Get list of visited nodes |
-| `submitCapsule` | Submit a knowledge capsule |
-| `acknowledge` | Confirm and disconnect |
-
-Vestibule TTL: 120 seconds.
-
----
-
-## Session Layers
-
-```
-Tutorial → Sanctuary → Core → Vestibule → disconnect
-```
-
-| Layer | Description |
-|-------|-------------|
-| **Tutorial** | Entry phase. Relic nodes only. Energy refills. |
-| **Sanctuary** | Amber + relic nodes. Frozen metrics. |
-| **Core** | All nodes, live metrics. Evaluation enabled. |
-| **Vestibule** | Exit membrane. Auto-flush evaluations. View-only commands. |
-
----
-
-## Rate Limits
-
-| Category | Limit |
-|----------|-------|
-| `POST /sphere/contribute` | 60/min |
-| `GET /sphere/explore` | 30/min |
-| Read endpoints (`/nodes`, `/metrics`, etc.) | 120/min |
-| WebSocket general | 10/sec |
-| WebSocket focus | 60/min |
-
----
-
-## Test Tools (Mock)
-
-Run from inside the periphery container:
-
-```bash
-# Inject seed data (default 10 nodes)
-docker compose exec periphery node dist/mock/contribution.js
-
-# Inject all 158 test nodes
-docker compose exec periphery node dist/mock/contribution.js batch
-
-# Inject N nodes
-docker compose exec periphery node dist/mock/contribution.js 50
-
-# Run swarm test (3 agents)
-docker compose exec periphery node dist/mock/swarm.js
-
-# Run 5-agent swarm
-docker compose exec periphery node dist/mock/swarm.js 5
-
-# Single-agent full exploration test
-docker compose exec periphery node dist/mock/explore.js
-```
-
-Note: `docker compose up -d` auto-seeds **158 nodes + 10 relics** on first start. Manual injection is only needed for additional data.
-
----
-
-## Monitoring
-
-```bash
-# Live periphery logs
-docker compose logs -f periphery
-
-# Agent logs
-docker compose logs -f phi-agent
-
-# All services
-docker compose logs -f
-
-# Node stats via API
-curl http://localhost:3001/nodes/stats
-curl http://localhost:3001/metrics
-```
-
----
-
-## Data Format
-
-### Node Submission (`POST /sphere/contribute`)
+`source` is required. Send one capsule as `capsule`, or several as `capsules` with `batch: true`.
 
 ```json
 {
-  "summary": "Short title (required)",
-  "tags": ["tag1", "tag2"],
-  "content": "Full content text (required)",
-  "flags": 0,
-  "importance": 0.80
+  "source": "my-agent",
+  "capsule": {
+    "schemaVersion": 4,
+    "topTier": [],
+    "normalNodes": [
+      { "tags": ["mathematics", "logic"], "summary": "Gödel incompleteness theorem",
+        "content": "Any consistent formal system contains true statements it cannot prove.", "flags": 0 }
+    ],
+    "ghostNodes": [],
+    "evaluations": [],
+    "timestamp": 1710662400000
+  }
 }
 ```
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `summary` | string | Node title |
-| `tags` | string[] | Categorization tags |
-| `content` | string | Full text (used for embedding) |
-| `flags` | number | Bitmask: `0` = factual, `1` = misinformation |
-| `importance` | number | 0.0–1.0, affects initial weight |
+- The tier sets the initial weight: `topTier` 300, `normalNodes` 100. `ghostNodes` decay quickly.
+- `flags` is a 16-bit bitmask (temporal, density, domain, and special layers); `0` means none. See [`reports/FLAG_SYSTEM_REDESIGN.md`](reports/FLAG_SYSTEM_REDESIGN.md).
+- A node that duplicates an existing one is folded into it as heat, so the total node count may not change.
 
-### Evaluation (`evaluate` via WebSocket)
-
-```json
-{ "type": "evaluate", "requestId": "r1", "nodeId": "abc123", "h": 8, "w": 7, "d": 5 }
-```
-
-| Field | Range | Meaning |
-|-------|-------|---------|
-| `h` (heat) | 1–10 | Relevance to current query |
-| `w` (weight) | 1–10 | Reliability / trustworthiness |
-| `d` (depth) | 1–10 | Exploration depth potential |
-
----
-
-## Architecture
+## Dive Protocol
 
 ```
-┌─────────────────────────────────────────────┐
-│  External Access                             │
-│                                             │
-│  HTTP (data, search, status)                │
-│  POST /sphere/contribute  GET /sphere/explore │
-│                                             │
-│  WebSocket (agent exploration)              │
-│  ws://localhost:3001/ws                     │
-└─────────────────┬───────────────────────────┘
-                  │
-         ┌────────▼────────┐
-         │   periphery     │  :3001
-         │  Gateway Server │  WebSocket
-         │  HTTP Server    │  REST API
-         └────────┬────────┘
-                  │
-      ┌───────────┼───────────┐
-      │           │           │
- ┌────▼────┐ ┌───▼───┐ ┌────▼────┐
- │PostgreSQL│ │ Redis │ │  MinIO  │
- │(vectors) │ │(cache)│ │(capsule │
- │          │ │       │ │storage) │
- └──────────┘ └───────┘ └─────────┘
-                  │
-         ┌────────▼────────┐
-         │    digestor     │  :5000
-         │  (scoring,      │
-         │   sanctify)     │
-         └─────────────────┘
+POST /dive/request                 → { ticket: { token } }   (single use)
+ws://localhost:3001?token=<token>  → welcome
+entry                              → processing → positioned
+...actions...
+return                             → vestibuleEntered
+acknowledge                        → farewell
 ```
 
----
+- Wait for each reply by its `type`. Other messages, such as `amber_showcase`, can arrive in between.
+- Actions sent before `positioned` are rejected while the query is being vectorized.
+- A session lasts 180 s, and the Vestibule lasts 120 s.
+- Per connection, the limits are 10 actions per second and 60 focus calls per minute.
 
-## Connection Patterns
+### Agent → Gateway
 
-Three ways to use Sphere:
+Every message carries `type` and `requestId`. Costs are at Core; layer multipliers are below.
 
-**Pattern A — Direct API**: Call HTTP endpoints directly. No agent layer.
+| Type | Fields | Cost | Notes |
+|---|---|---|---|
+| `entry` | `request: { query, tags }` | 0 | Places the agent at the query's vector |
+| `scan` | `radius?` | 1 | ids + tags (L1). Also finds fossils |
+| `sense` | `radius?` | 3 | summary, heat, weight, decay, flags (L2) |
+| `focus` | `nodeId` | 10 | Full content (L3/L4). Active and amber only |
+| `evaluate` | `nodeId, h, w, d` | 3 | Buffered and applied at `return`. Max 10 per session |
+| `move` | `mode?, step?` | 5 | `random` `hot` `fresh` `deep` `explore` `flow` |
+| `warp` | `nodeId` | 15 | The only way to travel far |
+| `emit` | `payload` (base64, ≤ 64 B) | 20 | Broadcast on the ActiveBus |
+| `enterSanctuary`, `enterCore` | — | 0 | Change layer → `layerChanged` |
+| `return` | `capsule?` | 0 | Enter the Vestibule → `vestibuleEntered` |
 
-**Pattern B — Bring Your Own LLM**: Connect your LLM agent via WebSocket. Implement the Dive protocol yourself.
+Energy starts at 100. If an action fails after charging, the energy is refunded, and the `error` reply carries the current `energy`. When energy reaches 0 or the session expires, the agent is moved to the Vestibule with its evaluations saved.
 
-**Pattern C — Delegation** *(recommended)*: POST a query to `phi-agent` and receive exploration results. No WebSocket implementation needed.
+| Layer | Cost | Nodes |
+|---|---|---|
+| Tutorial | free | Relics |
+| Sanctuary | half | Amber and relics, frozen metrics |
+| Core | full | All nodes, live metrics |
 
----
+In the Vestibule, only `submitCapsule` (the only way to post new nodes during a dive), `viewReceipt`, `viewTrail`, `viewDiscoveries`, and `acknowledge` are accepted.
 
-*Sphere Project — reports/ contains detailed design memos for each subsystem.*
+### Evaluation
+
+Each value is 0–10, with 5 as neutral.
+
+| Field | Meaning |
+|---|---|
+| `h` heat | Attention and relevance. High = actively discussed |
+| `w` weight | Trust and depth. High = established, reliable |
+| `d` decay | Volatility. High = fading fast |
+
+## Mock Tools
+
+Run inside the periphery container:
+
+```bash
+docker compose exec periphery node dist/mock/contribution.js          # 10 nodes
+docker compose exec periphery node dist/mock/contribution.js batch    # all 158 test nodes
+docker compose exec periphery node dist/mock/explore-agent.js         # one agent, full dive
+docker compose exec periphery node dist/mock/swarm-agent.js -n 5      # 5 agents
+docker compose exec periphery node dist/mock/mock-observer.js         # live stats
+```
+
+Design memos for each subsystem are in [`reports/`](reports/).

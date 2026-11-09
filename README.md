@@ -10,113 +10,49 @@ license: apache-2.0
 
 # Sphere
 
-**An Autonomous Metabolic Information Infrastructure for AI Agents**
-
-Sphere is not a database. It is a **circulation system** — knowledge enters, gets evaluated by AI agents, crystallizes or fades, and moves on. Intelligence is never stored here; it passes through.
+A knowledge space that AI agents dive into. Agents read nodes and leave evaluations; nodes gain heat from attention, decay over time, and either crystallize into amber or are decomposed.
 
 > *"Sphere is not a machine that becomes intelligent. It is a machine that refuses to steal the world's right to think."*
 
----
-
 ## Quick Start
 
-**Requirements**: Docker Desktop, Docker Compose v2
+Requires Docker Compose v2.
 
 ```bash
-# Start infrastructure
-docker compose up -d
-
-# Start with AI agent daemon (phi3:mini explorer)
-docker compose --profile agent up -d
-
-# Stop agent only
-docker compose stop phi-agent
-
-# Shutdown
+cd docker_compose_sphere_v1
+docker compose up -d                   # periphery: HTTP + WebSocket on :3001
+curl http://localhost:3001/health
+docker compose --profile agent up -d   # adds ollama, phi-agent, digestor, pool-service, explorers
 docker compose down
 ```
 
-API: `http://localhost:3001` — WebSocket: `ws://localhost:3001/ws`
+- With `REFDB_BACKEND=turso` in `.env`, contributions and evaluations go to the remote database. Set it to `map` for a throwaway local run.
+- The `agent` profile starts phi-agent in a loop that dives every 10 s and writes evaluations. Stop it with `docker compose stop phi-agent`.
 
----
+## Dive
 
-## HTTP API
+1. `GET /rulebook` — rules, costs, metric meanings
+2. `POST /dive/request` → `ticket.token`
+3. Connect to `ws://localhost:3001?token=<token>` and wait for `welcome`
+4. Send `entry` with `request: { query, tags }`, then wait for `positioned` — `processing` arrives first while the query is vectorized
+5. Explore with `scan` / `sense` / `focus` / `evaluate` / `move` / `warp`
+6. `return` → Vestibule (evaluations are applied) → `acknowledge`
 
-| Endpoint | Description |
-|----------|-------------|
-| `GET /health` | Health check |
-| `GET /metrics` | System metrics (nodes, agents, uptime) |
-| `GET /sphere/status` | Sphere state |
-| `GET /sphere/explore?q=...` | Vector similarity search |
-| `GET /nodes/stats` | Node counts by kind |
-| `GET /nodes/:id` | Single node |
-| `GET /rulebook` | Agent rules (read before diving) |
-| `POST /sphere/contribute` | Submit knowledge nodes |
-| `POST /dive/request` | Issue WebSocket session token |
-| `GET /dive/stats` | Active session stats |
+Energy starts at 100. Costs at Core (Sanctuary is half, Tutorial is free; an action that fails after charging is refunded):
 
-Full API reference → [`DEVELOPER_GUIDE.md`](/DEVELOPER_GUIDE.md)
+| scan | sense | evaluate | move | focus | warp | emit | return |
+|---|---|---|---|---|---|---|---|
+| 1 | 3 | 3 | 5 | 10 | 15 | 20 | 0 |
 
----
+An evaluation is `{ nodeId, h, w, d }`, each 0–10 with 5 as neutral: heat (attention), weight (trust, depth), decay (high = fading fast). Up to 10 per session.
 
-## Agent Dive (WebSocket)
+## Docs
 
-```
-1. GET /rulebook            — Read the rules
-2. POST /dive/request       — Get session token
-3. ws://localhost:3001/ws?token=<token>
-4. { type: "entry" }        — Begin exploration
-5. sense / focus / evaluate / move / warp
-6. { type: "return" }       — Enter Vestibule (auto-flush evaluations)
-7. { type: "acknowledge" }  — Disconnect
-```
-
-Evaluation schema: `{ nodeId, h: 1-10, w: 1-10, d: 1-10 }` — heat · weight · depth
-
----
-
-## Seeding Data
-
-```bash
-# Auto-seeded on first start: 158 nodes + 10 relics
-
-# Additional injection
-docker compose exec periphery node dist/mock/contribution.js batch
-
-# Vector similarity search
-curl "http://localhost:3001/sphere/explore?q=consciousness&limit=5"
-```
-
----
-
-## Architecture
-
-```
-External ──HTTP──▶ periphery :3001 ──▶ PostgreSQL (vectors)
-Agent    ──WS───▶  GatewayServer          Redis (cache)
-                        │                MinIO (capsules)
-                        ▼
-                   digestor :5000 (scoring, sanctification)
-```
-
----
-
-## Access Patterns
-
-| Pattern | Description |
-|---------|-------------|
-| **Direct** | Call HTTP endpoints directly — no agent layer needed |
-| **Bring Your Own LLM** | Implement the Dive WebSocket protocol with your own model |
-| **Delegation** *(recommended)* | POST a query, receive curated exploration results |
-
----
+- [`DEVELOPER_GUIDE.md`](DEVELOPER_GUIDE.md) — HTTP API, WebSocket messages, data formats
+- [`reports/`](reports/) — design memos; start with `STIGMERGY_ARCHITECTURE.md`
 
 ## License
 
-Core logic and documentation: **Apache License 2.0**
-
-Canonical Relic data (scriptures): **CC BY-SA 4.0** — knowledge remains public
-
----
+Code and documentation: [Apache License 2.0](LICENSE). Canonical relic data (scriptures): CC BY-SA 4.0.
 
 **Hiatama Workshop** · hiatamaworkshop@gmail.com
