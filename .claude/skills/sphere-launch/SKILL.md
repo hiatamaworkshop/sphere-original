@@ -21,7 +21,7 @@ Sphere は Docker Compose で動く。`docker compose up -d` 一発で立ち上�
 
 | ディレクトリ | 素性 | 触ってよいか |
 |---|---|---|
-| **sphere-original** | HuggingFace Space にデプロイされる正史。2026-04-14 まで更新 | **これを使う** |
+| **sphere-original** | HuggingFace Space にデプロイされる正史。開発が続いている唯一の線 | **これを使う** |
 | sphere | GitHub `sphere-project.git`。2026-02-06 で停止した旧線 | 参照のみ。**起動不可** |
 | sphere-sidecar | sphere-original の fork。phi-agent 送出層が本体 | phi-agent 作業時のみ |
 | sphere-lifelog | sphere-original の fork | 別用途 |
@@ -31,15 +31,14 @@ Sphere は Docker Compose で動く。`docker compose up -d` 一発で立ち上�
 - `sphere` でチェックアウトされている branch 名が `original` だが、これは linknode 実験の**廃案ブランチ**。ディレクトリ名 `sphere-original` と紛らわしいので混同しないこと。
 - `sphere` は periphery/src が要求する `updateAgentCount` を自前 renalCore が持たず、`npm run build` が通らない。docker ビルドも不可能。
 
-### 致命的な罠: compose project 名の衝突
+### 罠: container_name の衝突
 
-4つとも compose ディレクトリ名が `docker_compose_sphere_v1` で、どれも `name:` を書いていない。
-つまり **Compose の project 名が4つとも同一**で、イメージ名 `docker_compose_sphere_v1-periphery` を共有する。
+sphere-original の compose は `name: sphere-original` で project 名を固定しているので、
+イメージ名 (`sphere-original-periphery` 等) は他リポジトリと分かれている。
 
-さらに sphere と sphere-original は container_name まで同じ(`sphere-periphery` 等)。
-
-> **他の3ディレクトリで `docker compose build` を打つと、sphere-original のイメージを上書き破壊する。**
-> 起動前に必ず `pwd` で sphere-original 配下にいることを確認する。
+ただし container_name (`sphere-periphery` 等) は sphere 系で共通のまま。
+他ディレクトリのスタックが上がっていると名前が衝突して起動できないので、
+起動前に `pwd` で sphere-original 配下にいることと、`docker ps` で他の sphere 系が止まっていることを確認する。
 
 ---
 
@@ -216,8 +215,8 @@ const WebSocket = require('C:/…/services/periphery/node_modules/ws');
 ベクトル(384次元)が取れるのは `/nodes/:id` だけで、`/nodes/metrics` には含まれない。
 
 **ghost / fossil は `focus` できない。**
-`sense` / `scanL1` からは見えるし `evaluate` もできるが、focus は拒否される。
-**拒否されてもエネルギーは満額(10)引かれる**ので、事前に kind で弾くこと。
+`sense` / `scanL1` からは見えるし `evaluate` もできるが、focus はエラーになる。
+課金後に失敗した分は返金され、`error` 応答の `energy` に返金後の値が載る。
 
 **`evaluate` は即時反映されない。**
 `Evaluation buffered for return-time processing` としてバッファされ、
@@ -231,7 +230,7 @@ const WebSocket = require('C:/…/services/periphery/node_modules/ws');
 | `scanL1` | 1 | 広く浅く。id + tags のみ。fossil / relic も拾う |
 | `sense` | 3 | 狭く深く。summary / heat / weight / decay / flags 付き |
 | `move` | 5 | 距離に依らず一律。step 0.45 でも近傍はほぼ変わらない |
-| `focus` | 10 | active のみ。**失敗しても課金される** |
+| `focus` | 10 | active のみ。失敗したら返金される |
 | `warp` | 15 | **遠方へ行く唯一の手段**。近傍が総入れ替わりになる |
 | `evaluate` | 3 | 最大10回/セッション |
 | `emitBus` | 20 | 64バイトを全エージェントへ同報 |
@@ -249,57 +248,19 @@ Tutorial は無料、Sanctuary は半額、Core は全額。
 
 ---
 
-## 綻び (2026-08-21、dive 2回で実測)
+## 綻び
 
-### 修正済み (2026-08-21)
+修正済みの不具合 (課金後失敗の返金、emitBus 課金、コスト表の統一、WalkMode の勾配) の経緯と設計判断は
+`reports/DESIGN_ENERGY_REFUND_20260821.md` と `reports/DESIGN_WALKMODE_GRADIENT_20260821.md` にある。
+コスト表の正典は `types/config.ts` の `DEFAULT_ENERGY_CONFIG`。
 
-以下3件は同一の原因だった。`focus()` が課金を先頭で行い、`coreAdapter.focus()` が
-`null` を返すと `mockFocus()` の捏造ノードを**成功として**返していた。
-経緯と設計判断は `sphere-original/reports/DESIGN_ENERGY_REFUND_20260821.md` に記録。
-
-1. ~~失敗した `focus` が満額課金される~~ → **課金後に失敗したら返金する**ようになった。
-   `focus` / `warp` / `move` が対象。`error` 応答に `energy` が載るので返金を観測できる。
-2. ~~`focusResult` の `kind` が誤っている~~ → **捏造フォールバックを廃止**。
-   ghost/fossil への focus は正しくエラーになる。
-3. ~~`⚠️ Mock data` が混入している~~ → `mockFocus` は adapter 無しのモックモード専用になった。
-
-4. ~~`ws://localhost:0` の表示バグ~~ → attached mode では HTTP サーバが listen した後に
-   実ポートを引いて案内するようにした。`ws://localhost:3001?token=<ticket>` と出る。
-5. **`emitBus` が無課金だった。** rulebook は cost 20 と公表しているのに `consumeEnergy` が
-   無く、同報が無料だった。公表どおり課金するようにした。
-6. **コスト表が4箇所に分裂して食い違っていた。** rulebook は sense を 2 と公表していたが
-   実際は 3 引かれていた。`types/config.ts` の `DEFAULT_ENERGY_CONFIG` を正典に統一。
-
-7. **`move` の `deep` / `fresh` が機能していなかった。** 重み式が `d` を定数 1000 で
-   割っていたが、`d` は時間では動かず評価を受けるまで baseline 1000 に張り付く。
-   結果 `deep` は全ノード weight 0 → `totalWeight === 0` で **random に落ちていた**。
-   `fresh` は `h × 1.0` で **`hot` と完全に同一**だった。
-   `d` と `freshness` を「可視ノード集合内での相対位置 (0.5〜1.5)」に変換する方式に変更。
-   併せて `types/gateway.ts` の WalkMode 定義が実装と食い違っていたのを直した
-   (`fresh` を timestamp ベースと書いていた / `explore` を distance ベースと書いていた /
-   `flow` の field を 0.7 と書いていた)。**エネルギーのコスト表と同じ仕様分裂**。
-
-検証は以下で再現できる。
+回帰の確認:
 
 ```bash
 node sphere-dive-manual.mjs ./sphere-dive-plan.test-refund.mjs     # 返金
 node sphere-dive-manual.mjs ./sphere-dive-plan.test-emitbus.mjs    # emitBus 課金
 node sphere-dive-manual.mjs ./sphere-dive-plan.test-walkmode.mjs   # WalkMode 勾配
 ```
-
-実測した重み (可視8ノード、うち6ノードが d=1000):
-
-```
-  id       kind    d     |  旧fresh   旧deep  |  新fresh    新deep     hot
-  565b5138 active  1000  |    517.0    0.000  |   1162.3     50.7   517.0
-  32ecdcaf active  1000  |    434.4    0.000  |    325.8    143.6   434.4
-  6938b22b fossil   985  |    479.7    0.811  |    243.5     54.1   487.0
-  9cef886b active   970  |    467.1    3.519  |    120.4    175.9   481.5
-```
-
-旧 `deep` は非ゼロが2件だけで、その 81% が d=970 の1ノード、19% が **fossil**。
-「安定して評価された方向」を名乗りながら崩れかけのノードへ向かっていた。
-旧 `fresh` は hot 列と数値が完全一致している。
 
 ### 綻びではなかったもの
 

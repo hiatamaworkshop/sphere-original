@@ -1,6 +1,6 @@
-# Sphere Original (upstream) — Claude Instructions
+# Sphere Original — Claude Instructions
 
-> This is the upstream reference. Active development is on **sphere-lifelog** fork.
+> sphere-original is the canonical line (deployed to the HuggingFace Space). sphere-sidecar and sphere-lifelog are forks.
 
 ## SPHERE-CORE-MANIFESTO
 
