@@ -186,4 +186,3 @@ Users follow the natural thought flow: "Intent → Tool → Execution."
 - [STIGMERGY_ARCHITECTURE.md](STIGMERGY_ARCHITECTURE.md) — What Sphere really is
 - [EMERGENT_PERSONALITY_MEMO.md](EMERGENT_PERSONALITY_MEMO.md) — Personality emergence in lightweight LLMs
 - [SPECIES_MEMORY_METABOLISM_DESIGN.md](SPECIES_MEMORY_METABOLISM_DESIGN.md) — Species memory metabolic design
-- [EXPLORERS_UI_DESIGN.md](EXPLORERS_UI_DESIGN.md) — Detailed UI design specifications

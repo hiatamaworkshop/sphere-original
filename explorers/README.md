@@ -249,7 +249,7 @@ You can override defaults in the UI's Advanced Settings accordion:
 
 ## Design Philosophy
 
-From [EXPLORERS_DESIGN_INTENT.md](../reports/EXPLORERS_DESIGN_INTENT.md):
+From [DESIGN.md](DESIGN.md):
 
 > **Explorers is not a content browser.**
 > **It is a measurement instrument for observing emergent perception patterns in Sphere.**

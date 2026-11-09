@@ -9,7 +9,6 @@
 | [DAEMON_TEST_BATCH_PROTOCOL.md](DAEMON_TEST_BATCH_PROTOCOL.md) | 設計資料 | Cycle A/B バッチプロトコル設計 |
 | [TESTING_MEMO.md](TESTING_MEMO.md) | アーカイブ | 歴史的テストログ (Section 1-16) |
 | [LEGACY_TEST_ARCHIVE.md](LEGACY_TEST_ARCHIVE.md) | アーカイブ | 削除済みスクリプトの記録 |
-| [README_TESTING.md](README_TESTING.md) | 廃止 | Phase 3 初期の Decay 観測ガイド |
 | [TEST_RESULT_GHOST_FOCUS.md](TEST_RESULT_GHOST_FOCUS.md) | テスト結果 | Ghost/Fossil Focus Strategy (2026-02-03) |
 
 ## 前提
