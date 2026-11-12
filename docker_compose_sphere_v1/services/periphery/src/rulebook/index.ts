@@ -116,6 +116,7 @@ export const rulebook = {
     note: "Submit via submitCapsule command in the Vestibule (after return). Not attached to the return action itself.",
     format: "ExperienceCapsule (see capsule schema). topTier max 2, normalNodes max 10, ghostNodes max 3.",
     limits: "payload 8192B, summary 500chars, tags 1-10, links max 5.",
+    audit: "The server compares your capsule with what it saw (AutoCapsule + recorded evaluations). A seed whose sourceNodeId names a node you never focused enters as a ghost, whatever tier you put it in. The result carries `divergence` (seeds and evaluations that agree or differ, consistency 0-1), `demoted` and `dropped`. This is per session; nothing is remembered about you.",
   },
 
   // A word from the Sphere

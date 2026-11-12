@@ -28,6 +28,7 @@ import type { EntryBuffer } from "../parser/buffer.js";
 import type { IIncarnationPipeline } from "../incarnation/pipeline.js";
 import type { NearbyNode, NodeDetail, MoveResult, WarpResult, WalkMode, EntryRequest, AmberShowcaseEntry, ScanResult, L1ScanResult } from "../types/gateway.js";
 import type { ExperienceCapsule } from "../types/capsule.js";
+import type { CapsuleDivergence } from "../types/capsule-diff.js";
 import type { SphereCoreAdapter } from "./sphere-core-adapter.js";
 import type { UnifiedAmberCache } from "./amber-cache.js";
 import type { GlobalFieldLayer } from "../field/index.js";
@@ -109,7 +110,7 @@ type GatewayMessage =
   | { type: "expelled"; reason: string }
   // Vestibule messages
   | { type: "vestibuleEntered"; requestId?: string; sessionId: string; sphereId: string; timestamp: number; auto: { evaluationsApplied: number; autoCapsuleSaved: boolean }; commands: { name: string; description: string }[]; farewell: string }
-  | { type: "submitCapsuleResult"; requestId: string; success: boolean; nodeCount?: number; evaluationCount?: number; errors?: string[] }
+  | { type: "submitCapsuleResult"; requestId: string; success: boolean; nodeCount?: number; evaluationCount?: number; errors?: string[]; divergence?: CapsuleDivergence; demoted?: number; dropped?: number }
   | { type: "receipt"; requestId: string; data: any }
   | { type: "trail"; requestId: string; data: any }
   | { type: "discoveries"; requestId: string; data: any }
@@ -872,6 +873,9 @@ export class GatewayServer {
           nodeCount: result.nodeCount,
           evaluationCount: result.evaluationCount,
           errors: result.errors,
+          divergence: result.divergence,
+          demoted: result.demoted,
+          dropped: result.dropped,
         });
         break;
       }

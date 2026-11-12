@@ -41,6 +41,9 @@ import type {
 import { DEFAULT_ENERGY_CONFIG } from "../types/config.js";
 import type { ActionLog, AutoCapsule } from "../types/auto-capsule.js";
 import { createActionLog, logAction, buildAutoCapsule } from "../types/auto-capsule.js";
+import type { CapsuleDivergence } from "../types/capsule-diff.js";
+import { compareCapsules, demoteUnvisitedSeeds } from "../types/capsule-diff.js";
+import { getSchema } from "../schema/loader.js";
 import {
   createSessionBuffer,
   addEvaluationToBuffer,
@@ -1434,9 +1437,20 @@ export class SphereContextImpl implements SphereContext {
    * Submit capsule with NodeSeeds for incarnation (Vestibule command)
    *
    * [Design] Gatekeeper validation happens inside Pipeline.ingest() — single point
+   * [Design] The capsule is compared with the AutoCapsule (server truth) first.
+   *   Seeds claiming an unvisited sourceNodeId enter as ghosts. The divergence is
+   *   reported back to the agent; it lives only in this session (no agent identity).
    * [Constraint] Only available in vestibule layer
    */
-  async submitCapsule(capsule: ExperienceCapsule): Promise<{ success: boolean; nodeCount: number; evaluationCount: number; errors?: string[] }> {
+  async submitCapsule(capsule: ExperienceCapsule): Promise<{
+    success: boolean;
+    nodeCount: number;
+    evaluationCount: number;
+    errors?: string[];
+    divergence?: CapsuleDivergence;
+    demoted?: number;
+    dropped?: number;
+  }> {
     if (this._layer !== "vestibule") {
       throw new Error("submitCapsule only available in vestibule");
     }
@@ -1444,16 +1458,53 @@ export class SphereContextImpl implements SphereContext {
       return { success: false, nodeCount: 0, evaluationCount: 0, errors: ["Pipeline not available"] };
     }
 
-    console.log(`[SphereContext] submitCapsule: ${capsule.topTier.length}t/${capsule.normalNodes.length}n/${capsule.ghostNodes.length}g nodes`);
+    console.log(`[SphereContext] submitCapsule: ${capsule.topTier?.length ?? 0}t/${capsule.normalNodes?.length ?? 0}n/${capsule.ghostNodes?.length ?? 0}g nodes`);
+
+    // Compare with server truth (needs the AutoCapsule built on vestibule entry)
+    let toIngest = capsule;
+    let divergence: CapsuleDivergence | undefined;
+    let demoted = 0;
+    let dropped = 0;
+    if (this._autoCapsule) {
+      const recorded: NodeEvaluation[] = [];
+      for (const delta of this._sessionBuffer.temporaryEvaluations.values()) {
+        recorded.push({ nodeId: delta.nodeId, h: delta.h, w: delta.w, d: delta.d });
+      }
+      divergence = compareCapsules(this._autoCapsule, recorded, capsule);
+
+      // Same source of truth as Gatekeeper; getSchema throws if the registry was never loaded
+      let ghostCapacity: number | undefined;
+      try {
+        ghostCapacity = getSchema("ExperienceCapsule")?.fields.ghostNodes?.max;
+      } catch {
+        ghostCapacity = undefined;
+      }
+      const demotion = demoteUnvisitedSeeds(this._autoCapsule, capsule, ghostCapacity);
+      toIngest = demotion.capsule;
+      demoted = demotion.demoted;
+      dropped = demotion.dropped;
+
+      const s = divergence.seeds;
+      const e = divergence.evaluations;
+      console.log(
+        `[SphereContext] Capsule divergence: consistency=${divergence.consistency.toFixed(2)} ` +
+        `seeds(src=${s.withSource}, unvisited=${s.unvisitedSource}) ` +
+        `evals(claimed=${e.claimed}, recorded=${e.recorded}, matched=${e.matched}, altered=${e.altered}, unwitnessed=${e.unwitnessed}) ` +
+        `demoted=${demoted} dropped=${dropped}`
+      );
+    }
 
     try {
-      const result = await this.pipeline.ingest(capsule);
+      const result = await this.pipeline.ingest(toIngest);
       console.log(`[SphereContext] Pipeline result: ${result.nodeCount} nodes, ${result.evaluationCount} evaluations`);
       return {
         success: result.success,
         nodeCount: result.nodeCount,
         evaluationCount: result.evaluationCount,
         errors: result.errors?.map(e => `${e.code}: ${e.message}`),
+        divergence,
+        demoted,
+        dropped,
       };
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : String(err);
