@@ -112,10 +112,13 @@ export class MapProjectionRepository implements IProjectionRepository {
   }
 
   /**
-   * Get underlying Map (for RenalCore integration)
-   * @deprecated Use repository methods instead
+   * Synchronous in-memory store shared with RenalCore / server.
+   *
+   * [Design] The hot state is the Map itself; RenalCore ticks synchronously over it
+   * (NodeStore: size + values()). Persistence is a separate write-through / snapshot
+   * concern, not a swap of this store.
    */
-  getInternalMap(): Map<string, SphereNode> {
+  getStore(): Map<string, SphereNode> {
     return this.store;
   }
 }

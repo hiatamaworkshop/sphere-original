@@ -1265,7 +1265,7 @@ SpatialField.flux は既存テレメトリとの互換性のため残してい�
 | 項目 | 状態 | 影響 |
 |------|------|------|
 | SpatialField の名称 | hash-based なのに "Spatial" | 紛らわしいが機能に影響なし |
-| RenalCore の spatialFields 受け渡し | `getInternalMap()` で生 Map を渡している | `ISpatialFieldRepository` 経由にすべき (TODO) |
+| RenalCore の spatialFields 受け渡し | `getStore()` で同期の Map (`NodeStore`) を渡している | 意図どおり。非同期 Repository 経由にはしない (`DB_DESIGN_PRINCIPLES_MEMO.md` §6) |
 | Agent.position (Vector3) | SphereAgent 型に残存 | 未使用。384次元 vector が実座標 |
 | getCellId の出力形式 | Phase 4 構想の position-based cellId と同形式 | 混同リスクのみ。将来 position-based に切り替える際に注意 |
 

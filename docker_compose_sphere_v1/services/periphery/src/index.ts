@@ -156,11 +156,11 @@ if (refDbBackend === "turso") {
 const projectionRepo = new MapProjectionRepository();
 const spatialRepo = new MapSpatialFieldRepository();
 
-// Get underlying Maps for RenalCore (backward compatibility)
-// TODO: Refactor RenalCore to use repository interfaces
-const projectionDB = projectionRepo.getInternalMap();
-const referenceDB = referenceRepo.getInternalMap();
-const spatialFields = spatialRepo.getInternalMap();
+// Synchronous hot-state stores shared with RenalCore (it ticks over NodeStore, not async repos).
+// ProjDB / SpatialField are volatile by design; persistence is ProjectionSnapshot (below).
+const projectionDB = projectionRepo.getStore();
+const referenceDB = referenceRepo.getStore();
+const spatialFields = spatialRepo.getStore();
 
 // ProjDB Snapshot: Restore from Turso if RefDB backend is Turso
 // [Design] ProjDB snapshot captures evolved metrics (h/w/d/ttl/kind after physics).

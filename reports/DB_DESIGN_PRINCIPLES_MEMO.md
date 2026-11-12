@@ -143,19 +143,20 @@ Bookkeeper.ingest():
 
 ## 6. RenalCore との互換性
 
-現在、RenalCore は `Map<string, T>` を直接参照している。
-暫定対応として `getInternalMap()` で内部Mapを取得して渡している。
+RenalCore は同期の `NodeStore<T>` (`size` と `values()` だけ。`Map` が構造的に満たす) を受け取る。
+`getStore()` で各 Repository が持つ Map を取り出して渡している。
 
 ```typescript
-// 暫定: 内部Mapを取得してRenalCoreに渡す
-const projectionDB = projectionRepo.getInternalMap();
-const referenceDB = referenceRepo.getInternalMap();
-const spatialFields = spatialRepo.getInternalMap();
+const projectionDB = projectionRepo.getStore();
+const spatialFields = spatialRepo.getStore();
 
-const renalCore = new RenalCore(projectionDB, referenceDB, spatialFields, config);
+const renalCore = new RenalCore(projectionDB, spatialFields, config);
 ```
 
-**TODO**: RenalCore も Repository インターフェース依存にリファクタリング
+**決定 (2026-11-12)**: RenalCore を非同期の Repository インターフェース依存にはしない。
+ProjDB / SpatialField は物理の熱状態で、揮発が前提 (永続化は `ProjectionSnapshot`)。
+RenalCore の tick は同期・純粋関数のまま保つ (Rust 移植性)。差し替えるのは RefDB だけ (`REFDB_BACKEND`)。
+旧名は `getInternalMap()`。
 
 ---
 

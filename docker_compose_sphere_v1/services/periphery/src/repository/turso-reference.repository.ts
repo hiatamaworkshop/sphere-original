@@ -145,10 +145,11 @@ export class TursoReferenceRepository implements IReferenceRepository {
   // ---- RenalCore 互換 ----
 
   /**
-   * Get underlying Map (for RenalCore integration)
-   * @deprecated Use repository methods instead
+   * The in-memory Map shared with RenalCore / server (Turso is write-through behind it).
+   *
+   * [Design] Reads and the physics tick use this Map directly; Turso only persists.
    */
-  getInternalMap(): Map<string, ReferenceRecord> {
+  getStore(): Map<string, ReferenceRecord> {
     return this.store;
   }
 
