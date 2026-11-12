@@ -16,7 +16,7 @@
  */
 
 import { readFile } from "fs/promises";
-import { createHash } from "crypto";
+import { createHash, createHmac, timingSafeEqual } from "crypto";
 import type {
   SanctuaryBundle,
   SanctuaryNode,
@@ -33,6 +33,53 @@ const SUPPORTED_BUNDLE_VERSION = 1;
 
 /** Maximum nodes for in-memory operation */
 const MAX_NODES_IN_MEMORY = 100000;
+
+// ============================================================
+// Signature
+// ============================================================
+
+/** Env var holding the shared key for HMAC-signed bundles (optional) */
+export const BUNDLE_KEY_ENV = "SANCTUARY_BUNDLE_KEY";
+
+/** Resolve signing key: explicit option wins, then env. Empty string = no key. */
+function resolveBundleKey(key?: string): string {
+  return key ?? process.env[BUNDLE_KEY_ENV] ?? "";
+}
+
+/** JSON with object keys sorted, so the digest does not depend on key order */
+function canonicalJson(value: unknown): string {
+  if (value === null || typeof value !== "object") return JSON.stringify(value);
+  if (Array.isArray(value)) return `[${value.map(canonicalJson).join(",")}]`;
+  const obj = value as Record<string, unknown>;
+  const body = Object.keys(obj)
+    .filter((k) => obj[k] !== undefined)
+    .sort()
+    .map((k) => `${JSON.stringify(k)}:${canonicalJson(obj[k])}`);
+  return `{${body.join(",")}}`;
+}
+
+/**
+ * Compute bundle signature over version, frozenAt, sourceCore and every node.
+ *
+ * With a key: HMAC-SHA256 (integrity + authenticity).
+ * Without:    SHA-256 (integrity only — detects corruption, not forgery).
+ * metadata is excluded: it is derived from nodes and checked by validateBundle.
+ */
+export function computeBundleSignature(
+  bundle: Pick<SanctuaryBundle, "version" | "frozenAt" | "sourceCore" | "nodes">,
+  key?: string,
+): string {
+  const data = canonicalJson({
+    version: bundle.version,
+    frozenAt: bundle.frozenAt,
+    sourceCore: bundle.sourceCore,
+    nodes: bundle.nodes,
+  });
+  const secret = resolveBundleKey(key);
+  return secret
+    ? createHmac("sha256", secret).update(data).digest("hex")
+    : createHash("sha256").update(data).digest("hex");
+}
 
 // ============================================================
 // Vector Operations
@@ -97,6 +144,12 @@ export class BundleLoader {
   private bundle: SanctuaryBundle | null = null;
   private nodeIndex: Map<string, SanctuaryNode> = new Map();
   private vectorDimension: number = 0;
+  private readonly key?: string;
+
+  /** @param key signing key; omitted → SANCTUARY_BUNDLE_KEY env → plain SHA-256 */
+  constructor(key?: string) {
+    this.key = key;
+  }
 
   /**
    * Load bundle from file
@@ -179,20 +232,13 @@ export class BundleLoader {
    * Verify bundle signature
    */
   private verifySignature(bundle: SanctuaryBundle): boolean {
-    // Simple signature verification: hash of nodes + frozenAt
-    // In production, use proper cryptographic signature
-    const data = JSON.stringify({
-      frozenAt: bundle.frozenAt,
-      sourceCore: bundle.sourceCore,
-      nodeCount: bundle.nodes.length,
-    });
+    if (typeof bundle.signature !== "string") return false;
 
-    // Reserved for proper signature verification
-    // TODO: Compare _hash with bundle.signature
-    const _hash = createHash("sha256").update(data).digest("hex");
+    const expected = Buffer.from(computeBundleSignature(bundle, this.key), "utf-8");
+    const actual = Buffer.from(bundle.signature, "utf-8");
 
-    // For now, just check signature is present
-    return bundle.signature.length > 0;
+    // timingSafeEqual throws on length mismatch
+    return expected.length === actual.length && timingSafeEqual(expected, actual);
   }
 
   /**
@@ -301,6 +347,8 @@ export interface CreateBundleOptions {
   sourceCore: string;
   nodes: SanctuaryNode[];
   description?: string;
+  /** Signing key; omitted → SANCTUARY_BUNDLE_KEY env → plain SHA-256 */
+  key?: string;
 }
 
 /**
@@ -330,13 +378,15 @@ export function createSanctuaryBundle(options: CreateBundleOptions): SanctuaryBu
     }
   }
 
-  // Generate signature
-  const signatureData = JSON.stringify({
-    frozenAt: now,
-    sourceCore: options.sourceCore,
-    nodeCount: options.nodes.length,
-  });
-  const signature = createHash("sha256").update(signatureData).digest("hex");
+  const signature = computeBundleSignature(
+    {
+      version: SUPPORTED_BUNDLE_VERSION,
+      frozenAt: now,
+      sourceCore: options.sourceCore,
+      nodes: options.nodes,
+    },
+    options.key,
+  );
 
   return {
     version: SUPPORTED_BUNDLE_VERSION,

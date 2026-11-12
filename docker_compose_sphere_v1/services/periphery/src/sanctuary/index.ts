@@ -12,6 +12,8 @@ export {
   BundleLoader,
   getDefaultBundleLoader,
   createSanctuaryBundle,
+  computeBundleSignature,
+  BUNDLE_KEY_ENV,
 } from "./bundle-loader.js";
 
 export type {

@@ -9,6 +9,7 @@
     "build": "tsc && npm run copy-assets",
     "copy-assets": "node -e \"const fs=require('fs'); fs.cpSync('src/schema', 'dist/schema', {recursive: true, filter: (src) => src.endsWith('.json') || !src.includes('.')}); fs.cpSync('src/mock/mock_data.json', 'dist/mock/mock_data.json'); fs.cpSync('src/mock/relics.json', 'dist/mock/relics.json');\"",
     "start": "node dist/index.js",
+    "test:bundle": "tsx src/mock/test-bundle-signature.ts",
     "contribute": "tsx src/mock/contribution.ts",
     "contribute:batch": "tsx src/mock/contribution.ts batch",
     "explore": "tsx src/mock/explore-agent.ts",
